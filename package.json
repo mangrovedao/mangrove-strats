@@ -32,7 +32,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "/Users/kejlberg/Mangrove/mangrove-core-only/package.tgz"
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#peter/only-core"
   },
   "devDependencies": {
     "@types/node": "^20.2.6",
