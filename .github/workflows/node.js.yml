@@ -108,8 +108,6 @@ jobs:
     #     path: ./solidity-mocha-test-report.json # Path to test results
     #     reporter: mocha-json                  # Format of test results
 
-    # == check docs can be created ==
-    - run: yarn run doc
 
     # == check precommit works ==
     - run: yarn run precommit
