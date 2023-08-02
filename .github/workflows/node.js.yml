@@ -56,10 +56,10 @@ jobs:
       with:
         cache: 'yarn'
         
-    - run: yarn install --immutable
-
     - name: Foundry Setup
       uses: ./.github/actions/foundry-setup
+    
+    - run: yarn install --immutable
 
     - name: Solidity Compile
       run: yarn run build
