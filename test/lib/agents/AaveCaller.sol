@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {AaveV3Borrower, IERC20} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveV3Borrower, IERC20} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
 import {MangroveTest, console} from "mgv_test/lib/MangroveTest.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 

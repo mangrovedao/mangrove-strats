@@ -4,8 +4,8 @@ pragma solidity ^0.8.10;
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {Kandel} from "mgv_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
 import {console2} from "forge-std/Test.sol";
 

@@ -5,8 +5,12 @@ import "mgv_test/lib/MangroveTest.sol";
 // import "mgv_test/lib/Fork.sol";
 
 import {
-  DirectTester, AbstractRouter, IERC20, IMangrove, IERC20
-} from "mgv_src/strategies/offer_maker/DirectTester.sol";
+  DirectTester,
+  AbstractRouter,
+  IERC20,
+  IMangrove,
+  IERC20
+} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
 
 contract AccessControlTest is MangroveTest {
   TestToken weth;

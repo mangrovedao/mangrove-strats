@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {Deployer, SINGLETON_BROADCASTER} from "mgv_script/lib/Deployer.sol";
-import {MangroveJsDeploy} from "mgv_script/toy/MangroveJs.s.sol";
+import {MangroveJsDeploy} from "mgv_strat_script/toy/MangroveJs.s.sol";
 
 import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
 import "forge-std/console.sol";

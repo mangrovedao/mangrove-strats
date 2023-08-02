@@ -6,14 +6,15 @@ import {
   KandelSeeder,
   IMangrove,
   GeometricKandel
-} from "mgv_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
-  AaveKandelSeeder, AavePooledRouter
-} from "mgv_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
+  AaveKandelSeeder,
+  AavePooledRouter
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
-  "mgv_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
+  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 
 contract KandelSeederTest is MangroveTest {
   PinnedPolygonFork internal fork;

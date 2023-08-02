@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {Direct, AbstractRouter, IMangrove, IERC20} from "mgv_src/strategies/offer_maker/abstract/Direct.sol";
-import {ILiquidityProvider} from "mgv_src/strategies/interfaces/ILiquidityProvider.sol";
+import {Direct, AbstractRouter, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
+import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 
 contract OfferMaker is ILiquidityProvider, Direct {
   // router_ needs to bind to this contract

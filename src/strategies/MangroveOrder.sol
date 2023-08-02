@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {Forwarder, MangroveOffer} from "mgv_src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {IOrderLogic} from "mgv_src/strategies/interfaces/IOrderLogic.sol";
-import {SimpleRouter} from "mgv_src/strategies/routers/SimpleRouter.sol";
+import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
+import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 
