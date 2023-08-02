@@ -95,10 +95,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@workspace:.":
+"@mangrovedao/mangrove-core@file:/Users/kejlberg/Mangrove/mangrove-core-only/package.tgz::locator=%40mangrovedao%2Fmangrove-strats%40workspace%3A.":
+  version: 1.5.7
+  resolution: "@mangrovedao/mangrove-core@file:/Users/kejlberg/Mangrove/mangrove-core-only/package.tgz::locator=%40mangrovedao%2Fmangrove-strats%40workspace%3A."
+  checksum: b1faeb8e09e9b449b32f6ea2cc23c9413d169989590289ea645939221f47148850e3f0a9f8dc14e6e67f3c4e8d61c48a684054dcb2cdaf2572ecb48f75fef94a
+  languageName: node
+  linkType: hard
+
+"@mangrovedao/mangrove-strats@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@mangrovedao/mangrove-core@workspace:."
+  resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
+    "@mangrovedao/mangrove-core": /Users/kejlberg/Mangrove/mangrove-core-only/package.tgz
     "@types/node": ^20.2.6
     husky: ^8.0.3
     lint-staged: ^13.2.2
