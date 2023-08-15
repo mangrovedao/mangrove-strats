@@ -6,7 +6,7 @@ This package contains the Solidity implementation of Mangrove as well as deploym
 
 If you are looking for the Mangrove developer documentation, the site to go to is [docs.mangrove.exchange](https://docs.mangrove.exchange).
 
-This repository builds untop of [@mangrovedao/mangrove-core](https://github.com/mangrovedao/mangrove-core/). It uses mangrove-core to build a library of strategies that can be used to create offers, execute trades, etc.
+This repository builds on top of [@mangrovedao/mangrove-core](https://github.com/mangrovedao/mangrove-core/). It uses mangrove-core to build a library of strategies that can be used to create offers, execute trades, etc.
 
 # Installing prerequisites
 
