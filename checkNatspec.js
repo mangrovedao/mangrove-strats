@@ -53,7 +53,6 @@ includes = [
   "MangroveOffer",
   "IOfferLogic",
   "IForwarder",
-  "TransferLib",
   "ILiquidityProvider",
   "OfferMakerTutorial",
   "OfferMakerTutorialResidual",
