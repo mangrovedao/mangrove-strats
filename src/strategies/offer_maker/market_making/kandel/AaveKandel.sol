@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "mgv_src/strategies/MangroveOffer.sol";
+import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
-import {AbstractRouter, AavePooledRouter} from "mgv_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {IATokenIsh} from "mgv_src/strategies/vendor/aave/v3/IATokenIsh.sol";
+import {AbstractRouter, AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {AbstractKandel} from "./abstract/AbstractKandel.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";

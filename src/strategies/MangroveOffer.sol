@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "mgv_src/strategies/utils/AccessControlled.sol";
-import {IOfferLogic} from "mgv_src/strategies/interfaces/IOfferLogic.sol";
+import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
+import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.

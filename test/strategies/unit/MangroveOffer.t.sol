@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import {DirectTester, IMangrove, IERC20} from "mgv_src/strategies/offer_maker/DirectTester.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_src/strategies/routers/SimpleRouter.sol";
+import "mgv_strat_test/lib/StratTest.sol";
+import {DirectTester, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
+import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
-contract MangroveOfferTest is MangroveTest {
+contract MangroveOfferTest is StratTest {
   TestToken weth;
   TestToken usdc;
   address payable deployer;

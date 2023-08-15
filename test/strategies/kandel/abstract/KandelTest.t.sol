@@ -4,17 +4,19 @@ pragma solidity ^0.8.10;
 import {IERC20} from "mgv_src/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
-import {OfferType} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {CoreKandel, TransferLib} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {KandelLib} from "mgv_lib/kandel/KandelLib.sol";
+import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {
+  CoreKandel, TransferLib
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
-import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
+import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 
-abstract contract KandelTest is MangroveTest {
+abstract contract KandelTest is StratTest {
   address payable maker;
   address payable taker;
   GeometricKandel kdl;

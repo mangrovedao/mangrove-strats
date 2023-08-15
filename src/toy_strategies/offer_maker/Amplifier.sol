@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import "mgv_src/strategies/offer_maker/abstract/Direct.sol";
-import "mgv_src/strategies/routers/SimpleRouter.sol";
+import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
+import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
 
 contract Amplifier is Direct {

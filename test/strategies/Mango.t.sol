@@ -1,12 +1,12 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import "mgv_src/strategies/offer_maker/market_making/mango/Mango.sol";
-import "mgv_src/strategies/routers/SimpleRouter.sol";
+import "mgv_strat_test/lib/StratTest.sol";
+import "mgv_strat_src/strategies/offer_maker/market_making/mango/Mango.sol";
+import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 
-contract MangoTest is MangroveTest {
+contract MangoTest is StratTest {
   struct Book {
     uint[] bids;
     uint[] asks;

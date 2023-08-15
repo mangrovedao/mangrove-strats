@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {OfferForwarder, IMangrove, IERC20, AbstractRouter} from "./OfferForwarder.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
-import {ITesterContract} from "mgv_src/strategies/interfaces/ITesterContract.sol";
+import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 
 contract ForwarderTester is OfferForwarder, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
