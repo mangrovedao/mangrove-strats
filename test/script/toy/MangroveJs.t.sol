@@ -4,10 +4,10 @@ pragma solidity ^0.8.10;
 import {Deployer, SINGLETON_BROADCASTER} from "mgv_script/lib/Deployer.sol";
 import {MangroveJsDeploy} from "mgv_strat_script/toy/MangroveJs.s.sol";
 
-import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
+import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
 import "forge-std/console.sol";
 
-contract MangroveJsDeployTest is MangroveTest {
+contract MangroveJsDeployTest is StratTest {
   function test_runs(address chief, uint gasprice, uint gasmax, address gasbot, uint mintA, uint mintB) public {
     vm.assume(chief != address(0));
     gasprice = bound(gasprice, 0, type(uint16).max);

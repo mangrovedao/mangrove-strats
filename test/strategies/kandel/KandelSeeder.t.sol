@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
+import "mgv_strat_test/lib/StratTest.sol";
 import {
   KandelSeeder,
   IMangrove,
@@ -16,7 +16,7 @@ import {AbstractKandelSeeder} from
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 
-contract KandelSeederTest is MangroveTest {
+contract KandelSeederTest is StratTest {
   PinnedPolygonFork internal fork;
   AbstractKandelSeeder internal seeder;
   AbstractKandelSeeder internal aaveSeeder;
