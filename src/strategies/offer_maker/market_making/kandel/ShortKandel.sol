@@ -40,7 +40,8 @@ contract ShortKandel is GeometricKandel {
     require(!isOverlying, "ShortKandel/cannotTradeAToken");
   }
 
-  ///@notice returns the router as an Aave router
+  ///@notice returns the router as an Aave private router
+  ///@return AavePrivateRouter cast
   function privateRouter() private view returns (AavePrivateRouter) {
     AbstractRouter router_ = router();
     require(router_ != NO_ROUTER, "ShortKandel/uninitialized");
@@ -82,11 +83,18 @@ contract ShortKandel is GeometricKandel {
     _populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
   }
 
+  ///@notice Deposits funds to the contract's reserve
+  ///@param token the deposited asset
+  ///@param amount to deposit
   function depositFunds(IERC20 token, uint amount) external onlyAdmin {
     _deposit(token, amount);
     privateRouter().pushAndSupply(token, amount, IERC20(address(0)), 0);
   }
 
+  ///@notice withdraws funds from the contract's reserve
+  ///@param token the asset one wishes to withdraw
+  ///@param amount to withdraw
+  ///@param recipient the address to which the withdrawn funds should be sent to.
   function withdrawFunds(IERC20 token, uint amount, address recipient) external onlyAdmin {
     if (amount != 0) {
       router().pull(token, RESERVE_ID, amount, true);

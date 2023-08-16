@@ -25,7 +25,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   }
 
   ///@notice Deposit funds on this router from the calling maker contract
-  ///@dev no transfer to AAVE is done at that moment.
+  ///@dev no transfer to AAVE is done at this moment.
   ///@inheritdoc AbstractRouter
   function __push__(IERC20 token, address, uint amount) internal override returns (uint) {
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "AavePrivateRouter/pushFailed");
@@ -72,17 +72,17 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1) external onlyBound {
     require(TransferLib.transferTokenFrom(token0, msg.sender, address(this), amount0), "AavePrivateRouter/pushFailed");
     require(TransferLib.transferTokenFrom(token1, msg.sender, address(this), amount1), "AavePrivateRouter/pushFailed");
-    Memoizer memory m0;
-    Memoizer memory m1;
 
     bytes32 reason;
     if (address(token0) != address(0)) {
+      Memoizer memory m0;
       reason = _toPool(token0, balanceOf(token0, m0), m0, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token0), reason);
       }
     }
     if (address(token1) != address(0)) {
+      Memoizer memory m1;
       reason = _toPool(token1, balanceOf(token1, m1), m1, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token1), reason);
@@ -90,7 +90,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     }
   }
 
-  // structs to avoir stack too deep in maxGettableUnderlying
+  // structs to avoid stack too deep in maxGettableUnderlying
   struct Underlying {
     uint ltv;
     uint liquidationThreshold;
@@ -116,8 +116,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     ) = ReserveConfiguration.getParams(reserveData(token, m).configuration);
 
     // redeemPower = account.liquidationThreshold * account.collateral - account.debt
+    Account memory userAccountData = userAccountData(m);
     uint redeemPower = (
-      userAccountData(m).liquidationThreshold * userAccountData(m).collateral - userAccountData(m).debt * 10 ** 4
+      userAccountData.liquidationThreshold * userAccountData.collateral - userAccountData.debt * 10 ** 4
     ) / 10 ** 4;
 
     // max redeem capacity = account.redeemPower/ underlying.liquidationThreshold * underlying.price
@@ -138,7 +139,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
 
     uint borrowPowerImpactOfRedeemInUnderlying = (maxRedeemableUnderlying * underlying.ltv) / 10 ** 4;
 
-    uint borrowPowerInUnderlying = (userAccountData(m).borrowPower * 10 ** underlying.decimals) / assetPrice(token, m);
+    uint borrowPowerInUnderlying = (userAccountData.borrowPower * 10 ** underlying.decimals) / assetPrice(token, m);
 
     if (borrowPowerImpactOfRedeemInUnderlying > borrowPowerInUnderlying) {
       // no more borrowPower left after max redeem operation
@@ -166,7 +167,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
       (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, true);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
-        // withdrawing all that can be redeeemed from AAVE
+        // withdrawing all that can be redeemed from AAVE
         (uint withdrawn, bytes32 reason) = _redeem(token, maxWithdraw, address(this), true);
         if (reason == bytes32(0)) {
           // localBalance has possibly more than required amount now
@@ -249,6 +250,11 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     return _claimRewards(assets, msg.sender);
   }
 
+  ///@param local the balance of the asset on the router
+  ///@param onPool the amount of asset deposited on the pool
+  ///@param debt the amount of asset that has been borrowed. A good invariant to check is `debt > 0 <=> local == 0 && onPool == 0`
+  ///@param liquid is the amount of asset that can be withdrawn from the pool w/o incurring debt. Invariant is `liquid <= onPool`
+  ///@param creditLine is the amount of asset that can be borrowed from the pool when all `liquid` asset have been withdrawn.
   struct AssetBalances {
     uint local;
     uint onPool;
@@ -259,12 +265,8 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
 
   ///@notice returns important balances of a given asset
   ///@param token the asset whose balances are queried
-  ///@return bal
-  /// .local the balance of the asset on the router
-  /// .onPool the amount of asset deposited on the pool
-  /// .debt the amount of asset that has been borrowed. A good invariant to check is `debt > 0 <=> local == 0 && onPool == 0`
-  /// .liquid is the amount of asset that can be withdrawn from the pool w/o incurring debt. Invariant is `liquid <= onPool`
-  /// .creditLine is the amount of asset that can be borrowed from the pool when all `liquid` asset have been withdrawn.
+  ///@return bal the balances of the given asset
+  ///@notice we ignore potential debt because redeem and borrow capacity already takes debt into account
   function assetBalances(IERC20 token) public view returns (AssetBalances memory bal) {
     Memoizer memory m;
     bal.debt = debtBalanceOf(token, m);

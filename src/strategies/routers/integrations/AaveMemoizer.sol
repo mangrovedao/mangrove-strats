@@ -2,22 +2,14 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
-import {AaveV3Borrower, DataTypes} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveV3Borrower} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
+import {DataTypes} from "mgv_src/strategies/vendor/aave/v3/DataTypes.sol";
 import {ReserveConfiguration} from "mgv_src/strategies/vendor/aave/v3/ReserveConfiguration.sol";
 import {ICreditDelegationToken} from "mgv_src/strategies/vendor/aave/v3/ICreditDelegationToken.sol";
 
 ///@title Memoizes values for AAVE to reduce gas cost and simplify code flow.
 ///@dev the memoizer works in the context of a single token and therefore should not be used across multiple tokens.
 contract AaveMemoizer is AaveV3Borrower {
-  ///@param balanceOf the owner's balance of the token
-  ///@param balanceOfMemoized whether the `balanceOf` has been memoized.
-  ///@param overlyingBalanceOf the balance of the overlying.
-  ///@param overlyingBalanceOfMemoized whether the `overlyingBalanceOf` has been memoized.
-  ///@param reserveData the data pertaining to the asset
-  ///@param reserveDataMemoized whether the `reserveData` has been memoized.
-  ///@param debtBalanceOf amount of token borrowed by this contract
-  ///@param debtBalanceOfMemoized wether `debtBalanceOf` is memoized
-
   struct Account {
     uint collateral;
     uint debt;
@@ -27,6 +19,14 @@ contract AaveMemoizer is AaveV3Borrower {
     uint health;
   }
 
+  ///@param balanceOf the owner's balance of the token
+  ///@param balanceOfMemoized whether the `balanceOf` has been memoized.
+  ///@param overlyingBalanceOf the balance of the overlying.
+  ///@param overlyingBalanceOfMemoized whether the `overlyingBalanceOf` has been memoized.
+  ///@param reserveData the data pertaining to the asset
+  ///@param reserveDataMemoized whether the `reserveData` has been memoized.
+  ///@param debtBalanceOf amount of token borrowed by this contract
+  ///@param debtBalanceOfMemoized wether `debtBalanceOf` is memoized
   struct Memoizer {
     uint balanceOf;
     bool balanceOfMemoized;

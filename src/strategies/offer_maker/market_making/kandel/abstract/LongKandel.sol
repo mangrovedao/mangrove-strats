@@ -5,6 +5,14 @@ import {IMangrove, IERC20, GeometricKandel} from "./GeometricKandel.sol";
 
 ///@title Adds functions that are used by all Kandel strats that have base and quote funds
 abstract contract LongKandel is GeometricKandel {
+
+  ///@notice Constructor
+  ///@param mgv The Mangrove deployment.
+  ///@param base Address of the base token of the market Kandel will act on
+  ///@param quote Address of the quote token of the market Kandel will act on
+  ///@param gasreq the gasreq to use for offers
+  ///@param gasprice the gasprice to use for offers
+  ///@param reserveId identifier of this contract's reserve when using a router.
   constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, uint gasprice, address reserveId)
     GeometricKandel(mgv, base, quote, gasreq, gasprice, reserveId)
   {}

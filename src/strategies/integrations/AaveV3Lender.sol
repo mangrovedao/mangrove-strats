@@ -63,15 +63,16 @@ contract AaveV3Lender {
   ///@param to is the address where the redeemed assets should be transferred
   ///@param noRevert whether Aave revert should be caught or not. If `noRevert` then revert message of aave is returned as a bytes32
   ///@return redeemed the amount of asset that were transferred to `to`
-  function _redeem(IERC20 token, uint amount, address to, bool noRevert) internal returns (uint, bytes32) {
+  ///@return reason the revert message of aave if any
+  function _redeem(IERC20 token, uint amount, address to, bool noRevert) internal returns (uint redeemed, bytes32 reason) {
     if (amount == 0) {
       return (0, bytes32(0));
     }
     try POOL.withdraw(address(token), amount, to) returns (uint withdrawn) {
       return (withdrawn, bytes32(0));
-    } catch Error(string memory reason) {
-      require(noRevert, reason);
-      return (0, bytes32(bytes(reason)));
+    } catch Error(string memory reason_) {
+      require(noRevert, reason_);
+      return (0, bytes32(bytes(reason_)));
     }
   }
 

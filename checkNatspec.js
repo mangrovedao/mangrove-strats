@@ -41,6 +41,11 @@ includes = [
   "AaveKandel",
   "Kandel",
   "AaveV3Lender",
+  "AaveV3Borrower",
+  "AaveMemoizer",
+  "LongKandel",
+  "ShortKandel",
+  "AavePrivateRouter",
   "HasAaveBalanceMemoizer",
   "AbstractRouter",
   "AavePooledRouter",
@@ -69,7 +74,7 @@ artifacts.forEach((file) => {
   const relevant = j.ast.nodes
     .filter((x) => x.nodeType == "ContractDefinition")
     .map((x) => {
-      if (!x.documentation.text.includes("@title")) {
+      if (!x.documentation?.text.includes("@title")) {
         anyFindings = true;
         console.log(`${fname} - ${x.name} missing @title`);
       }
