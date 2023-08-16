@@ -7,7 +7,7 @@
   "scripts": {
     "package-version": "echo $npm_package_version",
     "precommit": "lint-staged",
-    "prepack": "pinst --disable && yarn build && yarn doc",
+    "prepack": "pinst --disable && yarn build",
     "postpack": "pinst --enable",
     "postinstall": "husky install",
     "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
