@@ -117,9 +117,8 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
 
     // redeemPower = account.liquidationThreshold * account.collateral - account.debt
     Account memory userAccountData = userAccountData(m);
-    uint redeemPower = (
-      userAccountData.liquidationThreshold * userAccountData.collateral - userAccountData.debt * 10 ** 4
-    ) / 10 ** 4;
+    uint redeemPower =
+      (userAccountData.liquidationThreshold * userAccountData.collateral - userAccountData.debt * 10 ** 4) / 10 ** 4;
 
     // max redeem capacity = account.redeemPower/ underlying.liquidationThreshold * underlying.price
     // unless account doesn't have enough collateral in asset token (hence the min())
@@ -156,9 +155,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   /// * if this contract's balance already has `amount` tokens, then those tokens are transferred w/o calling the pool
   /// * otherwise, all tokens that can be withdrawn from this contract's account on the pool are withdrawn
   /// * if withdrawal is insufficient to match `amount` the missing tokens are borrowed.
-  /// Note we do not borrow the full capacity as it would put this contract is a liquidatable state. A malicious offer in the same m.o could prevent the posthook to repay the debt via an possible manipulation of the pool's state using flashloans.
+  /// Note we do not borrow the full capacity as it would put this contract is a liquidatable state. A malicious offer in the same market order could prevent the posthook to repay the debt via a possible manipulation of the pool's state using flashloans.
   /// * if pull is `strict` then only amount is sent to the calling maker contract, otherwise the totality of pulled funds are sent to maker
-  ///@dev if `strict` is enabled, then either `amount` is sent to maker of the call reverts.
+  ///@dev if `strict` is enabled, then either `amount` is sent to maker or the call reverts.
   ///@inheritdoc AbstractRouter
   function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
     Memoizer memory m;
