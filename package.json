@@ -31,9 +31,6 @@
     "/LICENSE",
     "/README.md"
   ],
-  "dependencies": {
-    "@mangrovedao/mangrove-core": "1.5.8-0"
-  },
   "devDependencies": {
     "@types/node": "^20.2.6",
     "husky": "^8.0.3",
