@@ -2,15 +2,15 @@
 pragma solidity ^0.8.10;
 
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
-import {Permit2Router} from "mgv_src/strategies/routers/Permit2Router.sol";
+import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
+import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
-import {Permit2Helpers} from "mgv_test/lib/permit2/permit2Helpers.sol";
+import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
+import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
 
-contract Permit2RouterSignatureTest is MangroveTest, DeployPermit2, Permit2Helpers {
+contract Permit2RouterSignatureTest is StratTest, DeployPermit2, Permit2Helpers {
   address owner;
   uint ownerPrivateKey;
   TestToken weth;

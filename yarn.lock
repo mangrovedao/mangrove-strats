@@ -95,10 +95,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@workspace:.":
+"@mangrovedao/mangrove-core@npm:1.5.8-0":
+  version: 1.5.8-0
+  resolution: "@mangrovedao/mangrove-core@npm:1.5.8-0"
+  checksum: 91f2acf13e44f1c08a27eaaeb95ad51defe334b791abea8d9b71bceab56ef8bb5f89767756a7527f5fca3a89e9556ae8fbddfc05ba0533a93af450148caf5b83
+  languageName: node
+  linkType: hard
+
+"@mangrovedao/mangrove-strats@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@mangrovedao/mangrove-core@workspace:."
+  resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
+    "@mangrovedao/mangrove-core": 1.5.8-0
     "@types/node": ^20.2.6
     husky: ^8.0.3
     lint-staged: ^13.2.2

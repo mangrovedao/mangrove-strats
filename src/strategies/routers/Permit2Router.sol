@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {StratTransferLib} from "mgv_strat_src/strategies/utils/StratTransferLib.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {SimpleRouterWithoutGasReq} from "./SimpleRouter.sol";
 
@@ -30,7 +30,7 @@ contract Permit2Router is SimpleRouterWithoutGasReq {
     returns (uint pulled)
   {
     amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
+    if (StratTransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
       return amount;
     } else {
       return 0;
@@ -55,7 +55,9 @@ contract Permit2Router is SimpleRouterWithoutGasReq {
   ) internal returns (uint pulled) {
     amount = strict ? amount : token.balanceOf(owner);
     if (
-      TransferLib.transferTokenFromWithPermit2Signature(permit2, owner, msg.sender, amount, transferDetails, signature)
+      StratTransferLib.transferTokenFromWithPermit2Signature(
+        permit2, owner, msg.sender, amount, transferDetails, signature
+      )
     ) {
       return amount;
     } else {

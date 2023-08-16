@@ -1,10 +1,12 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {SimpleRouter} from "mgv_src/strategies/routers/SimpleRouter.sol";
-import {OfferLogicTest, console, TestSender} from "mgv_test/strategies/unit/OfferLogic.t.sol";
-import {ForwarderTester, ITesterContract as ITester} from "mgv_src/strategies/offer_forwarder/ForwarderTester.sol";
-import {IForwarder, IMangrove, IERC20} from "mgv_src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {OfferLogicTest, console, TestSender} from "mgv_strat_test/strategies/unit/OfferLogic.t.sol";
+import {
+  ForwarderTester, ITesterContract as ITester
+} from "mgv_strat_src/strategies/offer_forwarder/ForwarderTester.sol";
+import {IForwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
 
 contract OfferForwarderTest is OfferLogicTest {

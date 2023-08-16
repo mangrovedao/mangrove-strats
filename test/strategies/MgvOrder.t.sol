@@ -1,23 +1,23 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {MangroveTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_test/lib/MangroveTest.sol";
+import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MangroveOrder as MgvOrder} from "mgv_src/strategies/MangroveOrder.sol";
-import {SimpleRouter} from "mgv_src/strategies/routers/SimpleRouter.sol";
-import {Permit2Router} from "mgv_src/strategies/routers/Permit2Router.sol";
+import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
+import {MangroveOrder as MgvOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
+import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {IOrderLogic} from "mgv_src/strategies/interfaces/IOrderLogic.sol";
+import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
-import {Permit2Helpers} from "mgv_test/lib/permit2/permit2Helpers.sol";
+import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
 
-contract MangroveOrder_Test is MangroveTest, DeployPermit2, Permit2Helpers {
+contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
   uint constant GASREQ = 35_000;
 
   bytes32 DOMAIN_SEPARATOR;

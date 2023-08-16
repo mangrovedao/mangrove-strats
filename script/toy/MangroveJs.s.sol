@@ -6,18 +6,18 @@ import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol
 import {AbstractMangrove} from "mgv_src/AbstractMangrove.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {MangroveOrderDeployer} from "mgv_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
-import {KandelSeederDeployer} from "mgv_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
-import {MangroveOrder} from "mgv_src/strategies/MangroveOrder.sol";
+import {MangroveOrderDeployer} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+import {KandelSeederDeployer} from "mgv_strat_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
+import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "mgv_test/lib/agents/TestMaker.sol";
 import {Mangrove} from "mgv_src/Mangrove.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {ActivateMarket} from "mgv_script/core/ActivateMarket.s.sol";
-import {PoolAddressProviderMock} from "mgv_script/toy/AaveMock.sol";
-import {IPermit2} from "permit2/src/interfaces/IPermit2.sol";
-import {DeployPermit2} from "permit2/test/utils/DeployPermit2.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
+import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import "forge-std/console.sol";
 
 /* 

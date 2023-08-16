@@ -6,18 +6,7 @@ This package contains the Solidity implementation of Mangrove as well as deploym
 
 If you are looking for the Mangrove developer documentation, the site to go to is [docs.mangrove.exchange](https://docs.mangrove.exchange).
 
-# Use as a foundry dependency
-
-Just `forge install mangrovedao/mangrove-core`.
-
-⚠️ You will not get the usual remapping `mangrove-core/=lib/mangrove-core/src/` (because forge's remapping generation heuristic sees the `preprocessing/lib/` directory and decides to remap to the parent dir). Instead, you will get:
-
-```
-mgv_src/=lib/mangrove-core/src/
-mgv_lib/=lib/mangrove-core/lib/
-mgv_test/=lib/mangrove-core/test/
-mgv_script/=lib/mangrove-core/script/
-```
+This repository builds on top of [@mangrovedao/mangrove-core](https://github.com/mangrovedao/mangrove-core/). It uses mangrove-core to build a library of strategies that can be used to create offers, execute trades, etc.
 
 # Installing prerequisites
 
@@ -25,32 +14,32 @@ For Linux or macOS everything should work out of the box, if you are using Windo
 
 1. [Node.js](https://nodejs.org/en/) 14.14+, we recommend installation through [nvm](https://github.com/nvm-sh/nvm#installing-and-updating), e.g.:
 
-    ```shell
-    $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-    # Reopen shell
-    $ nvm install --lts
-    ```
+   ```shell
+   $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+   # Reopen shell
+   $ nvm install --lts
+   ```
 
 2. [Yarn 2](https://yarnpkg.com/getting-started/install), with Node.js >= 16.10:
 
-    ```shell
-    $ corepack enable
-    ```
+   ```shell
+   $ corepack enable
+   ```
 
 3. [Foundry](https://book.getfoundry.sh/getting-started/installation.html):
 
-    ```shell
-    $ curl -L https://foundry.paradigm.xyz | bash
-    # Reopen shell
-    $ foundryup
-    ```
+   ```shell
+   $ curl -L https://foundry.paradigm.xyz | bash
+   # Reopen shell
+   $ foundryup
+   ```
 
 4. Clone the git repo with sub-modules
 
-    ```shell
-    $ git clone --recurse-submodules https://github.com/mangrovedao/mangrove-core.git
-    # Or set the global git config once: git config --global submodule.recurse true
-    ```
+   ```shell
+   $ git clone --recurse-submodules https://github.com/mangrovedao/mangrove-strats.git
+   # Or set the global git config once: git config --global submodule.recurse true
+   ```
 
 # Usage
 
@@ -89,7 +78,6 @@ This package contains a comprehensive test suite for Mangrove, implemented in So
 The tests are located in [./test](./test).
 
 Refer to the documentation of [Foundry](https://book.getfoundry.sh/index.html) for details on how tests are structured and options for running it.
-
 
 # Foundry and its use in this package
 
@@ -148,15 +136,3 @@ It is tiring to always add `--private-key 0x..` to scripts, especially since the
 - You should use `broadcast()` instead of `vm.broadcast()` in scripts. The deployer contract will look for the correct private key, and fallback to the CLI-provided key if none was found.
 
 (Note that for Mumbai, `name=”mumbai”`)
-
-# Generate documentation
-
-The Mangrove Solidity files contain documentation that can be extracted to a nicely formatted and navigable HTML file by running `yarn doc` which will generate a `doc/MgvDoc.html`.
-
-# Configuration
-
-This package uses hierarchical configurations via [node-config](https://github.com/lorenwest/node-config). The main configuration is in [./config/default.js](./config/default.js) and the other .js files in the same directory specify environment/stage specific overrides. Please refer to the documentation for node-config for details on how the configuration hierarchy is resolved.
-
-It is possible to override parts of the configuration with environment variables. This is controlled by [./config/custom-environment-variables.json](./config/custom-environment-variables.json). The structure of this file mirrors the configuration structure but with names of environment variables in the places where these can override a part of the configuration.
-
-For more information, please refer to the node-config's documentation of this feature: https://github.com/lorenwest/node-config/wiki/Environment-Variables#custom-environment-variables .

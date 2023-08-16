@@ -5,9 +5,9 @@ import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {Forwarder, MangroveOffer} from "mgv_src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {IOrderLogic} from "mgv_src/strategies/interfaces/IOrderLogic.sol";
-import {Permit2Router} from "mgv_src/strategies/routers/Permit2Router.sol";
+import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
+import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 

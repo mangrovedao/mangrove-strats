@@ -2,14 +2,16 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2 as console} from "forge-std/Script.sol";
-import {Kandel, IERC20, IMangrove, OfferType} from "mgv_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {CoreKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {AbstractKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol";
-import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {
+  Kandel, IERC20, IMangrove, OfferType
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {AbstractKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol";
+import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {KandelLib} from "mgv_lib/kandel/KandelLib.sol";
+import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove

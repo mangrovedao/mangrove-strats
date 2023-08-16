@@ -1,6 +1,6 @@
 {
-  "name": "@mangrovedao/mangrove-core",
-  "version": "1.5.7",
+  "name": "@mangrovedao/mangrove-strats",
+  "version": "0.0.1",
   "author": "Mangrove DAO",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
@@ -10,10 +10,8 @@
     "prepack": "pinst --disable && yarn build && yarn doc",
     "postpack": "pinst --enable",
     "postinstall": "husky install",
-    "corecov": "forge coverage --match-path 'test/core/*'",
     "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
     "clean": "forge clean; rimraf index.js dist",
-    "doc": "solcco -f doc/MgvDoc.html preprocessing/structs.ts src/MgvLib.sol src/MgvRoot.sol src/MgvHasOffers.sol src/MgvOfferMaking.sol src/MgvOfferTaking.sol src/MgvOfferTakingWithPermit.sol src/MgvGovernable.sol src/AbstractMangrove.sol src/Mangrove.sol src/InvertedMangrove.sol",
     "preproc": "ts-node preprocessing/run.ts",
     "test": "forge test -vvv"
   },
@@ -31,9 +29,11 @@
     "remappings.txt",
     "/lib",
     "/LICENSE",
-    "/README.md",
-    "/doc"
+    "/README.md"
   ],
+  "dependencies": {
+    "@mangrovedao/mangrove-core": "1.5.8-0"
+  },
   "devDependencies": {
     "@types/node": "^20.2.6",
     "husky": "^8.0.3",
