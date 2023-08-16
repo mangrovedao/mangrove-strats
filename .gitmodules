@@ -1,0 +1,4 @@
+[submodule "lib/mangrove-core.git"]
+	path = lib/mangrove-core.git
+	url = https://github.com/mangrovedao/mangrove-core.git
+	branch = develop
