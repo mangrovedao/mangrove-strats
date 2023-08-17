@@ -11,10 +11,11 @@ import {
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
-import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, MangroveTest, TestMangrove} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
 
 abstract contract KandelTest is StratTest {
   address payable maker;
@@ -146,25 +147,27 @@ abstract contract KandelTest is StratTest {
   function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint, uint) {
     uint bestAsk = mgv.best($(base), $(quote));
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([bestAsk, amount, type(uint96).max, type(uint).max]), true);
+    return
+      testMgv.snipesInTest($(base), $(quote), wrap_dynamic([bestAsk, amount, type(uint96).max, type(uint).max]), true);
   }
 
   function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint, uint) {
     uint bestBid = mgv.best($(quote), $(base));
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
+    return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
   }
 
   function snipeBuyAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
     uint offerId = kdl.offerIdOfIndex(Ask, index);
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
+    return
+      testMgv.snipesInTest($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
   }
 
   function snipeSellAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
     uint offerId = kdl.offerIdOfIndex(Bid, index);
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
@@ -227,8 +230,8 @@ abstract contract KandelTest is StratTest {
   function assertStatus(uint index, OfferStatus status, uint q, uint b) internal {
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index);
-    bool bidLive = mgv.isLive(bid);
-    bool askLive = mgv.isLive(ask);
+    bool bidLive = bid.isLive();
+    bool askLive = ask.isLive();
 
     if (status == OfferStatus.Dead) {
       assertTrue(!bidLive && !askLive, "offer at index is live");
@@ -420,7 +423,7 @@ abstract contract KandelTest is StratTest {
     for (uint i = 0; i < params.pricePoints; i++) {
       OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
       MgvStructs.OfferPacked offer = kdl.getOffer(ba, i);
-      if (!mgv.isLive(offer)) {
+      if (!offer.isLive()) {
         if (ba == Bid) {
           numBids++;
         }

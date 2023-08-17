@@ -150,7 +150,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
     // taker has approved mangrove in the setUp
     vm.startPrank(taker);
-    (uint takergot,, uint bounty,) = mgv.marketOrder({
+    (uint takergot,, uint bounty,) = mgv.marketOrderByVolume({
       outbound_tkn: address(weth),
       inbound_tkn: address(usdc),
       takerWants: 0.5 ether,

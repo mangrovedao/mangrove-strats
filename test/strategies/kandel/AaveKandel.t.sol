@@ -14,6 +14,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -240,7 +241,8 @@ contract AaveKandelTest is CoreKandelTest {
     deal($(base), $(router), donationMultiplier * bestAsk.gives());
 
     vm.prank(taker);
-    (uint takerGot,,, uint fee) = mgv.marketOrder($(base), $(quote), bestAsk.gives() * 2, bestAsk.wants() * 2, true);
+    (uint takerGot,,, uint fee) =
+      mgv.marketOrderByVolume($(base), $(quote), bestAsk.gives() * 2, bestAsk.wants() * 2, true);
 
     assertEq(takerGot + fee, bestAsk.gives() * 2, "both asks should be taken");
 
@@ -276,8 +278,9 @@ contract AaveKandelTest is CoreKandelTest {
 
   function executeAttack(uint offerId) public {
     // context base should not be available to redeem for the router, for this attack to succeed
-    (,, uint takerGave, uint bounty,) =
-      mgv.snipes($(base), $(quote), wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true);
+    (,, uint takerGave, uint bounty,) = testMgv.snipesInTest(
+      $(base), $(quote), wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
+    );
     require(takerGave == 0 && bounty > 0, "attack failed");
   }
 
@@ -348,7 +351,7 @@ contract AaveKandelTest is CoreKandelTest {
     uint gas = gasleft(); // adding flash loan overhead
     try attacker.borrow(quote, quoteSupply - 1) {
       // borrow is ~180K
-      (, uint takerGave, uint bounty,) = mgv.marketOrder({
+      (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume({
         outbound_tkn: $(quote),
         inbound_tkn: $(base),
         takerWants: 10,

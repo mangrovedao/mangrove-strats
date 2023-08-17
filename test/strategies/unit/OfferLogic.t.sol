@@ -315,7 +315,7 @@ contract OfferLogicTest is StratTest {
 
     // taker has approved mangrove in the setUp
     vm.startPrank(taker);
-    (takergot, takergave, bounty, fee) = mgv.marketOrder({
+    (takergot, takergave, bounty, fee) = mgv.marketOrderByVolume({
       outbound_tkn: address(weth),
       inbound_tkn: address(usdc),
       takerWants: 0.5 ether,

@@ -142,7 +142,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`tko.takerGives`)
     // * (NAT_THIS+`msg.value`, OUT_THIS, IN_THIS+`tko.takerGives`)
 
-    (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrder({
+    (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrderByVolume({
       outbound_tkn: address(tko.outbound_tkn),
       inbound_tkn: address(tko.inbound_tkn),
       takerWants: tko.takerWants,

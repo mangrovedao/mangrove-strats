@@ -108,14 +108,15 @@ contract MangoTest is StratTest {
   }
 
   function part_market_order() public prank(taker) {
-    (uint got, uint gave, uint bounty,) = mgv.marketOrder($(weth), $(usdc), cash(weth, 5, 1), cash(usdc, 3000), true);
+    (uint got, uint gave, uint bounty,) =
+      mgv.marketOrderByVolume($(weth), $(usdc), cash(weth, 5, 1), cash(usdc, 3000), true);
     Book memory book = getOffers(false);
     assertEq(got, reader.minusFee($(weth), $(usdc), 0.5 ether), "incorrect received amount");
     assertEq(bounty, 0, "taker should not receive bounty");
 
     checkOB($(usdc), $(weth), book.bids, dynamic([int(1), 2, 3, 4, 5, 6, 0, 0, 0, 0]));
     checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 0, 0, -1, 2, 3, 4, 5]));
-    (got, gave, bounty,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 3500), cash(weth, 15, 1), true);
+    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 3500), cash(weth, 15, 1), true);
 
     assertEq(got, reader.minusFee($(usdc), $(weth), cash(usdc, 3500)), "incorrect received amount");
 
@@ -157,7 +158,8 @@ contract MangoTest is StratTest {
     mgv.setDensity($(weth), $(usdc), cash(weth, 1));
 
     vm.prank(taker);
-    (uint got, uint gave, uint bounty,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    (uint got, uint gave, uint bounty,) =
+      mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
 
     uint best_id = mgv.best($(weth), $(usdc));
     MgvStructs.OfferPacked best_offer = mgv.offers($(weth), $(usdc), best_id);
@@ -169,7 +171,7 @@ contract MangoTest is StratTest {
     assertEq(pendingBase, gave, "Taker liquidity should be pending");
 
     vm.prank(taker);
-    (got, gave, bounty,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
 
     vm.prank(maker);
     uint pendingBase_ = mgo.pending()[0];
@@ -179,7 +181,7 @@ contract MangoTest is StratTest {
     mgv.setDensity($(weth), $(usdc), 100);
 
     vm.prank(taker);
-    mgv.marketOrder($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
 
     vm.prank(maker);
     uint pendingBase__ = mgo.pending()[0];
@@ -201,7 +203,8 @@ contract MangoTest is StratTest {
     MgvStructs.OfferPacked best_offer = mgv.offers($(usdc), $(weth), best_id);
 
     vm.prank(taker);
-    (uint got, uint gave, uint bounty,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (uint got, uint gave, uint bounty,) =
+      mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
 
     // because density reqs are so high on both semi order book, best will not be able to self repost
     // and residual will be added to USDC (quote) pending pool
@@ -221,7 +224,7 @@ contract MangoTest is StratTest {
     best_offer = mgv.offers($(usdc), $(weth), best_id);
 
     vm.prank(taker);
-    (got, gave, bounty,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
 
     vm.startPrank(maker);
     uint pendingBase_ = mgo.pending()[0];
@@ -258,7 +261,7 @@ contract MangoTest is StratTest {
     MgvStructs.OfferPacked old_offer2 = mgv.offers($(usdc), $(weth), 2);
 
     vm.prank(taker);
-    (, uint gave,,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (, uint gave,,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
 
     Book memory book = getOffers(false);
     checkOB($(usdc), $(weth), book.bids, dynamic([int(2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
@@ -288,7 +291,7 @@ contract MangoTest is StratTest {
     mgo.pause();
 
     vm.prank(taker);
-    (uint got, uint gave,,) = mgv.marketOrder($(usdc), $(weth), cash(usdc, 2500), cash(weth, 15, 1), true);
+    (uint got, uint gave,,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 2500), cash(weth, 15, 1), true);
 
     assertEq(got, 0, "got should be 0");
     assertEq(gave, 0, "gave should be 0");

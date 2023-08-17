@@ -294,14 +294,14 @@ abstract contract CoreKandelTest is KandelTest {
   function test_all_bids_all_asks_and_back() public {
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
     vm.prank(taker);
-    mgv.marketOrder($(base), $(quote), type(uint96).max, type(uint96).max, true);
+    mgv.marketOrderByVolume($(base), $(quote), type(uint96).max, type(uint96).max, true);
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 1, 1, 1, 1, 0]));
     vm.prank(taker);
-    mgv.marketOrder($(quote), $(base), 1 ether, type(uint96).max, false);
+    mgv.marketOrderByVolume($(quote), $(base), 1 ether, type(uint96).max, false);
     assertStatus(dynamic([uint(0), 2, 2, 2, 2, 2, 2, 2, 2, 2]));
     uint askVol = kdl.offeredVolume(Ask);
     vm.prank(taker);
-    mgv.marketOrder($(base), $(quote), askVol / 2, type(uint96).max, true);
+    mgv.marketOrderByVolume($(base), $(quote), askVol / 2, type(uint96).max, true);
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   }
 
@@ -808,7 +808,7 @@ abstract contract CoreKandelTest is KandelTest {
     // Take almost all - offer will not be reposted due to density too low
     uint amount = bid.wants() - 1;
     vm.prank(taker);
-    mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
 
     // verify dual is increased
     MgvStructs.OfferPacked askPost = kdl.getOffer(Ask, index + STEP);
@@ -826,16 +826,17 @@ abstract contract CoreKandelTest is KandelTest {
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP);
 
-    assertTrue(mgv.isLive(bid), "bid should be live");
-    assertTrue(!mgv.isLive(ask), "ask should not be live");
+    assertTrue(bid.isLive(), "bid should be live");
+    assertTrue(!ask.isLive(), "ask should not be live");
 
     // Take very little and expect dual posting to fail.
     uint amount = 10000;
     vm.prank(taker);
-    (uint successes,,,,) = mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    (uint successes,,,,) =
+      testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
     assertTrue(successes == 1, "Snipe failed");
     ask = kdl.getOffer(Ask, index + STEP);
-    assertTrue(!mgv.isLive(ask), "ask should still not be live");
+    assertTrue(!ask.isLive(), "ask should still not be live");
   }
 
   function test_posthook_dual_density_too_low_not_posted_via_updateOffer() public {
@@ -848,17 +849,18 @@ abstract contract CoreKandelTest is KandelTest {
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP);
 
-    assertTrue(mgv.isLive(bid), "bid should be live");
-    assertTrue(!mgv.isLive(ask), "ask should not be live");
+    assertTrue(bid.isLive(), "bid should be live");
+    assertTrue(!ask.isLive(), "ask should not be live");
 
     // Take very little and expect dual posting to fail.
     uint amount = 10000;
     vm.prank(taker);
-    (uint successes,,,,) = mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    (uint successes,,,,) =
+      testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
     assertTrue(successes == 1, "Snipe failed");
 
     ask = kdl.getOffer(Ask, index + STEP);
-    assertTrue(!mgv.isLive(ask), "ask should still not be live");
+    assertTrue(!ask.isLive(), "ask should still not be live");
   }
 
   CoreKandel.Distribution emptyDist;
@@ -1026,7 +1028,7 @@ abstract contract CoreKandelTest is KandelTest {
     expectFrom($(kdl));
     emit PopulateStart();
     vm.expectEmit(false, false, false, false, $(mgv));
-    emit OfferWrite(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0);
+    emit OfferWrite(address(0), address(0), address(0), 0, 0, 0, 0, 0);
     expectFrom($(kdl));
     emit PopulateEnd();
     populateSingle(kdl, 1, 1 ether, 1 ether, 0, 2, bytes(""));

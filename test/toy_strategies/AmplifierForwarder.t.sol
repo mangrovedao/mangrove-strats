@@ -116,7 +116,7 @@ contract AmplifierForwarderTest is StratTest {
   {
     // try to snipe one of the offers (using the separate taker account)
     vm.startPrank(taker);
-    (, takerGot, takerGave, bounty,) = mgv.snipes({
+    (, takerGot, takerGave, bounty,) = testMgv.snipesInTest({
       outbound_tkn: $(weth),
       inbound_tkn: $(makerWantsToken),
       targets: wrap_dynamic([offerId, makerGivesAmount, makerWantsAmount, type(uint).max]),
@@ -187,10 +187,10 @@ contract AmplifierForwarderTest is StratTest {
     MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
     MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
     MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(mgv.isLive(offer_on_dai1), "weth->dai offer should not have been retracted: testOffer.daiOffer");
-    assertTrue(mgv.isLive(offer_on_usdc1), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
+    assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratWithSuccess() public {
@@ -245,10 +245,10 @@ contract AmplifierForwarderTest is StratTest {
     MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
     MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
     MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(!mgv.isLive(offer_on_dai1), "weth->dai offer should have been retracted: testOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc1), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
+    assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratWithFallback() public {
@@ -292,10 +292,10 @@ contract AmplifierForwarderTest is StratTest {
     MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
     MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
     MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(!mgv.isLive(offer_on_dai1), "weth->dai offer should have been retracted: testOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc1), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
+    assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratOfferAlreadyActive() public {
@@ -360,10 +360,10 @@ contract AmplifierForwarderTest is StratTest {
     MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
     MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
     MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(mgv.isLive(offer_on_dai1), "weth->dai offer should not have been retracted: testOffer.daiOffer");
-    assertTrue(mgv.isLive(offer_on_usdc1), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
-    assertTrue(mgv.isLive(offer_on_dai2), "weth->dai offer should not have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
+    assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
+    assertTrue(offer_on_dai2.isLive(), "weth->dai offer should not have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratDeprovisionDeadOffers() public {

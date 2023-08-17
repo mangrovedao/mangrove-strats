@@ -185,14 +185,13 @@ contract MangoImplementation {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     if (mStr.asks[wd.index] == 0) {
       // offer slot not initialized yet
-      try MGV.newOffer({
+      try MGV.newOfferByVolume({
         outbound_tkn: address(BASE),
         inbound_tkn: address(QUOTE),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
-        gasprice: 0,
-        pivotId: wd.pivotId
+        gasprice: 0
       }) returns (uint offerId) {
         mStr.asks[wd.index] = offerId;
         mStr.index_of_ask[mStr.asks[wd.index]] = wd.index;
@@ -202,14 +201,13 @@ contract MangoImplementation {
         return wd.gives;
       }
     } else {
-      try MGV.updateOffer({
+      try MGV.updateOfferByVolume({
         outbound_tkn: address(BASE),
         inbound_tkn: address(QUOTE),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
         gasprice: 0,
-        pivotId: wd.pivotId,
         offerId: mStr.asks[wd.index]
       }) {
         // updateOffer succeeded
@@ -229,14 +227,13 @@ contract MangoImplementation {
   function writeBid(WriteData memory wd) internal returns (uint) {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     if (mStr.bids[wd.index] == 0) {
-      try MGV.newOffer({
+      try MGV.newOfferByVolume({
         outbound_tkn: address(QUOTE),
         inbound_tkn: address(BASE),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
-        gasprice: 0,
-        pivotId: wd.pivotId
+        gasprice: 0
       }) returns (uint offerId) {
         mStr.bids[wd.index] = offerId;
         mStr.index_of_bid[mStr.bids[wd.index]] = wd.index;
@@ -245,14 +242,13 @@ contract MangoImplementation {
         return wd.gives;
       }
     } else {
-      try MGV.updateOffer({
+      try MGV.updateOfferByVolume({
         outbound_tkn: address(QUOTE),
         inbound_tkn: address(BASE),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
         gasprice: 0,
-        pivotId: wd.pivotId,
         offerId: mStr.bids[wd.index]
       }) {
         return 0;

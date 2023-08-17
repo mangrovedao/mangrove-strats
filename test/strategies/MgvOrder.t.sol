@@ -1,7 +1,15 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
+import {
+  StratTest,
+  MgvReader,
+  TestMaker,
+  TestTaker,
+  TestSender,
+  console,
+  TestMangrove
+} from "mgv_strat_test/lib/StratTest.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
@@ -9,6 +17,7 @@ import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
 
 contract MangroveOrder_Test is StratTest {
   uint constant GASREQ = 35_000;
@@ -97,14 +106,14 @@ contract MangroveOrder_Test is StratTest {
 
     // pre populating book with cold maker offers.
     ask_maker.approveMgv(base, 10 ether);
-    ask_maker.newOfferWithFunding( /*wants quote*/ 2000 ether, /*gives base*/ 1 ether, 50_000, 0, 0, 0.1 ether);
-    ask_maker.newOfferWithFunding(2001 ether, 1 ether, 50_000, 0, 0, 0.1 ether);
-    ask_maker.newOfferWithFunding(2002 ether, 1 ether, 50_000, 0, 0, 0.1 ether);
+    ask_maker.newOfferByVolumeWithFunding( /*wants quote*/ 2000 ether, /*gives base*/ 1 ether, 50_000, 0, 0.1 ether);
+    ask_maker.newOfferByVolumeWithFunding(2001 ether, 1 ether, 50_000, 0, 0.1 ether);
+    ask_maker.newOfferByVolumeWithFunding(2002 ether, 1 ether, 50_000, 0, 0.1 ether);
 
     bid_maker.approveMgv(quote, 10000 ether);
-    bid_maker.newOfferWithFunding(1 ether, 1990 ether, 50_000, 0, 0, 0.1 ether);
-    bid_maker.newOfferWithFunding(1 ether, 1989 ether, 50_000, 0, 0, 0.1 ether);
-    bid_maker.newOfferWithFunding( /*wants base*/ 1 ether, /*gives quote*/ 1988 ether, 50_000, 0, 0, 0.1 ether);
+    bid_maker.newOfferByVolumeWithFunding(1 ether, 1990 ether, 50_000, 0, 0.1 ether);
+    bid_maker.newOfferByVolumeWithFunding(1 ether, 1989 ether, 50_000, 0, 0.1 ether);
+    bid_maker.newOfferByVolumeWithFunding( /*wants base*/ 1 ether, /*gives quote*/ 1988 ether, 50_000, 0, 0.1 ether);
 
     IOrderLogic.TakerOrder memory buyOrder;
     IOrderLogic.TakerOrder memory sellOrder;
@@ -582,7 +591,7 @@ contract MangroveOrder_Test is StratTest {
     address fresh_taker = freshTaker(2 ether, 0);
     uint oldNativeBal = fresh_taker.balance;
     // pretend new offer failed for some reason
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOffer.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByVolume.selector), abi.encode(uint(0)));
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
     assertEq(fresh_taker.balance, oldNativeBal, "Taker's provision was not returned");
@@ -603,7 +612,7 @@ contract MangroveOrder_Test is StratTest {
     //address(args.outbound_tkn), address(args.inbound_tkn), args.wants, args.gives, args.gasreq, gasprice, args.pivotId
     address fresh_taker = freshTaker(2 ether, 0);
     // pretend new offer failed for some reason
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOffer.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByVolume.selector), abi.encode(uint(0)));
     vm.expectRevert("mgvOrder/partialFill");
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
@@ -631,7 +640,7 @@ contract MangroveOrder_Test is StratTest {
     TransferLib.approveToken(base, $(mgo.router()), type(uint).max);
     vm.stopPrank();
     // mocking MangroveOrder failure to post resting offer
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOffer.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByVolume.selector), abi.encode(uint(0)));
     /// since `sender` throws on `receive()`, this should fail.
     vm.expectRevert("mgvOrder/refundFail");
     vm.prank($(sender));
@@ -824,7 +833,7 @@ contract MangroveOrder_Test is StratTest {
     _gas();
     // cannot use TestTaker functions that have additional gas cost
     // simply using sell_taker's approvals and already filled balances
-    (uint successes,,,,) = mgv.snipes($(quote), $(base), targets, true);
+    (uint successes,,,,) = TestMangrove($(mgv)).snipesInTest($(quote), $(base), targets, true);
     gas_();
     assertTrue(successes == 1, "Snipe failed");
     assertTrue(mgv.offers($(quote), $(base), cold_buyResult.offerId).gives() > 0, "Update failed");

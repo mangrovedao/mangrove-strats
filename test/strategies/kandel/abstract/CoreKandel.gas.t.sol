@@ -49,10 +49,10 @@ abstract contract CoreKandelGasTest is KandelTest {
     IndexStatus memory idx = getStatus(index);
     if (idx.status == OfferStatus.Bid) {
       // densify Ask position
-      densify(address(base), address(quote), idx.bid.gives(), idx.bid.wants(), 0, 0, fold, address(this));
+      densify(address(base), address(quote), idx.bid.gives(), idx.bid.wants(), 0, fold, address(this));
     } else {
       if (idx.status == OfferStatus.Ask) {
-        densify(address(quote), address(base), idx.ask.gives(), idx.ask.wants(), 0, 0, fold, address(this));
+        densify(address(quote), address(base), idx.ask.gives(), idx.ask.wants(), 0, fold, address(this));
       }
     }
   }
@@ -68,7 +68,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), completeFill, type(uint160).max, true);
+    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), completeFill, type(uint160).max, true);
     gas_();
     require(takerGot > 0);
   }
@@ -78,7 +78,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting (all offers give 0.108 ethers)
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), partialFill, type(uint160).max, true);
+    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), partialFill, type(uint160).max, true);
     uint g = gas_(true);
     assertEq(reader.minusFee($(base), $(quote), partialFill), takerGot, "Incorrect got");
     console.log(1, ",", g);
@@ -91,7 +91,7 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), completeFill + partialFill, type(uint160).max, true);
+    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), completeFill + partialFill, type(uint160).max, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(2, ",", g);
@@ -104,7 +104,8 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), completeFill * 2 + partialFill, type(uint160).max, true);
+    (uint takerGot,,,) =
+      mgv.marketOrderByVolume($(base), $(quote), completeFill * 2 + partialFill, type(uint160).max, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(3, ",", g);
@@ -117,7 +118,8 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), completeFill * 3 + partialFill, type(uint160).max, true);
+    (uint takerGot,,,) =
+      mgv.marketOrderByVolume($(base), $(quote), completeFill * 3 + partialFill, type(uint160).max, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(4, ",", g);
@@ -130,7 +132,8 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrder($(base), $(quote), completeFill * 4 + partialFill, type(uint160).max, true);
+    (uint takerGot,,,) =
+      mgv.marketOrderByVolume($(base), $(quote), completeFill * 4 + partialFill, type(uint160).max, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(5, ",", g);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_strat_test/lib/StratTest.sol";
+import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
 import "mgv_test/lib/forks/Polygon.sol";
 import "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
@@ -128,7 +128,7 @@ contract AmplifierTest is StratTest {
   {
     // try to snipe one of the offers (using the separate taker account)
     vm.prank(taker);
-    (, takerGot, takerGave, bounty,) = mgv.snipes({
+    (, takerGot, takerGave, bounty,) = testMgv.snipesInTest({
       outbound_tkn: $(weth),
       inbound_tkn: $(makerWantsToken),
       targets: wrap_dynamic([offerId, makerGivesAmount, makerWantsAmount, type(uint).max]),
@@ -158,8 +158,8 @@ contract AmplifierTest is StratTest {
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     MgvStructs.OfferPacked offer_on_dai = mgv.offers($(weth), $(dai), offerId1);
     MgvStructs.OfferPacked offer_on_usdc = mgv.offers($(weth), $(usdc), offerId2);
-    assertTrue(mgv.isLive(offer_on_dai), "weth->dai offer should not have been retracted");
-    assertTrue(mgv.isLive(offer_on_usdc), "weth->usdc offer should not have been retracted");
+    assertTrue(offer_on_dai.isLive(), "weth->dai offer should not have been retracted");
+    assertTrue(offer_on_usdc.isLive(), "weth->usdc offer should not have been retracted");
   }
 
   function execTraderStratWithFillSuccess() public {
@@ -182,8 +182,8 @@ contract AmplifierTest is StratTest {
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     MgvStructs.OfferPacked offer_on_dai = mgv.offers($(weth), $(dai), offerId1);
     MgvStructs.OfferPacked offer_on_usdc = mgv.offers($(weth), $(usdc), offerId2);
-    assertTrue(!mgv.isLive(offer_on_dai), "weth->dai offer should have been retracted");
-    assertTrue(!mgv.isLive(offer_on_usdc), "weth->usdc offer should have been retracted");
+    assertTrue(!offer_on_dai.isLive(), "weth->dai offer should have been retracted");
+    assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }
 
   function execTraderStratDeprovisionDeadOffers() public {
@@ -229,8 +229,8 @@ contract AmplifierTest is StratTest {
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     MgvStructs.OfferPacked offer_on_dai = mgv.offers($(weth), $(dai), offerId1);
     MgvStructs.OfferPacked offer_on_usdc = mgv.offers($(weth), $(usdc), offerId2);
-    assertTrue(mgv.isLive(offer_on_dai), "weth->dai offer should not have been retracted");
-    assertTrue(!mgv.isLive(offer_on_usdc), "weth->usdc offer should have been retracted");
+    assertTrue(offer_on_dai.isLive(), "weth->dai offer should not have been retracted");
+    assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }
 
   function execTraderStratWithFallback() public {
@@ -251,7 +251,7 @@ contract AmplifierTest is StratTest {
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     MgvStructs.OfferPacked offer_on_dai = mgv.offers($(weth), $(dai), offerId1);
     MgvStructs.OfferPacked offer_on_usdc = mgv.offers($(weth), $(usdc), offerId2);
-    assertTrue(!mgv.isLive(offer_on_dai), "weth->dai offer should have been retracted");
-    assertTrue(!mgv.isLive(offer_on_usdc), "weth->usdc offer should have been retracted");
+    assertTrue(!offer_on_dai.isLive(), "weth->dai offer should have been retracted");
+    assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }
 }

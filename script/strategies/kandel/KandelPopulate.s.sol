@@ -12,6 +12,7 @@ import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_makin
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove
