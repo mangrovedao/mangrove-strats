@@ -95,10 +95,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@npm:1.5.8-0":
+"@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#feat/ticks":
   version: 1.5.8-0
-  resolution: "@mangrovedao/mangrove-core@npm:1.5.8-0"
-  checksum: 91f2acf13e44f1c08a27eaaeb95ad51defe334b791abea8d9b71bceab56ef8bb5f89767756a7527f5fca3a89e9556ae8fbddfc05ba0533a93af450148caf5b83
+  resolution: "@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=56519d76c26a2a819120d7990323b19c3f03dde1"
+  checksum: 54b2090b0a81de467e58a0025dd281a80f8beb84f01ab0b5e3b36d0d4c594c26ffeb9a57f259722de49d3a18584f9df738fd3cf9524ca301a09fc865ead67583
   languageName: node
   linkType: hard
 
@@ -106,7 +106,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
-    "@mangrovedao/mangrove-core": 1.5.8-0
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#feat/ticks"
     "@types/node": ^20.2.6
     husky: ^8.0.3
     lint-staged: ^13.2.2

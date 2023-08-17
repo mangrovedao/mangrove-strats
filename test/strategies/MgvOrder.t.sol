@@ -5,7 +5,7 @@ import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "m
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
