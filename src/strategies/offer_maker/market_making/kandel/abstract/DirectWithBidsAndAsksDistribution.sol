@@ -12,6 +12,9 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@notice The offer has too low volume to be posted.
   bytes32 internal constant LOW_VOLUME = "Kandel/volumeTooLow";
 
+  // why not have the constant here and as a factor of two?
+  uint public constant PRICE_PRECISION = 2 ** 96;
+
   ///@notice logs the start of a call to populate
   event PopulateStart();
   ///@notice logs the end of a call to populate
@@ -31,21 +34,45 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     HasIndexedBidsAndAsks(mgv)
   {}
 
-  ///@param indices the indices to populate, in ascending order
-  ///@param baseDist base distribution for the indices (the `wants` for bids and the `gives` for asks)
-  ///@param quoteDist the distribution of quote for the indices (the `gives` for bids and the `wants` for asks)
-  struct Distribution {
-    uint[] indices;
-    uint[] baseDist;
-    uint[] quoteDist;
+  ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
+  ///@param ba the offer type to transport to
+  ///@param index the price index one is willing to improve
+  ///@param step the number of price steps improvements
+  ///@param pricePoints the number of price points
+  ///@return better destination index
+  ///@return spread the size of the price jump, which is `step` if the index boundaries were not reached
+  function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
+    internal
+    pure
+    returns (uint better, uint8 spread)
+  {
+    if (ba == OfferType.Ask) {
+      better = index + step;
+      if (better >= pricePoints) {
+        better = pricePoints - 1;
+        spread = uint8(better - index);
+      } else {
+        spread = uint8(step);
+      }
+    } else {
+      if (index >= step) {
+        better = index - step;
+        spread = uint8(step);
+      } else {
+        // else better = 0
+        spread = uint8(index - better);
+      }
+    }
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
-  ///@param distribution the distribution of base and quote for indices.
-  ///@param pivotIds the pivots to be used for the offers.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  ///@param gasreq the amount of gas units that are required to execute the trade.
-  ///@param gasprice the gasprice used to compute offer's provision.
+  ///@param indices the indices to populate, in ascending order
+  struct Distribution {
+    uint[] indices;
+    uint[] gives;
+    uint[] prices;
+    uint[] dualPrices;
+  }
+
   function _populateChunk(
     Distribution calldata distribution,
     uint[] calldata pivotIds,
@@ -54,9 +81,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint gasprice
   ) internal {
     emit PopulateStart();
-    uint[] calldata indices = distribution.indices;
-    uint[] calldata quoteDist = distribution.quoteDist;
-    uint[] calldata baseDist = distribution.baseDist;
+
+    uint[] memory indices = distribution.indices;
+    uint[] memory prices = distribution.prices;
+    uint[] memory dualPrices = distribution.dualPrices;
+    uint[] memory gives = distribution.gives;
 
     uint i;
 
@@ -70,49 +99,64 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       if (index >= firstAskIndex) {
         break;
       }
-      args.wants = baseDist[i];
-      args.gives = quoteDist[i];
+
+      uint price = prices[i];
+
+      priceOfIndex[index] = price;
+      uint g = gives[i];
+      args.gives = g;
+      args.wants = (g * PRICE_PRECISION) / price;
       args.gasreq = gasreq;
       args.gasprice = gasprice;
       args.pivotId = pivotIds[i];
 
-      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args);
+      uint dualPrice = dualPrices[i];
+      require(dualPrice > 0, "Kandel/zeroDualAsk");
+      (uint offerId,) = offerIdOfIndex(OfferType.Bid, index);
+
+      (offerId,) = populateIndex(offerId, args);
+      setIndexAndPrice(OfferType.Bid, offerId, index, dualPrice);
+      OfferIdPending memory offerIdPending = OfferIdPending(uint32(offerId), 0 /*pending is 0 otherwise we revert*/ );
+      setIndexMapping(OfferType.Bid, index, offerIdPending);
     }
 
     (args.outbound_tkn, args.inbound_tkn) = (args.inbound_tkn, args.outbound_tkn);
 
     for (; i < indices.length; ++i) {
       uint index = indices[i];
-      args.wants = quoteDist[i];
-      args.gives = baseDist[i];
+      uint price = prices[i];
+      priceOfIndex[index] = price;
+
+      uint g = gives[i];
+      args.gives = g;
+      args.wants = (price * g) / PRICE_PRECISION;
       args.gasreq = gasreq;
       args.gasprice = gasprice;
       args.pivotId = pivotIds[i];
 
-      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args);
+      uint dualPrice = dualPrices[i];
+      require(dualPrice > 0, "Kandel/zeroDualBid");
+      (uint offerId,) = offerIdOfIndex(OfferType.Ask, index);
+      (offerId,) = populateIndex(offerId, args);
+      setIndexAndPrice(OfferType.Ask, offerId, index, dualPrice);
+      OfferIdPending memory offerIdPending = OfferIdPending(uint32(offerId), 0 /*pending is 0 otherwise we revert*/ );
+      setIndexMapping(OfferType.Ask, index, offerIdPending);
     }
     emit PopulateEnd();
   }
 
   ///@notice publishes (by either creating or updating) a bid/ask at a given price index.
-  ///@param ba whether the offer is a bid or an ask.
   ///@param offerId the Mangrove offer id (0 for a new offer).
-  ///@param index the price index.
   ///@param args the argument of the offer.
+  ///@return offerId2 the Mangrove offer id (only 0 if offer failed to be created)
   ///@return result the result from Mangrove or Direct (an error if `args.noRevert` is `true`).
-  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args)
-    internal
-    returns (bytes32 result)
-  {
+  function populateIndex(uint offerId, OfferArgs memory args) internal returns (uint offerId2, bytes32 result) {
     // if offer does not exist on mangrove yet
     if (offerId == 0) {
       // and offer should exist
       if (args.gives > 0 && args.wants > 0) {
         // create it
         (offerId, result) = _newOffer(args);
-        if (offerId != 0) {
-          setIndexMapping(ba, index, offerId);
-        }
       } else {
         // else offerId && gives are 0 and the offer is left not posted
         result = LOW_VOLUME;
@@ -132,6 +176,8 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
         result = _updateOffer(args, offerId);
       }
     }
+
+    return (offerId, result);
   }
 
   ///@notice retracts and deprovisions offers of the distribution interval `[from, to[`.
@@ -144,11 +190,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     (IERC20 outbound_tknBid, IERC20 inbound_tknBid) = (inbound_tknAsk, outbound_tknAsk);
     for (uint index = from; index < to; ++index) {
       // These offerIds could be recycled in a new populate
-      uint offerId = offerIdOfIndex(OfferType.Ask, index);
+      (uint offerId,) = offerIdOfIndex(OfferType.Ask, index);
       if (offerId != 0) {
         _retractOffer(outbound_tknAsk, inbound_tknAsk, offerId, true);
       }
-      offerId = offerIdOfIndex(OfferType.Bid, index);
+      (offerId,) = offerIdOfIndex(OfferType.Bid, index);
       if (offerId != 0) {
         _retractOffer(outbound_tknBid, inbound_tknBid, offerId, true);
       }

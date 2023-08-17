@@ -26,7 +26,7 @@ abstract contract GeometricKandelGasTest is KandelTest {
       mgv: IMangrove($(mgv)),
       base: base,
       quote: quote,
-      gasreq: 160_000,
+      gasreq: 165_000,
       gasprice: 0,
       reserveId: address(0)
     });
@@ -153,7 +153,7 @@ abstract contract GeometricKandelGasTest is KandelTest {
       quote_: quote,
       makerData: ""
     });
-    order.offerId = kdl.offerIdOfIndex(Ask, 6);
+    order.offerId = offerIdOfIndex(kdl, Ask, 6);
     order.offer = ask;
     // making mgv mappings hot
     mgv.config($(base), $(quote));

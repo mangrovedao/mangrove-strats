@@ -31,46 +31,114 @@ abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
   ///@notice the length of the map.
   uint internal length;
 
+  struct OfferIdPending {
+    uint32 offerId;
+    uint96 pending;
+  }
+
+  mapping(uint => uint) internal priceOfIndex;
+
+  function getPriceOfIndex(uint index) public view returns (uint price) {
+    return priceOfIndex[index];
+  }
+
   ///@notice Mangrove's offer id of an ask at a given index.
-  mapping(uint => uint) private askOfferIdOfIndex;
+  mapping(uint => OfferIdPending) private askOfferIdOfIndex;
   ///@notice Mangrove's offer id of a bid at a given index.
-  mapping(uint => uint) private bidOfferIdOfIndex;
+  mapping(uint => OfferIdPending) private bidOfferIdOfIndex;
+
+  struct IndexAndPrice {
+    uint8 index;
+    uint248 dualPrice;
+  }
 
   ///@notice An inverse mapping of askOfferIdOfIndex. E.g., indexOfAskOfferId[42] is the index in askOfferIdOfIndex at which ask of id #42 on Mangrove is stored.
-  mapping(uint => uint) private indexOfAskOfferId;
+  mapping(uint => IndexAndPrice) private indexOfAskOfferId;
 
   ///@notice An inverse mapping of bidOfferIdOfIndex. E.g., indexOfBidOfferId[42] is the index in bidOfferIdOfIndex at which bid of id #42 on Mangrove is stored.
-  mapping(uint => uint) private indexOfBidOfferId;
+  mapping(uint => IndexAndPrice) private indexOfBidOfferId;
 
   ///@notice maps index of offers to offer id on Mangrove.
   ///@param ba the offer type
   ///@param index the index
   ///@return offerId the Mangrove offer id.
-  function offerIdOfIndex(OfferType ba, uint index) public view returns (uint offerId) {
-    return ba == OfferType.Ask ? askOfferIdOfIndex[index] : bidOfferIdOfIndex[index];
+  function offerIdOfIndex(OfferType ba, uint index) public view returns (uint offerId, uint pending) {
+    OfferIdPending memory p = ba == OfferType.Ask ? askOfferIdOfIndex[index] : bidOfferIdOfIndex[index];
+    return (p.offerId, p.pending);
   }
 
   ///@notice Maps an offer type and Mangrove offer id to index.
   ///@param ba the offer type
   ///@param offerId the Mangrove offer id.
   ///@return index the index.
-  function indexOfOfferId(OfferType ba, uint offerId) public view returns (uint index) {
-    return ba == OfferType.Ask ? indexOfAskOfferId[offerId] : indexOfBidOfferId[offerId];
+  ///@return dualPrice the price at the dual index.
+  function indexOfOfferId(OfferType ba, uint offerId) public view returns (uint index, uint dualPrice) {
+    IndexAndPrice memory p = ba == OfferType.Ask ? indexOfAskOfferId[offerId] : indexOfBidOfferId[offerId];
+    return (p.index, p.dualPrice);
   }
 
   ///@notice Sets the Mangrove offer id for an index and vice versa.
   ///@param ba the offer type
   ///@param index the index
-  ///@param offerId the Mangrove offer id.
-  function setIndexMapping(OfferType ba, uint index, uint offerId) internal {
+  ///@param offerIdPending the Mangrove offer id and pending amount.
+  function setIndexMapping(OfferType ba, uint index, OfferIdPending memory offerIdPending) internal {
     if (ba == OfferType.Ask) {
-      indexOfAskOfferId[offerId] = index;
-      askOfferIdOfIndex[index] = offerId;
+      askOfferIdOfIndex[index] = offerIdPending;
     } else {
-      indexOfBidOfferId[offerId] = index;
-      bidOfferIdOfIndex[index] = offerId;
+      bidOfferIdOfIndex[index] = offerIdPending;
     }
-    emit SetIndexMapping(ba, index, offerId);
+    emit SetIndexMapping(ba, index, offerIdPending.offerId);
+  }
+
+  event SetPending(OfferType indexed ba, uint indexed index, uint pending);
+  event SetIndexAndPrice(OfferType indexed ba, uint indexed offerId, uint indexed index, uint dualPrice);
+
+  function setIndexAndPriceFromDual(OfferType ba, uint offerId, uint index, uint dualPrice) internal {
+    IndexAndPrice memory indexAndPrice = IndexAndPrice(uint8(index), uint248(dualPrice));
+
+    if (ba == OfferType.Ask) {
+      indexOfAskOfferId[offerId] = indexAndPrice;
+    } else {
+      indexOfBidOfferId[offerId] = indexAndPrice;
+    }
+    emit SetIndexAndPrice(ba, offerId, indexAndPrice.index, indexAndPrice.dualPrice);
+  }
+
+  function setIndexAndPrice(OfferType ba, uint offerId, uint index, uint dualPrice) internal {
+    IndexAndPrice memory indexAndPrice = IndexAndPrice(uint8(index), uint248(dualPrice));
+
+    if (ba == OfferType.Ask) {
+      indexOfAskOfferId[offerId] = indexAndPrice;
+    } else {
+      indexOfBidOfferId[offerId] = indexAndPrice;
+    }
+    emit SetIndexAndPrice(ba, offerId, indexAndPrice.index, indexAndPrice.dualPrice);
+  }
+
+  function setPendingInMapping(
+    OfferType ba,
+    uint index,
+    uint expectedGives,
+    bool offerUpdated,
+    uint oldGives,
+    uint oldPending
+  ) internal {
+    uint pending;
+    if (!offerUpdated) {
+      if (expectedGives != oldGives) {
+        // We only ever expect to give more - if we already gave some, then the more becomes pending since we failed to update.
+        // We could already have some pending which we add.
+        pending = oldPending + (expectedGives - oldGives);
+      }
+    }
+    if (pending != oldPending) {
+      if (ba == OfferType.Ask) {
+        askOfferIdOfIndex[index].pending = uint96(pending);
+      } else {
+        bidOfferIdOfIndex[index].pending = uint96(pending);
+      }
+      emit SetPending(ba, index, pending);
+    }
   }
 
   ///@notice sets the length of the map.
@@ -85,7 +153,7 @@ abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
   ///@param index the index.
   ///@return offer the Mangrove offer.
   function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
-    uint offerId = offerIdOfIndex(ba, index);
+    (uint offerId,) = offerIdOfIndex(ba, index);
     (IERC20 outbound, IERC20 inbound) = tokenPairOfOfferType(ba);
     offer = MGV.offers(address(outbound), address(inbound), offerId);
   }

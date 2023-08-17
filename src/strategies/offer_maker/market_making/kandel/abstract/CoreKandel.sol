@@ -34,18 +34,22 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param offerId the Mangrove offer id (or 0 if newOffer failed).
   ///@param args the arguments of the offer.
   ///@param populateStatus the status returned from the populateIndex function.
-  function logPopulateStatus(uint offerId, OfferArgs memory args, bytes32 populateStatus) internal {
-    if (
-      populateStatus == REPOST_SUCCESS || populateStatus == NEW_OFFER_SUCCESS
-        || populateStatus == "mgv/writeOffer/density/tooLow" || populateStatus == LOW_VOLUME
-    ) {
+  function logPopulateStatus(uint offerId, OfferArgs memory args, bytes32 populateStatus)
+    internal
+    returns (bool offerUpdated)
+  {
+    //TODO update pending
+    //TODO also for primary offer
+    if (populateStatus == REPOST_SUCCESS || populateStatus == NEW_OFFER_SUCCESS) {
+      offerUpdated = true;
+    } else if (populateStatus == "mgv/writeOffer/density/tooLow" || populateStatus == LOW_VOLUME) {
       // Low density will mean some amount is not posted and will be available for withdrawal or later posting via populate.
-      return;
-    }
-    if (offerId != 0) {
-      emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, offerId, "Kandel/updateOfferFailed", populateStatus);
     } else {
-      emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, 0, "Kandel/newOfferFailed", populateStatus);
+      if (offerId != 0) {
+        emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, offerId, "Kandel/updateOfferFailed", populateStatus);
+      } else {
+        emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, 0, "Kandel/newOfferFailed", populateStatus);
+      }
     }
   }
 
@@ -56,23 +60,52 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     // adds any unpublished liquidity to pending[Base/Quote]
     // preparing arguments for the dual offer
-    (OfferType baDual, uint offerId, uint index, OfferArgs memory args) = transportLogic(ba, order);
-    bytes32 populateStatus = populateIndex(baDual, offerId, index, args);
-    logPopulateStatus(offerId, args, populateStatus);
+    (
+      OfferType baDual,
+      uint dualOfferId,
+      uint dualIndex,
+      OfferArgs memory args,
+      uint oldGives,
+      uint oldPending,
+      uint index
+    ) = transportLogic(ba, order);
+    (uint newDualOfferId, bytes32 populateStatus) = populateIndex(dualOfferId, args);
+    bool offerUpdated = logPopulateStatus(dualOfferId, args, populateStatus);
+    if (newDualOfferId != dualOfferId) {
+      uint dualPrice = priceOfIndex[index];
+      require(dualPrice > 0, "Kandel/zeroPriceDual");
+
+      setIndexAndPriceFromDual(baDual, newDualOfferId, dualIndex, dualPrice);
+
+      OfferIdPending memory offerIdPending =
+        OfferIdPending(uint32(newDualOfferId), 0 /*pending is 0 since we posted new offer with it*/ );
+      setIndexMapping(baDual, dualIndex, offerIdPending);
+    } else {
+      setPendingInMapping(baDual, dualIndex, args.gives, offerUpdated, oldGives, oldPending);
+    }
   }
 
   ///@notice transport logic followed by Kandel
   ///@param ba whether the offer that was executed is a bid or an ask
   ///@param order a recap of the taker order (order.offer is the executed offer)
   ///@return baDual the type of dual offer that will re-invest inbound liquidity
-  ///@return offerId the offer id of the dual offer
-  ///@return index the index of the dual offer
+  ///@return dualOfferId the offer id of the dual offer
+  ///@return dualIndex the index of the dual offer
   ///@return args the argument for `populateIndex` specifying gives and wants
   function transportLogic(OfferType ba, MgvLib.SingleOrder calldata order)
     internal
     virtual
-    returns (OfferType baDual, uint offerId, uint index, OfferArgs memory args);
+    returns (
+      OfferType baDual,
+      uint dualOfferId,
+      uint dualIndex,
+      OfferArgs memory args,
+      uint dualGives,
+      uint oldPending,
+      uint index
+    );
 
+  //TODO pending is not the same as unpublished anymore.
   /// @notice gets pending liquidity for base (ask) or quote (bid). Will be negative if funds are not enough to cover all offer's promises.
   /// @param ba offer type.
   /// @return the pending amount

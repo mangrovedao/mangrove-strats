@@ -50,7 +50,7 @@ abstract contract KandelTest is MangroveTest {
     bytes32 mgvData
   );
 
-  // sets environement  default is local node with fake base and quote
+  // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
     // no fork
     options.base.symbol = "WETH";
@@ -86,7 +86,7 @@ abstract contract KandelTest is MangroveTest {
     __setForkEnvironment__();
     require(reader != MgvReader(address(0)), "Could not get reader");
 
-    initQuote = cash(quote, 150); // quote given/wanted at index from
+    initQuote = cash(quote, 100); // quote given/wanted at index from
 
     maker = freshAddress("maker");
     taker = freshAddress("taker");
@@ -120,12 +120,13 @@ abstract contract KandelTest is MangroveTest {
 
     uint ratio = 108 * 10 ** (PRECISION - 2);
 
-    (GeometricKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
+    GeometricKandel.Distribution memory distribution1 = KandelLib.calculateDistribution(
+      0, 5, initBase, initQuote, ratio, kdl.PRECISION(), STEP, 5, kdl.PRICE_PRECISION(), 10
+    );
 
-    (GeometricKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, ratio, PRECISION);
-
+    GeometricKandel.Distribution memory distribution2 = KandelLib.calculateDistribution(
+      5, 10, initBase, initQuote, ratio, kdl.PRECISION(), STEP, 5, kdl.PRICE_PRECISION(), 10
+    );
     GeometricKandel.Params memory params;
     params.ratio = uint24(ratio);
     params.spread = STEP;
@@ -135,7 +136,7 @@ abstract contract KandelTest is MangroveTest {
 
     mgv.fund{value: (provAsk + provBid) * 10}(address(kdl));
     vm.prank(maker);
-    kdl.populateChunk(distribution1, dynamic([uint(0), 1, 2, 3, 4]), 5);
+    kdl.populateChunk(distribution1, dynamic([uint(0), 1, 2, 3, 4, 0, 1, 2, 3, 4]), 5);
 
     vm.prank(maker);
     kdl.populateChunk(distribution2, dynamic([uint(0), 1, 2, 3, 4]), 5);
@@ -153,14 +154,18 @@ abstract contract KandelTest is MangroveTest {
     return mgv.snipes($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
   }
 
+  function offerIdOfIndex(GeometricKandel kdl_, OfferType ba, uint index) internal view returns (uint offerId) {
+    (offerId,) = kdl_.offerIdOfIndex(ba, index);
+  }
+
   function snipeBuyAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Ask, index);
+    uint offerId = offerIdOfIndex(kdl, Ask, index);
     vm.prank(taker_);
     return mgv.snipes($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
   }
 
   function snipeSellAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+    uint offerId = offerIdOfIndex(kdl, Bid, index);
     vm.prank(taker_);
     return mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
   }
@@ -235,7 +240,10 @@ abstract contract KandelTest is MangroveTest {
         assertTrue(bidLive && !askLive, "Kandel not bidding at index");
         if (q != type(uint).max) {
           assertApproxEqRel(
-            bid.gives() * b, q * bid.wants(), 1e11, "Bid price does not follow distribution within 0.00001%"
+            bid.gives() * b,
+            q * bid.wants(),
+            1e11,
+            string.concat("Bid price does not follow distribution within 0.00001% index=", vm.toString(index))
           );
         }
       } else {
@@ -243,7 +251,10 @@ abstract contract KandelTest is MangroveTest {
           assertTrue(!bidLive && askLive, "Kandel is not asking at index");
           if (q != type(uint).max) {
             assertApproxEqRel(
-              ask.wants() * b, q * ask.gives(), 1e11, "Ask price does not follow distribution within 0.00001%"
+              ask.wants() * b,
+              q * ask.gives(),
+              1e11,
+              string.concat("Ask price does not follow distribution within 0.00001% index=", vm.toString(index))
             );
           }
         } else {
@@ -318,8 +329,9 @@ abstract contract KandelTest is MangroveTest {
   function populateSingle(
     GeometricKandel kandel,
     uint index,
-    uint base,
-    uint quote,
+    uint gives,
+    uint price,
+    uint dualPrice,
     uint pivotId,
     uint firstAskIndex,
     bytes memory expectRevert
@@ -329,8 +341,9 @@ abstract contract KandelTest is MangroveTest {
       PopulateArgs({
         kandel: kandel,
         index: index,
-        base: base,
-        quote: quote,
+        gives: gives,
+        price: price,
+        dualPrice: dualPrice,
         pivotId: pivotId,
         firstAskIndex: firstAskIndex,
         pricePoints: params.pricePoints,
@@ -344,8 +357,9 @@ abstract contract KandelTest is MangroveTest {
   struct PopulateArgs {
     GeometricKandel kandel;
     uint index;
-    uint base;
-    uint quote;
+    uint gives;
+    uint price;
+    uint dualPrice;
     uint pivotId;
     uint firstAskIndex;
     uint pricePoints;
@@ -357,13 +371,15 @@ abstract contract KandelTest is MangroveTest {
   function populateSingle(PopulateArgs memory args) internal {
     GeometricKandel.Distribution memory distribution;
     distribution.indices = new uint[](1);
-    distribution.baseDist = new uint[](1);
-    distribution.quoteDist = new uint[](1);
+    distribution.prices = new uint[](1);
+    distribution.dualPrices = new uint[](1);
+    distribution.gives = new uint[](1);
     uint[] memory pivotIds = new uint[](1);
 
     distribution.indices[0] = args.index;
-    distribution.baseDist[0] = args.base;
-    distribution.quoteDist[0] = args.quote;
+    distribution.prices[0] = args.price;
+    distribution.dualPrices[0] = args.dualPrice;
+    distribution.gives[0] = args.gives;
     pivotIds[0] = args.pivotId;
 
     GeometricKandel.Params memory params;
@@ -383,21 +399,24 @@ abstract contract KandelTest is MangroveTest {
   }
 
   function populateFixedDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
+    uint pricePrecision = kdl.PRICE_PRECISION();
+
     GeometricKandel.Distribution memory distribution;
 
     distribution.indices = new uint[](size);
-    distribution.baseDist = new uint[](size);
-    distribution.quoteDist = new uint[](size);
+    distribution.gives = new uint[](size);
+    distribution.prices = new uint[](size);
     for (uint i; i < size; i++) {
       distribution.indices[i] = i;
-      distribution.baseDist[i] = 1 ether;
-      distribution.quoteDist[i] = 1500 * 10 ** 6 + i;
+      distribution.gives[i] = 1 ether;
+      distribution.prices[i] = (1500 * 10 ** 6 + i) * pricePrecision / (1 ether);
       if (i < size / 2) {
-        quoteAmount += distribution.quoteDist[i];
+        quoteAmount += distribution.gives[i];
       } else {
-        baseAmount += distribution.baseDist[i];
+        baseAmount += distribution.gives[i];
       }
     }
+    distribution.dualPrices = distribution.prices;
 
     GeometricKandel.Params memory params = getParams(kdl);
     vm.startPrank(maker);

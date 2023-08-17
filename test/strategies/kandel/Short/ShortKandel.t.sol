@@ -234,6 +234,7 @@ contract ShortKandelTest is GeometricKandelTest {
 
   function test_first_puller_posthook_calls_pushAndSupply() public {
     MgvLib.SingleOrder memory order = mockBuyOrder({takerGives: 120 * 10 ** 6, takerWants: 0.1 ether});
+    order.offerId = 4;
     MgvLib.OrderResult memory result = MgvLib.OrderResult({makerData: "IS_FIRST_PULLER", mgvData: "mgv/tradeSuccess"});
 
     //1. faking accumulated outbound on the router

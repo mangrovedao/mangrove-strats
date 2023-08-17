@@ -35,7 +35,7 @@ contract LongKandelTest is GeometricKandelTest {
     override
     returns (GeometricKandel kdl_)
   {
-    uint GASREQ = 128_000; // can be 77_000 when all offers are initialized.
+    uint GASREQ = 158_000; // can be 77_000 when all offers are initialized.
 
     vm.expectEmit(true, true, true, true);
     emit Mgv(IMangrove($(mgv)));
@@ -73,8 +73,19 @@ contract LongKandelTest is GeometricKandelTest {
 
     deal(otherMaker, totalProvision);
 
-    (GeometricKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, pricePoints, base0, quote0, ratio, otherKandel.PRECISION());
+    uint firstAskIndex = pricePoints / 2;
+    GeometricKandel.Distribution memory distribution = KandelLib.calculateDistribution(
+      0,
+      pricePoints,
+      base0,
+      quote0,
+      ratio,
+      otherKandel.PRECISION(),
+      spread,
+      firstAskIndex,
+      kdl.PRICE_PRECISION(),
+      pricePoints
+    );
 
     GeometricKandel.Params memory params;
     params.pricePoints = pricePoints;
@@ -87,7 +98,7 @@ contract LongKandelTest is GeometricKandelTest {
     mgv.fund{value: totalProvision}($(otherKandel));
 
     vm.prank(otherMaker);
-    otherKandel.populateChunk(distribution, new uint[](pricePoints), pricePoints / 2);
+    otherKandel.populateChunk(distribution, new uint[](pricePoints), firstAskIndex);
 
     uint pendingBase = uint(-otherKandel.pending(Ask));
     uint pendingQuote = uint(-otherKandel.pending(Bid));
@@ -244,9 +255,11 @@ contract LongKandelTest is GeometricKandelTest {
     retractDefaultSetup();
 
     GeometricKandel.Distribution memory distribution;
+    uint pricePrecision = kdl.PRICE_PRECISION();
     distribution.indices = dynamic([uint(0), 1, 2, 3]);
-    distribution.baseDist = dynamic([uint(1 ether), 1 ether, 1 ether, 1 ether]);
-    distribution.quoteDist = dynamic([uint(1 ether), 1 ether, 1 ether, 1 ether]);
+    distribution.gives = dynamic([uint(1 ether), 1 ether, 1 ether, 1 ether]);
+    distribution.prices = dynamic([pricePrecision, pricePrecision, pricePrecision, pricePrecision]);
+    distribution.dualPrices = dynamic([pricePrecision, pricePrecision, pricePrecision, pricePrecision]);
 
     uint firstAskIndex = bids ? 4 : 0;
     vm.prank(maker);
@@ -276,13 +289,17 @@ contract LongKandelTest is GeometricKandelTest {
     deployOtherKandel(initBase + 1, initQuote + 1, params.ratio, params.spread, params.pricePoints);
     deployOtherKandel(initBase + 100, initQuote + 100, params.ratio, params.spread, params.pricePoints);
 
-    (GeometricKandel.Distribution memory distribution,) = KandelLib.calculateDistribution({
+    GeometricKandel.Distribution memory distribution = KandelLib.calculateDistribution({
       from: 0,
       to: params.pricePoints,
       initBase: initBase,
       initQuote: initQuote,
       ratio: params.ratio,
-      precision: PRECISION
+      precision: PRECISION,
+      spread: params.spread,
+      firstAskIndex: t.firstAskIndex,
+      pricePrecision: kdl.PRICE_PRECISION(),
+      pricePoints: params.pricePoints
     });
 
     // Get some reasonable pivots (use a snapshot to avoid actually posting offers yet)
@@ -351,11 +368,14 @@ contract LongKandelTest is GeometricKandelTest {
     uint baseDensity = densityBid;
     uint quoteDensity = densityAsk;
 
-    (uint[] memory indices, uint[] memory quoteAtIndex, uint numBids) = getDeadOffers(midGives, midWants);
+    (uint[] memory indices,, uint numBids) = getDeadOffers(midGives, midWants);
 
     // build arrays for populate
-    uint[] memory quoteDist = new uint[](indices.length);
-    uint[] memory baseDist = new uint[](indices.length);
+    GeometricKandel.Distribution memory distribution;
+    distribution.indices = indices;
+    distribution.gives = new uint[](indices.length);
+    distribution.prices = new uint[](indices.length);
+    distribution.dualPrices = new uint[](indices.length);
 
     uint pendingQuote = uint(kdl.pending(Bid));
     uint pendingBase = uint(kdl.pending(Ask));
@@ -367,8 +387,9 @@ contract LongKandelTest is GeometricKandelTest {
     for (int i = int(numBids) - 1; i >= 0; i--) {
       uint d = pendingQuote < baseDensity ? pendingQuote : baseDensity;
       pendingQuote -= d;
-      quoteDist[uint(i)] = d;
-      baseDist[uint(i)] = initBase * d / quoteAtIndex[indices[uint(i)]];
+      distribution.gives[uint(i)] = d;
+      distribution.prices[uint(i)] = kdl.getPriceOfIndex(distribution.indices[uint(i)]);
+      distribution.dualPrices[uint(i)] = kdl.getPriceOfIndex(distribution.indices[uint(i)] + 1);
     }
 
     uint numAsks = indices.length - numBids;
@@ -379,16 +400,13 @@ contract LongKandelTest is GeometricKandelTest {
     for (uint i = numBids; i < indices.length; i++) {
       uint d = pendingBase < quoteDensity ? pendingBase : quoteDensity;
       pendingBase -= d;
-      baseDist[uint(i)] = d;
-      quoteDist[uint(i)] = quoteAtIndex[indices[uint(i)]] * d / initBase;
+      distribution.gives[uint(i)] = d;
+      distribution.prices[uint(i)] = kdl.getPriceOfIndex(distribution.indices[uint(i)]);
+      distribution.dualPrices[uint(i)] = kdl.getPriceOfIndex(distribution.indices[uint(i)] - 1);
     }
 
     uint firstAskIndex = numAsks > 0 ? indices[numBids] : indices[indices.length - 1] + 1;
     uint[] memory pivotIds = new uint[](indices.length);
-    GeometricKandel.Distribution memory distribution;
-    distribution.indices = indices;
-    distribution.baseDist = baseDist;
-    distribution.quoteDist = quoteDist;
     vm.prank(maker);
     kdl.populateChunk(distribution, pivotIds, firstAskIndex);
   }

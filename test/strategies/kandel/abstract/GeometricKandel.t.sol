@@ -92,7 +92,7 @@ abstract contract GeometricKandelTest is KandelTest {
       quote_: quote,
       makerData: ""
     });
-    order.offerId = kdl.offerIdOfIndex(Ask, 5);
+    order.offerId = offerIdOfIndex(kdl, Ask, 5);
     order.offer = ask;
 
     MgvStructs.OfferPacked bid_;
@@ -107,7 +107,7 @@ abstract contract GeometricKandelTest is KandelTest {
     // at 0% compounding, one wants to buy back what was sent
     // computation might have rounding error because bid_.wants is derived from bid_.gives
     console.log(bid_.wants(), bid.wants(), ask.gives());
-    assertApproxEqRel(bid_.wants(), bid.wants() + ask.gives(), 10 ** 9, "Incorrect wants when 0% compounding");
+    assertApproxEqRel(bid_.wants(), bid.wants() + ask.gives(), 10 ** 10, "Incorrect wants when 0% compounding");
 
     // changing compoundRates
     vm.prank(maker);
@@ -143,7 +143,7 @@ abstract contract GeometricKandelTest is KandelTest {
       quote_: quote,
       makerData: ""
     });
-    order.offerId = kdl.offerIdOfIndex(Bid, 4);
+    order.offerId = offerIdOfIndex(kdl, Bid, 4);
     order.offer = bid;
 
     MgvStructs.OfferPacked ask_;
@@ -301,7 +301,7 @@ abstract contract GeometricKandelTest is KandelTest {
     expectFrom($(kdl));
     emit RetractStart();
     expectFrom($(mgv));
-    emit OfferRetract(address(quote), address(base), kdl.offerIdOfIndex(Bid, 0), true);
+    emit OfferRetract(address(quote), address(base), offerIdOfIndex(kdl, Bid, 0), true);
     expectFrom($(kdl));
     emit RetractEnd();
 
@@ -392,24 +392,36 @@ abstract contract GeometricKandelTest is KandelTest {
     vm.expectRevert();
     GeometricKandel.Distribution memory dist;
     dist.indices = new uint[](1);
-    dist.baseDist = new uint[](1);
-    dist.quoteDist = new uint[](1);
+    dist.gives = new uint[](1);
+    dist.prices = new uint[](1);
+    dist.dualPrices = new uint[](1);
     kdl.populateChunk(dist, new uint[](0), 0);
 
-    // base
+    // gives
     vm.prank(maker);
     vm.expectRevert();
     dist.indices = new uint[](1);
-    dist.baseDist = new uint[](0);
-    dist.quoteDist = new uint[](1);
+    dist.gives = new uint[](0);
+    dist.prices = new uint[](1);
+    dist.dualPrices = new uint[](1);
     kdl.populateChunk(dist, new uint[](1), 0);
 
-    // quote
+    // prices
     vm.prank(maker);
     vm.expectRevert();
     dist.indices = new uint[](1);
-    dist.baseDist = new uint[](1);
-    dist.quoteDist = new uint[](0);
+    dist.gives = new uint[](1);
+    dist.prices = new uint[](0);
+    dist.dualPrices = new uint[](1);
+    kdl.populateChunk(dist, new uint[](1), 0);
+
+    // dual prices
+    vm.prank(maker);
+    vm.expectRevert();
+    dist.indices = new uint[](1);
+    dist.gives = new uint[](1);
+    dist.prices = new uint[](1);
+    dist.dualPrices = new uint[](0);
     kdl.populateChunk(dist, new uint[](1), 0);
   }
 
@@ -417,7 +429,7 @@ abstract contract GeometricKandelTest is KandelTest {
     uint index = 3;
     assertStatus(index, OfferStatus.Bid);
 
-    populateSingle(kdl, index, 123, 0, 0, 5, bytes(""));
+    populateSingle(kdl, index, 0, 42, 42, 0, 5, bytes(""));
     // Bid should be retracted
     assertStatus(index, OfferStatus.Dead);
   }
@@ -425,18 +437,18 @@ abstract contract GeometricKandelTest is KandelTest {
   function test_populate_density_too_low_reverted() public {
     uint index = 3;
     assertStatus(index, OfferStatus.Bid);
-    populateSingle(kdl, index, 1, 123, 0, 5, "mgv/writeOffer/density/tooLow");
+    populateSingle(kdl, index, 1, 42, 42, 0, 5, "mgv/writeOffer/density/tooLow");
   }
 
   function test_populate_existing_offer_is_updated() public {
     uint index = 3;
     assertStatus(index, OfferStatus.Bid);
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+    uint offerId = offerIdOfIndex(kdl, Bid, index);
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
 
-    populateSingle(kdl, index, bid.wants() * 2, bid.gives() * 2, 0, 5, "");
+    populateSingle(kdl, index, bid.gives() * 2, kdl.PRICE_PRECISION(), kdl.PRICE_PRECISION(), 0, 5, "");
 
-    uint offerIdPost = kdl.offerIdOfIndex(Bid, index);
+    uint offerIdPost = offerIdOfIndex(kdl, Bid, index);
     assertEq(offerIdPost, offerId, "offerId should be unchanged (offer updated)");
     MgvStructs.OfferPacked bidPost = kdl.getOffer(Bid, index);
     assertEq(bidPost.gives(), bid.gives() * 2, "gives should be changed");
@@ -447,7 +459,7 @@ abstract contract GeometricKandelTest is KandelTest {
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, n - 1);
     // placing a bid on the last position
     // dual of this bid will try to place an ask at n+1 and should place it at n-1 instead of n
-    populateSingle(kdl, n - 1, ask.gives(), ask.wants(), 0, n, "");
+    populateSingle(kdl, n - 1, ask.wants(), kdl.getPriceOfIndex(n - 1), kdl.getPriceOfIndex(n - 1), 0, n, "");
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, n - 1);
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
@@ -458,27 +470,30 @@ abstract contract GeometricKandelTest is KandelTest {
       quote_: quote,
       makerData: ""
     });
-    order.offerId = kdl.offerIdOfIndex(Bid, n - 1);
+    order.offerId = offerIdOfIndex(kdl, Bid, n - 1);
     order.offer = bid;
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
     MgvStructs.OfferPacked ask_ = kdl.getOffer(Ask, n - 1);
 
     assertTrue(ask.gives() < ask_.gives(), "Ask was not updated");
-    assertEq(ask.gives() * ask_.wants(), ask.wants() * ask_.gives(), "Incorrect price");
+    assertApproxEqRel(ask.gives() * ask_.wants(), ask.wants() * ask_.gives(), 10 ** 10, "Incorrect price");
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
-    uint24 ratio = uint24(108 * 10 ** PRECISION / 100);
+    // setting params.spread to 4
+    GeometricKandel.Params memory params = getParams(kdl);
+    params.spread = 4;
 
-    (GeometricKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
+    GeometricKandel.Distribution memory distribution1 = KandelLib.calculateDistribution(
+      0, 5, initBase, initQuote, params.ratio, kdl.PRECISION(), params.spread, 5, kdl.PRICE_PRECISION(), 10
+    );
 
-    (GeometricKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, ratio, PRECISION);
+    GeometricKandel.Distribution memory distribution2 = KandelLib.calculateDistribution(
+      5, 10, initBase, initQuote, params.ratio, kdl.PRECISION(), params.spread, 5, kdl.PRICE_PRECISION(), 10
+    );
 
     // setting params.spread to 2
-    GeometricKandel.Params memory params = getParams(kdl);
     params.spread = 4;
     vm.prank(maker);
     kdl.setParams(params);
@@ -490,7 +505,7 @@ abstract contract GeometricKandelTest is KandelTest {
     kdl.populateChunk(distribution2, dynamic([uint(0), 1, 2, 3, 4]), 5);
     // placing an ask at index 1
     // dual of this ask will try to place a bid at -1 and should place it at 0
-    populateSingle(kdl, 1, 0.1 ether, 100 * 10 ** 6, 0, 0, "");
+    populateSingle(kdl, 1, 0.1 ether, distribution1.prices[1], distribution1.prices[0], 0, 0, "");
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 1);
@@ -503,7 +518,7 @@ abstract contract GeometricKandelTest is KandelTest {
       quote_: quote,
       makerData: ""
     });
-    order.offerId = kdl.offerIdOfIndex(Ask, 1);
+    order.offerId = offerIdOfIndex(kdl, Ask, 1);
     order.offer = ask;
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
@@ -516,7 +531,7 @@ abstract contract GeometricKandelTest is KandelTest {
     vm.prank(mgv.governance());
     mgv.deactivate(address(base), address(quote));
     // taking a bid
-    uint offerId = kdl.offerIdOfIndex(Bid, 3);
+    uint offerId = offerIdOfIndex(kdl, Bid, 3);
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 3);
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
@@ -542,8 +557,8 @@ abstract contract GeometricKandelTest is KandelTest {
     vm.prank(mgv.governance());
     mgv.deactivate(address(base), address(quote));
     // taking a bid that already has a dual ask
-    uint offerId = kdl.offerIdOfIndex(Bid, 4);
-    uint offerId_ = kdl.offerIdOfIndex(Ask, 5);
+    uint offerId = offerIdOfIndex(kdl, Bid, 4);
+    uint offerId_ = offerIdOfIndex(kdl, Ask, 5);
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 4);
 
@@ -567,7 +582,7 @@ abstract contract GeometricKandelTest is KandelTest {
 
   function test_posthook_density_too_low_still_posts_to_dual() public {
     uint index = 4;
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+    uint offerId = offerIdOfIndex(kdl, Bid, index);
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP);
@@ -588,7 +603,7 @@ abstract contract GeometricKandelTest is KandelTest {
     // assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]));
 
     uint index = 3;
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+    uint offerId = offerIdOfIndex(kdl, Bid, index);
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP);
@@ -610,7 +625,7 @@ abstract contract GeometricKandelTest is KandelTest {
     buyFromBestAs(taker, 1000 ether);
 
     uint index = 4;
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+    uint offerId = offerIdOfIndex(kdl, Bid, index);
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP);
@@ -755,16 +770,25 @@ abstract contract GeometricKandelTest is KandelTest {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
-    uint24 ratio = uint24(102 * 10 ** PRECISION / 100);
-    (GeometricKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
-
     GeometricKandel.Params memory params;
     params.pricePoints = 5;
-    params.ratio = ratio;
+    params.ratio = uint24(102 * 10 ** kdl.PRECISION() / 100);
     params.spread = 2;
     params.compoundRateBase = compoundRateBase;
     params.compoundRateQuote = compoundRateQuote;
+
+    GeometricKandel.Distribution memory distribution = KandelLib.calculateDistribution(
+      0,
+      5,
+      initBase,
+      initQuote,
+      params.ratio,
+      kdl.PRECISION(),
+      params.spread,
+      3,
+      kdl.PRICE_PRECISION(),
+      params.pricePoints
+    );
 
     expectFrom(address(kdl));
     emit SetLength(params.pricePoints);
@@ -801,7 +825,7 @@ abstract contract GeometricKandelTest is KandelTest {
   //   // emit OfferWrite(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0);
   //   // expectFrom($(kdl));
   //   // emit PopulateEnd();
-  //   populateSingle(kdl, 1, 1 ether, 1 ether, 0, 2, bytes(""));
+  //   populateSingle(kdl, 1, 1 ether, kdl.PRICE_PRECISION(), 42, 0, 2, bytes(""));
   // }
 
   function test_setGasprice_valid_setsAndEmits() public {
@@ -845,7 +869,7 @@ abstract contract GeometricKandelTest is KandelTest {
   function marketOrder_dualOffer_expectedGasreq(bool dualNew, uint deltaGasForNew) internal {
     // Arrange
     MgvLib.SingleOrder memory order = mockBuyOrder({takerGives: cash(quote, 100), takerWants: 0.1 ether});
-    order.offerId = kdl.offerIdOfIndex(Ask, dualNew ? 6 : 5);
+    order.offerId = offerIdOfIndex(kdl, Ask, dualNew ? 6 : 5);
 
     // Act
     vm.prank($(mgv));
@@ -924,8 +948,9 @@ abstract contract GeometricKandelTest is KandelTest {
         PopulateArgs({
           kandel: kdl,
           index: 0,
-          base: type(uint96).max,
-          quote: type(uint96).max,
+          gives: type(uint96).max,
+          price: (type(uint96).max * kdl.PRICE_PRECISION()) / type(uint96).max,
+          dualPrice: (((2 * 10 ** precision) ** spread) * kdl.PRICE_PRECISION()) / ((10 ** precision) ** spread),
           pivotId: 0,
           firstAskIndex: 2,
           pricePoints: pricePoints,
@@ -950,7 +975,7 @@ abstract contract GeometricKandelTest is KandelTest {
       assertEq(successes, 1, "offer should be sniped");
     }
     uint askOfferId = mgv.best($(base), $(quote));
-    uint askIndex = kdl.indexOfOfferId(Ask, askOfferId);
+    (uint askIndex,) = kdl.indexOfOfferId(Ask, askOfferId);
 
     uint[] memory statuses = new uint[](askIndex+2);
     if (partialTake) {
@@ -981,6 +1006,7 @@ abstract contract GeometricKandelTest is KandelTest {
     uint8 pricePoints = 6;
 
     uint precision = PRECISION;
+    uint ratio = 2 * 10 ** precision;
 
     vm.prank(maker);
     kdl.retractOffers(0, 10);
@@ -989,12 +1015,15 @@ abstract contract GeometricKandelTest is KandelTest {
       PopulateArgs({
         kandel: kdl,
         index: ba == Bid ? 4 : 1,
-        base: initBase,
-        quote: initQuote,
+        gives: ba == Bid ? initQuote : initBase,
+        price: (initQuote * kdl.PRICE_PRECISION()) / initBase,
+        dualPrice: ba == Bid
+          ? (ratio * (initQuote * kdl.PRICE_PRECISION()) / initBase) / (10 ** precision)
+          : ((10 ** precision) * (initQuote * kdl.PRICE_PRECISION()) / initBase) / ratio,
         pivotId: 0,
         firstAskIndex: ba == Bid ? pricePoints : 0,
         pricePoints: pricePoints,
-        ratio: 2 * 10 ** precision,
+        ratio: ratio,
         spread: spread,
         expectRevert: bytes("")
       })
@@ -1009,11 +1038,11 @@ abstract contract GeometricKandelTest is KandelTest {
     if (ba == Bid) {
       MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
       assertEq(ask.gives(), initBase, "incorrect gives for ask");
-      assertEq(ask.wants(), initQuote * 2, "incorrect wants for ask");
+      assertApproxEqAbs(ask.wants(), ask.gives() * 2 / 1000000000, 1, "incorrect wants");
     } else {
       MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
-      assertEq(bid.gives(), initQuote, "incorrect gives for bid");
-      assertEq(bid.wants(), initBase * 2, "incorrect wants for bid");
+      assertApproxEqAbs(bid.gives(), initQuote, 1, "incorrect gives");
+      assertEq(bid.wants(), bid.gives() * 2 * 1000000000);
     }
   }
 
@@ -1036,13 +1065,15 @@ abstract contract GeometricKandelTest is KandelTest {
     kdl.NO_ROUTER();
     kdl.OFFER_GASREQ();
     kdl.PRECISION();
+    kdl.PRICE_PRECISION();
     kdl.QUOTE();
     kdl.RESERVE_ID();
     kdl.admin();
     kdl.checkList(new IERC20[](0));
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
-    kdl.offerIdOfIndex(Ask, 0);
+    offerIdOfIndex(kdl, Ask, 0);
+    kdl.getPriceOfIndex(0);
     kdl.offerGasreq();
     kdl.offeredVolume(Ask);
     kdl.params();
