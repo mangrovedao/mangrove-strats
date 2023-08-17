@@ -11,7 +11,7 @@ import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
-///@title A Kandel strat with geometric price progression which stores funds on AAVE to generate yield.
+///@title A Kandel strat which posts offers on base/quote and quote/base offer lists with geometric price progression which stores funds on AAVE to generate yield.
 contract ShortKandel is GeometricKandel {
   ///@notice Indication that this is first puller (returned from __lastLook__) so posthook should deposit liquidity on AAVE
   bytes32 internal constant IS_FIRST_PULLER = "IS_FIRST_PULLER";
