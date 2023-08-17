@@ -95,10 +95,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#fix/peter/lookInSubmodules":
+  version: 1.5.8-0
+  resolution: "@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=5fd88e8c72ea49a7ccf137f921edf1676a5a78aa"
+  checksum: feb5a0e1b8124984edbf8b90d691b9d5e607f49d56b65245c00244c0487a0db391ab1797be93bf1daf09a866dac03fa73bb7263212de3cf632dea044110bcade
+  languageName: node
+  linkType: hard
+
 "@mangrovedao/mangrove-strats@workspace:.":
   version: 0.0.0-use.local
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#fix/peter/lookInSubmodules"
     "@types/node": ^20.2.6
     husky: ^8.0.3
     lint-staged: ^13.2.2

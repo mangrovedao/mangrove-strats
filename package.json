@@ -31,6 +31,9 @@
     "/LICENSE",
     "/README.md"
   ],
+  "dependencies": {
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#fix/peter/lookInSubmodules"
+  },
   "devDependencies": {
     "@types/node": "^20.2.6",
     "husky": "^8.0.3",
