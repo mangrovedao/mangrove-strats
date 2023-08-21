@@ -7,8 +7,16 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 
+abstract contract AbstractDirectWithBidsAndAsksDistribution {
+  function retractOffers(uint from, uint to) public virtual;
+}
+
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
-abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
+abstract contract DirectWithBidsAndAsksDistribution is
+  Direct,
+  HasIndexedBidsAndAsks,
+  AbstractDirectWithBidsAndAsksDistribution
+{
   ///@notice The offer has too low volume to be posted.
   bytes32 internal constant LOW_VOLUME = "Kandel/volumeTooLow";
 
@@ -138,7 +146,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param from the start index.
   ///@param to the end index.
   ///@dev use in conjunction of `withdrawFromMangrove` if the user wishes to redeem the available WEIs.
-  function retractOffers(uint from, uint to) public onlyAdmin {
+  function retractOffers(uint from, uint to) public override onlyAdmin {
     emit RetractStart();
     (IERC20 outbound_tknAsk, IERC20 inbound_tknAsk) = tokenPairOfOfferType(OfferType.Ask);
     (IERC20 outbound_tknBid, IERC20 inbound_tknBid) = (inbound_tknAsk, outbound_tknAsk);

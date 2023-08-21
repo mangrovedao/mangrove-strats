@@ -1,21 +1,35 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IMangrove, IERC20, GeometricKandel} from "./GeometricKandel.sol";
-
+import {IMangrove, IERC20, GeometricKandel, AbstractGeometricKandel} from "./GeometricKandel.sol";
+import {HasTokenReserve} from "./CoreKandel.sol";
+import {AbstractMangroveOffer} from "./../../../../MangroveOffer.sol";
+import {
+  DirectWithBidsAndAsksDistribution,
+  AbstractDirectWithBidsAndAsksDistribution
+} from "./DirectWithBidsAndAsksDistribution.sol";
+import {AccessControlled} from "./../../../../utils/AccessControlled.sol";
 ///@title Adds functions that are used by all Kandel strats that have base and quote funds
-abstract contract LongKandel is GeometricKandel {
+
+abstract contract LongKandel is
+  AccessControlled,
+  AbstractMangroveOffer,
+  AbstractDirectWithBidsAndAsksDistribution,
+  HasTokenReserve,
+  AbstractGeometricKandel
+{
+  ///@notice base of the market Kandel is making
+  IERC20 private immutable BASE;
+  ///@notice quote of the market Kandel is making
+  IERC20 private immutable QUOTE;
 
   ///@notice Constructor
-  ///@param mgv The Mangrove deployment.
   ///@param base Address of the base token of the market Kandel will act on
   ///@param quote Address of the quote token of the market Kandel will act on
-  ///@param gasreq the gasreq to use for offers
-  ///@param gasprice the gasprice to use for offers
-  ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, uint gasprice, address reserveId)
-    GeometricKandel(mgv, base, quote, gasreq, gasprice, reserveId)
-  {}
+  constructor(IERC20 base, IERC20 quote) {
+    BASE = base;
+    QUOTE = quote;
+  }
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
   ///@param distribution the distribution of base and quote for Kandel indices
@@ -29,18 +43,16 @@ abstract contract LongKandel is GeometricKandel {
   ///@dev If this function is invoked with different ratio, pricePoints, spread, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
-    Distribution calldata distribution,
+    DirectWithBidsAndAsksDistribution.Distribution calldata distribution,
     uint[] calldata pivotIds,
     uint firstAskIndex,
-    Params calldata parameters,
+    GeometricKandel.Params calldata parameters,
     uint baseAmount,
     uint quoteAmount
   ) external payable onlyAdmin {
     _deposit(BASE, baseAmount);
     _deposit(QUOTE, quoteAmount);
-    setParams(parameters);
-    MGV.fund{value: msg.value}();
-    _populateChunk(distribution, pivotIds, firstAskIndex, parameters.gasreq, parameters.gasprice);
+    _populate(distribution, pivotIds, firstAskIndex, parameters, msg.value);
   }
 
   ///@notice Deposits funds to the contract's reserve
@@ -56,12 +68,6 @@ abstract contract LongKandel is GeometricKandel {
   ///@param quoteAmount to withdraw (use uint(-1) for the whole balance)
   ///@param recipient the address to which the withdrawn funds should be sent to.
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual onlyAdmin {
-    if (baseAmount == type(uint).max) {
-      baseAmount = BASE.balanceOf(address(this));
-    }
-    if (quoteAmount == type(uint).max) {
-      quoteAmount = QUOTE.balanceOf(address(this));
-    }
     _withdraw(BASE, baseAmount, recipient);
     _withdraw(QUOTE, quoteAmount, recipient);
   }

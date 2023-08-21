@@ -5,14 +5,13 @@ import {LongKandelTest} from "./LongKandel.t.sol";
 import {console} from "forge-std/Test.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
+import {PushAndSupplyKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/PushAndSupplyKandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
-import {
-  LongKandel,
-  GeometricKandel,
-  IERC20
-} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
+import {LongKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
+import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {console2} from "forge-std/Test.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
@@ -201,7 +200,7 @@ contract AaveKandelTest is LongKandelTest {
   function test_sharing_liquidity_between_strats(uint16 baseAmount, uint16 quoteAmount) public {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    LongKandel kdl_ = LongKandel($(__deployKandel__(maker, maker)));
+    AaveKandel kdl_ = AaveKandel($(__deployKandel__(maker, maker)));
     assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
 
     uint baseBalance = kdl.reserveBalance(Ask);
@@ -250,7 +249,7 @@ contract AaveKandelTest is LongKandelTest {
     bool allBaseOnAave,
     bool allQuoteOnAave
   ) internal {
-    LongKandel kdl_ = LongKandel($(__deployKandel__(maker, maker)));
+    GeometricKandel kdl_ = GeometricKandel($(__deployKandel__(maker, maker)));
     assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
 
     (, MgvStructs.OfferPacked bestAsk) = getBestOffers();
@@ -292,7 +291,7 @@ contract AaveKandelTest is LongKandelTest {
   {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    LongKandel kdl_ = LongKandel($(__deployKandel__(maker, address(0))));
+    GeometricKandel kdl_ = GeometricKandel($(__deployKandel__(maker, address(0))));
     assertTrue(kdl_.RESERVE_ID() != kdl.RESERVE_ID(), "Strats should not have the same reserveId");
     vm.prank(maker);
     LongKandel($(kdl)).depositFunds(baseAmount, quoteAmount);
@@ -401,7 +400,7 @@ contract AaveKandelTest is LongKandelTest {
   function test_cannot_create_aaveKandel_with_aToken_for_base() public {
     AaveCaller attacker = new AaveCaller(fork.get("Aave"), 2);
     IERC20 aToken = attacker.overlying(base);
-    vm.expectRevert("AaveKandel/cannotTradeAToken");
+    vm.expectRevert("PushAndSupplyKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
       base: aToken,
@@ -415,7 +414,7 @@ contract AaveKandelTest is LongKandelTest {
   function test_cannot_create_aaveKandel_with_aToken_for_quote() public {
     AaveCaller attacker = new AaveCaller(fork.get("Aave"), 2);
     IERC20 aToken = attacker.overlying(quote);
-    vm.expectRevert("AaveKandel/cannotTradeAToken");
+    vm.expectRevert("PushAndSupplyKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
       base: base,

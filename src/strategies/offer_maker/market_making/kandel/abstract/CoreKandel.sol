@@ -10,9 +10,27 @@ import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
+abstract contract HasTokenReserve {
+  ///@notice Deposits funds to the contract's balance
+  ///@param token the deposited asset
+  ///@param amount to deposit
+  function _deposit(IERC20 token, uint amount) internal virtual;
+
+  ///@notice withdraws funds from the contract's reserve
+  ///@param token the asset one wishes to withdraw
+  ///@param amount to withdraw (use uint(-1) for the whole balance)
+  ///@param recipient the address to which the withdrawn funds should be sent to.
+  function _withdraw(IERC20 token, uint amount, address recipient) internal virtual;
+}
+
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
-abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, AbstractKandel {
+abstract contract CoreKandel is
+  DirectWithBidsAndAsksDistribution,
+  TradesBaseQuotePair,
+  AbstractKandel,
+  HasTokenReserve
+{
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param base Address of the base token of the market Kandel will act on
@@ -84,16 +102,19 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Deposits funds to the contract's balance
   ///@param token the deposited asset
   ///@param amount to deposit
-  function _deposit(IERC20 token, uint amount) internal {
+  function _deposit(IERC20 token, uint amount) internal override {
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "Kandel/depositFail");
     emit Credit(token, amount);
   }
 
   ///@notice withdraws funds from the contract's reserve
   ///@param token the asset one wishes to withdraw
-  ///@param amount to withdraw
+  ///@param amount to withdraw (use uint(-1) for the whole balance)
   ///@param recipient the address to which the withdrawn funds should be sent to.
-  function _withdraw(IERC20 token, uint amount, address recipient) internal {
+  function _withdraw(IERC20 token, uint amount, address recipient) internal override {
+    if (amount == type(uint).max) {
+      amount = token.balanceOf(address(this));
+    }
     require(TransferLib.transferToken(token, recipient, amount), "Kandel/withdrawFail");
     emit Debit(token, amount);
   }

@@ -8,6 +8,10 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
+abstract contract AbstractMangroveOffer is IOfferLogic {
+  function withdrawFromMangrove(uint amount, address payable receiver) public virtual;
+}
+
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
 /// @dev Naming scheme:
@@ -15,7 +19,7 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 /// `_f() internal`: descendant of this contract should provide a public wrapper for this function, with necessary guards.
 /// `__f__() virtual internal`: descendant of this contract should override this function to specialize it to the needs of the strat.
 
-abstract contract MangroveOffer is AccessControlled, IOfferLogic {
+abstract contract MangroveOffer is AccessControlled, AbstractMangroveOffer {
   ///@notice Gas requirement when posting offers via this strategy, excluding router requirement.
   uint public immutable OFFER_GASREQ;
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
@@ -188,7 +192,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function withdrawFromMangrove(uint amount, address payable receiver) public onlyAdmin {
+  function withdrawFromMangrove(uint amount, address payable receiver) public override onlyAdmin {
     if (amount == type(uint).max) {
       amount = MGV.balanceOf(address(this));
     }

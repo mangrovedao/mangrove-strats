@@ -5,9 +5,8 @@ import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel, OfferType, IERC20} from "mgv_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {
-  LongKandel, GeometricKandel
-} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
+import {LongKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
+import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {KandelLib} from "lib/kandel/KandelLib.sol";
 import {GeometricKandelTest} from "../abstract/GeometricKandel.t.sol";
@@ -59,7 +58,7 @@ contract LongKandelTest is GeometricKandelTest {
   function deployOtherKandel(uint base0, uint quote0, uint24 ratio, uint8 spread, uint8 pricePoints) internal {
     address otherMaker = freshAddress();
 
-    LongKandel otherKandel = LongKandel($(__deployKandel__(otherMaker, otherMaker)));
+    GeometricKandel otherKandel = GeometricKandel($(__deployKandel__(otherMaker, otherMaker)));
 
     vm.prank(otherMaker);
     TransferLib.approveToken(base, address(otherKandel), type(uint).max);
@@ -95,7 +94,7 @@ contract LongKandelTest is GeometricKandelTest {
     deal($(quote), otherMaker, pendingQuote);
 
     vm.prank(otherMaker);
-    otherKandel.depositFunds(pendingBase, pendingQuote);
+    LongKandel(address(otherKandel)).depositFunds(pendingBase, pendingQuote);
   }
 
   function retractDefaultSetup() internal {
@@ -289,7 +288,7 @@ contract LongKandelTest is GeometricKandelTest {
     t.snapshotId = vm.snapshot();
     vm.startPrank(maker);
     (t.pivotIds, t.baseAmountRequired, t.quoteAmountRequired) =
-      KandelLib.estimatePivotsAndRequiredAmount(distribution, LongKandel($(kdl)), t.firstAskIndex, params, t.funds);
+      KandelLib.estimatePivotsAndRequiredAmount(distribution, GeometricKandel($(kdl)), t.firstAskIndex, params, t.funds);
     vm.stopPrank();
     require(vm.revertTo(t.snapshotId), "snapshot restore failed");
 

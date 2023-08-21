@@ -5,12 +5,10 @@ import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {
-  ShortKandel,
-  GeometricKandel,
-  OfferType,
-  IERC20
-} from "mgv_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
+import {ShortKandel, OfferType} from "mgv_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
+import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {KandelLib} from "lib/kandel/KandelLib.sol";
 import {GeometricKandelTest} from "../abstract/GeometricKandel.t.sol";

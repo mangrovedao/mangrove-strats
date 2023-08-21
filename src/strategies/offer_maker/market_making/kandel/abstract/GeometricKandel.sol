@@ -7,9 +7,29 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
+import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
+
+abstract contract AbstractGeometricKandel {
+  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
+  ///@param distribution the distribution of base and quote for Kandel indices
+  ///@param pivotIds the pivot to be used for the offer
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
+  ///@dev This function is used at initialization and can fund with provision for the offers.
+  ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
+  ///@dev If this function is invoked with different ratio, pricePoints, spread, then first retract all offers.
+  ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
+  function _populate(
+    DirectWithBidsAndAsksDistribution.Distribution calldata distribution,
+    uint[] calldata pivotIds,
+    uint firstAskIndex,
+    GeometricKandel.Params calldata parameters,
+    uint funds
+  ) internal virtual;
+}
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
-abstract contract GeometricKandel is CoreKandel {
+abstract contract GeometricKandel is CoreKandel, AbstractGeometricKandel {
   ///@notice `compoundRateBase`, and `compoundRateQuote` have PRECISION decimals, and ditto for GeometricKandel's `ratio`.
   ///@notice setting PRECISION higher than 5 will produce overflow in limit cases for GeometricKandel.
   uint public constant PRECISION = 5;
@@ -139,6 +159,28 @@ abstract contract GeometricKandel is CoreKandel {
     onlyAdmin
   {
     _populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
+  }
+
+  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
+  ///@param distribution the distribution of base and quote for Kandel indices
+  ///@param pivotIds the pivot to be used for the offer
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
+  ///@param funds the amount of native tokens to fund the offers with.
+  ///@dev This function is used at initialization and can fund with provision for the offers.
+  ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
+  ///@dev If this function is invoked with different ratio, pricePoints, spread, then first retract all offers.
+  ///@dev `funds` must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
+  function _populate(
+    Distribution calldata distribution,
+    uint[] calldata pivotIds,
+    uint firstAskIndex,
+    Params calldata parameters,
+    uint funds
+  ) internal override onlyAdmin {
+    setParams(parameters);
+    MGV.fund{value: funds}();
+    _populateChunk(distribution, pivotIds, firstAskIndex, parameters.gasreq, parameters.gasprice);
   }
 
   ///@notice calculates the wants and gives for the dual offer according to the geometric price distribution.

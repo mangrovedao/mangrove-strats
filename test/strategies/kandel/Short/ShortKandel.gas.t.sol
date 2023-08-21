@@ -3,9 +3,10 @@ pragma solidity ^0.8.10;
 
 import {GeometricKandelGasTest, PinnedPolygonFork, MgvReader, IMangrove} from "../abstract/GeometricKandel.gas.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {
-  ShortKandel, GeometricKandel, IERC20
-} from "mgv_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
+import {ShortKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
+import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+
 import {AavePrivateRouter} from "mgv_src/strategies/routers/integrations/AavePrivateRouter.sol";
 
 contract ShortKandelGasTest is GeometricKandelGasTest {

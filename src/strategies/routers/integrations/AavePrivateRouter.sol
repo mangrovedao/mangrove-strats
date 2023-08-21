@@ -2,11 +2,12 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter} from "../AbstractRouter.sol";
+import {PushAndSupplyRouter} from "./PushAndSupplyRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
-contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
+contract AavePrivateRouter is AaveMemoizer, PushAndSupplyRouter {
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
   uint internal immutable BUFFER_SIZE;
@@ -18,7 +19,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@dev `msg.sender` will be admin of this router
   constructor(address addressesProvider, uint interestRate, uint overhead, uint buffer_size)
     AaveMemoizer(addressesProvider, interestRate)
-    AbstractRouter(overhead)
+    PushAndSupplyRouter(overhead)
   {
     require(buffer_size <= 100, "PrivateRouter/InvalidBufferSize");
     BUFFER_SIZE = buffer_size;
@@ -69,7 +70,12 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@dev this call be performed even for tokens with 0 amount for the offer logic, since the logic can be the first in a chain and router needs to flush all
   ///@dev this function is also to be used when user deposits funds on the maker contract
   ///@dev if repay/supply should fail, funds are left on the router's balance, therefore bound maker must implement a public withdraw function to recover these funds if needed
-  function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1) external onlyBound {
+  function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1, address)
+    external
+    override
+    onlyBound
+    returns (uint pushed0, uint pushed1)
+  {
     require(TransferLib.transferTokenFrom(token0, msg.sender, address(this), amount0), "AavePrivateRouter/pushFailed");
     require(TransferLib.transferTokenFrom(token1, msg.sender, address(this), amount1), "AavePrivateRouter/pushFailed");
 
@@ -88,6 +94,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
         emit LogAaveIncident(msg.sender, address(token1), reason);
       }
     }
+    return (amount0, amount1);
   }
 
   // structs to avoid stack too deep in maxGettableUnderlying
