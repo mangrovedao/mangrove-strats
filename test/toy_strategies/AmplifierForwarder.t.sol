@@ -114,13 +114,15 @@ contract AmplifierForwarderTest is StratTest {
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {
+    Tick tick = mgv.offers($(weth), $(makerWantsToken), offerId).tick();
     // try to snipe one of the offers (using the separate taker account)
     vm.startPrank(taker);
-    (, takerGot, takerGave, bounty,) = testMgv.snipesInTest({
+    (takerGot, takerGave, bounty,) = mgv.marketOrderByPrice({
       outbound_tkn: $(weth),
       inbound_tkn: $(makerWantsToken),
-      targets: wrap_dynamic([offerId, makerGivesAmount, makerWantsAmount, type(uint).max]),
-      fillWants: true
+      maxPrice_e18: uint(Tick.unwrap(tick)),
+      fillVolume: makerWantsAmount,
+      fillWants: false
     });
     vm.stopPrank();
   }

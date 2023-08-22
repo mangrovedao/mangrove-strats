@@ -276,11 +276,13 @@ contract AaveKandelTest is CoreKandelTest {
     assertEq(kdl_.reserveBalance(Bid), 0, "funds should not be shared");
   }
 
-  function executeAttack(uint offerId) public {
+  function executeAttack() public {
     // context base should not be available to redeem for the router, for this attack to succeed
-    (,, uint takerGave, uint bounty,) = testMgv.snipesInTest(
-      $(base), $(quote), wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
-    );
+    (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume($(base), $(quote), 0.1 ether, type(uint96).max, true);
+
+    // (,, uint takerGave, uint bounty,) = testMgv.snipesInTest(
+    //   $(base), $(quote), wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
+    // );
     require(takerGave == 0 && bounty > 0, "attack failed");
   }
 
@@ -318,7 +320,7 @@ contract AaveKandelTest is CoreKandelTest {
     uint nativeBal = address(this).balance;
     uint gas = gasleft(); // adding flash loan overhead
     try attacker.borrow(quote, quoteSupply - 1) {
-      (,, uint takerGave, uint bounty,) = sellToBestAs(address(this), 0.1 ether);
+      (, uint takerGave, uint bounty,) = sellToBestAs(address(this), 0.1 ether);
       require(takerGave == 0 && bounty > 0, "Attack failed");
       gas = gas - gasleft() + 300_000; // adding flashloan cost
       console.log(

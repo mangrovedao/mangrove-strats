@@ -11,7 +11,7 @@ import {
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
-import {StratTest, MangroveTest, TestMangrove} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
@@ -144,30 +144,28 @@ abstract contract KandelTest is StratTest {
     kdl.depositFunds(pendingBase, pendingQuote);
   }
 
-  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint, uint) {
-    uint bestAsk = mgv.best($(base), $(quote));
+  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint) {
     vm.prank(taker_);
-    return
-      testMgv.snipesInTest($(base), $(quote), wrap_dynamic([bestAsk, amount, type(uint96).max, type(uint).max]), true);
+    return mgv.marketOrderByVolume($(base), $(quote), amount, type(uint96).max, true);
   }
 
-  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint, uint) {
-    uint bestBid = mgv.best($(quote), $(base));
+  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
     vm.prank(taker_);
-    return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
+    return mgv.marketOrderByVolume($(quote), $(base), 0, amount, false);
+    // return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
   }
 
-  function snipeBuyAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Ask, index);
+  function snipeBuyAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
     vm.prank(taker_);
-    return
-      testMgv.snipesInTest($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
+    return mgv.marketOrderByVolume($(base), $(quote), amount, type(uint96).max, true);
+    // return
+    //   testMgv.snipesInTest($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
   }
 
-  function snipeSellAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+  function snipeSellAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
     vm.prank(taker_);
-    return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    return mgv.marketOrderByVolume($(quote), $(base), 0, amount, false);
+    // return testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {

@@ -63,8 +63,8 @@ contract Amplifier is Direct {
     // MGV.retractOffer(..., deprovision:bool)
     // deprovisioning an offer (via MGV.retractOffer) credits maker balance on Mangrove (no native token transfer)
     // if maker wishes to retrieve native tokens it should call MGV.withdraw (and have a positive balance)
-    require(!MGV.isLive(MGV.offers(address(BASE), address(STABLE1), offerId1)), "Amplifier/offer1AlreadyActive");
-    require(!MGV.isLive(MGV.offers(address(BASE), address(STABLE2), offerId2)), "Amplifier/offer2AlreadyActive");
+    require(!MGV.offers(address(BASE), address(STABLE1), offerId1).isLive(), "Amplifier/offer1AlreadyActive");
+    require(!MGV.offers(address(BASE), address(STABLE2), offerId2).isLive(), "Amplifier/offer2AlreadyActive");
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
 
     (offerId1,) = _newOffer(

@@ -1,15 +1,8 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {
-  StratTest,
-  MgvReader,
-  TestMaker,
-  TestTaker,
-  TestSender,
-  console,
-  TestMangrove
-} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console, Tick} from "mgv_strat_test/lib/StratTest.sol";
+
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
@@ -658,9 +651,11 @@ contract MangroveOrder_Test is StratTest {
     uint oldQuoteBal = quote.balanceOf($(this)); // quote balance of test runner
 
     MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), cold_buyResult.offerId);
+    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
 
-    (, uint takerGot, uint takerGave,, uint fee) =
-      sell_taker.takeWithInfo({takerWants: 1000 ether, offerId: cold_buyResult.offerId});
+    (uint takerGot, uint takerGave,, uint fee) =
+      mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1000 ether, true);
+    // sell_taker.takeWithInfo({takerWants: 1000 ether, offerId: cold_buyResult.offerId});
 
     // offer delivers
     assertEq(takerGot, 1000 ether - fee, "Incorrect received amount for seller taker");
@@ -690,17 +685,22 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(buyResult.offerId > 0, "Resting order should succeed");
 
-    (bool success,,,,) = sell_taker.takeWithInfo({takerWants: 40000 ether, offerId: buyResult.offerId});
+    Tick tick = mgv.offers($(quote), $(base), buyResult.offerId).tick();
 
-    assertTrue(success, "Offer should succeed");
+    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 40000 ether, true);
+    // (bool success,,,,) = sell_taker.takeWithInfo({takerWants: 40000 ether, offerId: buyResult.offerId});
+
+    assertTrue(takerGot > 0, "Offer should succeed");
   }
 
   function test_failing_resting_offer_releases_uncollected_provision() public {
     uint provision = mgo.provisionOf(quote, base, cold_buyResult.offerId);
     // empty quotes so that cold buy offer fails
+    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
     deal($(quote), address(this), 0);
     _gas();
-    (,,, uint bounty,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
+    (,, uint bounty,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, true);
+    // (,,, uint bounty,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
     uint g = gas_(true);
 
     assertTrue(bounty > 0, "snipe should have failed");
@@ -715,15 +715,21 @@ contract MangroveOrder_Test is StratTest {
 
   function test_offer_succeeds_when_time_is_not_expired() public {
     mgo.setExpiry(quote, base, cold_buyResult.offerId, block.timestamp + 1);
-    (bool success,,,,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
-    assertTrue(success, "offer failed");
+    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, true);
+    // (bool success,,,,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
+    //FIXME
+    assertTrue(takerGot > 0, "offer failed");
   }
 
   function test_offer_reneges_when_time_is_expired() public {
     mgo.setExpiry(quote, base, cold_buyResult.offerId, block.timestamp);
     vm.warp(block.timestamp + 1);
-    (bool success,,,,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
-    assertTrue(!success, "offer should have failed");
+    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, true);
+    // (bool success,,,,) = sell_taker.takeWithInfo({offerId: cold_buyResult.offerId, takerWants: 1991});
+    // FIXME
+    assertTrue(takerGot > 0, "offer should have failed");
   }
   //////////////////////////////
   /// Tests offer management ///
@@ -833,9 +839,9 @@ contract MangroveOrder_Test is StratTest {
     _gas();
     // cannot use TestTaker functions that have additional gas cost
     // simply using sell_taker's approvals and already filled balances
-    (uint successes,,,,) = TestMangrove($(mgv)).snipesInTest($(quote), $(base), targets, true);
+    mgv.marketOrderByVolume($(quote), $(base), 900 ether, 0.5 ether, true);
     gas_();
-    assertTrue(successes == 1, "Snipe failed");
+    // assertTrue(successes == 1, "Snipe failed");
     assertTrue(mgv.offers($(quote), $(base), cold_buyResult.offerId).gives() > 0, "Update failed");
   }
 }

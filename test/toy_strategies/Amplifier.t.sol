@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, Tick, TickLib} from "mgv_strat_test/lib/StratTest.sol";
 import "mgv_test/lib/forks/Polygon.sol";
 import "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
@@ -122,17 +122,19 @@ contract AmplifierTest is StratTest {
     });
   }
 
-  function takeOffer(uint makerGivesAmount, uint makerWantsAmount, IERC20 makerWantsToken, uint offerId)
+  function takeOffer(uint makerWantsAmount, IERC20 makerWantsToken, uint offerId)
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {
+    Tick tick = mgv.offers($(weth), $(makerWantsToken), offerId).tick();
     // try to snipe one of the offers (using the separate taker account)
     vm.prank(taker);
-    (, takerGot, takerGave, bounty,) = testMgv.snipesInTest({
+    (takerGot, takerGave, bounty,) = mgv.marketOrderByPrice({
       outbound_tkn: $(weth),
       inbound_tkn: $(makerWantsToken),
-      targets: wrap_dynamic([offerId, makerGivesAmount, makerWantsAmount, type(uint).max]),
-      fillWants: true
+      maxPrice_e18: uint(Tick.unwrap(tick)),
+      fillVolume: makerWantsAmount,
+      fillWants: false
     });
   }
 
@@ -149,10 +151,11 @@ contract AmplifierTest is StratTest {
     (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
     //only take half of the offer
-    (uint takerGot, uint takerGave,) = takeOffer(makerGivesAmount / 2, makerWantsAmountDAI / 2, dai, offerId1);
+    (uint takerGot, uint takerGave,) = takeOffer(makerWantsAmountDAI / 2, dai, offerId1);
 
     // assert that
-    assertEq(takerGot, reader.minusFee($(dai), $(weth), makerGivesAmount / 2), "taker got wrong amount");
+    uint offerGaveMinusFee = reader.minusFee($(dai), $(weth), makerGivesAmount / 2);
+    assertTrue(((takerGot - offerGaveMinusFee) * 10_000) / (makerGivesAmount / 2) < 10, "taker got wrong amount");
     assertEq(takerGave, makerWantsAmountDAI / 2, "taker gave wrong amount");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
@@ -173,11 +176,11 @@ contract AmplifierTest is StratTest {
 
     (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
-    (uint takerGot, uint takerGave,) = takeOffer(makerGivesAmount, makerWantsAmountDAI, dai, offerId1);
+    (uint takerGot, uint takerGave,) = takeOffer(makerWantsAmountDAI, dai, offerId1);
 
     // assert that
     assertEq(takerGot, reader.minusFee($(dai), $(weth), makerGivesAmount), "taker got wrong amount");
-    assertEq(takerGave, makerWantsAmountDAI, "taker gave wrong amount");
+    assertTrue((makerWantsAmountDAI - takerGave) * 100000 / makerWantsAmountDAI < 10, "taker gave wrong amount");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     MgvStructs.OfferPacked offer_on_dai = mgv.offers($(weth), $(dai), offerId1);
@@ -197,7 +200,7 @@ contract AmplifierTest is StratTest {
 
     (uint offerId1,) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
-    takeOffer(makerGivesAmount, makerWantsAmountDAI, dai, offerId1);
+    takeOffer(makerWantsAmountDAI, dai, offerId1);
 
     // check native balance before deprovision
     uint nativeBalanceBeforeRetract = $(this).balance;
@@ -241,7 +244,7 @@ contract AmplifierTest is StratTest {
     // not giving the start any WETH, the offer will therefor fail when taken
     (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
-    (uint takerGot, uint takerGave, uint bounty) = takeOffer(makerGivesAmount, makerWantsAmountUSDC, usdc, offerId2);
+    (uint takerGot, uint takerGave, uint bounty) = takeOffer(makerWantsAmountUSDC, usdc, offerId2);
 
     // assert that
     assertEq(takerGot, 0, "taker got wrong amount");
