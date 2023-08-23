@@ -35,7 +35,7 @@
     "@mangrovedao/mangrove-core": "1.5.8-0"
   },
   "devDependencies": {
-    "@types/node": "^20.2.6",
+    "@types/node": "^20.5.3",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "micromatch": "^4.0.5",
