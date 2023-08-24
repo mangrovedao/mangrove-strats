@@ -6,7 +6,13 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
+///@title Router for smart offers that want to borrow promised assets AAVE
+
 contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
+  ///@notice Logs unexpected throws from AAVE
+  ///@param maker the address of the smart offer that called the router
+  ///@param asset the type of asset involved in the interaction with the pool
+  ///@param aaveReason the aave error string cast to a bytes32. Interpret the string by reading `src/strategies/vendor/aave/v3/Errors.sol`
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
   /// @notice portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow` function
@@ -43,6 +49,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@param amount the amount of asset
   ///@param m the memoizer
   ///@param noRevert whether the function should revert with AAVE or return the revert message
+  ///@return reason in case AAVE reverts (cast to a bytes32)
   function _toPool(IERC20 token, uint amount, Memoizer memory m, bool noRevert) internal returns (bytes32 reason) {
     if (amount == 0) {
       return bytes32(0);
@@ -107,6 +114,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///to the max amount of `token` this contract can withdraw from the pool, and the max amount of `token` it can borrow in addition (after withdrawing `maxRedeem`)
   ///@param token the asset one wishes to get from the pool
   ///@param m the memoizer
+  ///@param withBorrow if true, computes borrow capacity after redeem.
+  ///@return (maxRedeem, maxBorrow) capacity of `this` contract on the pool.
+  ///@dev `!withBorrow ==> maxBorrow == 0`
   function maxGettableUnderlying(IERC20 token, Memoizer memory m, bool withBorrow) public view returns (uint, uint) {
     Underlying memory underlying; // asset parameters
     (

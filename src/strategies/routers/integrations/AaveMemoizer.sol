@@ -47,7 +47,7 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
   constructor(address addressesProvider, uint interestRateMode) AaveV3Borrower(addressesProvider, interestRateMode) {}
 
-  ///@notice fetches and memoize the reserve data of a particular asset on AAVE
+  ///@notice fetches and memoizes the reserve data of a particular asset on AAVE
   ///@param token the asset whose reserve data is needed
   ///@param m the memoizer
   ///@return reserveData of `token`
@@ -59,7 +59,7 @@ contract AaveMemoizer is AaveV3Borrower {
     return m.reserveData;
   }
 
-  ///@notice fetches and memoize the overlying IERC20 of a given asset
+  ///@notice fetches and memoizes the overlying IERC20 of a given asset
   ///@param token the asset whose overlying is needed
   ///@param m the memoizer
   ///@return overlying of the asset
@@ -67,7 +67,7 @@ contract AaveMemoizer is AaveV3Borrower {
     return IERC20(reserveData(token, m).aTokenAddress);
   }
 
-  ///@notice fetches and memoize the overlying asset balance of `this` contract
+  ///@notice fetches and memoizes the overlying asset balance of `this` contract
   ///@param token the underlying asset
   ///@param m the memoizer
   ///@return balance of the overlying of the asset
@@ -84,7 +84,7 @@ contract AaveMemoizer is AaveV3Borrower {
     return m.overlyingBalanceOf;
   }
 
-  ///@notice fetches and memoize the token balance of `this` contract
+  ///@notice fetches and memoizes the token balance of `this` contract
   ///@param token the asset whose balance is needed.
   ///@param m the memoizer
   ///@return balance of the asset
@@ -109,7 +109,7 @@ contract AaveMemoizer is AaveV3Borrower {
       : ICreditDelegationToken(reserveData(token, m).variableDebtTokenAddress);
   }
 
-  ///@notice fetches and memoize the debt of `this` contract in a particular asset
+  ///@notice fetches and memoizes the debt of `this` contract in a particular asset
   ///@param token the asset whose debt balance is being queried
   ///@param m the memoizer
   ///@return debt in asset
@@ -122,14 +122,25 @@ contract AaveMemoizer is AaveV3Borrower {
     return m.debtBalanceOf;
   }
 
+  ///@notice fetches (and memoizes reserve data if need be) the current supply cap for a given asset
+  ///@param token the asset whole supply cap is needed
+  ///@param m the memoizer
+  ///@return supplyCap of the asset (in raw token units)
   function supplyCap(IERC20 token, Memoizer memory m) public view returns (uint) {
     return ReserveConfiguration.getSupplyCap(reserveData(token, m).configuration);
   }
 
+  ///@notice fetches (and memoizes reserve data if need be) the current borrow cap for a given asset
+  ///@param token the asset whole borrow cap is needed
+  ///@param m the memoizer
+  ///@return borrowCap of the asset (in raw token units)
   function borrowCap(IERC20 token, Memoizer memory m) public view returns (uint) {
     return ReserveConfiguration.getBorrowCap(reserveData(token, m).configuration);
   }
 
+  ///@notice fetches and memoizes `this` contract's account data on the pool
+  ///@param m the memoizer
+  ///@return accountData of `this` contract
   function userAccountData(Memoizer memory m) public view returns (Account memory) {
     if (!m.userAccountDataMemoized) {
       m.userAccountDataMemoized = true;
@@ -145,6 +156,10 @@ contract AaveMemoizer is AaveV3Borrower {
     return m.userAccountData;
   }
 
+  ///@notice fetches and memoizes the current block's price of an asset
+  ///@param token the asset whose price is needed
+  ///@param m the memoizer
+  ///@return price of one unit of asset expressed in USD with 8 decimals precision
   function assetPrice(IERC20 token, Memoizer memory m) public view returns (uint) {
     if (!m.assetPriceMemoized) {
       m.assetPriceMemoized = true;
