@@ -6,15 +6,27 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
+///@title Router for smart offers that want to borrow promised assets AAVE
+
 contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
+  ///@notice Logs unexpected throws from AAVE
+  ///@param maker the address of the smart offer that called the router
+  ///@param asset the type of asset involved in the interaction with the pool
+  ///@param aaveReason the aave error string cast to a bytes32. Interpret the string by reading `src/strategies/vendor/aave/v3/Errors.sol`
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
+  /// @notice portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow` function
+  /// @notice expressed in percent
+  /// @dev setting BUFFER_SIZE to 0 will make this router borrow only what is missing from the pool
+  /// @dev setting BUFFER_SIZE to 100 will make this router borrow its whole credit line from the Pool
+  /// (so as not to call `borrow` multiple times if the router is to be called several times in the same market order)
   uint internal immutable BUFFER_SIZE;
 
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRate interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
   ///@param overhead is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
+  ///@param buffer_size portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow`.
   ///@dev `msg.sender` will be admin of this router
   constructor(address addressesProvider, uint interestRate, uint overhead, uint buffer_size)
     AaveMemoizer(addressesProvider, interestRate)
@@ -37,6 +49,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@param amount the amount of asset
   ///@param m the memoizer
   ///@param noRevert whether the function should revert with AAVE or return the revert message
+  ///@return reason in case AAVE reverts (cast to a bytes32)
   function _toPool(IERC20 token, uint amount, Memoizer memory m, bool noRevert) internal returns (bytes32 reason) {
     if (amount == 0) {
       return bytes32(0);
@@ -66,23 +79,22 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@param amount1 the amount of `token1` to deposit
   ///@dev an offer logic should call this instead of `flush` when it is the last posthook to be executed
   ///@dev this can be determined by checking during __lastLook__ whether the logic will trigger a withdraw from AAVE (this is the case if router's balance of token is empty)
-  ///@dev this call be performed even for tokens with 0 amount for the offer logic, since the logic can be the first in a chain and router needs to flush all
   ///@dev this function is also to be used when user deposits funds on the maker contract
   ///@dev if repay/supply should fail, funds are left on the router's balance, therefore bound maker must implement a public withdraw function to recover these funds if needed
   function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1) external onlyBound {
     require(TransferLib.transferTokenFrom(token0, msg.sender, address(this), amount0), "AavePrivateRouter/pushFailed");
     require(TransferLib.transferTokenFrom(token1, msg.sender, address(this), amount1), "AavePrivateRouter/pushFailed");
+    Memoizer memory m0;
+    Memoizer memory m1;
 
     bytes32 reason;
     if (address(token0) != address(0)) {
-      Memoizer memory m0;
       reason = _toPool(token0, balanceOf(token0, m0), m0, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token0), reason);
       }
     }
     if (address(token1) != address(0)) {
-      Memoizer memory m1;
       reason = _toPool(token1, balanceOf(token1, m1), m1, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token1), reason);
@@ -102,6 +114,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///to the max amount of `token` this contract can withdraw from the pool, and the max amount of `token` it can borrow in addition (after withdrawing `maxRedeem`)
   ///@param token the asset one wishes to get from the pool
   ///@param m the memoizer
+  ///@param withBorrow if true, computes borrow capacity after redeem.
+  ///@return (maxRedeem, maxBorrow) capacity of `this` contract on the pool.
+  ///@dev `!withBorrow ==> maxBorrow == 0`
   function maxGettableUnderlying(IERC20 token, Memoizer memory m, bool withBorrow) public view returns (uint, uint) {
     Underlying memory underlying; // asset parameters
     (
@@ -157,7 +172,6 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   /// * if withdrawal is insufficient to match `amount` the missing tokens are borrowed.
   /// Note we do not borrow the full capacity as it would put this contract is a liquidatable state. A malicious offer in the same market order could prevent the posthook to repay the debt via a possible manipulation of the pool's state using flashloans.
   /// * if pull is `strict` then only amount is sent to the calling maker contract, otherwise the totality of pulled funds are sent to maker
-  ///@dev if `strict` is enabled, then either `amount` is sent to maker or the call reverts.
   ///@inheritdoc AbstractRouter
   function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
     Memoizer memory m;
@@ -249,11 +263,6 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     return _claimRewards(assets, msg.sender);
   }
 
-  ///@param local the balance of the asset on the router
-  ///@param onPool the amount of asset deposited on the pool
-  ///@param debt the amount of asset that has been borrowed. A good invariant to check is `debt > 0 <=> local == 0 && onPool == 0`
-  ///@param liquid is the amount of asset that can be withdrawn from the pool w/o incurring debt. Invariant is `liquid <= onPool`
-  ///@param creditLine is the amount of asset that can be borrowed from the pool when all `liquid` asset have been withdrawn.
   struct AssetBalances {
     uint local;
     uint onPool;
@@ -264,8 +273,12 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
 
   ///@notice returns important balances of a given asset
   ///@param token the asset whose balances are queried
-  ///@return bal the balances of the given asset
-  ///@notice we ignore potential debt because redeem and borrow capacity already takes debt into account
+  ///@return bal
+  /// .local the balance of the asset on the router
+  /// .onPool the amount of asset deposited on the pool
+  /// .debt the amount of asset that has been borrowed. A good invariant to check is `debt > 0 <=> local == 0 && onPool == 0`
+  /// .liquid is the amount of asset that can be withdrawn from the pool w/o incurring debt. Invariant is `liquid <= onPool`
+  /// .creditLine is the amount of asset that can be borrowed from the pool when all `liquid` asset have been withdrawn.
   function assetBalances(IERC20 token) public view returns (AssetBalances memory bal) {
     Memoizer memory m;
     bal.debt = debtBalanceOf(token, m);
@@ -282,5 +295,11 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     Memoizer memory m;
     (uint r, uint b) = maxGettableUnderlying(token, m, true);
     return (r + b);
+  }
+
+  ///@notice sets user Emode
+  ///@param categoryId the Emode categoy (0 for none, 1 for stable...)
+  function setEMode(uint8 categoryId) external onlyAdmin {
+    POOL.setUserEMode(categoryId);
   }
 }
