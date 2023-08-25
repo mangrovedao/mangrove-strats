@@ -2,13 +2,13 @@
 pragma solidity ^0.8.10;
 
 import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
-import {ITesterContract} from "mgv_src/strategies/interfaces/ITesterContract.sol";
+import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
-import {AaveV3Borrower} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
 
 contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;
-  bytes32 constant retdata = "lastlook/testdata";
+  bytes32 internal constant RETDATA = "lastlook/testdata";
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
@@ -23,7 +23,7 @@ contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
   }
 
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
-    return retdata;
+    return RETDATA;
   }
 
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)

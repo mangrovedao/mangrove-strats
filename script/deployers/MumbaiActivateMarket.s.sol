@@ -6,7 +6,9 @@ import {ToyENS} from "mgv_lib/ToyENS.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 
 import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
-import {ActivateMangroveOrder, MangroveOrder} from "mgv_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
+import {
+  ActivateMangroveOrder, MangroveOrder
+} from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 
 import {Mangrove} from "mgv_src/Mangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";

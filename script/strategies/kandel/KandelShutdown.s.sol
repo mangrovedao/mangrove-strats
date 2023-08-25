@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2 as console} from "forge-std/Script.sol";
-import {LongKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
-import {OfferType} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {LongKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
+import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";

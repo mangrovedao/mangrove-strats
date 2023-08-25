@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "mgv_src/strategies/MangroveOffer.sol";
+import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {LongKandel} from "./abstract/LongKandel.sol";
 import {AbstractKandel} from "./abstract/AbstractKandel.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";

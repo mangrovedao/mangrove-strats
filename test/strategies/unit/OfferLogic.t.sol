@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
+import "mgv_strat_test/lib/StratTest.sol";
 import {GenericFork} from "mgv_test/lib/forks/Generic.sol";
 import {
   ITesterContract as ITester,
@@ -9,11 +9,11 @@ import {
   IMangrove,
   IERC20,
   AbstractRouter
-} from "mgv_src/strategies/offer_maker/DirectTester.sol";
+} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
-contract OfferLogicTest is MangroveTest {
+contract OfferLogicTest is StratTest {
   TestToken weth;
   TestToken usdc;
   address payable taker;

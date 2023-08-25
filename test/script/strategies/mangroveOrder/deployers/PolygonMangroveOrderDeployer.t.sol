@@ -14,11 +14,11 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {MgvCleaner} from "mgv_src/periphery/MgvCleaner.sol";
 import {MgvOracle} from "mgv_src/periphery/MgvOracle.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {
   PolygonMangroveOrderDeployer,
   MangroveOrder
-} from "mgv_script/strategies/mangroveOrder/deployers/PolygonMangroveOrderDeployer.s.sol";
+} from "mgv_strat_script/strategies/mangroveOrder/deployers/PolygonMangroveOrderDeployer.s.sol";
 
 contract PolygonMangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
   function setUp() public {

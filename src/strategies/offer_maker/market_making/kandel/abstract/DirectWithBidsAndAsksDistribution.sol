@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {Direct} from "mgv_src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";

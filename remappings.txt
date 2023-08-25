@@ -1,4 +1,12 @@
-mgv_src/=src/
-mgv_lib/=lib/
-mgv_test/=test/
-mgv_script/=script/
+mgv_src/=node_modules/@mangrovedao/mangrove-core/src/
+mgv_lib/=node_modules/@mangrovedao/mangrove-core/lib/
+mgv_test/=node_modules/@mangrovedao/mangrove-core/test/
+mgv_script/=node_modules/@mangrovedao/mangrove-core/script/
+
+ds-test/=node_modules/@mangrovedao/mangrove-core/lib/forge-std/lib/ds-test/src/
+forge-std/=node_modules/@mangrovedao/mangrove-core/lib/forge-std/src/
+
+mgv_strat_src/=src/
+mgv_strat_lib/=lib/
+mgv_strat_test/=test/
+mgv_strat_script/=script/

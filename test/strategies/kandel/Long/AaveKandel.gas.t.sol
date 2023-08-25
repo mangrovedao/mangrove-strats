@@ -3,8 +3,8 @@ pragma solidity ^0.8.10;
 
 import "../abstract/GeometricKandel.gas.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {AaveKandel, LongKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
-import {AavePooledRouter} from "mgv_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AaveKandel, LongKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
+import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 
 contract AaveKandelGasTest is GeometricKandelGasTest {
   function __deployKandel__(address deployer, address reserveId) internal override returns (GeometricKandel kdl_) {
