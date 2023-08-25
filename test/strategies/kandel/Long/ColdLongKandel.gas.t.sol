@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "../abstract/GeometricKandel.gas.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {Kandel, LongKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {Kandel, LongKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 
 contract ColdLongKandelGasTest is GeometricKandelGasTest {
   function setUp() public override {

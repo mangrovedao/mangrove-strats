@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {IERC20, AaveV3Lender} from "./AaveV3Lender.sol";
-import {IPriceOracleGetter} from "mgv_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
-import {IPoolAddressesProvider} from "mgv_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 
 /// @title This contract provides a collection of interactions capabilities with AAVE-v3 to whichever contract inherits it
 /// `AaveV3Borrower` contracts are in particular able to perform basic pool interactions (lending, borrowing, supplying and repaying)
@@ -51,7 +51,10 @@ contract AaveV3Borrower is AaveV3Lender {
   /// @param noRevert does not revert if repay throws, but returns the reason
   /// @return repaid the repaid amount
   /// @return reason the reason for the failure if any
-  function _repay(IERC20 token, uint amount, address onBehalf, bool noRevert) internal returns (uint repaid, bytes32 reason) {
+  function _repay(IERC20 token, uint amount, address onBehalf, bool noRevert)
+    internal
+    returns (uint repaid, bytes32 reason)
+  {
     try POOL.repay(address(token), amount, INTEREST_RATE_MODE, onBehalf) returns (uint repaid_) {
       return (repaid_, bytes32(0));
     } catch Error(string memory reason_) {

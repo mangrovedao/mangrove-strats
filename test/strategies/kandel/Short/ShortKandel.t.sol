@@ -10,17 +10,17 @@ import {
   GeometricKandel,
   OfferType,
   IERC20
-} from "mgv_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/ShortKandel.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {KandelLib} from "lib/kandel/KandelLib.sol";
+import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {GeometricKandelTest} from "../abstract/GeometricKandel.t.sol";
 import {console2 as console} from "forge-std/Test.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AavePrivateRouter} from "mgv_src/strategies/routers/integrations/AavePrivateRouter.sol";
+import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
+import {AavePrivateRouter} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
 
 contract ShortKandelTest is GeometricKandelTest {
   TestToken internal collateral;
-  PinnedPolygonFork internal fork;
+  PolygonFork internal fork;
   AavePrivateRouter internal router;
   uint internal interestRate = 2;
   uint internal constant INIT_COLLATERAL = 1_000_000 * 10 ** 18;
@@ -48,7 +48,7 @@ contract ShortKandelTest is GeometricKandelTest {
   }
 
   function __setForkEnvironment__() internal override {
-    fork = new PinnedPolygonFork();
+    fork = new PolygonFork();
     fork.setUp();
     options.gasprice = 140;
     options.gasbase = 120_000;

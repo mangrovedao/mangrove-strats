@@ -2,10 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
-import {AaveV3Borrower} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
-import {DataTypes} from "mgv_src/strategies/vendor/aave/v3/DataTypes.sol";
-import {ReserveConfiguration} from "mgv_src/strategies/vendor/aave/v3/ReserveConfiguration.sol";
-import {ICreditDelegationToken} from "mgv_src/strategies/vendor/aave/v3/ICreditDelegationToken.sol";
+import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
+import {DataTypes} from "mgv_strat_src/strategies/vendor/aave/v3/DataTypes.sol";
+import {ReserveConfiguration} from "mgv_strat_src/strategies/vendor/aave/v3/ReserveConfiguration.sol";
+import {ICreditDelegationToken} from "mgv_strat_src/strategies/vendor/aave/v3/ICreditDelegationToken.sol";
 
 ///@title Memoizes values for AAVE to reduce gas cost and simplify code flow.
 ///@dev the memoizer works in the context of a single token and therefore should not be used across multiple tokens.
