@@ -6,7 +6,9 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
-///@title Router for smart offers that want to borrow promised assets AAVE
+///@title Router for smart offers that borrow promised assets on AAVE
+///@dev router assumes all bound makers share the same liquidity
+///@dev if the same maker has many smart offers that are succeptible to be consumed in the same market order, it can set `BUFFER_SIZE` to a non zero value to increase gas efficiency (see below)
 
 contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@notice Logs unexpected throws from AAVE
@@ -16,9 +18,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
   /// @notice portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow` function
-  /// @notice expressed in percent
+  /// @notice expressed in percent of the total borrow capacity of this router
   /// @dev setting BUFFER_SIZE to 0 will make this router borrow only what is missing from the pool
-  /// @dev setting BUFFER_SIZE to 100 will make this router borrow its whole credit line from the Pool
+  /// @dev setting BUFFER_SIZE to 100 will make this router borrow its whole credit line from the Pool. As a consequence this router's position can be liquidated on the next block should the router fail to repay its debt at the end of the taker's order. This could happen if the taker consummes an offer of its own during the m.o and manages to put the pool into a state where it refuses repaying (should only be possible if the reserve is paused or inactive).
   /// (so as not to call `borrow` multiple times if the router is to be called several times in the same market order)
   uint internal immutable BUFFER_SIZE;
 
