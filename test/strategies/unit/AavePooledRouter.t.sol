@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {OfferLogicTest, IERC20, TestToken, console} from "./OfferLogic.t.sol";
 import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
+import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 
@@ -24,7 +24,7 @@ contract AavePooledRouterTest is OfferLogicTest {
   function setUp() public override {
     // deploying mangrove and opening WETH/USDC market.
     if (useForkAave) {
-      fork = new PinnedPolygonFork();
+      fork = new PolygonFork();
     }
     super.setUp();
 
