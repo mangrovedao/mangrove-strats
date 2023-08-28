@@ -38,10 +38,10 @@ jobs:
            &&  steps.changes.outputs.addresses == 'true')
       uses: actions/github-script@v6
       with:
-        script: core.setFailed('You have changed an address in mangrove-core (deployed/*.json). PR must be marked \'update address\' for CI to run')
+        script: core.setFailed('You have changed an address in mangrove-strats (deployed/*.json). PR must be marked \'update address\' for CI to run')
 
-  # ==== Job: Build and test mangrove-core
-  mangrove-core:
+  # ==== Job: Build and test mangrove-start
+  mangrove-strats:
     runs-on: ubuntu-latest
 
     steps:
@@ -120,7 +120,7 @@ jobs:
 
     needs:
     - file-guard
-    - mangrove-core
+    - mangrove-strats
 
     runs-on: ubuntu-latest
 
@@ -128,5 +128,5 @@ jobs:
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
-        allowed-skips: file-guard, mangrove-core
+        allowed-skips: file-guard, mangrove-starts
         jobs: ${{ toJSON(needs) }}
