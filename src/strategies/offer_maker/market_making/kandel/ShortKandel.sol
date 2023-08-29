@@ -102,11 +102,12 @@ contract ShortKandel is GeometricKandel {
     _withdraw(token, amount, recipient);
   }
 
-  ///@notice returns the amount of the router's balance that belong to this contract for the token offered for the offer type.
+  ///@notice returns the amount funds availbale to this contract for the token needed for the given offer type.
   ///@inheritdoc AbstractKandel
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
-    return router().balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
+    AavePrivateRouter.AssetBalances memory bal = privateRouter().assetBalances(token);
+    return bal.creditLine + bal.liquid + bal.local + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds on AAVE

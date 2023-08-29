@@ -289,14 +289,11 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, true);
   }
 
-  ///@notice returns the amount of funds available to this contract, summing up redeem and borrow capacities
-  ///@notice we ignore potential debt because redeem and borrow capacity already takes debt into account
-  ///@dev this function is gas costly, better used off chain.
+  ///@notice returns the amount of asset that this contract has deposited on Aave
   ///@inheritdoc AbstractRouter
   function balanceOfReserve(IERC20 token, address) public view override returns (uint) {
     Memoizer memory m;
-    (uint r, uint b) = maxGettableUnderlying(token, m, true);
-    return (r + b);
+    return overlyingBalanceOf(token, m);
   }
 
   ///@notice sets user Emode
