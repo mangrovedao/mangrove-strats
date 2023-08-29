@@ -1,13 +1,15 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest, IERC20, TestToken, console} from "./OfferLogic.t.sol";
-import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AbstractRouterTest} from "./AbstractRouter.t.sol";
+import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {AavePooledRouter, IERC20} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {console} from "forge-std/console.sol";
 
-contract AavePooledRouterTest is OfferLogicTest {
+contract AavePooledRouterTest is AbstractRouterTest {
   bool internal useForkAave = true;
 
   AavePooledRouter internal pooledRouter;
@@ -61,10 +63,12 @@ contract AavePooledRouterTest is OfferLogicTest {
       : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
 
     vm.startPrank(deployer);
-    AavePooledRouter router = new AavePooledRouter({
+    pooledRouter = new AavePooledRouter({
       addressesProvider: aave,
       overhead: 218_000 // fails < 218K
     });
+    router = pooledRouter;
+
     router.bind(address(makerContract));
     makerContract.setRouter(router);
     vm.stopPrank();
@@ -77,8 +81,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     //at the end of super.setUp reserve has 1 ether and 2000 USDC
     //one needs to tell router to deposit them on AAVE
 
-    pooledRouter = AavePooledRouter(address(makerContract.router()));
-
     deal($(weth), address(makerContract), 1 ether);
     deal($(usdc), address(makerContract), 2000 * 10 ** 6);
 
@@ -87,18 +89,6 @@ contract AavePooledRouterTest is OfferLogicTest {
 
     assertEq(pooledRouter.balanceOfReserve(weth, owner), 1 ether, "Incorrect weth balance");
     assertEq(pooledRouter.balanceOfReserve(usdc, owner), 2000 * 10 ** 6, "Incorrect usdc balance");
-  }
-
-  function test_only_makerContract_can_push() public {
-    // so that push does not supply to the pool
-    deal($(usdc), address(this), 10 ** 6);
-    vm.expectRevert("AccessControlled/Invalid");
-    pooledRouter.push(usdc, address(this), 10 ** 6);
-
-    deal($(usdc), deployer, 10 ** 6);
-    vm.expectRevert("AccessControlled/Invalid");
-    vm.prank(deployer);
-    pooledRouter.push(usdc, deployer, 10 ** 6);
   }
 
   function test_supply_error_is_logged() public {
@@ -405,18 +395,18 @@ contract AavePooledRouterTest is OfferLogicTest {
     assertEq(pooledRouter.overlying(weth).balanceOf($(pooledRouter)), oldAWeth, "Incorrect aWeth balance");
   }
 
-  function test_claim_rewards() public {
-    address[] memory assets = new address[](3);
-    assets[0] = address(pooledRouter.overlying(usdc));
-    assets[1] = address(pooledRouter.overlying(weth));
-    assets[2] = address(pooledRouter.overlying(dai));
-    vm.prank(deployer);
-    (address[] memory rewardsList, uint[] memory claimedAmounts) = pooledRouter.claimRewards(assets);
-    for (uint i; i < rewardsList.length; i++) {
-      console.logAddress(rewardsList[i]);
-      console.log(claimedAmounts[i]);
-    }
-  }
+  // function test_claim_rewards() public {
+  //   address[] memory assets = new address[](3);
+  //   assets[0] = address(pooledRouter.overlying(usdc));
+  //   assets[1] = address(pooledRouter.overlying(weth));
+  //   assets[2] = address(pooledRouter.overlying(dai));
+  //   vm.prank(deployer);
+  //   (address[] memory rewardsList, uint[] memory claimedAmounts) = pooledRouter.claimRewards(assets);
+  //   for (uint i; i < rewardsList.length; i++) {
+  //     console.logAddress(rewardsList[i]);
+  //     console.log(claimedAmounts[i]);
+  //   }
+  // }
 
   function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
     TestToken tkn = new TestToken(

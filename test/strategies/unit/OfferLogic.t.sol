@@ -326,7 +326,9 @@ contract OfferLogicTest is StratTest {
     assertTrue(!success || (bounty == 0 && takergot > 0), "unexpected trade result");
   }
 
-  function test_owner_balance_is_updated_when_trade_succeeds() public {
+  // this test makes a strong assumption on the way base/quote balance evolves after a successful trade
+  // we make this test virtual in order to override it if necessary
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual {
     uint balOut = makerContract.tokenBalance(weth, owner);
     uint balIn = makerContract.tokenBalance(usdc, owner);
 
