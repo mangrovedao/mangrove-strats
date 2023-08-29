@@ -128,5 +128,5 @@ jobs:
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
-        allowed-skips: file-guard, mangrove-starts
+        allowed-skips: file-guard, mangrove-strats
         jobs: ${{ toJSON(needs) }}
