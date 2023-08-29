@@ -40,7 +40,7 @@ jobs:
       with:
         script: core.setFailed('You have changed an address in mangrove-strats (deployed/*.json). PR must be marked \'update address\' for CI to run')
 
-  # ==== Job: Build and test mangrove-start
+  # ==== Job: Build and test mangrove-starts
   mangrove-strats:
     runs-on: ubuntu-latest
 
