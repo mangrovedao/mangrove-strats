@@ -266,23 +266,6 @@ contract Mango is Direct {
     }
   }
 
-  // for reposting partial filled offers one always gives the residual (default behavior)
-  // and adapts wants to the new price (if different).
-  // this overrides the corresponding function in `Persistent`
-  function __residualWants__(MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint residual = __residualGives__(order);
-    if (residual == 0) {
-      return 0;
-    }
-    (bool success, bytes memory retdata) =
-      IMPLEMENTATION.delegatecall(abi.encodeWithSelector(MangoImplementation.$residualWants.selector, order, residual));
-    if (!success) {
-      MangoStorage.revertWithData(retdata);
-    } else {
-      return abi.decode(retdata, (uint));
-    }
-  }
-
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
     internal
     virtual

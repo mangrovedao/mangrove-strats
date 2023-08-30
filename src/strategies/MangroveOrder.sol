@@ -7,6 +7,7 @@ import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {MgvLib, IERC20} from "mgv_src/MgvLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -57,11 +58,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@dev this can be used to update price of the resting order
   ///@param outbound_tkn outbound token of the offer list
   ///@param inbound_tkn inbound token of the offer list
-  ///@param wants new amount of `inbound_tkn` offer owner wants
+  ///@param tick the price tick
   ///@param gives new amount of `outbound_tkn` offer owner gives
   ///@param pivotId pivot for the new rank of the offer
   ///@param offerId the id of the offer to be updated
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId, uint offerId)
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint offerId)
     external
     payable
     onlyOwner(outbound_tkn, inbound_tkn, offerId)
@@ -72,7 +73,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
     args.outbound_tkn = outbound_tkn;
     args.inbound_tkn = inbound_tkn;
-    args.wants = wants;
+    args.tick = tick;
     args.gives = gives;
     args.gasreq = offerGasreq();
     args.pivotId = pivotId;
@@ -111,11 +112,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   function checkCompleteness(TakerOrder calldata tko, TakerOrderResult memory res) internal pure returns (bool) {
     // The order can be incomplete if the price becomes too high or the end of the book is reached.
     if (tko.fillWants) {
-      // when fillWants is true, the market order stops when `takerWants` units of `outbound_tkn` have been obtained (minus potential fees);
-      return res.takerGot + res.fee >= tko.takerWants;
+      // when fillWants is true, the market order stops when `fillVolume` units of `outbound_tkn` have been obtained (minus potential fees);
+      return res.takerGot + res.fee >= tko.fillVolume;
     } else {
-      // otherwise, the market order stops when `takerGives` units of `inbound_tkn` have been sold.
-      return res.takerGave >= tko.takerGives;
+      // otherwise, the market order stops when `fillVolume` units of `inbound_tkn` have been sold.
+      return res.takerGave >= tko.fillVolume;
     }
   }
 
@@ -135,24 +136,26 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
     // Pulling funds from `msg.sender`'s reserve
-    uint pulled = router().pull(tko.inbound_tkn, msg.sender, tko.takerGives, true);
-    require(pulled == tko.takerGives, "mgvOrder/transferInFail");
+    // FIXME: is this the correct rounding? Should we pass in takerGives still?
+    uint takerGives = tko.fillWants ? TickLib.inboundFromOutbound(Tick.wrap(tko.tick), tko.fillVolume) : tko.fillVolume;
+    uint pulled = router().pull(tko.inbound_tkn, msg.sender, takerGives, true);
+    require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:
-    // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`tko.takerGives`)
-    // * (NAT_THIS+`msg.value`, OUT_THIS, IN_THIS+`tko.takerGives`)
+    // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
+    // * (NAT_THIS+`msg.value`, OUT_THIS, IN_THIS+`takerGives`)
 
-    (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrderByVolume({
+    (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrderByTick({
       outbound_tkn: address(tko.outbound_tkn),
       inbound_tkn: address(tko.inbound_tkn),
-      takerWants: tko.takerWants,
-      takerGives: tko.takerGives,
+      maxPrice_e18: tko.tick,
+      fillVolume: tko.fillVolume,
       fillWants: tko.fillWants
     });
 
     // POST:
-    // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`tko.takerGives`)
-    // * (NAT_THIS+`msg.value`+`res.bounty`, OUT_THIS+`res.takerGot`, IN_THIS+`tko.takerGives`-`res.takerGave`)
+    // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
+    // * (NAT_THIS+`msg.value`+`res.bounty`, OUT_THIS+`res.takerGot`, IN_THIS+`takerGives`-`res.takerGave`)
 
     bool isComplete = checkCompleteness(tko, res);
     // when `!restingOrder` this implements FOK. When `restingOrder` the `postRestingOrder` function reverts if resting order fails to be posted and `fillOrKill`.
@@ -163,7 +166,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     if (res.takerGot > 0) {
       require(router().push(tko.outbound_tkn, msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed");
     }
-    uint inboundLeft = tko.takerGives - res.takerGave;
+    uint inboundLeft = takerGives - res.takerGave;
     if (inboundLeft > 0) {
       require(router().push(tko.inbound_tkn, msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
     }
@@ -233,8 +236,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       inbound_tkn: tko.inbound_tkn,
       taker: msg.sender,
       fillOrKill: tko.fillOrKill,
-      takerWants: tko.takerWants,
-      takerGives: tko.takerGives,
+      tick: tko.tick,
+      fillVolume: tko.fillVolume,
       fillWants: tko.fillWants,
       restingOrder: tko.restingOrder,
       expiryDate: tko.expiryDate,
@@ -253,6 +256,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param fund amount of WEIs used to cover for the offer bounty (covered gasprice is derived from `fund`).
   ///@param res the result of the taker order.
   ///@return refund the amount to refund to the taker of the fund.
+  //FIXME: is the following true regarding entailed price? or should it just be "tko.tick"?
   ///@dev entailed price that should be preserved for the maker order are:
   /// * `tko.takerGives/tko.takerWants` for buy orders (i.e `fillWants==true`)
   /// * `tko.takerWants/tko.takerGives` for sell orders (i.e `fillWants==false`)
@@ -263,24 +267,24 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     TakerOrderResult memory res,
     uint fund
   ) internal returns (uint refund) {
-    uint residualWants;
+    int offerTick = -tko.tick;
     uint residualGives;
     if (tko.fillWants) {
-      // partialFill => tko.takerWants > res.takerGot + res.fee
-      residualWants = tko.takerWants - (res.takerGot + res.fee);
+      uint residualWants;
+      // partialFill => tko.fillVolume > res.takerGot + res.fee
+      residualWants = tko.fillVolume - (res.takerGot + res.fee);
       // adapting residualGives to match initial price
-      residualGives = (residualWants * tko.takerGives) / tko.takerWants;
+      //FIXME: correct rounding?
+      residualGives = TickLib.outboundFromInbound(Tick.wrap(offerTick), residualWants);
     } else {
-      // partialFill => tko.takerGives > res.takerGave
-      residualGives = tko.takerGives - res.takerGave;
-      // adapting residualGives to match initial price
-      residualWants = (residualGives * tko.takerWants) / tko.takerGives;
+      // partialFill => tko.fillVolume > res.takerGave
+      residualGives = tko.fillVolume - res.takerGave;
     }
     (res.offerId,) = _newOffer(
       OfferArgs({
         outbound_tkn: outbound_tkn,
         inbound_tkn: inbound_tkn,
-        wants: residualWants,
+        tick: offerTick,
         gives: residualGives,
         gasreq: offerGasreq(), // using default gasreq of the strat
         gasprice: 0, // ignored

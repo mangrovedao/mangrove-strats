@@ -6,6 +6,7 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
 abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
@@ -70,8 +71,15 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       if (index >= firstAskIndex) {
         break;
       }
-      args.wants = baseDist[i];
-      args.gives = quoteDist[i];
+      //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
+      if (baseDist[i] > 0) {
+        int tick = Tick.unwrap(TickLib.tickFromVolumes(baseDist[i], quoteDist[i]));
+        args.tick = tick;
+        args.gives = quoteDist[i];
+      } else {
+        // unused: args.tick;
+        args.gives = 0;
+      }
       args.gasreq = gasreq;
       args.gasprice = gasprice;
       args.pivotId = pivotIds[i];
@@ -83,8 +91,15 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
 
     for (; i < indices.length; ++i) {
       uint index = indices[i];
-      args.wants = quoteDist[i];
-      args.gives = baseDist[i];
+      //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
+      if (quoteDist[i] > 0) {
+        int tick = Tick.unwrap(TickLib.tickFromVolumes(quoteDist[i], baseDist[i]));
+        args.tick = tick;
+        args.gives = baseDist[i];
+      } else {
+        // unused: args.tick;
+        args.gives = 0;
+      }
       args.gasreq = gasreq;
       args.gasprice = gasprice;
       args.pivotId = pivotIds[i];
@@ -107,7 +122,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     // if offer does not exist on mangrove yet
     if (offerId == 0) {
       // and offer should exist
-      if (args.gives > 0 && args.wants > 0) {
+      if (args.gives > 0) {
         // create it
         (offerId, result) = _newOffer(args);
         if (offerId != 0) {
@@ -121,7 +136,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     // else offer exists
     else {
       // but the offer should be dead since gives is 0
-      if (args.gives == 0 || args.wants == 0) {
+      if (args.gives == 0) {
         // This may happen in the following cases:
         // * `gives == 0` may not come from `DualWantsGivesOfOffer` computation, but `wants==0` might.
         // * `gives == 0` may happen from populate in case of re-population where the offers in the spread are then retracted by setting gives to 0.

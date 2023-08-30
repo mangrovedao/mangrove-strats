@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract Amplifier is Direct {
   IERC20 public immutable BASE;
@@ -67,11 +68,13 @@ contract Amplifier is Direct {
     require(!MGV.offers(address(BASE), address(STABLE2), offerId2).isLive(), "Amplifier/offer2AlreadyActive");
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
 
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants1, gives));
+
     (offerId1,) = _newOffer(
       OfferArgs({
         outbound_tkn: BASE,
         inbound_tkn: STABLE1,
-        wants: wants1,
+        tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
@@ -82,11 +85,13 @@ contract Amplifier is Direct {
     );
     // no need to fund this second call for provision
     // since the above call should be enough
+    tick = Tick.unwrap(TickLib.tickFromVolumes(wants2, gives));
+
     (offerId2,) = _newOffer(
       OfferArgs({
         outbound_tkn: BASE,
         inbound_tkn: STABLE2,
-        wants: wants2,
+        tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
@@ -131,13 +136,14 @@ contract Amplifier is Direct {
       unchecked {
         new_alt_wants = (old_alt_wants * new_alt_gives) / old_alt_gives;
       }
+
       // the call below might throw
       bytes32 reason = _updateOffer(
         OfferArgs({
           outbound_tkn: IERC20(order.outbound_tkn),
           inbound_tkn: IERC20(alt_stable),
           gives: new_alt_gives,
-          wants: new_alt_wants,
+          tick: Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives)),
           gasreq: alt_detail.gasreq(),
           pivotId: alt_offer.next(),
           gasprice: 0,

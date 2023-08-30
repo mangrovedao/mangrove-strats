@@ -106,7 +106,7 @@ contract OfferLogicTest is StratTest {
 
   function test_maker_can_post_newOffer() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -122,7 +122,7 @@ contract OfferLogicTest is StratTest {
   function test_posting_new_offer_with_too_high_gasreq_reverts() public {
     vm.expectRevert("mgv/writeOffer/gasreq/tooHigh");
     vm.prank(owner);
-    makerContract.newOffer{value: 0.1 ether}({
+    makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -136,7 +136,7 @@ contract OfferLogicTest is StratTest {
     uint gasreq = makerContract.offerGasreq();
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
-    makerContract.newOffer{value: 0}({
+    makerContract.newOfferFromVolume{value: 0}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -152,7 +152,7 @@ contract OfferLogicTest is StratTest {
 
   function test_maker_can_deprovision_Offer() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -173,7 +173,7 @@ contract OfferLogicTest is StratTest {
 
   function test_mangrove_can_deprovision_offer() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -195,7 +195,7 @@ contract OfferLogicTest is StratTest {
 
   function test_deprovision_twice_returns_no_fund() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -212,7 +212,7 @@ contract OfferLogicTest is StratTest {
   function test_deprovisionOffer_throws_if_wei_transfer_fails() public {
     TestSender(owner).refuseNative();
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -227,7 +227,7 @@ contract OfferLogicTest is StratTest {
 
   function test_maker_can_updateOffer() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -238,7 +238,7 @@ contract OfferLogicTest is StratTest {
     vm.stopPrank();
 
     vm.startPrank(owner);
-    makerContract.updateOffer({
+    makerContract.updateOfferFromVolume({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -253,7 +253,7 @@ contract OfferLogicTest is StratTest {
   function test_only_maker_can_updateOffer() public {
     uint gasreq = makerContract.offerGasreq();
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -263,7 +263,7 @@ contract OfferLogicTest is StratTest {
     });
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    makerContract.updateOffer({
+    makerContract.updateOfferFromVolume({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -277,7 +277,7 @@ contract OfferLogicTest is StratTest {
   function test_updateOffer_fails_when_provision_is_too_low() public {
     uint gasreq = makerContract.offerGasreq();
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -289,7 +289,7 @@ contract OfferLogicTest is StratTest {
     mgv.setGasprice(type(uint16).max);
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
-    makerContract.updateOffer({
+    makerContract.updateOfferFromVolume({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -303,7 +303,7 @@ contract OfferLogicTest is StratTest {
   function performTrade(bool success) internal returns (uint takergot, uint takergave, uint bounty, uint fee) {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
-    makerContract.newOffer{value: 0.1 ether}({
+    makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -339,7 +339,7 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_below_density() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -367,7 +367,7 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_underprovisioned() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -400,7 +400,7 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_innactive() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,

@@ -71,7 +71,7 @@ interface IOfferLogic is IMaker {
   ///@notice Memory allocation for `_new/updateOffer`'s arguments.
   ///@param outbound_tkn outbound token of the offer list.
   ///@param inbound_tkn inbound token of the offer list.
-  ///@param wants the amount of inbound tokens the maker wants for a complete fill.
+  ///@param tick the price tick.
   ///@param gives the amount of outbound tokens the maker gives for a complete fill.
   ///@param gasreq the amount of gas units that are required to execute the trade
   ///@param gasprice the gasprice used to compute offer's provision (use 0 to use Mangrove's gasprice)
@@ -83,7 +83,7 @@ interface IOfferLogic is IMaker {
   struct OfferArgs {
     IERC20 outbound_tkn;
     IERC20 inbound_tkn;
-    uint wants;
+    int tick;
     uint gives;
     uint gasreq;
     uint gasprice;

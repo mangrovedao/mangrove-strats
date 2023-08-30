@@ -110,7 +110,7 @@ contract AmplifierForwarderTest is StratTest {
     );
   }
 
-  function takeOffer(uint makerGivesAmount, uint makerWantsAmount, IERC20 makerWantsToken, uint offerId)
+  function takeOffer(uint, uint makerWantsAmount, IERC20 makerWantsToken, uint offerId)
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {

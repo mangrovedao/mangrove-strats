@@ -17,7 +17,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
     public
     payable
     override
@@ -27,7 +27,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
       OfferArgs({
         outbound_tkn: outbound_tkn,
         inbound_tkn: inbound_tkn,
-        wants: wants,
+        tick: tick,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -39,12 +39,12 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId)
     public
     payable
     returns (uint offerId)
   {
-    return newOffer(outbound_tkn, inbound_tkn, wants, gives, pivotId, offerGasreq());
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
@@ -52,7 +52,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   function updateOffer(
     IERC20 outbound_tkn,
     IERC20 inbound_tkn,
-    uint wants,
+    int tick,
     uint gives,
     uint pivotId,
     uint offerId,
@@ -66,7 +66,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
     args.outbound_tkn = outbound_tkn;
     args.inbound_tkn = inbound_tkn;
-    args.wants = wants;
+    args.tick = tick;
     args.gives = gives;
     args.gasreq = gasreq;
     args.pivotId = pivotId;
@@ -75,12 +75,12 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId, uint offerId)
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint offerId)
     public
     payable
     onlyOwner(outbound_tkn, inbound_tkn, offerId)
   {
-    updateOffer(outbound_tkn, inbound_tkn, wants, gives, pivotId, offerId, offerGasreq());
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

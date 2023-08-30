@@ -10,9 +10,9 @@ interface IOrderLogic {
   ///@param outbound_tkn outbound token used to identify the order book
   ///@param inbound_tkn the inbound token used to identify the order book
   ///@param fillOrKill true to revert if market order cannot be filled and resting order failed or is not enabled; otherwise, false
-  ///@param takerWants desired total amount of `outbound_tkn`
-  ///@param takerGives available total amount of `inbound_tkn`
-  ///@param fillWants if true (buying), the market order stops when `takerWants` units of `outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `takerGives` units of `inbound_tkn` have been sold.
+  ///@param tick the price tick
+  ///@param fillVolume the volume to fill
+  ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `inbound_tkn` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
   ///@param pivotId in case a resting order is required, the best pivot estimation of its position in the offer list (if the market order led to a non empty partial fill, then `pivotId` should be 0 unless the order book is crossed).
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
@@ -20,8 +20,8 @@ interface IOrderLogic {
     IERC20 outbound_tkn;
     IERC20 inbound_tkn;
     bool fillOrKill;
-    uint takerWants;
-    uint takerGives;
+    int tick;
+    uint fillVolume;
     bool fillWants;
     bool restingOrder;
     uint pivotId;
@@ -48,9 +48,9 @@ interface IOrderLogic {
   ///@param inbound_tkn The inbound token of the order.
   ///@param taker The address of the taker
   ///@param fillOrKill The fillOrKill that take was called with
-  ///@param takerWants How much the taker wanted
-  ///@param takerGives How much the taker would give
-  ///@param fillWants If true, the market order stopped when `takerWants` units of `outbound_tkn` had been obtained; otherwise, the market order stopped when `takerGives` units of `inbound_tkn` had been sold.
+  ///@param tick The price tick
+  ///@param fillVolume the volume to fill
+  ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `inbound_tkn` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with
   ///@param expiryDate The expiry date take was called with
   ///@param takerGot How much the taker got
@@ -64,8 +64,8 @@ interface IOrderLogic {
     IERC20 indexed inbound_tkn,
     address indexed taker,
     bool fillOrKill,
-    uint takerWants,
-    uint takerGives,
+    int tick,
+    uint fillVolume,
     bool fillWants,
     bool restingOrder,
     uint expiryDate,
