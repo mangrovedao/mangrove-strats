@@ -36,7 +36,7 @@ abstract contract AbstractKandel {
   ///@dev Pending could be withdrawn or invested by increasing offered volume.
   function pending(OfferType ba) external view virtual returns (int);
 
-  ///@notice the total balance available for the strat of the offered token for the given offer type.
+  ///@notice the total balance available for the strat of the offered token for the given offer type. Function must satisfy `prending(ask/bid) = reserveBalance(ask/bid) - promised(quote/base)`
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view virtual returns (uint balance);

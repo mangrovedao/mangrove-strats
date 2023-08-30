@@ -12,10 +12,10 @@ contract AavePrivateRouterTest is OfferLogicTest {
 
   AavePrivateRouter internal privateRouter;
 
-  uint internal constant GASREQ = 1_000_000;
+  uint internal constant GASREQ = 550_100;
 
   event SetAaveManager(address);
-  event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
+  event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
   IERC20 internal dai;
 
@@ -49,7 +49,7 @@ contract AavePrivateRouterTest is OfferLogicTest {
     AavePrivateRouter router = new AavePrivateRouter({
       addressesProvider:aave, 
       interestRate:interestRate, 
-      overhead: GASREQ,
+      overhead: 1_000_000,
       buffer_size: bufferSize
     });
     router.bind(address(makerContract));
@@ -96,349 +96,114 @@ contract AavePrivateRouterTest is OfferLogicTest {
     assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
   }
 
-  // function test_only_makerContract_can_push() public {
-  //   // so that push does not supply to the pool
-  //   deal($(usdc), address(this), 10 ** 6);
-  //   vm.expectRevert("AccessControlled/Invalid");
-  //   privateRouter.push(usdc, address(this), 10 ** 6);
+  function test_supply_error_is_logged() public {
+    TestToken pixieDust = new TestToken({
+      admin: address(this),
+      name: "Pixie Dust",
+      symbol: "PXD",
+      _decimals: uint8(18)
+    });
 
-  //   deal($(usdc), deployer, 10 ** 6);
-  //   vm.expectRevert("AccessControlled/Invalid");
-  //   vm.prank(deployer);
-  //   privateRouter.push(usdc, deployer, 10 ** 6);
-  // }
+    deal($(pixieDust), address(makerContract), 1 ether);
+    vm.prank(address(makerContract));
+    pixieDust.approve($(privateRouter), type(uint).max);
+    vm.prank(deployer);
+    privateRouter.activate(pixieDust);
 
-  // function test_supply_error_is_logged() public {
-  //   TestToken pixieDust = new TestToken({
-  //     admin: address(this),
-  //     name: "Pixie Dust",
-  //     symbol: "PXD",
-  //     _decimals: uint8(18)
-  //   });
+    expectFrom($(privateRouter));
+    emit LogAaveIncident({asset: address(pixieDust), maker: address(makerContract), aaveReason: "noReason"});
+    vm.prank(address(makerContract));
+    privateRouter.pushAndSupply(pixieDust, 1 ether, pixieDust, 0);
+    // although aave refused the deposit, funds should be on the router
+    assertEq(privateRouter.balanceOfReserve(pixieDust, owner), 1 ether, "Incorrect balance on router");
+  }
 
-  //   deal($(pixieDust), address(makerContract), 1 ether);
-  //   vm.prank(address(makerContract));
-  //   pixieDust.approve($(privateRouter), type(uint).max);
-  //   vm.prank(deployer);
-  //   privateRouter.activate(pixieDust);
+  event ReserveUsedAsCollateralEnabled(address indexed reserve, address indexed user);
+  event ReserveUsedAsCollateralDisabled(address indexed reserve, address indexed user);
 
-  //   expectFrom($(privateRouter));
-  //   emit AaveIncident({token: pixieDust, maker: address(makerContract), reserveId: owner, aaveReason: "noReason"});
-  //   vm.prank(address(makerContract));
-  //   privateRouter.pushAndSupply(pixieDust, 1 ether, pixieDust, 0, owner);
-  //   // although aave refused the deposit, funds should be on the router
-  //   assertEq(privateRouter.balanceOfReserve(pixieDust, owner), 1 ether, "Incorrect balance on router");
-  // }
+  function test_exit_market() public {
+    // pooled router has entered weth and usdc market when first supplying
+    expectFrom(address(privateRouter.POOL()));
+    emit ReserveUsedAsCollateralDisabled($(dai), $(privateRouter));
+    vm.prank(deployer);
+    privateRouter.exitMarket(dai);
+  }
 
-  // function test_initial_aave_manager_is_deployer() public {
-  //   assertEq(privateRouter.aaveManager(), deployer, "unexpected rewards manager");
-  // }
+  function test_reenter_market() public {
+    vm.prank(deployer);
+    privateRouter.exitMarket(dai);
 
-  // function test_admin_can_set_new_aave_manager() public {
-  //   vm.expectRevert("AccessControlled/Invalid");
-  //   privateRouter.setAaveManager($(this));
+    expectFrom(address(privateRouter.POOL()));
+    emit ReserveUsedAsCollateralEnabled($(dai), $(privateRouter));
+    vm.prank(deployer);
+    privateRouter.enterMarket(dynamic([IERC20(dai)]));
+  }
 
-  //   expectFrom($(privateRouter));
-  //   emit SetAaveManager($(this));
-  //   vm.prank(deployer);
-  //   privateRouter.setAaveManager($(this));
-  //   assertEq(privateRouter.aaveManager(), $(this), "unexpected rewards manager");
-  // }
+  function test_deposit_on_aave_maintains_reserve_balance() public {
+    deal($(usdc), address(makerContract), 10 ** 6);
+    vm.prank(address(makerContract));
+    // this pushes usdc on the router w/o supplying to the pool
+    privateRouter.push(usdc, address(makerContract), 10 ** 6);
 
-  // function test_aave_manager_can_revoke_aave_approval() public {
-  //   assertTrue(
-  //     weth.allowance({spender: address(privateRouter.POOL()), owner: $(privateRouter)}) > 0,
-  //     "Allowance should be positive"
-  //   );
-  //   vm.prank(deployer);
-  //   privateRouter.setAaveManager($(this));
-  //   privateRouter.revokeLenderApproval(weth);
-  //   assertEq(
-  //     weth.allowance({spender: address(privateRouter.POOL()), owner: $(privateRouter)}), 0, "Allowance should be 0"
-  //   );
-  // }
+    uint reserveBalance = privateRouter.balanceOfReserve(usdc, address(makerContract));
 
-  // event ReserveUsedAsCollateralEnabled(address indexed reserve, address indexed user);
-  // event ReserveUsedAsCollateralDisabled(address indexed reserve, address indexed user);
+    vm.prank(address(makerContract));
+    privateRouter.flushBuffer(usdc);
 
-  // function test_aave_manager_can_exit_market() public {
-  //   // pooled router has entered weth and usdc market when first supplying
-  //   vm.prank(deployer);
-  //   privateRouter.setAaveManager($(this));
-  //   expectFrom(address(privateRouter.POOL()));
-  //   emit ReserveUsedAsCollateralDisabled($(weth), $(privateRouter));
-  //   privateRouter.exitMarket(weth);
-  // }
+    assertApproxEqAbs(
+      reserveBalance, privateRouter.balanceOfReserve(usdc, address(makerContract)), 1, "Incorrect reserve balance"
+    );
+  }
 
-  // function test_aave_manager_can_reenter_market() public {
-  //   // pooled router has entered weth and usdc market when first supplying
-  //   vm.prank(deployer);
-  //   privateRouter.setAaveManager($(this));
-  //   privateRouter.exitMarket(weth);
+  function test_mockup_marketOrder_gas_cost() public {
+    deal($(usdc), address(makerContract), 2 * 10 ** 6);
 
-  //   expectFrom(address(privateRouter.POOL()));
-  //   emit ReserveUsedAsCollateralEnabled($(weth), $(privateRouter));
-  //   privateRouter.enterMarket(dynamic([IERC20(weth)]));
-  // }
+    // emulates a push from offer logic
+    vm.startPrank(address(makerContract));
+    uint gas = gasleft();
+    privateRouter.push(usdc, address(makerContract), 10 ** 6);
+    vm.stopPrank();
 
-  // function test_deposit_on_aave_maintains_reserve_and_total_balance() public {
-  //   deal($(usdc), address(makerContract), 10 ** 6);
-  //   vm.prank(address(makerContract));
-  //   privateRouter.push(usdc, address(makerContract), 10 ** 6);
+    uint shallow_push_cost = gas - gasleft();
 
-  //   uint reserveBalance = privateRouter.balanceOfReserve(usdc, address(makerContract));
-  //   uint totalBalance = privateRouter.totalBalance(usdc);
+    vm.prank(address(makerContract));
+    privateRouter.flushBuffer(usdc);
 
-  //   vm.prank(deployer);
-  //   privateRouter.flushBuffer(usdc, false);
+    vm.startPrank(address(makerContract));
+    gas = gasleft();
+    /// this emulates a `get` from the offer logic
+    privateRouter.pull(weth, address(makerContract), 0.5 ether, false);
+    vm.stopPrank();
 
-  //   assertApproxEqAbs(
-  //     reserveBalance, privateRouter.balanceOfReserve(usdc, address(makerContract)), 1, "Incorrect reserve balance"
-  //   );
-  //   assertApproxEqAbs(totalBalance, privateRouter.totalBalance(usdc), 1, "Incorrect total balance");
-  // }
+    uint deep_pull_cost = gas - gasleft();
 
-  // function test_makerContract_has_initially_zero_shares() public {
-  //   assertEq(privateRouter.sharesOf(dai, address(makerContract)), 0, "Incorrect initial shares");
-  // }
+    // this emulates posthook
+    vm.startPrank(address(makerContract));
+    gas = gasleft();
+    privateRouter.pushAndSupply(usdc, 10 ** 6, weth, 0.5 ether);
+    vm.stopPrank();
 
-  // function test_push_token_increases_user_shares() public {
-  //   deal($(dai), maker1, 1 * 10 ** 18);
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 1 * 10 ** 18);
-  //   deal($(dai), maker2, 2 * 10 ** 18);
-  //   vm.prank(maker2);
-  //   privateRouter.push(dai, maker2, 2 * 10 ** 18);
+    uint finalize_cost = gas - gasleft();
+    console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
+    console.log("shallow push: %d", shallow_push_cost);
+    console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
+    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
+  }
 
-  //   assertEq(privateRouter.sharesOf(dai, maker2), 2 * privateRouter.sharesOf(dai, maker1), "Incorrect shares");
-  // }
+  function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
+    TestToken tkn = new TestToken(
+      $(this),
+      "wen token",
+      "WEN",
+      42
+    );
+    vm.prank(address(makerContract));
+    tkn.approve({spender: $(privateRouter), amount: type(uint).max});
 
-  // function test_pull_token_decreases_user_shares() public {
-  //   deal($(dai), maker1, 1 * 10 ** 18);
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 1 * 10 ** 18);
-  //   deal($(dai), maker2, 2 * 10 ** 18);
-  //   vm.prank(maker2);
-  //   privateRouter.push(dai, maker2, 2 * 10 ** 18);
-
-  //   vm.prank(maker1);
-  //   privateRouter.pull(dai, maker1, 1 * 10 ** 18, true);
-
-  //   assertEq(privateRouter.sharesOf(dai, maker1), 0, "Incorrect shares");
-  // }
-
-  // function test_mockup_marketOrder_gas_cost() public {
-  //   deal($(dai), maker1, 10 ** 18);
-
-  //   vm.startPrank(maker1);
-  //   uint gas = gasleft();
-  //   privateRouter.push(dai, maker1, 10 ** 18);
-  //   vm.stopPrank();
-
-  //   uint shallow_push_cost = gas - gasleft();
-
-  //   vm.prank(deployer);
-  //   privateRouter.flushBuffer(dai, false);
-
-  //   vm.startPrank(maker1);
-  //   gas = gasleft();
-  //   /// this emulates a `get` from the offer logic
-  //   privateRouter.pull(dai, maker1, 0.5 ether, false);
-  //   vm.stopPrank();
-
-  //   uint deep_pull_cost = gas - gasleft();
-
-  //   deal($(usdc), maker1, 10 ** 6);
-
-  //   vm.startPrank(maker1);
-  //   gas = gasleft();
-  //   privateRouter.pushAndSupply(usdc, 10 ** 6, dai, 1 ether, maker1);
-  //   vm.stopPrank();
-
-  //   uint finalize_cost = gas - gasleft();
-  //   console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
-  //   console.log("shallow push: %d", shallow_push_cost);
-  //   console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
-  //   assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
-  // }
-
-  // function test_push_token_increases_first_minter_shares() public {
-  //   deal($(dai), maker1, 10 ** 18);
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 10 ** 18);
-  //   assertEq(privateRouter.sharesOf(dai, maker1), 10 ** privateRouter.OFFSET(), "Incorrect first shares");
-  // }
-
-  // function test_pull_token_decreases_last_minter_shares_to_zero() public {
-  //   deal($(dai), maker1, 10 ** 18);
-  //   vm.startPrank(maker1);
-  //   privateRouter.push(dai, maker1, 10 ** 18);
-  //   privateRouter.pull(dai, maker1, 10 ** 18, true);
-  //   vm.stopPrank();
-  //   assertEq(privateRouter.sharesOf(dai, maker1), 0, "Incorrect shares");
-  // }
-
-  // function test_push0() public {
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 0);
-  //   assertEq(privateRouter.sharesOf(dai, maker1), 0, "Incorrect shares");
-  // }
-
-  // function test_pull0() public {
-  //   vm.prank(maker1);
-  //   privateRouter.pull(dai, maker1, 0, true);
-  //   assertEq(privateRouter.sharesOf(dai, maker1), 0, "Incorrect shares");
-  // }
-
-  // function test_donation_in_underlying_increases_user_shares(uint96 donation) public {
-  //   deal($(dai), maker1, 1 * 10 ** 18);
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 1 * 10 ** 18);
-
-  //   deal($(dai), maker2, 4 * 10 ** 18);
-  //   vm.prank(maker2);
-  //   privateRouter.push(dai, maker2, 4 * 10 ** 18);
-
-  //   deal($(dai), maker1, donation);
-  //   vm.prank(maker1);
-  //   dai.transfer($(privateRouter), donation);
-
-  //   uint expectedBalance = (uint(5) * 10 ** 18 + uint(donation)) / 5;
-  //   uint reserveBalance = privateRouter.balanceOfReserve(dai, maker1);
-  //   assertEq(expectedBalance, reserveBalance, "Incorrect reserve for maker1");
-
-  //   expectedBalance = uint(4) * (5 * 10 ** 18 + uint(donation)) / 5;
-  //   vm.prank(maker2);
-  //   reserveBalance = privateRouter.balanceOfReserve(dai, maker2);
-  //   assertEq(expectedBalance, reserveBalance, "Incorrect reserve for maker2");
-  // }
-
-  // function test_strict_pull_with_insufficient_funds_throws_as_expected() public {
-  //   vm.expectRevert("AavePooledRouter/insufficientFunds");
-  //   vm.prank(maker1);
-  //   privateRouter.pull(dai, maker1, 1, true);
-  // }
-
-  // function test_non_strict_pull_with_insufficient_funds_throws_as_expected() public {
-  //   vm.expectRevert("AavePooledRouter/insufficientFunds");
-  //   deal($(dai), maker1, 10);
-  //   vm.prank(maker1);
-  //   privateRouter.push(dai, maker1, 10);
-  //   vm.prank(maker1);
-  //   privateRouter.pull(dai, maker1, 11, false);
-  // }
-
-  // function test_strict_pull_transfers_only_amount_and_pulls_all_from_aave() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   // router has no weth on buffer and 1 weth on aave
-  //   uint oldAWeth = privateRouter.overlying(weth).balanceOf($(privateRouter));
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, true);
-  //   vm.stopPrank();
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect maker balance");
-  //   assertEq(weth.balanceOf($(privateRouter)), oldAWeth - pulled, "Incorrect router balance");
-  //   assertEq(privateRouter.overlying(weth).balanceOf($(privateRouter)), 0, "Incorrect aave balance");
-  // }
-
-  // function test_non_strict_pull_transfers_whole_balance() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, true);
-  //   vm.stopPrank();
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect balance");
-  // }
-
-  // function test_strict_pull_with_small_buffer_triggers_aave_withdraw() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   vm.stopPrank();
-  //   // small donation
-  //   deal($(weth), $(privateRouter), 10);
-
-  //   uint oldAWeth = privateRouter.overlying(weth).balanceOf($(privateRouter));
-  //   vm.prank(maker1);
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, true);
-
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect weth balance");
-  //   assertEq(weth.balanceOf($(privateRouter)), oldAWeth - pulled + 10, "Incorrect aWeth balance");
-  // }
-
-  // function test_non_strict_pull_with_small_buffer_triggers_aave_withdraw() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   vm.stopPrank();
-  //   // donation
-  //   deal($(weth), $(privateRouter), 10);
-
-  //   privateRouter.overlying(weth).balanceOf($(privateRouter));
-  //   vm.prank(maker1);
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, false);
-
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect weth balance");
-  //   assertEq(privateRouter.overlying(weth).balanceOf($(privateRouter)), 0, "Incorrect aWeth balance");
-  // }
-
-  // function test_strict_pull_with_large_buffer_does_not_triggers_aave_withdraw() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   vm.stopPrank();
-  //   deal($(weth), $(privateRouter), 1 ether);
-
-  //   uint oldAWeth = privateRouter.overlying(weth).balanceOf($(privateRouter));
-  //   vm.prank(maker1);
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, true);
-
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect weth balance");
-  //   assertEq(privateRouter.overlying(weth).balanceOf($(privateRouter)), oldAWeth, "Incorrect aWeth balance");
-  // }
-
-  // function test_non_strict_pull_with_large_buffer_does_not_triggers_aave_withdraw() public {
-  //   deal($(weth), maker1, 1 ether);
-  //   vm.startPrank(maker1);
-  //   privateRouter.pushAndSupply(weth, 1 ether, weth, 0, maker1);
-  //   vm.stopPrank();
-  //   deal($(weth), $(privateRouter), 1 ether);
-
-  //   uint oldAWeth = privateRouter.overlying(weth).balanceOf($(privateRouter));
-  //   vm.prank(maker1);
-  //   uint pulled = privateRouter.pull(weth, maker1, 0.5 ether, true);
-
-  //   assertEq(weth.balanceOf(maker1), pulled, "Incorrect weth balance");
-  //   assertEq(privateRouter.overlying(weth).balanceOf($(privateRouter)), oldAWeth, "Incorrect aWeth balance");
-  // }
-
-  // function test_claim_rewards() public {
-  //   address[] memory assets = new address[](3);
-  //   assets[0] = address(privateRouter.overlying(usdc));
-  //   assets[1] = address(privateRouter.overlying(weth));
-  //   assets[2] = address(privateRouter.overlying(dai));
-  //   vm.prank(deployer);
-  //   (address[] memory rewardsList, uint[] memory claimedAmounts) = privateRouter.claimRewards(assets);
-  //   for (uint i; i < rewardsList.length; i++) {
-  //     console.logAddress(rewardsList[i]);
-  //     console.log(claimedAmounts[i]);
-  //   }
-  // }
-
-  // function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
-  //   TestToken tkn = new TestToken(
-  //     $(this),
-  //     "wen token",
-  //     "WEN",
-  //     42
-  //   );
-  //   vm.prank(maker1);
-  //   tkn.approve({spender: $(privateRouter), amount: type(uint).max});
-
-  //   vm.expectRevert("AavePooledRouter/tokenNotLendableOnAave");
-  //   vm.prank(maker1);
-  //   privateRouter.checkList(IERC20($(tkn)), maker1);
-  // }
+    vm.prank(address(makerContract));
+    vm.expectRevert("AavePooledRouter/tokenNotLendableOnAave");
+    privateRouter.checkList(IERC20($(tkn)), address(makerContract));
+  }
 
   // function empty_pool(IERC20 token, address id) internal {
   //   // empty usdc reserve

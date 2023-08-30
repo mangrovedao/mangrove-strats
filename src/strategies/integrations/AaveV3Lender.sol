@@ -64,7 +64,10 @@ contract AaveV3Lender {
   ///@param noRevert whether Aave revert should be caught or not. If `noRevert` then revert message of aave is returned as a bytes32
   ///@return redeemed the amount of asset that were transferred to `to`
   ///@return reason the revert message of aave if any
-  function _redeem(IERC20 token, uint amount, address to, bool noRevert) internal returns (uint redeemed, bytes32 reason) {
+  function _redeem(IERC20 token, uint amount, address to, bool noRevert)
+    internal
+    returns (uint redeemed, bytes32 reason)
+  {
     if (amount == 0) {
       return (0, bytes32(0));
     }

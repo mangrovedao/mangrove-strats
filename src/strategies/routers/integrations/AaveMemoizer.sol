@@ -75,9 +75,8 @@ contract AaveMemoizer is AaveV3Borrower {
     if (!m.overlyingBalanceOfMemoized) {
       m.overlyingBalanceOfMemoized = true;
       IERC20 aToken = overlying(token, m);
-      if (aToken == IERC20(address(0))) {
-        m.overlyingBalanceOf = 0;
-      } else {
+      // aToken will be 0x if token is not a valid asset for AAVE.
+      if (aToken != IERC20(address(0))) {
         m.overlyingBalanceOf = aToken.balanceOf(address(this));
       }
     }
@@ -117,7 +116,11 @@ contract AaveMemoizer is AaveV3Borrower {
   function debtBalanceOf(IERC20 token, Memoizer memory m) public view returns (uint) {
     if (!m.debtBalanceOfMemoized) {
       m.debtBalanceOfMemoized = true;
-      m.debtBalanceOf = debtToken(token, m).balanceOf(address(this));
+      ICreditDelegationToken dtkn = debtToken(token, m);
+      // if token is not an approved asset of the AAVE, the pool's mapping will return 0x for the debt token.
+      if (address(dtkn) != address(0)) {
+        m.debtBalanceOf = dtkn.balanceOf(address(this));
+      }
     }
     return m.debtBalanceOf;
   }
