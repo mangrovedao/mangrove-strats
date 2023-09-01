@@ -12,7 +12,7 @@ import {
   RC
 } from "./AaveV3BorrowerStorage.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
-import "mgv_src/strategies/utils/TransferLib.sol";
+import "mgv_lib/TransferLib.sol";
 
 contract AaveV3BorrowerImplementation {
   IPool public immutable POOL;

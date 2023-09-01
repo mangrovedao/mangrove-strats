@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter} from "../AbstractRouter.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 

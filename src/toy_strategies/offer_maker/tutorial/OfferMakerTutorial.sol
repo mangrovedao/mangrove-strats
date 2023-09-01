@@ -29,7 +29,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -39,7 +39,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
       OfferArgs({
         outbound_tkn: outbound_tkn,
         inbound_tkn: inbound_tkn,
-        wants: wants,
+        tick: tick,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -54,7 +54,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   function updateOffer(
     IERC20 outbound_tkn,
     IERC20 inbound_tkn,
-    uint wants,
+    int tick,
     uint gives,
     uint pivotId,
     uint offerId,
@@ -64,7 +64,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
       OfferArgs({
         outbound_tkn: outbound_tkn,
         inbound_tkn: inbound_tkn,
-        wants: wants,
+        tick: tick,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,

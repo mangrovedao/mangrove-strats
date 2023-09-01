@@ -7,6 +7,7 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
@@ -309,7 +310,14 @@ abstract contract GeometricKandel is CoreKandel {
     // computing gives/wants for dual offer
     // At least: gives = order.gives/ratio and wants is then order.wants
     // At most: gives = order.gives and wants is adapted to match the price
-    (args.wants, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
+    uint wants;
+    (wants, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
+    if (wants > 0) {
+      // FIXME: Tick should only be updated on new offer or due to price updates, so would be better to set it outside
+      args.tick = Tick.unwrap(TickLib.tickFromVolumes(wants, args.gives));
+    } else {
+      args.gives = 0;
+    }
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents

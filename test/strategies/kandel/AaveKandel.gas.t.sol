@@ -8,7 +8,8 @@ import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/Aa
 
 contract AaveKandelGasTest is CoreKandelGasTest {
   function __deployKandel__(address deployer, address reserveId) internal override returns (GeometricKandel kdl_) {
-    uint GASREQ = 160_000;
+    //FIXME: Measure
+    uint GASREQ = 360_000;
     uint ROUTER_GASREQ = 280_000;
     vm.startPrank(deployer);
     kdl_ = new AaveKandel({

@@ -7,6 +7,7 @@ import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kand
 import {IERC20} from "mgv_src/IERC20.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
 
 /**
  * @notice Populate Kandel's distribution on Mangrove

@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {OfferForwarder, IMangrove, IERC20, AbstractRouter} from "./OfferForwarder.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract ForwarderTester is OfferForwarder, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
@@ -32,5 +33,30 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
     returns (bytes32)
   {
     return __posthookFallback__(order, result);
+  }
+
+  function newOfferFromVolume(
+    IERC20 outbound_tkn,
+    IERC20 inbound_tkn,
+    uint wants,
+    uint gives,
+    uint pivotId,
+    uint gasreq
+  ) external payable returns (uint offerId) {
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, gasreq);
+  }
+
+  function updateOfferFromVolume(
+    IERC20 outbound_tkn,
+    IERC20 inbound_tkn,
+    uint wants,
+    uint gives,
+    uint pivotId,
+    uint offerId,
+    uint gasreq
+  ) external payable {
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, gasreq);
   }
 }

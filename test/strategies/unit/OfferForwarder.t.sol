@@ -58,7 +58,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.assume(fund < 5 ether); // too high provision would yield a gasprice overflow
     uint contractOldBalance = mgv.balanceOf(address(makerContract));
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: fund}({
+    uint offerId = makerContract.newOfferFromVolume{value: fund}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -78,7 +78,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_funds_updates_gasprice() public {
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -88,7 +88,7 @@ contract OfferForwarderTest is OfferLogicTest {
     });
     uint old_gasprice = mgv.offerDetails(address(weth), address(usdc), offerId).gasprice();
     vm.prank(owner);
-    makerContract.updateOffer{value: 0.2 ether}({
+    makerContract.updateOfferFromVolume{value: 0.2 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -107,7 +107,7 @@ contract OfferForwarderTest is OfferLogicTest {
     MgvLib.SingleOrder memory order;
     MgvLib.OrderResult memory result;
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: 1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -134,7 +134,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.assume(fund >= reader.getProvision($(weth), $(usdc), makerContract.offerGasreq(), 0));
     vm.assume(fund < 5 ether);
     vm.prank(owner);
-    uint offerId = makerContract.newOffer{value: fund}({
+    uint offerId = makerContract.newOfferFromVolume{value: fund}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -150,7 +150,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
     // taker has approved mangrove in the setUp
     vm.startPrank(taker);
-    (uint takergot,, uint bounty,) = mgv.marketOrder({
+    (uint takergot,, uint bounty,) = mgv.marketOrderByVolume({
       outbound_tkn: address(weth),
       inbound_tkn: address(usdc),
       takerWants: 0.5 ether,
@@ -170,7 +170,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_makership() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -188,7 +188,7 @@ contract OfferForwarderTest is OfferLogicTest {
     emit NewOwnedOffer(IMangrove($(mgv)), weth, usdc, next_id, owner);
 
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -203,7 +203,7 @@ contract OfferForwarderTest is OfferLogicTest {
     uint gasreq = makerContract.offerGasreq();
     vm.expectRevert("Forwarder/provisionTooHigh");
     vm.prank(owner);
-    makerContract.newOffer{value: 10 ether}({
+    makerContract.newOfferFromVolume{value: 10 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -215,7 +215,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_no_funds_preserves_gasprice() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -228,7 +228,7 @@ contract OfferForwarderTest is OfferLogicTest {
     uint old_gasprice = detail.gasprice();
 
     vm.startPrank(owner);
-    makerContract.updateOffer({
+    makerContract.updateOfferFromVolume({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -244,7 +244,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_funds_increases_gasprice() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -256,7 +256,7 @@ contract OfferForwarderTest is OfferLogicTest {
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(weth), $(usdc), offerId);
     uint old_gasprice = detail.gasprice();
     vm.startPrank(owner);
-    makerContract.updateOffer{value: 0.1 ether}({
+    makerContract.updateOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -272,7 +272,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_different_maker_can_post_offers() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -284,7 +284,7 @@ contract OfferForwarderTest is OfferLogicTest {
     address new_maker = freshAddress("New maker");
     vm.deal(new_maker, 1 ether);
     vm.startPrank(new_maker);
-    uint offerId_ = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId_ = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
@@ -300,7 +300,7 @@ contract OfferForwarderTest is OfferLogicTest {
   function test_put_fail_reverts_with_expected_reason() public {
     MgvLib.SingleOrder memory order;
     vm.startPrank(owner);
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,

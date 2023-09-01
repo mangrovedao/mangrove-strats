@@ -15,6 +15,8 @@ import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 abstract contract KandelTest is StratTest {
   address payable maker;
@@ -52,7 +54,7 @@ abstract contract KandelTest is StratTest {
     bytes32 mgvData
   );
 
-  // sets environement  default is local node with fake base and quote
+  // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
     // no fork
     options.base.symbol = "WETH";
@@ -60,6 +62,7 @@ abstract contract KandelTest is StratTest {
     options.quote.decimals = 6;
     options.defaultFee = 30;
     options.gasprice = 40;
+    options.density = 2 ** 32;
 
     MangroveTest.setUp();
   }
@@ -143,28 +146,38 @@ abstract contract KandelTest is StratTest {
     kdl.depositFunds(pendingBase, pendingQuote);
   }
 
-  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint, uint) {
-    uint bestAsk = mgv.best($(base), $(quote));
+  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint) {
+    (, MgvStructs.OfferPacked best) = getBestOffers();
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([bestAsk, amount, type(uint96).max, type(uint).max]), true);
+    return mgv.marketOrderByTick(
+      $(base), $(quote), Tick.unwrap(best.tick()), best.gives() >= amount ? amount : best.gives(), true
+    );
   }
 
-  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint, uint) {
-    uint bestBid = mgv.best($(quote), $(base));
+  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
+    (MgvStructs.OfferPacked best,) = getBestOffers();
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
+    return mgv.marketOrderByTick(
+      $(quote), $(base), Tick.unwrap(best.tick()), best.wants() >= amount ? amount : best.wants(), false
+    );
   }
 
-  function snipeBuyAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Ask, index);
+  function cleanBuyBestAs(address taker_, uint amount) public returns (uint, uint) {
+    (, MgvStructs.OfferPacked best) = getBestOffers();
+    uint offerId = mgv.best($(base), $(quote));
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
+    return mgv.cleanByImpersonation(
+      $(base), $(quote), wrap_dynamic(MgvLib.CleanTarget(offerId, Tick.unwrap(best.tick()), 1_000_000, amount)), taker_
+    );
   }
 
-  function snipeSellAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+  function cleanSellBestAs(address taker_, uint amount) internal returns (uint, uint) {
+    (MgvStructs.OfferPacked best,) = getBestOffers();
+    uint offerId = mgv.best($(quote), $(base));
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    return mgv.cleanByImpersonation(
+      $(quote), $(base), wrap_dynamic(MgvLib.CleanTarget(offerId, Tick.unwrap(best.tick()), 1_000_000, amount)), taker_
+    );
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
@@ -227,8 +240,8 @@ abstract contract KandelTest is StratTest {
   function assertStatus(uint index, OfferStatus status, uint q, uint b) internal {
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index);
-    bool bidLive = mgv.isLive(bid);
-    bool askLive = mgv.isLive(ask);
+    bool bidLive = bid.isLive();
+    bool askLive = ask.isLive();
 
     if (status == OfferStatus.Dead) {
       assertTrue(!bidLive && !askLive, "offer at index is live");
@@ -237,7 +250,7 @@ abstract contract KandelTest is StratTest {
         assertTrue(bidLive && !askLive, "Kandel not bidding at index");
         if (q != type(uint).max) {
           assertApproxEqRel(
-            bid.gives() * b, q * bid.wants(), 1e11, "Bid price does not follow distribution within 0.00001%"
+            bid.gives() * b, q * bid.wants(), 1e14, "Bid price does not follow distribution within 0.00001%"
           );
         }
       } else {
@@ -245,7 +258,7 @@ abstract contract KandelTest is StratTest {
           assertTrue(!bidLive && askLive, "Kandel is not asking at index");
           if (q != type(uint).max) {
             assertApproxEqRel(
-              ask.wants() * b, q * ask.gives(), 1e11, "Ask price does not follow distribution within 0.00001%"
+              ask.wants() * b, q * ask.gives(), 1e14, "Ask price does not follow distribution within 0.00001%"
             );
           }
         } else {
@@ -300,7 +313,7 @@ abstract contract KandelTest is StratTest {
 
   function assertChange(ExpectedChange expectedChange, uint expected, uint actual, string memory descriptor) internal {
     if (expectedChange == ExpectedChange.Same) {
-      assertApproxEqRel(expected, actual, 1e11, string.concat(descriptor, " should be unchanged to within 0.00001%"));
+      assertApproxEqRel(expected, actual, 1e15, string.concat(descriptor, " should be unchanged to within 0.1%"));
     } else if (expectedChange == ExpectedChange.Decrease) {
       assertGt(expected, actual, string.concat(descriptor, " should have decreased"));
     } else {
@@ -420,7 +433,7 @@ abstract contract KandelTest is StratTest {
     for (uint i = 0; i < params.pricePoints; i++) {
       OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
       MgvStructs.OfferPacked offer = kdl.getOffer(ba, i);
-      if (!mgv.isLive(offer)) {
+      if (!offer.isLive()) {
         if (ba == Bid) {
           numBids++;
         }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract AmplifierForwarder is Forwarder {
   IERC20 public immutable BASE;
@@ -65,18 +66,19 @@ contract AmplifierForwarder is Forwarder {
     OfferPair memory offerPair = offers[msg.sender];
 
     require(
-      !MGV.isLive(MGV.offers(address(BASE), address(STABLE1), offerPair.id1)), "AmplifierForwarder/offer1AlreadyActive"
+      !MGV.offers(address(BASE), address(STABLE1), offerPair.id1).isLive(), "AmplifierForwarder/offer1AlreadyActive"
     );
     require(
-      !MGV.isLive(MGV.offers(address(BASE), address(STABLE2), offerPair.id2)), "AmplifierForwarder/offer2AlreadyActive"
+      !MGV.offers(address(BASE), address(STABLE2), offerPair.id2).isLive(), "AmplifierForwarder/offer2AlreadyActive"
     );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(args.wants1, args.gives));
 
     (uint _offerId1, bytes32 status1) = _newOffer(
       OfferArgs({
         outbound_tkn: BASE,
         inbound_tkn: STABLE1,
-        wants: args.wants1,
+        tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -87,6 +89,8 @@ contract AmplifierForwarder is Forwarder {
       msg.sender
     );
 
+    tick = Tick.unwrap(TickLib.tickFromVolumes(args.wants2, args.gives));
+
     offers[msg.sender].id1 = _offerId1;
     // no need to fund this second call for provision
     // since the above call should be enough
@@ -94,7 +98,7 @@ contract AmplifierForwarder is Forwarder {
       OfferArgs({
         outbound_tkn: BASE,
         inbound_tkn: STABLE2,
-        wants: args.wants2,
+        tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -132,11 +136,19 @@ contract AmplifierForwarder is Forwarder {
 
     if (repost_status == REPOST_SUCCESS) {
       uint new_alt_gives = __residualGives__(order); // in base units
-      MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
 
-      uint new_alt_wants;
-      unchecked {
-        new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
+      uint gasreq;
+      int tick;
+      {
+        MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
+        uint new_alt_wants;
+        gasreq = MGV.offerDetails(order.outbound_tkn, address(alt_stable), alt_offerId).gasreq(); // to use alt_offer's old gasreq
+
+        unchecked {
+          new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
+        }
+        //FIXME: amplifiers should probably re-use tick instead of calculating.
+        tick = Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives));
       }
 
       //uint prov = getMissingProvision(IERC20(order.outbound_tkn), IERC20(alt_stable), type(uint).max, 0, 0);
@@ -145,11 +157,11 @@ contract AmplifierForwarder is Forwarder {
         OfferArgs({
           outbound_tkn: IERC20(order.outbound_tkn),
           inbound_tkn: IERC20(alt_stable),
-          wants: new_alt_wants,
+          tick: tick,
           gives: new_alt_gives,
-          gasreq: type(uint).max, // to use alt_offer's old gasreq
+          gasreq: gasreq,
           gasprice: 0, // ignored
-          pivotId: alt_offer.next(),
+          pivotId: 0,
           noRevert: true,
           fund: 0
         }),

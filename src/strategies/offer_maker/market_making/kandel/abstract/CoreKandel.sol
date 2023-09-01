@@ -8,7 +8,7 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.

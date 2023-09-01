@@ -6,7 +6,8 @@ import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
@@ -242,14 +243,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     data = bytes32(0);
   }
 
-  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.inbound_tkn` the offer wants after it is reposted.
-  ///@param order is a recall of the taker order that is being treated.
-  ///@return newWants the new volume of `inbound_tkn` the offer will ask for on Mangrove
-  ///@dev default is to require the original amount of tokens minus those that have been given by the taker during trade execution.
-  function __residualWants__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newWants) {
-    newWants = order.offer.wants() - order.gives;
-  }
-
   ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.outbound_tkn` the offer gives after it is reposted.
   ///@param order is a recall of the taker order that is being treated.
   ///@return newGives the new volume of `outbound_tkn` the offer will give if fully taken.
@@ -278,7 +271,9 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   {
     // now trying to repost residual
     uint new_gives = __residualGives__(order);
-    uint new_wants = __residualWants__(order);
+    Tick tick = order.offer.tick();
+    //FIXME: This should only yield 0 due to rounding, is there a better check?
+    uint new_wants = TickLib.inboundFromOutbound(tick, new_gives);
     // Density check at each repost would be too gas costly.
     // We only treat the special case of `gives==0` or `wants==0` (total fill).
     // Offer below the density will cause Mangrove to throw so we encapsulate the call to `updateOffer` in order not to revert posthook for posting at dust level.
@@ -289,7 +284,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       OfferArgs({
         outbound_tkn: IERC20(order.outbound_tkn),
         inbound_tkn: IERC20(order.inbound_tkn),
-        wants: new_wants,
+        tick: Tick.unwrap(tick),
         gives: new_gives,
         gasreq: order.offerDetail.gasreq(),
         gasprice: order.offerDetail.gasprice(),

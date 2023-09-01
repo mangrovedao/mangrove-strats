@@ -5,6 +5,7 @@ import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 import {AaveV3Borrower, ICreditDelegationToken} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;
@@ -59,5 +60,30 @@ contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
 
   function flashLoan(IERC20 token, uint amount) public onlyAdmin {
     POOL.flashLoanSimple(address(this), address(token), amount, new bytes(0), 0);
+  }
+
+  function newOfferFromVolume(
+    IERC20 outbound_tkn,
+    IERC20 inbound_tkn,
+    uint wants,
+    uint gives,
+    uint pivotId,
+    uint gasreq
+  ) external payable returns (uint offerId) {
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, gasreq);
+  }
+
+  function updateOfferFromVolume(
+    IERC20 outbound_tkn,
+    IERC20 inbound_tkn,
+    uint wants,
+    uint gives,
+    uint pivotId,
+    uint offerId,
+    uint gasreq
+  ) external payable {
+    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, gasreq);
   }
 }
