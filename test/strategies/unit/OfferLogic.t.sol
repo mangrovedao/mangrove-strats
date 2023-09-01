@@ -39,11 +39,13 @@ contract OfferLogicTest is StratTest {
     options.quote.symbol = "USDC";
     options.quote.decimals = 6;
     options.defaultFee = 30;
+    options.density = 2 ** 32;
 
     // if a fork is initialized, we set it up and do a manual testing setup
     if (address(fork) != address(0)) {
       fork.setUp();
       mgv = setupMangrove();
+      reader = new MgvReader($(mgv));
       weth = TestToken(fork.get("WETH"));
       usdc = TestToken(fork.get("USDC"));
       setupMarket(weth, usdc);
@@ -339,11 +341,12 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_below_density() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerGives = reader.minVolume($(weth), $(usdc), makerContract.offerGasreq());
+    uint offerId = makerContract.newOffer{value: 0.1 ether}({
       outbound_tkn: weth,
       inbound_tkn: usdc,
-      wants: 2000 * 10 ** 6,
-      gives: 1 * 10 ** 18,
+      tick: 1,
+      gives: offerGives,
       pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
@@ -354,12 +357,13 @@ contract OfferLogicTest is StratTest {
     order.outbound_tkn = $(weth);
     order.inbound_tkn = $(usdc);
     order.offerId = offerId;
-    order.wants = 0.999999999999999 ether;
-    order.gives = cash(usdc, 2000) - 1;
+    order.wants = offerGives / 2;
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails($(weth), $(usdc), offerId);
     order.offer = mgv.offers($(weth), $(usdc), offerId);
+    order.gives = TickLib.outboundFromInbound(order.offer.tick(), offerGives / 2);
     (order.global, order.local) = mgv.config($(weth), $(usdc));
+
     vm.expectRevert("mgv/writeOffer/density/tooLow");
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);

@@ -5,6 +5,7 @@ import "./KandelTest.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
+import {TickLib, Tick, MAX_TICK} from "mgv_lib/TickLib.sol";
 
 abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;
@@ -26,7 +27,8 @@ abstract contract CoreKandelGasTest is KandelTest {
       mgv: IMangrove($(mgv)),
       base: base,
       quote: quote,
-      gasreq: 160_000,
+      //FIXME: measure
+      gasreq: 260_000,
       gasprice: 0,
       reserveId: address(0)
     });
@@ -38,6 +40,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     options.gasprice = 90;
     options.gasbase = 68_000;
     options.defaultFee = 30;
+    options.density = 2 ** 32;
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
@@ -65,79 +68,50 @@ abstract contract CoreKandelGasTest is KandelTest {
 
   function test_complete_fill_bid_order() public {
     uint completeFill = completeFill_;
+    address baseAddress = $(base);
+    address quoteAddress = $(quote);
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting
-    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), completeFill, type(uint160).max, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(baseAddress, quoteAddress, MAX_TICK, completeFill, true);
     gas_();
     require(takerGot > 0);
   }
 
-  function test_bid_order_length_1() public {
+  function bid_order_length_n(uint n) internal {
+    uint completeFill = completeFill_;
     uint partialFill = partialFill_;
+    uint volume = completeFill * (n - 1) + partialFill;
+    address baseAddress = $(base);
+    address quoteAddress = $(quote);
+
     vm.prank(taker);
     _gas();
-    // taking partial fill to have gas cost of reposting (all offers give 0.108 ethers)
-    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), partialFill, type(uint160).max, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(baseAddress, quoteAddress, MAX_TICK, volume, true);
     uint g = gas_(true);
-    assertEq(reader.minusFee($(base), $(quote), partialFill), takerGot, "Incorrect got");
-    console.log(1, ",", g);
-    assertStatus(4, OfferStatus.Bid);
+    require(takerGot > 0);
+    console.log(n, ",", g);
+    assertStatus(5 - n, OfferStatus.Bid);
+  }
+
+  function test_bid_order_length_1() public {
+    bid_order_length_n(1);
   }
 
   function test_bid_order_length_2() public {
-    uint completeFill = completeFill_;
-    uint partialFill = partialFill_;
-
-    vm.prank(taker);
-    _gas();
-    (uint takerGot,,,) = mgv.marketOrderByVolume($(base), $(quote), completeFill + partialFill, type(uint160).max, true);
-    uint g = gas_(true);
-    require(takerGot > 0);
-    console.log(2, ",", g);
-    assertStatus(3, OfferStatus.Bid);
+    bid_order_length_n(2);
   }
 
   function test_bid_order_length_3() public {
-    uint completeFill = completeFill_;
-    uint partialFill = partialFill_;
-
-    vm.prank(taker);
-    _gas();
-    (uint takerGot,,,) =
-      mgv.marketOrderByVolume($(base), $(quote), completeFill * 2 + partialFill, type(uint160).max, true);
-    uint g = gas_(true);
-    require(takerGot > 0);
-    console.log(3, ",", g);
-    assertStatus(2, OfferStatus.Bid);
+    bid_order_length_n(3);
   }
 
   function test_bid_order_length_4() public {
-    uint completeFill = completeFill_;
-    uint partialFill = partialFill_;
-
-    vm.prank(taker);
-    _gas();
-    (uint takerGot,,,) =
-      mgv.marketOrderByVolume($(base), $(quote), completeFill * 3 + partialFill, type(uint160).max, true);
-    uint g = gas_(true);
-    require(takerGot > 0);
-    console.log(4, ",", g);
-    assertStatus(1, OfferStatus.Bid);
+    bid_order_length_n(4);
   }
 
   function test_bid_order_length_5() public {
-    uint completeFill = completeFill_;
-    uint partialFill = partialFill_;
-
-    vm.prank(taker);
-    _gas();
-    (uint takerGot,,,) =
-      mgv.marketOrderByVolume($(base), $(quote), completeFill * 4 + partialFill, type(uint160).max, true);
-    uint g = gas_(true);
-    require(takerGot > 0);
-    console.log(5, ",", g);
-    assertStatus(0, OfferStatus.Bid);
+    bid_order_length_n(5);
   }
 
   function test_offerLogic_partialFill_cost() public {

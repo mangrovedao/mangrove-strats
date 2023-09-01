@@ -129,10 +129,10 @@ contract AmplifierTest is StratTest {
     Tick tick = mgv.offers($(weth), $(makerWantsToken), offerId).tick();
     // try to snipe one of the offers (using the separate taker account)
     vm.prank(taker);
-    (takerGot, takerGave, bounty,) = mgv.marketOrderByPrice({
+    (takerGot, takerGave, bounty,) = mgv.marketOrderByTick({
       outbound_tkn: $(weth),
       inbound_tkn: $(makerWantsToken),
-      maxPrice_e18: uint(Tick.unwrap(tick)),
+      maxTick: Tick.unwrap(tick),
       fillVolume: makerWantsAmount,
       fillWants: false
     });

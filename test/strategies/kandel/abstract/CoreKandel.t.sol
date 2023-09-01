@@ -60,7 +60,7 @@ abstract contract CoreKandelTest is KandelTest {
     int oldPending = kdl.pending(Ask);
 
     (uint takerGot, uint takerGave,, uint fee) = sellToBestAs(taker, 1000 ether);
-    assertTrue(takerGot > 0, "Snipe failed");
+    assertTrue(takerGot > 0, "Take failed");
     uint[] memory expectedStatus = new uint[](10);
     // Build this for index=5: assertStatus(dynamic([uint(1), 1, 1, 1, 1, 0, 2, 2, 2, 2]));
     for (uint i = 0; i < 10; i++) {
@@ -122,7 +122,7 @@ abstract contract CoreKandelTest is KandelTest {
     // at 0% compounding, one wants to buy back what was sent
     // computation might have rounding error because bid_.wants is derived from bid_.gives
     console.log(bid_.wants(), bid.wants(), ask.gives());
-    assertApproxEqRel(bid_.wants(), bid.wants() + ask.gives(), 10 ** 9, "Incorrect wants when 0% compounding");
+    assertApproxEqRel(bid_.wants(), bid.wants() + ask.gives(), 1e14, "Incorrect wants when 0% compounding");
 
     // changing compoundRates
     vm.prank(maker);
@@ -173,7 +173,7 @@ abstract contract CoreKandelTest is KandelTest {
     // at 0% compounding, one wants to buy back what was sent
     // computation might have rounding error because ask_.wants is derived from ask_.gives
     console.log(ask_.wants(), ask.wants(), bid.gives());
-    assertEq(ask_.wants(), ask.wants() + bid.gives(), "Incorrect wants when 0% compounding");
+    assertApproxEqRel(ask_.wants(), ask.wants() + bid.gives(), 1e14, "Incorrect wants when 0% compounding");
 
     // changing compoundRates
     vm.prank(maker);
@@ -364,7 +364,7 @@ abstract contract CoreKandelTest is KandelTest {
         console.log("Final bids");
         printOB();
       }
-
+      console.log("loop %s", i);
       test_bid_complete_fill(compoundRateBase, compoundRateQuote, 4);
 
       assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]));
@@ -397,11 +397,11 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_take_full_bid_and_ask_10_times_close_to_zero_base_compound() public {
-    test_take_full_bid_and_ask_repeatedly(10, 1, full_compound(), ExpectedChange.Increase, ExpectedChange.Increase);
+    test_take_full_bid_and_ask_repeatedly(10, 100, full_compound(), ExpectedChange.Increase, ExpectedChange.Increase);
   }
 
   function test_take_full_bid_and_ask_10_times_partial_compound_increasing_boundary() public {
-    test_take_full_bid_and_ask_repeatedly(10, 49040, 49040, ExpectedChange.Increase, ExpectedChange.Increase);
+    test_take_full_bid_and_ask_repeatedly(10, 50000, 50000, ExpectedChange.Increase, ExpectedChange.Increase);
   }
 
   function test_take_full_bid_and_ask_10_times_partial_compound_decreasing_boundary() public {
@@ -583,8 +583,8 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.approve(outbound, $(mgv), 0);
     for (uint i = 0; i < failures; i++) {
       // This will emit LogIncident and OfferFail
-      (uint takerGot,,,) = ba == Ask ? buyFromBestAs(taker, 1 ether) : sellToBestAs(taker, 1 ether);
-      assertTrue(takerGot > 0, "Snipe should fail");
+      (uint successes,) = ba == Ask ? cleanBuyBestAs(taker, 1 ether) : cleanSellBestAs(taker, 1 ether);
+      assertTrue(successes == 1, "Clean should clean");
     }
 
     // verify offers have gone
@@ -636,6 +636,7 @@ abstract contract CoreKandelTest is KandelTest {
     dist.indices = new uint[](1);
     dist.baseDist = new uint[](0);
     dist.quoteDist = new uint[](1);
+    dist.quoteDist[0] = 1;
     kdl.populateChunk(dist, new uint[](1), 0);
 
     // quote
@@ -644,6 +645,7 @@ abstract contract CoreKandelTest is KandelTest {
     dist.indices = new uint[](1);
     dist.baseDist = new uint[](1);
     dist.quoteDist = new uint[](0);
+    dist.baseDist[0] = 1;
     kdl.populateChunk(dist, new uint[](1), 0);
   }
 
@@ -651,7 +653,7 @@ abstract contract CoreKandelTest is KandelTest {
     uint index = 3;
     assertStatus(index, OfferStatus.Bid);
 
-    populateSingle(kdl, index, 123, 0, 0, 5, bytes(""));
+    populateSingle(kdl, index, 0, 0, 0, 5, bytes(""));
     // Bid should be retracted
     assertStatus(index, OfferStatus.Dead);
   }
@@ -699,7 +701,7 @@ abstract contract CoreKandelTest is KandelTest {
     MgvStructs.OfferPacked ask_ = kdl.getOffer(Ask, n - 1);
 
     assertTrue(ask.gives() < ask_.gives(), "Ask was not updated");
-    assertEq(ask.gives() * ask_.wants(), ask.wants() * ask_.gives(), "Incorrect price");
+    assertApproxEqRel(ask.gives() * ask_.wants(), ask.wants() * ask_.gives(), 1e14, "Incorrect price");
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
@@ -1416,16 +1418,16 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.setCompoundRates(compoundRate, compoundRate);
 
     (uint takerGot,,,) = ba == Bid ? sellToBestAs(taker, 1 ether) : buyFromBestAs(taker, 1 ether);
-    assertTrue(takerGot > 0, "offer should be sniped");
+    assertGt(takerGot, 0, "offer should succeed");
 
     if (ba == Bid) {
       MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
-      assertEq(ask.gives(), initBase);
-      assertEq(ask.wants(), ask.gives() * 2 / 1000000000);
+      assertApproxEqRel(ask.gives(), initBase, 1e14, "wrong gives");
+      assertApproxEqRel(ask.wants(), ask.gives() * 2 / 1000000000, 1e14, "wrong price");
     } else {
       MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
-      assertEq(bid.gives(), initQuote);
-      assertEq(bid.wants(), bid.gives() * 2 * 1000000000);
+      assertApproxEqRel(bid.gives(), initQuote, 1e14, "wrong gives");
+      assertApproxEqRel(bid.wants(), bid.gives() * 2 * 1000000000, 1e14, "wrong price");
     }
   }
 

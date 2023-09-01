@@ -29,6 +29,7 @@ contract MangoTest is StratTest {
     options.quote.symbol = "USDC";
     options.quote.decimals = 6;
     options.defaultFee = 30;
+    options.density = 2 ** 32;
 
     // deploying mangrove and opening WETH/USDC market.
     super.setUp();

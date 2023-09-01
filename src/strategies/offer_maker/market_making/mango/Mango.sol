@@ -61,7 +61,7 @@ contract Mango is Direct {
     Direct(
       mgv,
       new SimpleRouter(), // routes liqudity between admin's account and this contract,
-      150_000,
+      250_000,
       deployer
     )
   {

@@ -66,10 +66,10 @@ contract AmplifierForwarder is Forwarder {
     OfferPair memory offerPair = offers[msg.sender];
 
     require(
-      !MGV.isLive(MGV.offers(address(BASE), address(STABLE1), offerPair.id1)), "AmplifierForwarder/offer1AlreadyActive"
+      !MGV.offers(address(BASE), address(STABLE1), offerPair.id1).isLive(), "AmplifierForwarder/offer1AlreadyActive"
     );
     require(
-      !MGV.isLive(MGV.offers(address(BASE), address(STABLE2), offerPair.id2)), "AmplifierForwarder/offer2AlreadyActive"
+      !MGV.offers(address(BASE), address(STABLE2), offerPair.id2).isLive(), "AmplifierForwarder/offer2AlreadyActive"
     );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
     int tick = Tick.unwrap(TickLib.tickFromVolumes(args.wants1, args.gives));
@@ -136,16 +136,22 @@ contract AmplifierForwarder is Forwarder {
 
     if (repost_status == REPOST_SUCCESS) {
       uint new_alt_gives = __residualGives__(order); // in base units
-      MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
 
-      uint new_alt_wants;
-      unchecked {
-        new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
+      uint gasreq;
+      int tick;
+      {
+        MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
+        uint new_alt_wants;
+        gasreq = MGV.offerDetails(order.outbound_tkn, address(alt_stable), alt_offerId).gasreq(); // to use alt_offer's old gasreq
+
+        unchecked {
+          new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
+        }
+        //FIXME: amplifiers should probably re-use tick instead of calculating.
+        tick = Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives));
       }
 
       //uint prov = getMissingProvision(IERC20(order.outbound_tkn), IERC20(alt_stable), type(uint).max, 0, 0);
-
-      int tick = Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives));
 
       bytes32 reason = _updateOffer(
         OfferArgs({
@@ -153,9 +159,9 @@ contract AmplifierForwarder is Forwarder {
           inbound_tkn: IERC20(alt_stable),
           tick: tick,
           gives: new_alt_gives,
-          gasreq: type(uint).max, // to use alt_offer's old gasreq
+          gasreq: gasreq,
           gasprice: 0, // ignored
-          pivotId: alt_offer.next(),
+          pivotId: 0,
           noRevert: true,
           fund: 0
         }),
