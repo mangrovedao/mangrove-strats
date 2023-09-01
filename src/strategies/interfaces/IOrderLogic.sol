@@ -14,7 +14,6 @@ interface IOrderLogic {
   ///@param fillVolume the volume to fill
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `inbound_tkn` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
-  ///@param pivotId in case a resting order is required, the best pivot estimation of its position in the offer list (if the market order led to a non empty partial fill, then `pivotId` should be 0 unless the order book is crossed).
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
   struct TakerOrder {
     IERC20 outbound_tkn;
@@ -24,7 +23,6 @@ interface IOrderLogic {
     uint fillVolume;
     bool fillWants;
     bool restingOrder;
-    uint pivotId;
     uint expiryDate;
   }
 

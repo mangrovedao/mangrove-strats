@@ -39,16 +39,13 @@ contract DirectTester is ITesterContract, OfferMaker {
     );
   }
 
-  function newOfferFromVolume(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    uint wants,
-    uint gives,
-    uint pivotId,
-    uint gasreq
-  ) external payable returns (uint offerId) {
+  function newOfferFromVolume(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint gasreq)
+    external
+    payable
+    returns (uint offerId)
+  {
     int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, gasreq);
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, gasreq);
   }
 
   function updateOfferFromVolume(
@@ -56,11 +53,10 @@ contract DirectTester is ITesterContract, OfferMaker {
     IERC20 inbound_tkn,
     uint wants,
     uint gives,
-    uint pivotId,
     uint offerId,
     uint gasreq
   ) external payable {
     int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, gasreq);
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, gasreq);
   }
 }

@@ -63,7 +63,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     uint derived_gp = mgv.offerDetails(address(weth), address(usdc), offerId).gasprice();
@@ -83,7 +82,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     uint old_gasprice = mgv.offerDetails(address(weth), address(usdc), offerId).gasprice();
@@ -93,7 +91,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       offerId: offerId,
       gasreq: makerContract.offerGasreq()
     });
@@ -112,7 +109,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     result.mgvData = "anythingButSuccess";
@@ -139,7 +135,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     // revoking Mangrove's approvals to make `offerId` fail
@@ -175,7 +170,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     assertEq(forwarder.ownerOf(weth, usdc, offerId), owner, "Invalid makership relation");
@@ -193,7 +187,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     assertEq(next_id, offerId, "Unexpected offer id");
@@ -208,7 +201,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: gasreq
     });
   }
@@ -220,7 +212,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -233,7 +224,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
-      pivotId: 0,
       offerId: offerId,
       gasreq: makerContract.offerGasreq()
     });
@@ -249,7 +239,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -261,7 +250,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
-      pivotId: 0,
       offerId: offerId,
       gasreq: makerContract.offerGasreq()
     });
@@ -277,7 +265,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -289,7 +276,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -305,7 +291,6 @@ contract OfferForwarderTest is OfferLogicTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     usdc.approve($(makerContract.router()), 0);

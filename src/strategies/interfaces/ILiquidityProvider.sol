@@ -12,10 +12,9 @@ interface ILiquidityProvider is IOfferLogic {
   ///@param inbound_tkn the outbound token of the offer list of the offer
   ///@param tick the price tick
   ///@param gives the amount of inbound tokens the offer maker gives for a complete fill
-  ///@param pivotId the pivot to use for inserting the offer in the list
   ///@param gasreq the gas required by the offer logic
   ///@return offerId the Mangrove offer id.
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
     external
     payable
     returns (uint offerId);
@@ -25,18 +24,11 @@ interface ILiquidityProvider is IOfferLogic {
   ///@param inbound_tkn the outbound token of the offer list of the offer
   ///@param tick the price tick
   ///@param gives the new amount of inbound tokens the offer maker gives for a complete fill
-  ///@param pivotId the pivot to use for re-inserting the offer in the list (use `offerId` if updated offer is live)
   ///@param offerId the id of the offer in the offer list.
   ///@param gasreq the gas required by the offer logic
-  function updateOffer(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    int tick,
-    uint gives,
-    uint pivotId,
-    uint offerId,
-    uint gasreq
-  ) external payable;
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+    external
+    payable;
 
   ///@notice Retracts an offer from an Offer List of Mangrove.
   ///@param outbound_tkn the outbound token of the offer list.

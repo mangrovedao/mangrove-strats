@@ -131,7 +131,6 @@ abstract contract GeometricKandel is CoreKandel {
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
   ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param pivotIds the pivot to be used for the offer
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
   ///@param baseAmount base amount to deposit
@@ -142,7 +141,6 @@ abstract contract GeometricKandel is CoreKandel {
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
     Distribution calldata distribution,
-    uint[] calldata pivotIds,
     uint firstAskIndex,
     Params calldata parameters,
     uint baseAmount,
@@ -155,31 +153,24 @@ abstract contract GeometricKandel is CoreKandel {
 
     depositFunds(baseAmount, quoteAmount);
 
-    populateChunkInternal(distribution, pivotIds, firstAskIndex);
+    populateChunkInternal(distribution, firstAskIndex);
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
   ///@dev internal version does not check onlyAdmin
   ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param pivotIds the pivot to be used for the offer
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunkInternal(Distribution calldata distribution, uint[] calldata pivotIds, uint firstAskIndex)
-    internal
-  {
-    populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
+  function populateChunkInternal(Distribution calldata distribution, uint firstAskIndex) internal {
+    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
   ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
   ///@param distribution the distribution of base and quote for Kandel indices.
-  ///@param pivotIds the pivot to be used for the offer.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunk(Distribution calldata distribution, uint[] calldata pivotIds, uint firstAskIndex)
-    external
-    onlyAdmin
-  {
-    populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
+  function populateChunk(Distribution calldata distribution, uint firstAskIndex) external onlyAdmin {
+    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
   }
 
   ///@notice calculates the wants and gives for the dual offer according to the geometric price distribution.
@@ -324,6 +315,5 @@ abstract contract GeometricKandel is CoreKandel {
     args.noRevert = true;
     args.gasprice = memoryParams.gasprice;
     args.gasreq = memoryParams.gasreq;
-    args.pivotId = dualOffer.gives() > 0 ? dualOffer.next() : 0;
   }
 }

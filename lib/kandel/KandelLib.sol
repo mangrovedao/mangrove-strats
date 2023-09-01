@@ -27,21 +27,19 @@ library KandelLib {
     return (vars, initQuote);
   }
 
-  /// @notice should be invoked as an rpc call or via snapshot-revert - populates and returns pivots and amounts.
-  function estimatePivotsAndRequiredAmount(
+  /// @notice should be invoked as an rpc call or via snapshot-revert - populates and returns amounts.
+  function estimateRequiredAmount(
     CoreKandel.Distribution memory distribution,
     GeometricKandel kandel,
     uint firstAskIndex,
     GeometricKandel.Params memory params,
     uint funds
-  ) internal returns (uint[] memory pivotIds, uint baseAmountRequired, uint quoteAmountRequired) {
-    pivotIds = new uint[](distribution.indices.length);
-    kandel.populate{value: funds}(distribution, pivotIds, firstAskIndex, params, 0, 0);
-    for (uint i = 0; i < pivotIds.length; ++i) {
+  ) internal returns (uint baseAmountRequired, uint quoteAmountRequired) {
+    kandel.populate{value: funds}(distribution, firstAskIndex, params, 0, 0);
+    for (uint i = 0; i < distribution.indices.length; ++i) {
       uint index = distribution.indices[i];
       OfferType ba = index < firstAskIndex ? OfferType.Bid : OfferType.Ask;
       MgvStructs.OfferPacked offer = kandel.getOffer(ba, index);
-      pivotIds[i] = offer.next();
       if (ba == OfferType.Bid) {
         quoteAmountRequired += offer.gives();
       } else {

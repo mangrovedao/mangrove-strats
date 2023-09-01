@@ -198,7 +198,6 @@ contract MangroveOrder_Test is StratTest {
       fillVolume: fillVolume,
       tick: Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 1e18)),
       restingOrder: false,
-      pivotId: 0,
       expiryDate: 0 //NA
     });
   }
@@ -243,7 +242,6 @@ contract MangroveOrder_Test is StratTest {
       tick: -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 9e18)),
       fillVolume: fillVolume,
       restingOrder: false,
-      pivotId: 0,
       expiryDate: 0 //NA
     });
   }
@@ -711,7 +709,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function test_offer_owner_can_update_offer() public {
-    mgo.updateOffer(quote, base, 100, 2000 ether, cold_buyResult.offerId, cold_buyResult.offerId);
+    mgo.updateOffer(quote, base, 100, 2000 ether, cold_buyResult.offerId);
     MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), cold_buyResult.offerId);
     assertEq(Tick.unwrap(offer.tick()), 100, "Incorrect updated tick");
     assertEq(offer.gives(), 2000 ether, "Incorrect updated gives");
@@ -721,7 +719,7 @@ contract MangroveOrder_Test is StratTest {
   function test_only_offer_owner_can_update_offer() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.updateOffer(quote, base, 1 ether, 2000 ether, cold_buyResult.offerId, cold_buyResult.offerId);
+    mgo.updateOffer(quote, base, 1 ether, 2000 ether, cold_buyResult.offerId);
   }
 
   //////////////////////////////

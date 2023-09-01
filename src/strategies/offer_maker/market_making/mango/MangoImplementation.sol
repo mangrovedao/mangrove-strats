@@ -76,7 +76,6 @@ contract MangoImplementation {
     uint lastBidPosition, // if `lastBidPosition` is in R, then all offers before `lastBidPosition` (included) will be bids, offers strictly after will be asks.
     uint from, // first price position to be populated
     uint to, // last price position to be populated
-    uint[][2] calldata pivotIds, // `pivotIds[0][i]` ith pivots for bids, `pivotIds[1][i]` ith pivot for asks
     uint[] calldata tokenAmounts, // `tokenAmounts[i]` is the amount of `BASE` or `QUOTE` tokens (dePENDING on `withBase` flag) that is used to fixed one parameter of the price at position `from+i`.
     uint gasreq // gas required for new offers
   ) external delegated {
@@ -91,11 +90,7 @@ contract MangoImplementation {
      * NB cannot post newOffer with infinite gasreq since fallback ofr_gasreq is not defined yet (and default is likely wrong)
      */
     require(to > from, "Mango/initialize/invalidSlice");
-    require(
-      tokenAmounts.length == NSLOTS && pivotIds.length == 2 && pivotIds[0].length == NSLOTS
-        && pivotIds[1].length == NSLOTS,
-      "Mango/initialize/invalidArrayLength"
-    );
+    require(tokenAmounts.length == NSLOTS, "Mango/initialize/invalidArrayLength");
     require(lastBidPosition < NSLOTS - 1, "Mango/initialize/NoSlotForAsks"); // bidding => slice doesn't fill the book
     uint pos;
     for (pos = from; pos < to; pos++) {
@@ -103,15 +98,10 @@ contract MangoImplementation {
       uint i = index_of_position(pos);
 
       if (pos <= lastBidPosition) {
-        uint bidPivot = pivotIds[0][pos];
-        bidPivot = bidPivot > 0
-          ? bidPivot // taking pivot from the user
-          : pos > 0 ? mStr.bids[index_of_position(pos - 1)] : 0; // otherwise getting last inserted offer as pivot
         updateBid({
           index: i,
           reset: reset, // overwrites old value
           amount: tokenAmounts[pos],
-          pivotId: bidPivot,
           gasreq: gasreq
         });
         if (mStr.asks[i] > 0) {
@@ -120,11 +110,7 @@ contract MangoImplementation {
           MGV.retractOffer(address(BASE), address(QUOTE), mStr.asks[i], false);
         }
       } else {
-        uint askPivot = pivotIds[1][pos];
-        askPivot = askPivot > 0
-          ? askPivot // taking pivot from the user
-          : pos > 0 ? mStr.asks[index_of_position(pos - 1)] : 0; // otherwise getting last inserted offer as pivot
-        updateAsk({index: i, reset: reset, amount: tokenAmounts[pos], pivotId: askPivot, gasreq: gasreq});
+        updateAsk({index: i, reset: reset, amount: tokenAmounts[pos], gasreq: gasreq});
         if (mStr.bids[i] > 0) {
           // if a BID is also positioned, remove it to prevent spread crossing
           // (should not happen if this is the first initialization of the strat)
@@ -175,7 +161,6 @@ contract MangoImplementation {
     uint wants;
     uint gives;
     uint ofr_gr;
-    uint pivotId;
   }
 
   // posts or updates ask at position of `index`
@@ -271,13 +256,11 @@ contract MangoImplementation {
     uint wants,
     uint gives,
     uint ofr_gr,
-    bool withPending, // whether `gives` amount includes current pending tokens
-    uint pivotId
+    bool withPending // whether `gives` amount includes current pending tokens
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     if (outbound_tkn == BASE) {
-      uint not_published =
-        writeAsk(WriteData({index: index, wants: wants, gives: gives, ofr_gr: ofr_gr, pivotId: pivotId}));
+      uint not_published = writeAsk(WriteData({index: index, wants: wants, gives: gives, ofr_gr: ofr_gr}));
       if (not_published > 0) {
         // Ask could not be written on the book (density or provision issue)
         mStr.pending_base = withPending ? not_published : (mStr.pending_base + not_published);
@@ -287,8 +270,7 @@ contract MangoImplementation {
         }
       }
     } else {
-      uint not_published =
-        writeBid(WriteData({index: index, wants: wants, gives: gives, ofr_gr: ofr_gr, pivotId: pivotId}));
+      uint not_published = writeBid(WriteData({index: index, wants: wants, gives: gives, ofr_gr: ofr_gr}));
       if (not_published > 0) {
         mStr.pending_quote = withPending ? not_published : (mStr.pending_quote + not_published);
       } else {
@@ -427,8 +409,7 @@ contract MangoImplementation {
         wants: new_wants,
         gives: new_gives,
         ofr_gr: gasreq,
-        withPending: false, // don't add pending liqudity in new offers (they are far from mid price)
-        pivotId: pos > 0 ? mStr.asks[index_of_position(pos - 1)] : 0
+        withPending: false // don't add pending liquidity in new offers (they are far from mid price)
       });
       cpt++;
       index = next_index(index);
@@ -482,8 +463,7 @@ contract MangoImplementation {
         wants: new_wants,
         gives: new_gives,
         ofr_gr: gasreq,
-        withPending: false,
-        pivotId: pos < NSLOTS - 1 ? mStr.bids[index_of_position(pos + 1)] : 0
+        withPending: false
       });
       cpt++;
       index = prev_index(index);
@@ -520,7 +500,6 @@ contract MangoImplementation {
           index: index_of_position(pos - 1),
           reset: false, // top up old value with received amount
           amount: order.gives, // in QUOTES
-          pivotId: 0,
           gasreq: gasreq
         });
         if (pos - 1 <= mStr.min_buffer) {
@@ -545,7 +524,6 @@ contract MangoImplementation {
           index: index_of_position(pos + 1),
           reset: false, // top up old value with received amount
           amount: order.gives, // in BASE
-          pivotId: 0,
           gasreq: gasreq
         });
         if (pos + 1 >= NSLOTS - mStr.min_buffer) {
@@ -562,7 +540,6 @@ contract MangoImplementation {
     uint index,
     bool reset, // whether this call is part of an `initialize` procedure
     uint amount, // in QUOTE tokens
-    uint pivotId,
     uint gasreq
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
@@ -574,30 +551,13 @@ contract MangoImplementation {
     uint new_gives = reset ? amount : (amount + offer.gives() + mStr.pending_quote);
     uint new_wants = bases_of_position(position, new_gives);
 
-    uint pivot;
-    if (offer.gives() == 0) {
-      // offer was not live
-      if (pivotId != 0) {
-        pivot = pivotId;
-      } else {
-        if (position > 0) {
-          pivot = mStr.bids[index_of_position(position - 1)]; // if this offer is no longer in the book will start form best
-        } else {
-          pivot = offer.prev(); // trying previous offer on Mangrove as a pivot
-        }
-      }
-    } else {
-      // offer is live, so reusing its id for pivot
-      pivot = mStr.bids[index];
-    }
     safeWriteOffer({
       index: index,
       outbound_tkn: QUOTE,
       wants: new_wants,
       gives: new_gives,
       ofr_gr: gasreq,
-      withPending: !reset,
-      pivotId: pivot
+      withPending: !reset
     });
   }
 
@@ -605,7 +565,6 @@ contract MangoImplementation {
     uint index,
     bool reset, // whether this call is part of an `initialize` procedure
     uint amount, // in BASE tokens
-    uint pivotId,
     uint gasreq
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
@@ -616,30 +575,13 @@ contract MangoImplementation {
     uint new_gives = reset ? amount : (amount + offer.gives() + mStr.pending_base); // in BASE
     uint new_wants = quotes_of_position(position, new_gives);
 
-    uint pivot;
-    if (offer.gives() == 0) {
-      // offer was not live
-      if (pivotId != 0) {
-        pivot = pivotId;
-      } else {
-        if (position > 0) {
-          pivot = mStr.asks[index_of_position(position - 1)]; // if this offer is no longer in the book will start form best
-        } else {
-          pivot = offer.prev(); // trying previous offer on Mangrove as a pivot
-        }
-      }
-    } else {
-      // offer is live, so reusing its id for pivot
-      pivot = mStr.asks[index];
-    }
     safeWriteOffer({
       index: index,
       outbound_tkn: BASE,
       wants: new_wants,
       gives: new_gives,
       ofr_gr: gasreq,
-      withPending: !reset,
-      pivotId: pivot
+      withPending: !reset
     });
   }
 }

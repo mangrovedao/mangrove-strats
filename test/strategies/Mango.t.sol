@@ -340,21 +340,13 @@ contract MangoTest is StratTest {
   // TODO explain
   function init(uint bidAmount, uint askAmount) internal {
     uint slice = NSLOTS / 2; // require(NSLOTS%2==0)?
-    uint[] memory pivotIds = new uint[](NSLOTS);
     uint[] memory amounts = new uint[](NSLOTS);
     for (uint i = 0; i < NSLOTS; i++) {
       amounts[i] = i < NSLOTS / 2 ? bidAmount : askAmount;
     }
 
     for (uint i = 0; i < 2; i++) {
-      mgo.initialize({
-        reset: true,
-        lastBidPosition: 4,
-        from: slice * i,
-        to: slice * (i + 1),
-        pivotIds: [pivotIds, pivotIds],
-        tokenAmounts: amounts
-      });
+      mgo.initialize({reset: true, lastBidPosition: 4, from: slice * i, to: slice * (i + 1), tokenAmounts: amounts});
     }
   }
 }

@@ -43,17 +43,10 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
   ///@param distribution the distribution of base and quote for indices.
-  ///@param pivotIds the pivots to be used for the offers.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
-  function populateChunk(
-    Distribution calldata distribution,
-    uint[] calldata pivotIds,
-    uint firstAskIndex,
-    uint gasreq,
-    uint gasprice
-  ) internal {
+  function populateChunk(Distribution calldata distribution, uint firstAskIndex, uint gasreq, uint gasprice) internal {
     emit PopulateStart();
     uint[] calldata indices = distribution.indices;
     uint[] calldata quoteDist = distribution.quoteDist;
@@ -82,7 +75,6 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       }
       args.gasreq = gasreq;
       args.gasprice = gasprice;
-      args.pivotId = pivotIds[i];
 
       populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args);
     }
@@ -102,7 +94,6 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       }
       args.gasreq = gasreq;
       args.gasprice = gasprice;
-      args.pivotId = pivotIds[i];
 
       populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args);
     }
