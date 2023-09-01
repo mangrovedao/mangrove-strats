@@ -60,9 +60,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param inbound_tkn inbound token of the offer list
   ///@param tick the price tick
   ///@param gives new amount of `outbound_tkn` offer owner gives
-  ///@param pivotId pivot for the new rank of the offer
   ///@param offerId the id of the offer to be updated
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint offerId)
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId)
     external
     payable
     onlyOwner(outbound_tkn, inbound_tkn, offerId)
@@ -76,7 +75,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     args.tick = tick;
     args.gives = gives;
     args.gasreq = offerGasreq();
-    args.pivotId = pivotId;
     args.noRevert = false; // will throw if Mangrove reverts
     _updateOffer(args, offerId);
   }
@@ -288,7 +286,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
         gives: residualGives,
         gasreq: offerGasreq(), // using default gasreq of the strat
         gasprice: 0, // ignored
-        pivotId: tko.pivotId,
         fund: fund,
         noRevert: true // returns 0 when MGV reverts
       }),

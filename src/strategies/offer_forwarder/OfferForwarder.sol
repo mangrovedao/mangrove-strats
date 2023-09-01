@@ -17,7 +17,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -31,7 +31,6 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivotId,
         fund: msg.value,
         noRevert: false // propagates Mangrove's revert data in case of newOffer failure
       }),
@@ -39,25 +38,22 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives)
     public
     payable
     returns (uint offerId)
   {
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerGasreq());
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    int tick,
-    uint gives,
-    uint pivotId,
-    uint offerId,
-    uint gasreq
-  ) public payable override onlyOwner(outbound_tkn, inbound_tkn, offerId) {
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+    public
+    payable
+    override
+    onlyOwner(outbound_tkn, inbound_tkn, offerId)
+  {
     OfferArgs memory args;
 
     // funds to compute new gasprice is msg.value. Will use old gasprice if no funds are given
@@ -69,18 +65,17 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     args.tick = tick;
     args.gives = gives;
     args.gasreq = gasreq;
-    args.pivotId = pivotId;
     args.noRevert = false; // will throw if Mangrove reverts
     // weiBalance is used to provision offer
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint offerId)
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId)
     public
     payable
     onlyOwner(outbound_tkn, inbound_tkn, offerId)
   {
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, offerGasreq());
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

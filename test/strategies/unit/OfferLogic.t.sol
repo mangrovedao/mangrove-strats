@@ -113,7 +113,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -129,7 +128,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: type(uint).max
     });
   }
@@ -143,7 +141,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: gasreq
     });
   }
@@ -159,7 +156,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -180,7 +176,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -202,7 +197,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     makerContract.retractOffer(weth, usdc, offerId, true);
@@ -219,7 +213,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.expectRevert("mgvOffer/weiTransferFail");
@@ -234,7 +227,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -245,7 +237,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: offerId,
       offerId: offerId,
       gasreq: makerContract.offerGasreq()
     });
@@ -260,7 +251,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: gasreq
     });
     vm.expectRevert("AccessControlled/Invalid");
@@ -270,7 +260,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: offerId,
       offerId: offerId,
       gasreq: gasreq
     });
@@ -284,7 +273,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: gasreq
     });
 
@@ -296,7 +284,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: offerId,
       offerId: offerId,
       gasreq: gasreq
     });
@@ -310,7 +297,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -347,7 +333,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       tick: 1,
       gives: offerGives,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -376,7 +361,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
@@ -409,7 +393,6 @@ contract OfferLogicTest is StratTest {
       inbound_tkn: usdc,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();

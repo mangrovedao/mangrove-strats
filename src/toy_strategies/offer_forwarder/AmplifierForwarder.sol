@@ -38,8 +38,6 @@ contract AmplifierForwarder is Forwarder {
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
    * @param wants2 in STABLE2 decimals
-   * @param pivot1 pivot for STABLE1
-   * @param pivot2 pivot for STABLE2
    * @return (offerid for STABLE1, offerid for STABLE2)
    * @dev these offer's provision must be in msg.value
    * @dev `reserve()` must have approved base for `this` contract transfer prior to calling this function
@@ -48,8 +46,6 @@ contract AmplifierForwarder is Forwarder {
     uint gives;
     uint wants1;
     uint wants2;
-    uint pivot1;
-    uint pivot2;
     uint fund1;
     uint fund2;
   }
@@ -82,7 +78,6 @@ contract AmplifierForwarder is Forwarder {
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
-        pivotId: args.pivot1,
         fund: args.fund1,
         noRevert: false
       }),
@@ -102,7 +97,6 @@ contract AmplifierForwarder is Forwarder {
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
-        pivotId: args.pivot2,
         fund: args.fund2,
         noRevert: false
       }),
@@ -161,7 +155,6 @@ contract AmplifierForwarder is Forwarder {
           gives: new_alt_gives,
           gasreq: gasreq,
           gasprice: 0, // ignored
-          pivotId: 0,
           noRevert: true,
           fund: 0
         }),

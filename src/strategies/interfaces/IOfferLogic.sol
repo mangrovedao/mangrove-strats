@@ -75,7 +75,6 @@ interface IOfferLogic is IMaker {
   ///@param gives the amount of outbound tokens the maker gives for a complete fill.
   ///@param gasreq the amount of gas units that are required to execute the trade
   ///@param gasprice the gasprice used to compute offer's provision (use 0 to use Mangrove's gasprice)
-  ///@param pivotId a best pivot estimate for cheap offer insertion in the offer list.
   ///@param fund WEIs in `this` contract's balance that are used to provision the offer.
   ///@param noRevert is set to true if calling function does not wish `_newOffer` to revert on error.
   ///@param owner the offer maker managing the offer.
@@ -87,7 +86,6 @@ interface IOfferLogic is IMaker {
     uint gives;
     uint gasreq;
     uint gasprice;
-    uint pivotId;
     uint fund;
     bool noRevert;
   }

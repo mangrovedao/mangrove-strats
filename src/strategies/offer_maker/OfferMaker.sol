@@ -18,7 +18,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -33,32 +33,28 @@ contract OfferMaker is ILiquidityProvider, Direct {
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivotId,
         fund: msg.value,
         noRevert: false
       })
     );
   }
 
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives)
     external
     payable
     onlyAdmin
     returns (uint offerId)
   {
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerGasreq());
+    return newOffer(outbound_tkn, inbound_tkn, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    int tick,
-    uint gives,
-    uint pivotId,
-    uint offerId,
-    uint gasreq
-  ) public payable override onlyAdmin {
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+    public
+    payable
+    override
+    onlyAdmin
+  {
     _updateOffer(
       OfferArgs({
         outbound_tkn: outbound_tkn,
@@ -67,7 +63,6 @@ contract OfferMaker is ILiquidityProvider, Direct {
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivotId,
         fund: msg.value,
         noRevert: false
       }),
@@ -75,12 +70,12 @@ contract OfferMaker is ILiquidityProvider, Direct {
     );
   }
 
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint offerId)
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId)
     external
     payable
     onlyAdmin
   {
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, pivotId, offerId, offerGasreq());
+    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

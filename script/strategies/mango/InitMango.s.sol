@@ -58,7 +58,6 @@ contract InitMango is Deployer {
     }
 
     uint[] memory amounts = new uint[](n);
-    uint[] memory pivotIds = new uint[](n);
     for (uint i = 0; i < amounts.length; i++) {
       if (i < firstAskIndex) {
         amounts[i] = default_quote_amount;
@@ -74,7 +73,6 @@ contract InitMango is Deployer {
         (n / 2) - 1, // last bid position
         batch_size * i, // from
         batch_size * (i + 1), // to
-        [pivotIds, pivotIds],
         amounts
       );
       remainder -= batch_size;
@@ -86,7 +84,6 @@ contract InitMango is Deployer {
         (n / 2) - 1, // last bid position
         n - remainder, // from
         n, // to
-        [pivotIds, pivotIds],
         amounts
       );
     }

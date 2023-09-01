@@ -119,7 +119,6 @@ contract Mango is Direct {
     uint lastBidPosition, // if `lastBidPosition` is in R, then all offers before `lastBidPosition` (included) will be bids, offers strictly after will be asks.
     uint from, // first price position to be populated
     uint to, // last price position to be populated
-    uint[][2] calldata pivotIds, // `pivotIds[0][i]` ith pivots for bids, `pivotIds[1][i]` ith pivot for asks
     uint[] calldata tokenAmounts // `tokenAmounts[i]` is the amount of `BASE` or `QUOTE` tokens (dePENDING on `withBase` flag) that is used to fixed one parameter of the price at position `from+i`.
   ) public adminOrCaller(address(MGV)) {
     // making sure a router has been defined between deployment and initialization
@@ -127,14 +126,7 @@ contract Mango is Direct {
 
     (bool success, bytes memory retdata) = IMPLEMENTATION.delegatecall(
       abi.encodeWithSelector(
-        MangoImplementation.$initialize.selector,
-        reset,
-        lastBidPosition,
-        from,
-        to,
-        pivotIds,
-        tokenAmounts,
-        offerGasreq()
+        MangoImplementation.$initialize.selector, reset, lastBidPosition, from, to, tokenAmounts, offerGasreq()
       )
     );
     if (!success) {

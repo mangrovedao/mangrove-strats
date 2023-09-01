@@ -29,7 +29,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint pivotId, uint gasreq)
+  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -43,7 +43,6 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivotId, // a best pivot estimate for cheap offer insertion in the offer list - this should be a parameter computed off-chain for cheaper insertion
         fund: msg.value, // WEIs in that are used to provision the offer.
         noRevert: false // we want to revert on error
       })
@@ -51,15 +50,12 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    int tick,
-    uint gives,
-    uint pivotId,
-    uint offerId,
-    uint gasreq
-  ) public payable override adminOrCaller(address(MGV)) {
+  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+    public
+    payable
+    override
+    adminOrCaller(address(MGV))
+  {
     _updateOffer(
       OfferArgs({
         outbound_tkn: outbound_tkn,
@@ -68,7 +64,6 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivotId,
         fund: msg.value,
         noRevert: false
       }),

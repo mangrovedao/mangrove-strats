@@ -128,10 +128,10 @@ abstract contract KandelTest is StratTest {
     params.spread = STEP;
     params.pricePoints = 10;
     vm.prank(maker);
-    kdl.populate{value: (provAsk + provBid) * 10}(distribution1, dynamic([uint(0), 1, 2, 3, 4]), 5, params, 0, 0);
+    kdl.populate{value: (provAsk + provBid) * 10}(distribution1, 5, params, 0, 0);
 
     vm.prank(maker);
-    kdl.populateChunk(distribution2, dynamic([uint(0), 1, 2, 3, 4]), 5);
+    kdl.populateChunk(distribution2, 5);
 
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
@@ -335,13 +335,12 @@ abstract contract KandelTest is StratTest {
     uint index,
     uint base,
     uint quote,
-    uint pivotId,
     uint firstAskIndex,
     bytes memory expectRevert
   ) internal {
     GeometricKandel.Params memory params = getParams(kdl);
     populateSingle(
-      kandel, index, base, quote, pivotId, firstAskIndex, params.pricePoints, params.ratio, params.spread, expectRevert
+      kandel, index, base, quote, firstAskIndex, params.pricePoints, params.ratio, params.spread, expectRevert
     );
   }
 
@@ -350,7 +349,6 @@ abstract contract KandelTest is StratTest {
     uint index,
     uint base,
     uint quote,
-    uint pivotId,
     uint firstAskIndex,
     uint pricePoints,
     uint ratio,
@@ -361,12 +359,10 @@ abstract contract KandelTest is StratTest {
     distribution.indices = new uint[](1);
     distribution.baseDist = new uint[](1);
     distribution.quoteDist = new uint[](1);
-    uint[] memory pivotIds = new uint[](1);
 
     distribution.indices[0] = index;
     distribution.baseDist[0] = base;
     distribution.quoteDist[0] = quote;
-    pivotIds[0] = pivotId;
     vm.prank(maker);
     if (expectRevert.length > 0) {
       vm.expectRevert(expectRevert);
@@ -376,7 +372,7 @@ abstract contract KandelTest is StratTest {
     params.ratio = uint24(ratio);
     params.spread = uint8(spread);
 
-    kandel.populate{value: 0.1 ether}(distribution, pivotIds, firstAskIndex, params, 0, 0);
+    kandel.populate{value: 0.1 ether}(distribution, firstAskIndex, params, 0, 0);
   }
 
   function populateFixedDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
@@ -398,7 +394,7 @@ abstract contract KandelTest is StratTest {
 
     GeometricKandel.Params memory params = getParams(kdl);
     vm.prank(maker);
-    kdl.populate{value: maker.balance}(distribution, new uint[](size), size / 2, params, 0, 0);
+    kdl.populate{value: maker.balance}(distribution, size / 2, params, 0, 0);
   }
 
   function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {

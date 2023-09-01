@@ -101,8 +101,6 @@ contract AmplifierForwarderTest is StratTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1,
         fund2: prov2
       })
@@ -328,8 +326,6 @@ contract AmplifierForwarderTest is StratTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1Tester,
         fund2: prov2Tester
       })
@@ -354,8 +350,6 @@ contract AmplifierForwarderTest is StratTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1Maker,
         fund2: prov2Maker
       })

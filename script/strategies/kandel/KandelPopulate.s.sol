@@ -75,7 +75,6 @@ contract KandelPopulate is Deployer {
     CoreKandel.Distribution distribution;
     uint baseAmountRequired;
     uint quoteAmountRequired;
-    uint[] pivotIds;
     bool bidding;
     uint snapshotId;
     uint lastOfferId;
@@ -121,9 +120,9 @@ contract KandelPopulate is Deployer {
     prettyLog("Calculating base and quote...");
     vars.distribution = calculateBaseQuote(args);
 
-    prettyLog("Evaluating pivots and required collateral...");
-    evaluatePivots(vars.distribution, args, vars, funds);
-    // after the above call, `vars.pivotIds` and `vars.base/quoteAmountRequired` are filled
+    prettyLog("Evaluating required collateral...");
+    evaluateAmountsRequired(vars.distribution, args, vars, funds);
+    // after the above call, `vars.base/quoteAmountRequired` are filled
     uint baseDecimals = vars.BASE.decimals();
     uint quoteDecimals = vars.QUOTE.decimals();
     prettyLog(
@@ -171,12 +170,7 @@ contract KandelPopulate is Deployer {
     broadcast();
 
     args.kdl.populate{value: funds}(
-      vars.distribution,
-      vars.pivotIds,
-      args.firstAskIndex,
-      args.params,
-      vars.baseAmountRequired,
-      vars.quoteAmountRequired
+      vars.distribution, args.firstAskIndex, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
     );
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
@@ -187,9 +181,9 @@ contract KandelPopulate is Deployer {
     );
   }
 
-  ///@notice evaluates Pivot ids for offers that need to be published on Mangrove
+  ///@notice evaluates required amounts that need to be published on Mangrove
   ///@dev we use foundry cheats to revert all changes to the local node in order to prevent inconsistent tests.
-  function evaluatePivots(
+  function evaluateAmountsRequired(
     CoreKandel.Distribution memory distribution,
     HeapArgs memory args,
     HeapVars memory vars,
@@ -197,9 +191,8 @@ contract KandelPopulate is Deployer {
   ) public {
     vars.snapshotId = vm.snapshot();
     vm.startPrank(broadcaster());
-    (vars.pivotIds, vars.baseAmountRequired, vars.quoteAmountRequired) = KandelLib.estimatePivotsAndRequiredAmount(
-      distribution, GeometricKandel(args.kdl), args.firstAskIndex, args.params, funds
-    );
+    (vars.baseAmountRequired, vars.quoteAmountRequired) =
+      KandelLib.estimateRequiredAmount(distribution, GeometricKandel(args.kdl), args.firstAskIndex, args.params, funds);
     vm.stopPrank();
     require(vm.revertTo(vars.snapshotId), "snapshot restore failed");
   }

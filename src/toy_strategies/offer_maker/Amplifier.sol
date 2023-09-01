@@ -42,8 +42,6 @@ contract Amplifier is Direct {
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
    * @param wants2 in STABLE2 decimals
-   * @param pivot1 pivot for STABLE1
-   * @param pivot2 pivot for STABLE2
    * @return (offerid for STABLE1, offerid for STABLE2)
    * @dev these offer's provision must be in msg.value
    * @dev `reserve(admin())` must have approved base for `this` contract transfer prior to calling this function
@@ -52,9 +50,7 @@ contract Amplifier is Direct {
     // this function posts two asks
     uint gives,
     uint wants1,
-    uint wants2,
-    uint pivot1,
-    uint pivot2
+    uint wants2
   ) external payable onlyAdmin returns (uint, uint) {
     // there is a cost of being paternalistic here, we read MGV storage
     // an offer can be in 4 states:
@@ -78,7 +74,6 @@ contract Amplifier is Direct {
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
-        pivotId: pivot1,
         fund: msg.value,
         noRevert: false
       })
@@ -95,7 +90,6 @@ contract Amplifier is Direct {
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
-        pivotId: pivot2,
         fund: 0,
         noRevert: false
       })
@@ -145,7 +139,6 @@ contract Amplifier is Direct {
           gives: new_alt_gives,
           tick: Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives)),
           gasreq: alt_detail.gasreq(),
-          pivotId: alt_offer.next(),
           gasprice: 0,
           fund: 0,
           noRevert: true

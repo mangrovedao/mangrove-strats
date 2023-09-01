@@ -234,7 +234,6 @@ contract AaveKandelTest is CoreKandelTest {
       index: 4,
       base: bestAsk.gives(),
       quote: bestAsk.wants(),
-      pivotId: 0,
       firstAskIndex: 0,
       expectRevert: ""
     });

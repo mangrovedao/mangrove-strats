@@ -116,9 +116,7 @@ contract AmplifierTest is StratTest {
     (offerId1, offerId2) = strat.newAmplifiedOffers{value: 2 ether}({
       gives: makerGivesAmount, // WETH
       wants1: makerWantsAmountUSDC, // USDC
-      wants2: makerWantsAmountDAI, // DAI
-      pivot1: 0,
-      pivot2: 0
+      wants2: makerWantsAmountDAI // DAI
     });
   }
 
