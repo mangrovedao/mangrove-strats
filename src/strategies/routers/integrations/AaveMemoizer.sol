@@ -102,7 +102,7 @@ contract AaveMemoizer is AaveV3Borrower {
    * @return debtTkn the overlying debt token
    * @dev no need to memoize this since the information is already memoized in `m.reserveData`
    */
-  function debtToken(IERC20 token, Memoizer memory m) public view returns (ICreditDelegationToken debtTkn) {
+  function debtToken(IERC20 token, Memoizer memory m) internal view returns (ICreditDelegationToken debtTkn) {
     debtTkn = INTEREST_RATE_MODE == 1
       ? ICreditDelegationToken(reserveData(token, m).stableDebtTokenAddress)
       : ICreditDelegationToken(reserveData(token, m).variableDebtTokenAddress);
@@ -113,7 +113,7 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@param m the memoizer
   ///@return debt in asset
   ///@dev user can only borrow underlying in variable or stable, not both
-  function debtBalanceOf(IERC20 token, Memoizer memory m) public view returns (uint) {
+  function debtBalanceOf(IERC20 token, Memoizer memory m) internal view returns (uint) {
     if (!m.debtBalanceOfMemoized) {
       m.debtBalanceOfMemoized = true;
       ICreditDelegationToken dtkn = debtToken(token, m);
@@ -129,7 +129,7 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@param token the asset whole supply cap is needed
   ///@param m the memoizer
   ///@return supplyCap of the asset (in raw token units)
-  function supplyCap(IERC20 token, Memoizer memory m) public view returns (uint) {
+  function supplyCap(IERC20 token, Memoizer memory m) internal view returns (uint) {
     return ReserveConfiguration.getSupplyCap(reserveData(token, m).configuration);
   }
 
@@ -137,14 +137,14 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@param token the asset whole borrow cap is needed
   ///@param m the memoizer
   ///@return borrowCap of the asset (in raw token units)
-  function borrowCap(IERC20 token, Memoizer memory m) public view returns (uint) {
+  function borrowCap(IERC20 token, Memoizer memory m) internal view returns (uint) {
     return ReserveConfiguration.getBorrowCap(reserveData(token, m).configuration);
   }
 
   ///@notice fetches and memoizes `this` contract's account data on the pool
   ///@param m the memoizer
   ///@return accountData of `this` contract
-  function userAccountData(Memoizer memory m) public view returns (Account memory) {
+  function userAccountData(Memoizer memory m) internal view returns (Account memory) {
     if (!m.userAccountDataMemoized) {
       m.userAccountDataMemoized = true;
       (
@@ -163,7 +163,7 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@param token the asset whose price is needed
   ///@param m the memoizer
   ///@return price of one unit of asset expressed in USD with 8 decimals precision
-  function assetPrice(IERC20 token, Memoizer memory m) public view returns (uint) {
+  function assetPrice(IERC20 token, Memoizer memory m) internal view returns (uint) {
     if (!m.assetPriceMemoized) {
       m.assetPriceMemoized = true;
       m.assetPrice = ORACLE.getAssetPrice(address(token));

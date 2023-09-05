@@ -179,22 +179,28 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     Memoizer memory m;
     uint localBalance = balanceOf(token, m);
     if (amount > localBalance) {
+      uint missing = amount - localBalance;
+      // there is not enough on the router's balance to pay the taker
+      // one needs to withdraw and/or borrow on the pool
       (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, true);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
         // withdrawing all that can be redeemed from AAVE
-        (uint withdrawn, bytes32 reason) = _redeem(token, maxWithdraw, address(this), true);
+        uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
+
+        uint toWithdraw = withdrawBuffer > missing ? withdrawBuffer : (maxWithdraw > missing ? missing : maxWithdraw);
+        (uint withdrawn, bytes32 reason) = _redeem(token, toWithdraw, address(this), true);
         if (reason == bytes32(0)) {
           // localBalance has possibly more than required amount now
-          localBalance += withdrawn;
+          missing = withdrawn > missing ? 0 : missing - withdrawn;
         } else {
           // failed to withdraw possibly because asset is used as collateral for borrow or pool is dry
           emit LogAaveIncident(msg.sender, address(token), reason);
         }
       }
-      if (amount > localBalance && amount - localBalance <= maxBorrow) {
+      // testing whether one still misses funds to pay the taker and if so, whether one can borrow what's missing
+      if (missing <= maxBorrow && missing > 0) {
         // missing funds and able to borrow what's missing
-        uint missing = amount - localBalance;
         uint buffer = (BUFFER_SIZE * maxBorrow) / 100;
         // if buffer < missing, we still borrow missing from the pool in order not to make offer fail if possible
         uint toBorrow = buffer > missing ? buffer : missing;
@@ -211,7 +217,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
         }
       } else {
         // maxBorrow is not enough to redeem missing funds
-        amount = localBalance;
+        amount = strict ? amount : localBalance;
       }
     }
     pulled = strict ? amount : localBalance;
@@ -287,6 +293,14 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     bal.local = balanceOf(token, m);
     bal.onPool = overlyingBalanceOf(token, m);
     (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, true);
+  }
+
+  ///@notice view of user account data
+  ///@return data of this router's account on AAVE
+  ///@dev account liquidation is possible when `data.health < 10**18`
+  function accountData() public view returns (Account memory data) {
+    Memoizer memory m;
+    return userAccountData(m);
   }
 
   ///@notice returns the amount of asset that this contract has, either locally or on pool

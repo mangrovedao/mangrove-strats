@@ -7,12 +7,12 @@ import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 
-contract AavePrivateRouterTest is OfferLogicTest {
+contract AavePrivateRouterNoBufferTest is OfferLogicTest {
   bool internal useForkAave = true;
 
   AavePrivateRouter internal privateRouter;
 
-  uint internal constant GASREQ = 550_100;
+  uint internal expectedGasreq = 550_100;
 
   event SetAaveManager(address);
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
@@ -22,7 +22,7 @@ contract AavePrivateRouterTest is OfferLogicTest {
   uint internal bufferSize;
   uint internal interestRate = 2; // stable borrowing not enabled on polygon
 
-  function setUp() public override {
+  function setUp() public virtual override {
     // deploying mangrove and opening WETH/USDC market.
     if (useForkAave) {
       fork = new PolygonFork();
@@ -80,7 +80,7 @@ contract AavePrivateRouterTest is OfferLogicTest {
   }
 
   // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances
-  function test_owner_balance_is_updated_when_trade_succeeds() public override {
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual override {
     (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
     AavePrivateRouter.AssetBalances memory balUsdc = privateRouter.assetBalances(usdc);
@@ -186,8 +186,8 @@ contract AavePrivateRouterTest is OfferLogicTest {
     uint finalize_cost = gas - gasleft();
     console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
     console.log("shallow push: %d", shallow_push_cost);
-    console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
-    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
+    console.log("Strat gasreq (%d), mockup (%d)", expectedGasreq, deep_pull_cost + finalize_cost);
+    assertApproxEqAbs(deep_pull_cost + finalize_cost, expectedGasreq, 200, "Check new gas cost");
   }
 
   function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
@@ -205,163 +205,141 @@ contract AavePrivateRouterTest is OfferLogicTest {
     privateRouter.checkList(IERC20($(tkn)), address(makerContract));
   }
 
-  // function empty_pool(IERC20 token, address id) internal {
-  //   // empty usdc reserve
-  //   uint bal = privateRouter.balanceOfReserve(token, id);
-  //   if (bal > 0) {
-  //     vm.startPrank(address(makerContract));
-  //     privateRouter.pull(token, owner, bal, true);
-  //     vm.stopPrank();
-  //   }
-  //   assertEq(privateRouter.balanceOfReserve(token, id), 0, "Non empty balance");
+  function test_pulled_collateral_is_consistent_with_buffer() public virtual {
+    AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
-  //   assertEq(token.balanceOf($(privateRouter)), 0, "Non empty buffer");
-  //   assertEq(privateRouter.overlying(token).balanceOf($(privateRouter)), 0, "Non empty pool");
-  // }
+    vm.prank(address(makerContract));
+    uint pulled = privateRouter.pull(dai, address(makerContract), 10, true);
+    assertEq(pulled, 10, "Incorrect pulled amount");
+    // checking:
+    // * 1 wei of DAI is transferred to maker contract
+    // * 0 DAI remains as buffer on the router
+    // * 999_999 weis of DAI remain on the pool
+    AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
+    assertEq(bal_.local, 0, "Incorrect buffer on the router");
+    assertApproxEqAbs(bal_.onPool, bal.onPool - 10, 1, "No collateral should be left on the pool");
+    assertEq(dai.balanceOf(address(makerContract)), 10, "Unexpected amount of dai on the maker contract");
+  }
 
-  // function test_overflow_shares(uint96 amount_) public {
-  //   uint amount = uint(amount_);
-  //   empty_pool(usdc, owner);
-  //   empty_pool(usdc, maker1);
-  //   empty_pool(usdc, maker2);
+  function test_push_and_supply_repays_debt() public {
+    // router borrows as a response to the pull request (because it does not supply weth)
+    vm.prank(address(makerContract));
+    uint pulled = privateRouter.pull(weth, address(makerContract), 1 ether, true);
+    assertEq(weth.balanceOf(address(makerContract)), 1 ether, "Pull failed");
+    AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(weth);
+    assertTrue(bal.debt > 0, "Router should be endebted");
+    // router should empty its weth buffer and repay debt
+    vm.prank(address(makerContract));
+    privateRouter.pushAndSupply(weth, pulled, usdc, 0);
+    AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(weth);
+    assertEq(bal_.debt, 0, "Router should no longer be endebted");
+  }
 
-  //   deal($(usdc), maker1, amount + 1);
-  //   // maker1 deposits 1 wei and gets 10**OFFSET shares
-  //   vm.prank(maker1);
-  //   privateRouter.push(usdc, maker1, 1);
-  //   // maker1 now deposits max uint104
-  //   vm.prank(maker1);
-  //   privateRouter.push(usdc, maker1, amount);
+  function test_push_and_supply_more_than_debt_increases_supply() public {
+    deal(address(weth), address(makerContract), 1 ether);
+    // router borrows as a response to the pull request (because it does not supply weth)
+    vm.prank(address(makerContract));
+    privateRouter.pull(weth, address(makerContract), 1 ether, true);
 
-  //   // computation below should not throw
-  //   assertEq(privateRouter.balanceOfReserve(usdc, maker1), amount + 1, "Incorrect balance");
-  // }
+    // router should empty its weth buffer and repay debt
+    vm.prank(address(makerContract));
+    privateRouter.pushAndSupply(weth, 2 ether, usdc, 0);
 
-  // function test_underflow_shares_6dec(uint96 deposit_, uint96 donation_) public {
-  //   empty_pool(usdc, owner);
-  //   empty_pool(usdc, maker1);
-  //   empty_pool(usdc, maker2);
+    AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(weth);
+    assertEq(bal.debt, 0, "Router should no longer be endebted");
+    assertApproxEqAbs(bal.onPool, 1 ether, 1, "Incomplete supply on pool");
+  }
+}
 
-  //   uint deposit = uint(deposit_);
-  //   uint donation = uint(donation_);
-  //   vm.assume(deposit > 10 ** 5); // assume deposits at least 10-^2 tokens with 6 decimals
-  //   vm.assume(donation < deposit * 10_000);
+contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
+  function setUp() public override {
+    // deploying mangrove and opening WETH/USDC market.
+    if (useForkAave) {
+      fork = new PolygonFork();
+    }
+    bufferSize = 100;
+    expectedGasreq = 530_200;
+    super.setUp();
+  }
 
-  //   deal($(usdc), maker1, donation + 1);
-  //   vm.prank(maker1);
-  //   privateRouter.push(usdc, maker1, 1);
+  function test_pulled_collateral_is_consistent_with_buffer() public override {
+    AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
-  //   vm.prank(maker1);
-  //   usdc.transfer($(privateRouter), donation);
+    vm.prank(address(makerContract));
+    uint pulled = privateRouter.pull(dai, address(makerContract), 1, true);
+    assertEq(pulled, 1, "incorrect pulled amount");
+    // checking:
+    // * 1 wei of DAI is transferred to maker contract
+    // * 1 DAI - 1 wei remains as buffer on the router
+    AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
+    assertEq(bal_.local, bal.onPool - 1, "Incorrect buffer on the router");
+    assertEq(bal_.onPool, 0, "No collateral should be left on the pool");
+    assertEq(dai.balanceOf(address(makerContract)), 1, "Unexpected amount of dai on the maker contract");
+  }
 
-  //   deal($(usdc), maker2, deposit);
-  //   vm.prank(maker2);
-  //   privateRouter.push(usdc, maker2, deposit);
+  // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances
+  function test_owner_balance_is_updated_when_trade_succeeds() public override {
+    AavePrivateRouter.AssetBalances memory balWethBefore = privateRouter.assetBalances(weth);
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+    AavePrivateRouter.AssetBalances memory balUsdc = privateRouter.assetBalances(usdc);
 
-  //   assertApproxEqRel(deposit, privateRouter.balanceOfReserve(usdc, maker2), 10 ** 13); // error not worth than 10^-7% of the deposit
-  // }
+    // all incoming USDCs should be on the router (DirectTester does not ask for depositing on AAVE)
+    assertEq(balUsdc.onPool, 0, "There should be no USDC balance on pool");
+    assertEq(balUsdc.local, takergave, "Incorrect USDC on the router");
+    assertEq(balUsdc.debt, 0, "There should be no USDC debt");
 
-  // function test_underflow_shares_18dec(uint96 deposit_, uint96 donation_) public {
-  //   empty_pool(weth, owner);
-  //   empty_pool(weth, maker1);
-  //   empty_pool(weth, maker2);
+    AavePrivateRouter.AssetBalances memory balWeth = privateRouter.assetBalances(weth);
+    // contract borrowed everything that could be borrowed (full buffer) and DirectTester does not repay debt on posthook
+    assertEq(balWeth.debt, balWethBefore.creditLine, "Incorrect WETH debt");
+    assertEq(balWeth.local, balWethBefore.creditLine - (takergot + fee), "Incorrect residual WETH on the router");
+    assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
+  }
+}
 
-  //   uint deposit = uint(deposit_);
-  //   uint donation = uint(donation_);
-  //   vm.assume(deposit > 10 ** 13); // deposits at least 10^-5 ether
-  //   vm.assume(donation < deposit * 10_000);
+contract AavePrivateRouterHalfBufferTest is AavePrivateRouterNoBufferTest {
+  function setUp() public override {
+    // deploying mangrove and opening WETH/USDC market.
+    if (useForkAave) {
+      fork = new PolygonFork();
+    }
+    bufferSize = 50;
+    expectedGasreq = 530_200;
+    super.setUp();
+  }
 
-  //   deal($(weth), maker1, donation + 1);
-  //   vm.prank(maker1);
-  //   privateRouter.push(weth, maker1, 1);
+  function test_pulled_collateral_is_consistent_with_buffer() public override {
+    AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
-  //   vm.prank(maker1);
-  //   weth.transfer($(privateRouter), donation);
+    vm.prank(address(makerContract));
+    uint pulled = privateRouter.pull(dai, address(makerContract), 1, true);
+    assertEq(pulled, 1, "Incorrect pulled amount");
+    // checking:
+    // * 1 wei of DAI is transferred to maker contract
+    // * 1 DAI - 1 wei remains as buffer on the router
+    AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
+    assertEq(bal_.local, bal.onPool / 2 - 1, "Incorrect buffer on the router");
+    assertApproxEqAbs(bal_.onPool, bal.onPool / 2, 1, "Incorrect collateral left on the pool");
+    assertEq(dai.balanceOf(address(makerContract)), 1, "Unexpected amount of dai on the maker contract");
+  }
 
-  //   deal($(weth), maker2, deposit);
-  //   vm.prank(maker2);
-  //   privateRouter.push(weth, maker2, deposit);
+  // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances
+  function test_owner_balance_is_updated_when_trade_succeeds() public override {
+    AavePrivateRouter.AssetBalances memory balWethBefore = privateRouter.assetBalances(weth);
 
-  //   assertApproxEqRel(deposit, privateRouter.balanceOfReserve(weth, maker2), 10 ** 5); // error not worth than 10^-15% of the deposit
-  // }
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+    AavePrivateRouter.AssetBalances memory balUsdc = privateRouter.assetBalances(usdc);
 
-  // function test_allExternalFunctions_differentCallers_correctAuth() public {
-  //   // Arrange
-  //   bytes[] memory selectors =
-  //     AllMethodIdentifiersTest.getAllMethodIdentifiers(vm, "/out/AavePooledRouter.sol/AavePooledRouter.json");
+    // all incoming USDCs should be on the router (DirectTester does not ask for depositing on AAVE)
+    assertEq(balUsdc.onPool, 0, "There should be no USDC balance on pool");
+    assertEq(balUsdc.local, takergave, "Incorrect USDC on the router");
+    assertEq(balUsdc.debt, 0, "There should be no USDC debt");
 
-  //   assertGt(selectors.length, 0, "Some functions should be loaded");
-
-  //   for (uint i = 0; i < selectors.length; i++) {
-  //     // Assert that all are called - to decode the selector search in the abi file
-  //     vm.expectCall(address(privateRouter), selectors[i]);
-  //   }
-
-  //   address admin = freshAddress("newAdmin");
-  //   vm.prank(deployer);
-  //   privateRouter.setAdmin(admin);
-
-  //   address manager = freshAddress("newManager");
-  //   vm.prank(admin);
-  //   privateRouter.setAaveManager(manager);
-
-  //   // Act/assert - invoke all functions - if any are missing, add them.
-
-  //   // No auth
-  //   privateRouter.ADDRESS_PROVIDER();
-  //   privateRouter.OFFSET();
-  //   privateRouter.POOL();
-  //   privateRouter.aaveManager();
-  //   privateRouter.admin();
-  //   privateRouter.routerGasreq();
-  //   privateRouter.balanceOfReserve(dai, maker1);
-  //   privateRouter.sharesOf(dai, maker1);
-  //   privateRouter.totalBalance(dai);
-  //   privateRouter.totalShares(dai);
-  //   privateRouter.isBound(maker1);
-  //   privateRouter.overlying(dai);
-  //   privateRouter.checkAsset(dai);
-  //   vm.prank(maker1);
-  //   privateRouter.checkList(dai, maker1);
-
-  //   CheckAuthArgs memory args;
-  //   args.callee = $(privateRouter);
-  //   args.callers = dynamic([address($(mgv)), maker1, maker2, admin, manager, $(this)]);
-  //   args.revertMessage = "AccessControlled/Invalid";
-
-  //   // Maker or admin
-  //   args.allowed = dynamic([address(maker1), maker2, admin]);
-  //   checkAuth(args, abi.encodeCall(privateRouter.flushBuffer, (dai, true)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.activate, dai));
-
-  //   // Only admin
-  //   args.allowed = dynamic([address(admin)]);
-  //   address freshMaker = freshAddress("newMaker");
-  //   checkAuth(args, abi.encodeCall(privateRouter.setAdmin, admin));
-  //   checkAuth(args, abi.encodeCall(privateRouter.bind, freshMaker));
-  //   checkAuth(args, abi.encodeWithSignature("unbind(address)", freshMaker));
-
-  //   // Only Makers
-  //   deal($(dai), maker1, 1 * 10 ** 18);
-  //   deal($(dai), maker2, 1 * 10 ** 18);
-  //   args.allowed = dynamic([address(maker1), maker2]);
-  //   checkAuth(args, abi.encodeCall(privateRouter.push, (dai, maker1, 1000)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.pull, (dai, maker1, 100, true)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.flush, (new IERC20[](0), owner)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.pushAndSupply, (dai, 0, dai, 0, owner)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.withdraw, (dai, maker1, 100)));
-
-  //   checkAuth(args, abi.encodeWithSignature("unbind()"));
-
-  //   // Only manager
-  //   args.allowed = dynamic([address(manager)]);
-  //   checkAuth(args, abi.encodeCall(privateRouter.enterMarket, new IERC20[](0)));
-  //   checkAuth(args, abi.encodeCall(privateRouter.claimRewards, dynamic([address(privateRouter.overlying(dai))])));
-  //   checkAuth(args, abi.encodeCall(privateRouter.revokeLenderApproval, dai));
-  //   checkAuth(args, abi.encodeCall(privateRouter.exitMarket, weth));
-
-  //   // Both manager and admin
-  //   args.allowed = dynamic([address(manager), admin]);
-  //   checkAuth(args, abi.encodeCall(privateRouter.setAaveManager, manager));
-  // }
+    AavePrivateRouter.AssetBalances memory balWeth = privateRouter.assetBalances(weth);
+    // contract borrowed half of borrow capacity (half buffer) and DirectTester does not repay debt on posthook
+    assertEq(balWeth.debt, balWethBefore.creditLine / 2, "Incorrect WETH debt");
+    assertEq(balWeth.local, balWethBefore.creditLine / 2 - (takergot + fee), "Incorrect residual WETH on the router");
+    assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
+  }
 }
