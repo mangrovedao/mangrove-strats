@@ -5,6 +5,7 @@ import {AbstractRouter} from "../AbstractRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
+import "forge-std/console.sol";
 
 ///@title Router for smart offers that borrow promised assets on AAVE
 ///@dev router assumes all bound makers share the same liquidity
@@ -178,21 +179,29 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
     Memoizer memory m;
     uint localBalance = balanceOf(token, m);
+    console.log("local balance: %d", localBalance);
     if (amount > localBalance) {
       uint missing = amount - localBalance;
+      console.log("missing", missing);
       // there is not enough on the router's balance to pay the taker
       // one needs to withdraw and/or borrow on the pool
       (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, true);
+      console.log("max withdraw", maxWithdraw);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
         // withdrawing all that can be redeemed from AAVE
         uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
+        console.log("buffer:", withdrawBuffer);
 
         uint toWithdraw = withdrawBuffer > missing ? withdrawBuffer : (maxWithdraw > missing ? missing : maxWithdraw);
+        console.log("toWithdraw", toWithdraw);
         (uint withdrawn, bytes32 reason) = _redeem(token, toWithdraw, address(this), true);
+        localBalance += withdrawn;
+        console.log(withdrawn);
         if (reason == bytes32(0)) {
           // localBalance has possibly more than required amount now
           missing = withdrawn > missing ? 0 : missing - withdrawn;
+          console.log("missing", missing);
         } else {
           // failed to withdraw possibly because asset is used as collateral for borrow or pool is dry
           emit LogAaveIncident(msg.sender, address(token), reason);
@@ -209,18 +218,16 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
           // we failed to borrow missing amount
           // note we do not try to borrow a part of missing for gas reason
           emit LogAaveIncident(msg.sender, address(token), reason);
-          // cannot get more from the pool than `localBalance`
-          amount = localBalance;
         } else {
           // localBalance now has the full required amount
-          localBalance = amount;
+          localBalance += toBorrow;
         }
       } else {
-        // maxBorrow is not enough to redeem missing funds
         amount = strict ? amount : localBalance;
       }
     }
     pulled = strict ? amount : localBalance;
+    console.log(strict ? "strict" : "non strict", pulled, amount, localBalance);
     require(TransferLib.transferToken(token, msg.sender, pulled), "AavePrivateRouter/pullFailed");
   }
 
