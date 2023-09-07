@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
@@ -43,13 +43,12 @@ abstract contract GeometricKandel is CoreKandel {
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param base Address of the base token of the market Kandel will act on
-  ///@param quote Address of the quote token of the market Kandel will act on
+  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
   ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, uint gasprice, address reserveId)
-    CoreKandel(mgv, base, quote, gasreq, reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
+    CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
   {
     setGasprice(gasprice);
   }
@@ -293,10 +292,8 @@ abstract contract GeometricKandel is CoreKandel {
       transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
-    (IERC20 outbound, IERC20 inbound) = tokenPairOfOfferType(baDual);
-    args.outbound_tkn = outbound;
-    args.inbound_tkn = inbound;
-    MgvStructs.OfferPacked dualOffer = MGV.offers(address(outbound), address(inbound), dualOfferId);
+    args.olKey = offerListOfOfferType(baDual);
+    MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
 
     // computing gives/wants for dual offer
     // At least: gives = order.gives/ratio and wants is then order.wants
@@ -304,8 +301,8 @@ abstract contract GeometricKandel is CoreKandel {
     uint wants;
     (wants, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
     if (wants > 0) {
-      // FIXME: Tick should only be updated on new offer or due to price updates, so would be better to set it outside
-      args.tick = Tick.unwrap(TickLib.tickFromVolumes(wants, args.gives));
+      // FIXME: logPrice should only be updated on new offer or due to price updates, so would be better to set it outside
+      args.logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, args.gives);
     } else {
       args.gives = 0;
     }

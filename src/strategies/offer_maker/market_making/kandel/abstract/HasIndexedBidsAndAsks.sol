@@ -1,14 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvStructs} from "mgv_src/MgvLib.sol";
-import {IHasTokenPairOfOfferType, OfferType} from "./TradesBaseQuotePair.sol";
+import {MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {IHasOfferListOfOfferType, OfferType} from "./TradesBaseQuotePair.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
 ///@title Adds a [0..length] index <--> offerId map to a strat.
-///@dev utilizes the `IHasTokenPairOfOfferType` contract.
-abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
+///@dev utilizes the `IHasOfferListOfOfferType` contract.
+abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
   ///@notice The Mangrove deployment.
   IMangrove private immutable MGV;
 
@@ -86,8 +86,8 @@ abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
   ///@return offer the Mangrove offer.
   function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
     uint offerId = offerIdOfIndex(ba, index);
-    (IERC20 outbound, IERC20 inbound) = tokenPairOfOfferType(ba);
-    offer = MGV.offers(address(outbound), address(inbound), offerId);
+    OLKey memory olKey = offerListOfOfferType(ba);
+    offer = MGV.offers(olKey, offerId);
   }
 
   /// @notice gets the total gives of all offers of the offer type.

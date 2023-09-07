@@ -14,7 +14,7 @@ import {
   AaveKandelSeeder
 } from "mgv_strat_script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
 
-import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
+import {Market, ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
 import {
   ActivateMangroveOrder, MangroveOrder
 } from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
@@ -22,8 +22,9 @@ import {KandelSower, IMangrove} from "mgv_strat_script/strategies/kandel/KandelS
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
 
-import {Mangrove} from "mgv_src/Mangrove.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 import {console} from "forge-std/console.sol";
 
@@ -51,7 +52,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
   function runWithChainSpecificParams() public {
     // Deploy Mangrove
     new MumbaiMangroveDeployer().runWithChainSpecificParams();
-    Mangrove mgv = Mangrove(fork.get("Mangrove"));
+    IMangrove mgv = IMangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
     IPriceOracleGetter priceOracle =
       IPriceOracleGetter(IPoolAddressesProvider(fork.get("Aave")).getAddress("PRICE_ORACLE"));
@@ -65,11 +66,11 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
 
     // Activate markets
-    IERC20 dai = IERC20(fork.get("DAI"));
-    IERC20 usdc = IERC20(fork.get("USDC"));
-    IERC20 weth = IERC20(fork.get("WETH"));
+    address dai = fork.get("DAI");
+    address usdc = fork.get("USDC");
+    address weth = fork.get("WETH");
 
-    uint[] memory prices = priceOracle.getAssetsPrices(dynamic([address(dai), address(usdc), address(weth)]));
+    uint[] memory prices = priceOracle.getAssetsPrices(dynamic([dai, usdc, weth]));
     maticPrice = priceOracle.getAssetPrice(fork.get("WMATIC"));
 
     // 1 token_i = (prices[i] / 10**8) USD
@@ -79,8 +80,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
-      tkn1: dai,
-      tkn2: usdc,
+      //FIXME: what tickscale?
+      market: Market({tkn0: dai, tkn1: usdc, tickScale: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[0]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -89,18 +90,19 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      tkn1: weth,
-      tkn2: dai,
+      //FIXME: what tickscale?
+      market: Market({tkn0: weth, tkn1: dai, tickScale: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[0]),
       fee: 0
     });
+    //FIXME: what tickscale?
+    uint wethUsdcTickScale = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      tkn1: weth,
-      tkn2: usdc,
+      market: Market({tkn0: weth, tkn1: usdc, tickScale: wethUsdcTickScale}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -108,9 +110,9 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Activate MangroveOrder on markets
     IERC20[] memory iercs = new IERC20[](3);
-    iercs[0] = weth;
-    iercs[1] = dai;
-    iercs[2] = usdc;
+    iercs[0] = IERC20(weth);
+    iercs[1] = IERC20(dai);
+    iercs[2] = IERC20(usdc);
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
       iercs: iercs
@@ -120,8 +122,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     new KandelSower().innerRun({
       mgv: IMangrove(payable(mgv)),
       kandelSeeder: seeder,
-      base: weth,
-      quote: usdc,
+      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
       gaspriceFactor: 1,
       sharing: false,
       onAave: false,
@@ -133,8 +134,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     new KandelSower().innerRun({
       mgv: IMangrove(payable(mgv)),
       kandelSeeder: aaveSeeder,
-      base: weth,
-      quote: usdc,
+      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
       gaspriceFactor: 1,
       sharing: false,
       onAave: true,

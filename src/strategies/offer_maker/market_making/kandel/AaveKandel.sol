@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {AbstractRouter, AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
@@ -18,23 +18,22 @@ contract AaveKandel is GeometricKandel {
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param base Address of the base token of the market Kandel will act on
-  ///@param quote Address of the quote token of the market Kandel will act on
+  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
   ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, uint gasprice, address reserveId)
-    GeometricKandel(mgv, base, quote, gasreq, gasprice, reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
+    GeometricKandel(mgv, olKeyBaseQuote, gasreq, gasprice, reserveId)
   {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router
     // and trading on USDC.
     // The code below verifies that neither base nor quote are official AAVE overlyings.
     bool isOverlying;
-    try IATokenIsh(address(base)).UNDERLYING_ASSET_ADDRESS() returns (address) {
+    try IATokenIsh(address(olKeyBaseQuote.outbound)).UNDERLYING_ASSET_ADDRESS() returns (address) {
       isOverlying = true;
     } catch {}
-    try IATokenIsh(address(quote)).UNDERLYING_ASSET_ADDRESS() returns (address) {
+    try IATokenIsh(address(olKeyBaseQuote.inbound)).UNDERLYING_ASSET_ADDRESS() returns (address) {
       isOverlying = true;
     } catch {}
     require(!isOverlying, "AaveKandel/cannotTradeAToken");
@@ -88,7 +87,7 @@ contract AaveKandel is GeometricKandel {
   /// @inheritdoc MangroveOffer
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
     bytes32 makerData = super.__lastLook__(order);
-    return (IERC20(order.outbound_tkn).balanceOf(address(router())) < order.wants) ? IS_FIRST_PULLER : makerData;
+    return (IERC20(order.olKey.outbound).balanceOf(address(router())) < order.wants) ? IS_FIRST_PULLER : makerData;
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push and supply on AAVE with a single call when offer logic is the first to pull funds from AAVE

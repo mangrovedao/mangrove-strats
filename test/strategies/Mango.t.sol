@@ -29,13 +29,14 @@ contract MangoTest is StratTest {
     options.quote.symbol = "USDC";
     options.quote.decimals = 6;
     options.defaultFee = 30;
-    options.density = 2 ** 32;
 
     // deploying mangrove and opening WETH/USDC market.
     super.setUp();
     // rename for convenience
     weth = base;
     usdc = quote;
+    olKey = OLKey($(base), $(quote), options.defaultTickScale);
+    lo = olKey.flipped();
 
     maker = freshAddress("maker");
     vm.deal(maker, 10 ether); // to provision Mango
@@ -55,6 +56,7 @@ contract MangoTest is StratTest {
       mgv: IMangrove($(mgv)),
       base: weth,
       quote: usdc,
+      tickScale: olKey.tickScale,
       base_0: cash(weth, 34, 2),
       quote_0: cash(usdc, 1000),
       nslots: NSLOTS,
@@ -104,30 +106,29 @@ contract MangoTest is StratTest {
 
     Book memory book = getOffers(false);
 
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(1), 2, 3, 4, 5, 0, 0, 0, 0, 0]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 0, 0, 1, 2, 3, 4, 5]));
+    checkOB(lo, book.bids, dynamic([int(1), 2, 3, 4, 5, 0, 0, 0, 0, 0]));
+    checkOB(olKey, book.asks, dynamic([int(0), 0, 0, 0, 0, 1, 2, 3, 4, 5]));
   }
 
   function part_market_order() public prank(taker) {
-    (uint got, uint gave, uint bounty,) =
-      mgv.marketOrderByVolume($(weth), $(usdc), cash(weth, 5, 1), cash(usdc, 3000), true);
+    (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(olKey, cash(weth, 5, 1), cash(usdc, 3000), true);
     Book memory book = getOffers(false);
-    assertEq(got, reader.minusFee($(weth), $(usdc), 0.5 ether), "incorrect received amount");
+    assertEq(got, reader.minusFee(olKey, 0.5 ether), "incorrect received amount");
     assertEq(bounty, 0, "taker should not receive bounty");
 
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(1), 2, 3, 4, 5, 6, 0, 0, 0, 0]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 0, 0, -1, 2, 3, 4, 5]));
-    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 3500), cash(weth, 15, 1), true);
+    checkOB(lo, book.bids, dynamic([int(1), 2, 3, 4, 5, 6, 0, 0, 0, 0]));
+    checkOB(olKey, book.asks, dynamic([int(0), 0, 0, 0, 0, -1, 2, 3, 4, 5]));
+    (got, gave, bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 3500), cash(weth, 15, 1), true);
 
-    assertEq(got, reader.minusFee($(usdc), $(weth), cash(usdc, 3500)), "incorrect received amount");
+    assertEq(got, reader.minusFee(lo, cash(usdc, 3500)), "incorrect received amount");
 
     assertEq(bounty, 0, "taker should not receive bounty");
 
     book = getOffers(false);
 
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(1), 2, 3, 4, -5, -6, 0, 0, 0, 0]));
+    checkOB(lo, book.bids, dynamic([int(1), 2, 3, 4, -5, -6, 0, 0, 0, 0]));
 
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 0, 6, 1, 2, 3, 4, 5]));
+    checkOB(olKey, book.asks, dynamic([int(0), 0, 0, 0, 6, 1, 2, 3, 4, 5]));
   }
 
   function part_negative_shift() public prank(maker) {
@@ -135,9 +136,9 @@ contract MangoTest is StratTest {
 
     Book memory book = getOffers(false);
 
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(8), 7, 1, 2, 3, 4, -5, -6, 0, 0]));
+    checkOB(lo, book.bids, dynamic([int(8), 7, 1, 2, 3, 4, -5, -6, 0, 0]));
 
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(-4), -5, 0, 0, 0, 0, 6, 1, 2, 3]));
+    checkOB(olKey, book.asks, dynamic([int(-4), -5, 0, 0, 0, 0, 6, 1, 2, 3]));
   }
 
   function part_positive_shift() public prank(maker) {
@@ -145,9 +146,9 @@ contract MangoTest is StratTest {
 
     Book memory book = getOffers(false);
 
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(2), 3, 4, -5, -6, 0, 0, -8, -7, -1]));
+    checkOB(lo, book.bids, dynamic([int(2), 3, 4, -5, -6, 0, 0, -8, -7, -1]));
 
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 6, 1, 2, 3, 4, 5, 7]));
+    checkOB(olKey, book.asks, dynamic([int(0), 0, 0, 6, 1, 2, 3, 4, 5, 7]));
   }
 
   function part_partial_fill() public {
@@ -156,14 +157,13 @@ contract MangoTest is StratTest {
     // - run a market order and check that bid is not updated after ask is being consumed
     // - verify takerGave is pending
     // - put back the density and run another market order
-    mgv.setDensity($(weth), $(usdc), cash(weth, 1));
+    mgv.setDensity(olKey, cash(weth, 1));
 
     vm.prank(taker);
-    (uint got, uint gave, uint bounty,) =
-      mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
 
-    uint best_id = mgv.best($(weth), $(usdc));
-    MgvStructs.OfferPacked best_offer = mgv.offers($(weth), $(usdc), best_id);
+    uint best_id = mgv.best(olKey);
+    MgvStructs.OfferPacked best_offer = mgv.offers(olKey, best_id);
     uint old_gives = best_offer.gives();
 
     vm.prank(maker);
@@ -172,40 +172,39 @@ contract MangoTest is StratTest {
     assertEq(pendingBase, gave, "Taker liquidity should be pending");
 
     vm.prank(taker);
-    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    (got, gave, bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
 
     vm.prank(maker);
     uint pendingBase_ = mgo.pending()[0];
 
     assertEq(pendingBase_, pendingBase + gave, "Missing pending base");
 
-    mgv.setDensity($(weth), $(usdc), 100);
+    mgv.setDensity(olKey, 100);
 
     vm.prank(taker);
-    mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 1, 2), cash(weth, 1), true);
+    mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
 
     vm.prank(maker);
     uint pendingBase__ = mgo.pending()[0];
 
     assertEq(pendingBase__, 0, "There should be no more pending base");
 
-    best_id = mgv.best($(weth), $(usdc));
-    best_offer = mgv.offers($(weth), $(usdc), best_id);
+    best_id = mgv.best(olKey);
+    best_offer = mgv.offers(olKey, best_id);
 
     assertEq(best_offer.gives(), old_gives + pendingBase_ + gave, "Incorrect given amount");
   }
 
   function part_text_residual_1() public {
-    mgv.setDensity($(usdc), $(weth), cash(usdc, 1));
-    mgv.setDensity($(weth), $(usdc), cash(weth, 1));
+    mgv.setDensity(lo, cash(usdc, 1));
+    mgv.setDensity(olKey, cash(weth, 1));
 
     // market order will take the following best offer
-    uint best_id = mgv.best($(usdc), $(weth));
-    MgvStructs.OfferPacked best_offer = mgv.offers($(usdc), $(weth), best_id);
+    uint best_id = mgv.best(lo);
+    MgvStructs.OfferPacked best_offer = mgv.offers(lo, best_id);
 
     vm.prank(taker);
-    (uint got, uint gave, uint bounty,) =
-      mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 100), cash(weth, 1), true);
 
     // because density reqs are so high on both semi order book, best will not be able to self repost
     // and residual will be added to USDC (quote) pending pool
@@ -221,11 +220,11 @@ contract MangoTest is StratTest {
     assertEq(best_offer.gives() - cash(usdc, 100), pendingQuote, "Residual was not added to pending quote pool");
 
     // second market order should produce the same effect (best has changed because old best was not able to repost)
-    best_id = mgv.best($(usdc), $(weth));
-    best_offer = mgv.offers($(usdc), $(weth), best_id);
+    best_id = mgv.best(lo);
+    best_offer = mgv.offers(lo, best_id);
 
     vm.prank(taker);
-    (got, gave, bounty,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (got, gave, bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 100), cash(weth, 1), true);
 
     vm.startPrank(maker);
     uint pendingBase_ = mgo.pending()[0];
@@ -238,14 +237,14 @@ contract MangoTest is StratTest {
     );
 
     // putting density back to normal
-    mgv.setDensity($(usdc), $(weth), 100);
-    mgv.setDensity($(weth), $(usdc), 100);
+    mgv.setDensity(lo, 100);
+    mgv.setDensity(olKey, 100);
 
     // Offer 3 and 4 were unable to repost so they should be out of the book
 
     Book memory book = getOffers(false);
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 0, 0, 6, 1, 2, 3, 4, 5, 7]));
+    checkOB(lo, book.bids, dynamic([int(2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
+    checkOB(olKey, book.asks, dynamic([int(0), 0, 0, 6, 1, 2, 3, 4, 5, 7]));
   }
 
   function part_text_residual_2() public {
@@ -259,14 +258,14 @@ contract MangoTest is StratTest {
     // - the dual offer of offer 2 will be created with id 8 and will offer takerGave + the content of the WETH pending pool
     // - both pending pools should be empty
 
-    MgvStructs.OfferPacked old_offer2 = mgv.offers($(usdc), $(weth), 2);
+    MgvStructs.OfferPacked old_offer2 = mgv.offers(lo, 2);
 
     vm.prank(taker);
-    (, uint gave,,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 100), cash(weth, 1), true);
+    (, uint gave,,) = mgv.marketOrderByVolume(lo, cash(usdc, 100), cash(weth, 1), true);
 
     Book memory book = getOffers(false);
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 8, 0, 6, 1, 2, 3, 4, 5, 7]));
+    checkOB(lo, book.bids, dynamic([int(2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
+    checkOB(olKey, book.asks, dynamic([int(0), 8, 0, 6, 1, 2, 3, 4, 5, 7]));
 
     vm.startPrank(maker);
     uint pendingBase__ = mgo.pending()[0];
@@ -276,13 +275,13 @@ contract MangoTest is StratTest {
     assertEq(pendingBase__, 0, "Pending base pool should be empty");
     assertEq(pendingQuote__, 0, "Pending quote pool should be empty");
 
-    uint best_id = mgv.best($(weth), $(usdc));
-    MgvStructs.OfferPacked offer8 = mgv.offers($(weth), $(usdc), best_id);
+    uint best_id = mgv.best(olKey);
+    MgvStructs.OfferPacked offer8 = mgv.offers(olKey, best_id);
     assertEq(best_id, 8, "Best offer on WETH,USDC offer list should be #8");
 
     assertEq(offer8.gives(), gave + pendingBase_, "Incorrect offer gives");
 
-    MgvStructs.OfferPacked offer2 = mgv.offers($(usdc), $(weth), 2);
+    MgvStructs.OfferPacked offer2 = mgv.offers(lo, 2);
 
     assertEq(offer2.gives(), pendingQuote_ + old_offer2.gives() - cash(usdc, 100), "Incorrect offer gives");
   }
@@ -292,14 +291,14 @@ contract MangoTest is StratTest {
     mgo.pause();
 
     vm.prank(taker);
-    (uint got, uint gave,,) = mgv.marketOrderByVolume($(usdc), $(weth), cash(usdc, 2500), cash(weth, 15, 1), true);
+    (uint got, uint gave,,) = mgv.marketOrderByVolume(lo, cash(usdc, 2500), cash(weth, 15, 1), true);
 
     assertEq(got, 0, "got should be 0");
     assertEq(gave, 0, "gave should be 0");
 
     Book memory book = getOffers(false);
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(-2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), 8, 0, 6, 1, 2, 3, 4, 5, 7]));
+    checkOB(lo, book.bids, dynamic([int(-2), -3, -4, -5, -6, 0, 0, -8, -7, -1]));
+    checkOB(olKey, book.asks, dynamic([int(0), 8, 0, 6, 1, 2, 3, 4, 5, 7]));
   }
 
   function part_restart_fixed_shift() public {
@@ -309,8 +308,8 @@ contract MangoTest is StratTest {
     vm.stopPrank();
 
     Book memory book = getOffers(false);
-    checkOB($(usdc), $(weth), book.bids, dynamic([int(2), 3, 4, 5, 6, 0, 0, -8, -7, -1]));
-    checkOB($(weth), $(usdc), book.asks, dynamic([int(0), -8, 0, -6, -1, 2, 3, 4, 5, 7]));
+    checkOB(lo, book.bids, dynamic([int(2), 3, 4, 5, 6, 0, 0, -8, -7, -1]));
+    checkOB(olKey, book.asks, dynamic([int(0), -8, 0, -6, -1, 2, 3, 4, 5, 7]));
   }
 
   /* ********* Utility methods ************ */
@@ -324,14 +323,12 @@ contract MangoTest is StratTest {
   // given offerIds and offerStatuses, for id in offerStatuses,
   // * check that offers[abs(id)] is live iff id > 0
   // * check that abs(id)==offerIds[i]
-  function checkOB(address $out, address $in, uint[] memory offerIds, int[] memory offerStatuses) internal {
+  function checkOB(OLKey memory olKey, uint[] memory offerIds, int[] memory offerStatuses) internal {
     int sid;
 
     for (uint i = 0; i < offerStatuses.length; i++) {
       sid = offerStatuses[i];
-      assertEq(
-        mgv.offers($out, $in, abs(sid)).gives() > 0, sid > 0, string.concat("wrong offer status ", vm.toString(sid))
-      );
+      assertEq(mgv.offers(olKey, abs(sid)).gives() > 0, sid > 0, string.concat("wrong offer status ", vm.toString(sid)));
       assertEq(offerIds[i], abs(sid), "Offer misplaced");
     }
   }

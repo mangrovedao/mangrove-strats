@@ -19,7 +19,7 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
  * e.g deploy mango on WETH <quote> market:
  *
  *   WRITE_DEPLOY=true \
- *   BASE=WETH QUOTE=USDC BASE_0=$(cast ff 18 1) QUOTE_0=$(cast ff 6 800)\
+ *   BASE=WETH QUOTE=USDC TICK_SCALE=1 BASE_0=$(cast ff 18 1) QUOTE_0=$(cast ff 6 800)\
  *   NSLOTS=100 PRICE_INCR=$(cast ff 6 10)\
  *   DEPLOYER=$MUMBAI_TESTER_ADDRESS\
  *   forge script --fork-url $LOCAL_URL  MangoDeployer --broadcast\
@@ -35,6 +35,7 @@ contract MangoDeployer is Deployer {
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       base: IERC20(envAddressOrName("BASE")),
       quote: IERC20(envAddressOrName("QUOTE")),
+      tickScale: vm.envUint("TICK_SCALE"),
       base_0: vm.envUint("BASE_0"),
       quote_0: vm.envUint("QUOTE_0"),
       nslots: vm.envUint("NSLOTS"),
@@ -51,6 +52,7 @@ contract MangoDeployer is Deployer {
    * @param quote The quote currency of Mango's market
    * @param base_0 in units of base. Amounts of initial `makerGives` for Mango's asks
    * @param quote_0 in units of quote. Amounts of initial `makerGives` for Mango's bids
+   * @param tickScale the tick scale
    * @notice min price of Mango is determined by `quote_0/base_0`
    * @param nslots the number of price slots of the Mango strat
    * @param price_incr in units of quote. Price(i+1) = price(i) + price_incr
@@ -61,6 +63,7 @@ contract MangoDeployer is Deployer {
     IMangrove mgv,
     IERC20 base,
     IERC20 quote,
+    uint tickScale,
     uint base_0,
     uint quote_0,
     uint nslots,
@@ -74,21 +77,22 @@ contract MangoDeployer is Deployer {
       mgv,
       base,
       quote,
+      tickScale,
       base_0,
       quote_0,
       nslots,
       price_incr,
       admin
     );
-    string memory mangoName = getName(name, base, quote);
+    string memory mangoName = getName(name, base, quote, tickScale);
     fork.set(mangoName, address(current));
   }
 
-  function getName(string memory name, IERC20 base, IERC20 quote) public view returns (string memory) {
+  function getName(string memory name, IERC20 base, IERC20 quote, uint tickScale) public view returns (string memory) {
     if (bytes(name).length > 0) {
       return name;
     } else {
-      return string.concat("Mango_", base.symbol(), "_", quote.symbol());
+      return string.concat("Mango_", base.symbol(), "_", quote.symbol(), "_", vm.toString(tickScale));
     }
   }
 }

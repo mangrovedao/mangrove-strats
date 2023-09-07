@@ -15,12 +15,8 @@ interface WETH is IERC20 {
 // TODO-foundry-merge explain what this contract does
 
 contract CompoundModule is Exponential {
-  event ErrorOnRedeem(
-    address indexed outbound_tkn, address indexed inbound_tkn, uint indexed offerId, uint amount, uint errorCode
-  );
-  event ErrorOnMint(
-    address indexed outbound_tkn, address indexed inbound_tkn, uint indexed offerId, uint amount, uint errorCode
-  );
+  event ErrorOnRedeem(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, uint errorCode);
+  event ErrorOnMint(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, uint errorCode);
 
   event ComptrollerError(address comp, uint errorCode);
 
@@ -166,7 +162,7 @@ contract CompoundModule is Exponential {
   }
 
   function compoundRedeem(uint amountToRedeem, MgvLib.SingleOrder calldata order) internal returns (uint) {
-    IcERC20 outbound_cTkn = overlyings[IERC20(order.outbound_tkn)]; // this is 0x0 if outbound_tkn is not compound sourced.
+    IcERC20 outbound_cTkn = overlyings[IERC20(order.olKey.outbound)]; // this is 0x0 if outbound_tkn is not compound sourced.
     if (address(outbound_cTkn) == address(0)) {
       return amountToRedeem;
     }
@@ -180,7 +176,7 @@ contract CompoundModule is Exponential {
       return 0;
     } else {
       //compound redeem failed
-      emit ErrorOnRedeem(order.outbound_tkn, order.inbound_tkn, order.offerId, amountToRedeem, errorCode);
+      emit ErrorOnRedeem(order.olKey.hash(), order.offerId, amountToRedeem, errorCode);
       return amountToRedeem;
     }
   }
@@ -205,11 +201,11 @@ contract CompoundModule is Exponential {
   // adapted from https://medium.com/compound-finance/supplying-assets-to-the-compound-protocol-ec2cf5df5aa#afff
   // utility to supply erc20 to compound
   function compoundMint(uint amount, MgvLib.SingleOrder calldata order) internal returns (uint missing) {
-    IcERC20 ctoken = overlyings[IERC20(order.inbound_tkn)];
+    IcERC20 ctoken = overlyings[IERC20(order.olKey.inbound)];
     uint errCode = _mint(amount, ctoken);
     // Mint ctokens
     if (errCode != 0) {
-      emit ErrorOnMint(order.outbound_tkn, order.inbound_tkn, order.offerId, amount, errCode);
+      emit ErrorOnMint(order.olKey.hash(), order.offerId, amount, errCode);
       missing = amount;
     }
   }

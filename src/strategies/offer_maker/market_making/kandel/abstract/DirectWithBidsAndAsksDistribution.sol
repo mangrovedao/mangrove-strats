@@ -1,12 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {OLKey} from "mgv_src/MgvLib.sol";
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
 abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
@@ -58,7 +59,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     // args.fund = 0; offers are already funded
     // args.noRevert = false; we want revert in case of failure
 
-    (args.outbound_tkn, args.inbound_tkn) = tokenPairOfOfferType(OfferType.Bid);
+    (args.olKey) = offerListOfOfferType(OfferType.Bid);
     for (; i < indices.length; ++i) {
       uint index = indices[i];
       if (index >= firstAskIndex) {
@@ -66,11 +67,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       }
       //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
       if (baseDist[i] > 0) {
-        int tick = Tick.unwrap(TickLib.tickFromVolumes(baseDist[i], quoteDist[i]));
-        args.tick = tick;
+        int logPrice = LogPriceConversionLib.logPriceFromVolumes(baseDist[i], quoteDist[i]);
+        args.logPrice = logPrice;
         args.gives = quoteDist[i];
       } else {
-        // unused: args.tick;
+        // unused: args.logPrice;
         args.gives = 0;
       }
       args.gasreq = gasreq;
@@ -79,17 +80,17 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args);
     }
 
-    (args.outbound_tkn, args.inbound_tkn) = (args.inbound_tkn, args.outbound_tkn);
+    args.olKey = args.olKey.flipped();
 
     for (; i < indices.length; ++i) {
       uint index = indices[i];
       //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
       if (quoteDist[i] > 0) {
-        int tick = Tick.unwrap(TickLib.tickFromVolumes(quoteDist[i], baseDist[i]));
-        args.tick = tick;
+        int logPrice = LogPriceConversionLib.logPriceFromVolumes(quoteDist[i], baseDist[i]);
+        args.logPrice = logPrice;
         args.gives = baseDist[i];
       } else {
-        // unused: args.tick;
+        // unused: args.logPrice;
         args.gives = 0;
       }
       args.gasreq = gasreq;
@@ -131,7 +132,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
         // This may happen in the following cases:
         // * `gives == 0` may not come from `DualWantsGivesOfOffer` computation, but `wants==0` might.
         // * `gives == 0` may happen from populate in case of re-population where the offers in the spread are then retracted by setting gives to 0.
-        _retractOffer(args.outbound_tkn, args.inbound_tkn, offerId, false);
+        _retractOffer(args.olKey, offerId, false);
         result = LOW_VOLUME;
       } else {
         // so the offer exists and it should, we simply update it with potentially new volume
@@ -146,17 +147,17 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@dev use in conjunction of `withdrawFromMangrove` if the user wishes to redeem the available WEIs.
   function retractOffers(uint from, uint to) public onlyAdmin {
     emit RetractStart();
-    (IERC20 outbound_tknAsk, IERC20 inbound_tknAsk) = tokenPairOfOfferType(OfferType.Ask);
-    (IERC20 outbound_tknBid, IERC20 inbound_tknBid) = (inbound_tknAsk, outbound_tknAsk);
+    OLKey memory olKeyAsk = offerListOfOfferType(OfferType.Ask);
+    OLKey memory olKeyBid = olKeyAsk.flipped();
     for (uint index = from; index < to; ++index) {
       // These offerIds could be recycled in a new populate
       uint offerId = offerIdOfIndex(OfferType.Ask, index);
       if (offerId != 0) {
-        _retractOffer(outbound_tknAsk, inbound_tknAsk, offerId, true);
+        _retractOffer(olKeyAsk, offerId, true);
       }
       offerId = offerIdOfIndex(OfferType.Bid, index);
       if (offerId != 0) {
-        _retractOffer(outbound_tknBid, inbound_tknBid, offerId, true);
+        _retractOffer(olKeyBid, offerId, true);
       }
     }
     emit RetractEnd();

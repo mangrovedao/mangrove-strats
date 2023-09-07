@@ -5,7 +5,7 @@ pragma solidity ^0.8.10;
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20, MgvLib} from "mgv_src/MgvLib.sol";
+import {IERC20, MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 
 //----------------
 
@@ -29,7 +29,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -37,9 +37,8 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   {
     (offerId,) = _newOffer(
       OfferArgs({
-        outbound_tkn: outbound_tkn,
-        inbound_tkn: inbound_tkn,
-        tick: tick,
+        olKey: olKey,
+        logPrice: logPrice,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -50,7 +49,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
@@ -58,9 +57,8 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   {
     _updateOffer(
       OfferArgs({
-        outbound_tkn: outbound_tkn,
-        inbound_tkn: inbound_tkn,
-        tick: tick,
+        olKey: olKey,
+        logPrice: logPrice,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -72,12 +70,12 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function retractOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, bool deprovision)
+  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
     adminOrCaller(address(MGV))
     returns (uint freeWei)
   {
-    return _retractOffer(outbound_tkn, inbound_tkn, offerId, deprovision);
+    return _retractOffer(olKey, offerId, deprovision);
   }
 
   //----------------

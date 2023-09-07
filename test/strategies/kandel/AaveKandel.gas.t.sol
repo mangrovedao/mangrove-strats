@@ -14,8 +14,7 @@ contract AaveKandelGasTest is CoreKandelGasTest {
     vm.startPrank(deployer);
     kdl_ = new AaveKandel({
       mgv: IMangrove($(mgv)),
-      base: base,
-      quote: quote,
+      olKeyBaseQuote: olKey,
       gasreq: GASREQ,
       gasprice: bufferedGasprice,
       reserveId: reserveId

@@ -103,8 +103,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: ask.wants(),
       takerWants: ask.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     order.offerId = kdl.offerIdOfIndex(Ask, 5);
@@ -154,8 +153,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: bid.wants(),
       takerWants: bid.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     order.offerId = kdl.offerIdOfIndex(Bid, 4);
@@ -255,7 +253,7 @@ abstract contract CoreKandelTest is KandelTest {
 
   function testFail_ask_partial_fill_noDual_noIncident() public {
     vm.expectEmit(false, false, false, false, $(kdl));
-    emit LogIncident(IMangrove($(mgv)), base, quote, 0, "", "");
+    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "", "");
     partial_fill(Ask, false);
   }
 
@@ -292,14 +290,14 @@ abstract contract CoreKandelTest is KandelTest {
   function test_all_bids_all_asks_and_back() public {
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
     vm.prank(taker);
-    mgv.marketOrderByVolume($(base), $(quote), type(uint96).max, type(uint96).max, true);
+    mgv.marketOrderByVolume(olKey, type(uint96).max, type(uint96).max, true);
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 1, 1, 1, 1, 0]));
     vm.prank(taker);
-    mgv.marketOrderByVolume($(quote), $(base), 1 ether, type(uint96).max, false);
+    mgv.marketOrderByVolume(lo, 1 ether, type(uint96).max, false);
     assertStatus(dynamic([uint(0), 2, 2, 2, 2, 2, 2, 2, 2, 2]));
     uint askVol = kdl.offeredVolume(Ask);
     vm.prank(taker);
-    mgv.marketOrderByVolume($(base), $(quote), askVol / 2, type(uint96).max, true);
+    mgv.marketOrderByVolume(olKey, askVol / 2, type(uint96).max, true);
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   }
 
@@ -319,7 +317,7 @@ abstract contract CoreKandelTest is KandelTest {
     expectFrom($(kdl));
     emit RetractStart();
     expectFrom($(mgv));
-    emit OfferRetract(address(quote), address(base), kdl.offerIdOfIndex(Bid, 0), true);
+    emit OfferRetract(lo.hash(), kdl.offerIdOfIndex(Bid, 0), true);
     expectFrom($(kdl));
     emit RetractEnd();
 
@@ -682,8 +680,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: bid.wants(),
       takerWants: bid.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     order.offerId = kdl.offerIdOfIndex(Bid, n - 1);
@@ -724,8 +721,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: ask.wants(),
       takerWants: ask.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     order.offerId = kdl.offerIdOfIndex(Ask, 1);
@@ -739,7 +735,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_fail_to_create_dual_offer_logs_incident() public {
     // closing bid market
     vm.prank(mgv.governance());
-    mgv.deactivate(address(base), address(quote));
+    mgv.deactivate(olKey);
     // taking a bid
     uint offerId = kdl.offerIdOfIndex(Bid, 3);
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 3);
@@ -748,8 +744,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: bid.wants(),
       takerWants: bid.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
 
@@ -757,7 +752,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = bid;
 
     expectFrom($(kdl));
-    emit LogIncident(IMangrove($(mgv)), base, quote, 0, "Kandel/newOfferFailed", "mgv/inactive");
+    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "Kandel/newOfferFailed", "mgv/inactive");
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
   }
@@ -765,7 +760,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_fail_to_update_dual_offer_logs_incident() public {
     // closing bid market
     vm.prank(mgv.governance());
-    mgv.deactivate(address(base), address(quote));
+    mgv.deactivate(olKey);
     // taking a bid that already has a dual ask
     uint offerId = kdl.offerIdOfIndex(Bid, 4);
     uint offerId_ = kdl.offerIdOfIndex(Ask, 5);
@@ -776,8 +771,7 @@ abstract contract CoreKandelTest is KandelTest {
       takerGives: bid.wants(),
       takerWants: bid.gives(),
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
 
@@ -785,7 +779,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = bid;
 
     expectFrom($(kdl));
-    emit LogIncident(IMangrove($(mgv)), base, quote, offerId_, "Kandel/updateOfferFailed", "mgv/inactive");
+    emit LogIncident(IMangrove($(mgv)), olKey.hash(), offerId_, "Kandel/updateOfferFailed", "mgv/inactive");
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
   }
@@ -799,8 +793,8 @@ abstract contract CoreKandelTest is KandelTest {
     // Take almost all - offer will not be reposted due to density too low
     uint amount = bid.wants() - 1;
     vm.prank(taker);
-    mgv.marketOrderByVolume($(quote), $(base), 0, amount, false);
-    // testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    mgv.marketOrderByVolume(lo, 0, amount, false);
+    // testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
 
     // verify dual is increased
     MgvStructs.OfferPacked askPost = kdl.getOffer(Ask, index + STEP);
@@ -823,10 +817,10 @@ abstract contract CoreKandelTest is KandelTest {
     // Take very little and expect dual posting to fail.
     uint amount = 10000;
     vm.prank(taker);
-    mgv.marketOrderByVolume($(quote), $(base), 0, amount, false);
+    mgv.marketOrderByVolume(lo, 0, amount, false);
 
     // (uint successes,,,,) =
-    //   testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    //   testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
     // assertTrue(successes == 1, "Snipe failed");
     ask = kdl.getOffer(Ask, index + STEP);
     assertTrue(!ask.isLive(), "ask should still not be live");
@@ -847,10 +841,10 @@ abstract contract CoreKandelTest is KandelTest {
     // Take very little and expect dual posting to fail.
     uint amount = 10000;
     vm.prank(taker);
-    mgv.marketOrderByVolume($(quote), $(base), 0, amount, false);
+    mgv.marketOrderByVolume(lo, 0, amount, false);
 
     // (uint successes,,,,) =
-    //   testMgv.snipesInTest($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    //   testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
     // assertTrue(successes == 1, "Snipe failed");
 
     ask = kdl.getOffer(Ask, index + STEP);
@@ -1022,7 +1016,7 @@ abstract contract CoreKandelTest is KandelTest {
     expectFrom($(kdl));
     emit PopulateStart();
     vm.expectEmit(false, false, false, false, $(mgv));
-    emit OfferWrite(address(0), address(0), address(0), 0, 0, 0, 0, 0);
+    emit OfferWrite(bytes32(0), address(0), 0, 0, 0, 0, 0);
     expectFrom($(kdl));
     emit PopulateEnd();
     populateSingle(kdl, 1, 1 ether, 1 ether, 2, bytes(""));
@@ -1157,7 +1151,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.makerPosthook(order, result);
     uint posthookCost = gasTemp - gasleft();
     // Assert
-    (, MgvStructs.LocalPacked local) = mgv.config(address(base), address(quote));
+    (, MgvStructs.LocalPacked local) = mgv.config(olKey);
     console.log("makerExecute: %d, posthook: %d, deltaGasForNew", makerExecuteCost, posthookCost, deltaGasForNew);
     console.log(
       "Strat gasreq (%d), mockup (%d)",
@@ -1178,8 +1172,8 @@ abstract contract CoreKandelTest is KandelTest {
     TransferLib.approveToken(quote, address(otherKandel), type(uint).max);
 
     uint totalProvision = (
-      reader.getProvision($(base), $(quote), otherKandel.offerGasreq(), bufferedGasprice)
-        + reader.getProvision($(quote), $(base), otherKandel.offerGasreq(), bufferedGasprice)
+      reader.getProvision(olKey, otherKandel.offerGasreq(), bufferedGasprice)
+        + reader.getProvision(lo, otherKandel.offerGasreq(), bufferedGasprice)
     ) * 10 ether;
 
     deal(otherMaker, totalProvision);
@@ -1266,7 +1260,7 @@ abstract contract CoreKandelTest is KandelTest {
       (uint takerGot,,,) = sellToBestAs(taker, amount);
       assertTrue(takerGot > 0, "offer should be sniped");
     }
-    uint askOfferId = mgv.best($(base), $(quote));
+    uint askOfferId = mgv.best(olKey);
     uint askIndex = kdl.indexOfOfferId(Ask, askOfferId);
 
     uint[] memory statuses = new uint[](askIndex+2);
@@ -1352,6 +1346,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.PRECISION();
     kdl.QUOTE();
     kdl.RESERVE_ID();
+    kdl.TICK_SCALE();
     kdl.admin();
     kdl.checkList(new IERC20[](0));
     kdl.depositFunds(0, 0);
@@ -1363,7 +1358,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.params();
     kdl.pending(Ask);
     kdl.reserveBalance(Ask);
-    kdl.provisionOf(base, quote, 0);
+    kdl.provisionOf(olKey, 0);
     kdl.router();
 
     CoreKandel.Distribution memory dist;

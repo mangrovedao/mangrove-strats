@@ -2,7 +2,7 @@
 pragma solidity >=0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20, IMaker} from "mgv_src/MgvLib.sol";
+import {IERC20, IMaker, OLKey} from "mgv_src/MgvLib.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 
 ///@title IOfferLogic interface for offer management
@@ -11,18 +11,12 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.so
 interface IOfferLogic is IMaker {
   ///@notice Log incident (during post trade execution)
   ///@param mangrove The mangrove deployment.
-  ///@param outbound_tkn the outbound token of the offer list.
-  ///@param inbound_tkn the inbound token of the offer list.
+  ///@param olKeyHash the hash of the offer list key.
   ///@param offerId the Mangrove offer id.
   ///@param makerData from the maker.
   ///@param mgvData from Mangrove.
   event LogIncident(
-    IMangrove mangrove,
-    IERC20 indexed outbound_tkn,
-    IERC20 indexed inbound_tkn,
-    uint indexed offerId,
-    bytes32 makerData,
-    bytes32 mgvData
+    IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData
   );
 
   ///@notice Logging change of router address
@@ -47,11 +41,10 @@ interface IOfferLogic is IMaker {
   function approve(IERC20 token, address spender, uint amount) external returns (bool);
 
   ///@notice computes the amount of native tokens that can be redeemed when deprovisioning a given offer.
-  ///@param outbound_tkn the outbound token of the offer list
-  ///@param inbound_tkn the inbound token of the offer list
+  ///@param olKey the offer list key.
   ///@param offerId the identifier of the offer in the offer list
   ///@return provision the amount of native tokens that can be redeemed when deprovisioning the offer
-  function provisionOf(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId) external view returns (uint provision);
+  function provisionOf(OLKey memory olKey, uint offerId) external view returns (uint provision);
 
   ///@notice verifies that this contract's current state is ready to be used to post offers on Mangrove
   ///@param tokens the list of tokens that are traded by this contract
@@ -69,9 +62,8 @@ interface IOfferLogic is IMaker {
   function withdrawFromMangrove(uint amount, address payable receiver) external;
 
   ///@notice Memory allocation for `_new/updateOffer`'s arguments.
-  ///@param outbound_tkn outbound token of the offer list.
-  ///@param inbound_tkn inbound token of the offer list.
-  ///@param tick the price tick.
+  ///@param olKey the offer list key.
+  ///@param logPrice the price.
   ///@param gives the amount of outbound tokens the maker gives for a complete fill.
   ///@param gasreq the amount of gas units that are required to execute the trade
   ///@param gasprice the gasprice used to compute offer's provision (use 0 to use Mangrove's gasprice)
@@ -80,9 +72,8 @@ interface IOfferLogic is IMaker {
   ///@param owner the offer maker managing the offer.
   ///@dev `owner` is required in `Forwarder` logics, when `_newOffer` or `_updateOffer` in called in a hook (`msg.sender==MGV`).
   struct OfferArgs {
-    IERC20 outbound_tkn;
-    IERC20 inbound_tkn;
-    int tick;
+    OLKey olKey;
+    int logPrice;
     uint gives;
     uint gasreq;
     uint gasprice;

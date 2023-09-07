@@ -7,7 +7,7 @@ import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {console2} from "forge-std/Test.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
@@ -15,7 +15,7 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.so
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -33,12 +33,13 @@ contract AaveKandelTest is CoreKandelTest {
       options.gasprice = 90;
       options.gasbase = 68_000;
       options.defaultFee = 30;
-      options.density = 2 ** 32;
       mgv = setupMangrove();
       reader = new MgvReader($(mgv));
       base = TestToken(fork.get("WETH"));
       quote = TestToken(fork.get("USDC"));
-      setupMarket(base, quote);
+      olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+      lo = olKey.flipped();
+      setupMarket(olKey);
       aave = fork.get("Aave");
     } else {
       super.__setForkEnvironment__();
@@ -57,8 +58,7 @@ contract AaveKandelTest is CoreKandelTest {
     router = address(router) == address(0) ? new AavePooledRouter(aave, router_gasreq) : router;
     AaveKandel aaveKandel_ = new AaveKandel({
       mgv: IMangrove($(mgv)),
-      base: base,
-      quote: quote,
+      olKeyBaseQuote: olKey,
       gasreq: kandel_gasreq,
       gasprice: 0,
       reserveId: id
@@ -113,8 +113,7 @@ contract AaveKandelTest is CoreKandelTest {
 
   function test_first_offer_sends_first_puller_to_posthook() public {
     MgvLib.SingleOrder memory order;
-    order.outbound_tkn = $(base);
-    order.inbound_tkn = $(quote);
+    order.olKey = olKey;
     order.wants = 0.1 ether;
     order.gives = 120 * 10 ** 6;
     vm.prank($(mgv));
@@ -124,8 +123,7 @@ contract AaveKandelTest is CoreKandelTest {
 
   function test_not_first_offer_sends_proceed_to_posthook() public {
     MgvLib.SingleOrder memory order;
-    order.outbound_tkn = $(base);
-    order.inbound_tkn = $(quote);
+    order.olKey = olKey;
     order.wants = 0.1 ether;
     order.gives = 120 * 10 ** 6;
     // faking buffer on the router
@@ -137,8 +135,7 @@ contract AaveKandelTest is CoreKandelTest {
 
   function test_not_first_offer_sends_first_puller_to_posthook_when_buffer_is_small() public {
     MgvLib.SingleOrder memory order;
-    order.outbound_tkn = $(base);
-    order.inbound_tkn = $(quote);
+    order.olKey = olKey;
     order.wants = 0.1 ether;
     order.gives = 120 * 10 ** 6;
     // faking small buffer on the router
@@ -241,8 +238,7 @@ contract AaveKandelTest is CoreKandelTest {
     deal($(base), $(router), donationMultiplier * bestAsk.gives());
 
     vm.prank(taker);
-    (uint takerGot,,, uint fee) =
-      mgv.marketOrderByTick($(base), $(quote), Tick.unwrap(bestAsk.tick()), bestAsk.gives() * 2, true);
+    (uint takerGot,,, uint fee) = mgv.marketOrderByLogPrice(olKey, bestAsk.logPrice(), bestAsk.gives() * 2, true);
 
     assertEq(takerGot + fee, bestAsk.gives() * 2, "both asks should be taken");
 
@@ -278,10 +274,10 @@ contract AaveKandelTest is CoreKandelTest {
 
   function executeAttack() public {
     // context base should not be available to redeem for the router, for this attack to succeed
-    (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume($(base), $(quote), 0.1 ether, type(uint96).max, true);
+    (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume(olKey, 0.1 ether, type(uint96).max, true);
 
     // (,, uint takerGave, uint bounty,) = testMgv.snipesInTest(
-    //   $(base), $(quote), wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
+    //   olKey, wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
     // );
     require(takerGave == 0 && bounty > 0, "attack failed");
   }
@@ -292,7 +288,7 @@ contract AaveKandelTest is CoreKandelTest {
     quote.approve({spender: address(mgv), amount: type(uint).max});
     attacker.setCallbackAddress(address(this));
     uint gas = gasleft();
-    uint bestAsk = mgv.best($(base), $(quote));
+    uint bestAsk = mgv.best(olKey);
     bytes memory cd = abi.encodeWithSelector(this.executeAttack.selector, bestAsk);
     uint assetSupply = attacker.get_supply(base);
     uint nativeBalance = address(this).balance;
@@ -328,7 +324,7 @@ contract AaveKandelTest is CoreKandelTest {
         toFixed(address(this).balance - nativeBal, 18),
         gas
       );
-      (MgvStructs.GlobalPacked global,) = mgv.config(address(0), address(0));
+      (MgvStructs.GlobalPacked global,) = mgv.config(OLKey(address(0), address(0), 0));
       uint attacker_cost = gas * global.gasprice() * 10 ** 9;
       console.log("Gas cost of the attack: %s native tokens", toFixed(attacker_cost, 18));
     } catch Error(string memory reason) {
@@ -353,18 +349,13 @@ contract AaveKandelTest is CoreKandelTest {
     uint gas = gasleft(); // adding flash loan overhead
     try attacker.borrow(quote, quoteSupply - 1) {
       // borrow is ~180K
-      (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume({
-        outbound_tkn: $(quote),
-        inbound_tkn: $(base),
-        takerWants: 10,
-        takerGives: 1 ether,
-        fillWants: false
-      });
+      (, uint takerGave, uint bounty,) =
+        mgv.marketOrderByVolume({olKey: lo, takerWants: 10, takerGives: 1 ether, fillWants: false});
 
       require(takerGave == 0 && bounty > 0, "Attack failed");
       gas = gas - gasleft() + 400_000; // adding flashloan cost + repay of borrow
       console.log("Attack successful, %s collected for an overhead of %s gas units", toFixed(bounty, 18), gas);
-      (MgvStructs.GlobalPacked global, MgvStructs.LocalPacked local) = mgv.config($(base), $(quote));
+      (MgvStructs.GlobalPacked global, MgvStructs.LocalPacked local) = mgv.config(olKey);
       console.log("Gasbase is ", local.offer_gasbase());
       uint attacker_cost = gas * global.gasprice() * 10 ** 9;
       console.log(
@@ -373,7 +364,7 @@ contract AaveKandelTest is CoreKandelTest {
     } catch Error(string memory reason) {
       console.log(reason);
     }
-    printOrderBook($(quote), $(base));
+    printOrderBook(lo);
   }
 
   function test_cannot_create_aaveKandel_with_aToken_for_base() public {
@@ -382,8 +373,7 @@ contract AaveKandelTest is CoreKandelTest {
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
-      base: aToken,
-      quote: quote,
+      olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
       gasreq: 100,
       gasprice: 0,
       reserveId: address(0)
@@ -396,8 +386,7 @@ contract AaveKandelTest is CoreKandelTest {
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
-      base: base,
-      quote: aToken,
+      olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
       gasreq: 100,
       gasprice: 0,
       reserveId: address(0)

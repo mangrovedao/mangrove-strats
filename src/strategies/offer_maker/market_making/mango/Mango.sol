@@ -45,6 +45,7 @@ contract Mango is Direct {
   uint public immutable NSLOTS;
   IERC20 public immutable BASE;
   IERC20 public immutable QUOTE;
+  uint public immutable TICK_SCALE;
 
   // Asks and bids offer Ids are stored in `ASKS` and `BIDS` arrays respectively.
 
@@ -52,6 +53,7 @@ contract Mango is Direct {
     IMangrove mgv,
     IERC20 base,
     IERC20 quote,
+    uint tickScale,
     uint base_0,
     uint quote_0,
     uint nslots,
@@ -60,7 +62,7 @@ contract Mango is Direct {
   )
     Direct(
       mgv,
-      new SimpleRouter(), // routes liqudity between admin's account and this contract,
+      new SimpleRouter(), // routes liquidity between admin's account and this contract,
       250_000,
       deployer
     )
@@ -83,6 +85,7 @@ contract Mango is Direct {
         mgv,
         base,
         quote,
+        tickScale,
         uint96(base_0),
         uint96(quote_0),
         nslots
@@ -90,6 +93,7 @@ contract Mango is Direct {
     );
     BASE = base;
     QUOTE = quote;
+    TICK_SCALE = tickScale;
     // setting local storage
     mStr.asks = new uint[](nslots);
     mStr.bids = new uint[](nslots);
@@ -169,11 +173,13 @@ contract Mango is Direct {
     for (uint i = from; i < to; i++) {
       if (ba > 0) {
         // asks or bids+asks
-        collected += mStr.asks[i] > 0 ? _retractOffer(BASE, QUOTE, mStr.asks[i], true) : 0;
+        collected +=
+          mStr.asks[i] > 0 ? _retractOffer(OLKey(address(BASE), address(QUOTE), TICK_SCALE), mStr.asks[i], true) : 0;
       }
       if (ba == 0 || ba > 1) {
         // bids or bids + asks
-        collected += mStr.bids[i] > 0 ? _retractOffer(QUOTE, BASE, mStr.bids[i], true) : 0;
+        collected +=
+          mStr.bids[i] > 0 ? _retractOffer(OLKey(address(QUOTE), address(BASE), TICK_SCALE), mStr.bids[i], true) : 0;
       }
     }
   }
@@ -249,7 +255,7 @@ contract Mango is Direct {
   // this overrides the corresponding function in `Persistent`
   function __residualGives__(MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
-    if (order.outbound_tkn == address(BASE)) {
+    if (order.olKey.outbound == address(BASE)) {
       // Ask offer
       return super.__residualGives__(order) + mStr.pending_base;
     } else {
@@ -268,7 +274,7 @@ contract Mango is Direct {
     bytes32 posthook_data = super.__posthookSuccess__(order, maker_data);
     // checking whether repost failed
     bool repost_success = (posthook_data == REPOST_SUCCESS || posthook_data == COMPLETE_FILL);
-    if (order.outbound_tkn == address(BASE)) {
+    if (order.olKey.outbound == address(BASE)) {
       if (!repost_success) {
         // residual could not be reposted --either below density or Mango went out of provision on Mangrove
         mStr.pending_base = __residualGives__(order); // this includes previous `pending_base`

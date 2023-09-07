@@ -1,17 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console, Tick} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
+import {MgvStructs, MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {Tick, TickLib} from "mgv_src/MgvLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import "mgv_lib/Debug.sol";
 
 contract MangroveOrder_Test is StratTest {
   uint constant GASREQ = 150_000;
@@ -22,11 +24,10 @@ contract MangroveOrder_Test is StratTest {
 
   event OrderSummary(
     IMangrove mangrove,
-    IERC20 indexed outbound_tkn,
-    IERC20 indexed inbound_tkn,
+    bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
-    int tick,
+    int logPrice,
     uint fillVolume,
     bool fillWants,
     bool restingOrder,
@@ -50,20 +51,25 @@ contract MangroveOrder_Test is StratTest {
 
   receive() external payable {}
 
+  function logPriceFromPrice_e18(uint priceE18) internal pure returns (int logPrice) {
+    (uint mantissa, uint exp) = LogPriceConversionLib.priceFromVolumes(priceE18, 1e18);
+    logPrice = LogPriceConversionLib.logPriceFromPrice(mantissa, int(exp));
+  }
+
   function makerWants(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
-    return order.fillWants ? order.fillVolume : TickLib.inboundFromOutbound(Tick.wrap(-order.tick), order.fillVolume);
+    return order.fillWants ? order.fillVolume : LogPriceLib.inboundFromOutbound(-order.logPrice, order.fillVolume);
   }
 
   function makerGives(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
-    return order.fillWants ? TickLib.outboundFromInbound(Tick.wrap(-order.tick), order.fillVolume) : order.fillVolume;
+    return order.fillWants ? LogPriceLib.outboundFromInbound(-order.logPrice, order.fillVolume) : order.fillVolume;
   }
 
   function takerWants(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
-    return order.fillWants ? order.fillVolume : TickLib.outboundFromInbound(Tick.wrap(order.tick), order.fillVolume);
+    return order.fillWants ? order.fillVolume : LogPriceLib.outboundFromInbound(order.logPrice, order.fillVolume);
   }
 
   function takerGives(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
-    return order.fillWants ? TickLib.inboundFromOutbound(Tick.wrap(order.tick), order.fillVolume) : order.fillVolume;
+    return order.fillWants ? LogPriceLib.inboundFromOutboundUp(order.logPrice, order.fillVolume) : order.fillVolume;
   }
 
   function setUp() public override {
@@ -76,7 +82,9 @@ contract MangroveOrder_Test is StratTest {
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("DAI"));
-    setupMarket(base, quote);
+    olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+    lo = olKey.flipped();
+    setupMarket(olKey);
 
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), $(this), GASREQ);
@@ -95,7 +103,7 @@ contract MangroveOrder_Test is StratTest {
     TransferLib.approveToken(base, $(mgo.router()), 10 ether);
 
     // `sell_taker` will take resting bid
-    sell_taker = setupTaker($(quote), $(base), "sell-taker");
+    sell_taker = setupTaker(olKey, "sell-taker");
     deal($(base), $(sell_taker), 10 ether);
 
     // if seller wants to sell directly on mangrove
@@ -106,10 +114,10 @@ contract MangroveOrder_Test is StratTest {
     TransferLib.approveToken(quote, $(mgv), 10 ether);
 
     // populating order book with offers
-    ask_maker = setupMaker($(base), $(quote), "ask-maker");
+    ask_maker = setupMaker(olKey, "ask-maker");
     vm.deal($(ask_maker), 10 ether);
 
-    bid_maker = setupMaker($(quote), $(base), "bid-maker");
+    bid_maker = setupMaker(lo, "bid-maker");
     vm.deal($(bid_maker), 10 ether);
 
     deal($(base), $(ask_maker), 10 ether);
@@ -118,25 +126,23 @@ contract MangroveOrder_Test is StratTest {
     // pre populating book with cold maker offers.
     ask_maker.approveMgv(base, 10 ether);
     uint volume = 1 ether;
-    ask_maker.newOfferByTickWithFunding(
-      $(base), $(quote), Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE)), volume, 50_000, 0, 0.1 ether
+    ask_maker.newOfferByLogPriceWithFunding(olKey, logPriceFromPrice_e18(MID_PRICE), volume, 50_000, 0, 0.1 ether);
+    ask_maker.newOfferByLogPriceWithFunding(
+      olKey, logPriceFromPrice_e18(MID_PRICE + 1e18), volume, 50_000, 0, 0.1 ether
     );
-    ask_maker.newOfferByTickWithFunding(
-      $(base), $(quote), Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE + 1e18)), volume, 50_000, 0, 0.1 ether
-    );
-    ask_maker.newOfferByTickWithFunding(
-      $(base), $(quote), Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE + 2e18)), volume, 50_000, 0, 0.1 ether
+    ask_maker.newOfferByLogPriceWithFunding(
+      olKey, logPriceFromPrice_e18(MID_PRICE + 2e18), volume, 50_000, 0, 0.1 ether
     );
 
     bid_maker.approveMgv(quote, 10000 ether);
-    bid_maker.newOfferByTickWithFunding(
-      $(quote), $(base), -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 10e18)), 2000e18, 50_000, 0, 0.1 ether
+    bid_maker.newOfferByLogPriceWithFunding(
+      lo, -logPriceFromPrice_e18(MID_PRICE - 10e18), 2000e18, 50_000, 0, 0.1 ether
     );
-    bid_maker.newOfferByTickWithFunding(
-      $(quote), $(base), -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 11e18)), 2000e18, 50_000, 0, 0.1 ether
+    bid_maker.newOfferByLogPriceWithFunding(
+      lo, -logPriceFromPrice_e18(MID_PRICE - 11e18), 2000e18, 50_000, 0, 0.1 ether
     );
-    bid_maker.newOfferByTickWithFunding(
-      $(quote), $(base), -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 12e18)), 2000e18, 50_000, 0, 0.1 ether
+    bid_maker.newOfferByLogPriceWithFunding(
+      lo, -logPriceFromPrice_e18(MID_PRICE - 12e18), 2000e18, 50_000, 0, 0.1 ether
     );
 
     IOrderLogic.TakerOrder memory buyOrder;
@@ -191,12 +197,11 @@ contract MangroveOrder_Test is StratTest {
   function createBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
     order = IOrderLogic.TakerOrder({
-      outbound_tkn: base,
-      inbound_tkn: quote,
+      olKey: olKey,
       fillOrKill: false,
       fillWants: true,
       fillVolume: fillVolume,
-      tick: Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 1e18)),
+      logPrice: logPriceFromPrice_e18(MID_PRICE - 1e18),
       restingOrder: false,
       expiryDate: 0 //NA
     });
@@ -214,7 +219,7 @@ contract MangroveOrder_Test is StratTest {
     order = createBuyOrder();
     // A high price so as to take ask_maker's offers
     order.fillVolume = fillVolume;
-    order.tick = Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE + 10000e18));
+    order.logPrice = logPriceFromPrice_e18(MID_PRICE + 10000e18);
   }
 
   /// At lower price, same volume
@@ -222,24 +227,23 @@ contract MangroveOrder_Test is StratTest {
     uint fillVolume = 2 ether;
     order = createBuyOrder();
     order.fillVolume = fillVolume;
-    order.tick = Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 2e18));
+    order.logPrice = logPriceFromPrice_e18(MID_PRICE - 2e18);
   }
 
   function createBuyOrderEvenLowerPriceAndLowerVolume() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 1 ether;
     order = createBuyOrder();
     order.fillVolume = fillVolume;
-    order.tick = Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 9e18));
+    order.logPrice = logPriceFromPrice_e18(MID_PRICE - 9e18);
   }
 
   function createSellOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
     order = IOrderLogic.TakerOrder({
-      outbound_tkn: quote,
-      inbound_tkn: base,
+      olKey: lo,
       fillOrKill: false,
       fillWants: false,
-      tick: -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 9e18)),
+      logPrice: -logPriceFromPrice_e18(MID_PRICE - 9e18),
       fillVolume: fillVolume,
       restingOrder: false,
       expiryDate: 0 //NA
@@ -249,21 +253,21 @@ contract MangroveOrder_Test is StratTest {
   function createSellOrderLowerPrice() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
     order = createSellOrder();
-    order.tick = -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 8e18));
+    order.logPrice = -logPriceFromPrice_e18(MID_PRICE - 8e18);
     order.fillVolume = fillVolume;
   }
 
   function createSellOrderHalfVolume() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 1 ether;
     order = createSellOrder();
-    order.tick = -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 9e18));
+    order.logPrice = -logPriceFromPrice_e18(MID_PRICE - 9e18);
     order.fillVolume = fillVolume;
   }
 
   function createSellOrderEvenLowerPriceAndLowerVolume() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 1 ether;
     order = createSellOrder();
-    order.tick = -Tick.unwrap(TickLib.tickFromPrice_e18(MID_PRICE - 1e18));
+    order.logPrice = -logPriceFromPrice_e18(MID_PRICE - 1e18);
     order.fillVolume = fillVolume;
   }
 
@@ -272,12 +276,8 @@ contract MangroveOrder_Test is StratTest {
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
-    assertEq(
-      res.takerGot,
-      reader.minusFee($(base), $(quote), takerWants(buyOrder) / 2),
-      "Incorrect partial fill of taker order"
-    );
-    assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder) / 2 - 1, "Incorrect partial fill of taker order");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
   }
 
@@ -308,7 +308,7 @@ contract MangroveOrder_Test is StratTest {
     mgo.take{value: 0.1 ether}(buyOrder);
     assertEq(balBefore, fresh_taker.balance, "Take function did not return value to taker");
     assertEq(
-      takerGives(buyOrder) - takerGives(buyOrder) / 2,
+      takerGives(buyOrder) - takerGives(buyOrder) / 2 + 1,
       quote.balanceOf(fresh_taker),
       "Take did not return remainder to taker"
     );
@@ -363,11 +363,10 @@ contract MangroveOrder_Test is StratTest {
   ) internal {
     emit OrderSummary(
       iMgv,
-      tko.outbound_tkn,
-      tko.inbound_tkn,
+      tko.olKey.hash(),
       taker,
       tko.fillOrKill,
-      tko.tick,
+      tko.logPrice,
       tko.fillVolume,
       tko.fillWants,
       tko.restingOrder,
@@ -385,10 +384,10 @@ contract MangroveOrder_Test is StratTest {
     buyOrder.restingOrder = true;
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
-      takerGot: reader.minusFee($(quote), $(base), 1 ether),
-      takerGave: takerGives(buyOrder) / 2,
+      takerGot: reader.minusFee(lo, 1 ether),
+      takerGave: takerGives(buyOrder) / 2 - 1,
       bounty: 0,
-      fee: 1 ether - reader.minusFee($(quote), $(base), 1 ether),
+      fee: 1 ether - reader.minusFee(lo, 1 ether),
       offerId: 5
     });
 
@@ -404,18 +403,16 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(mgo.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(
       quote.balanceOf(fresh_taker), takerGives(buyOrder) - expectedResult.takerGave, "Incorrect remaining quote balance"
     );
-    assertEq(
-      base.balanceOf(fresh_taker), reader.minusFee($(base), $(quote), 1 ether), "Incorrect obtained base balance"
-    );
+    assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(quote), $(base), res.offerId);
+    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
+    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder) / 2, "Incorrect offer gives");
     assertEq(offer.wants(), makerWants(buyOrder) / 2 - 1, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
@@ -441,18 +438,18 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(mgo.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
     assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(quote), $(base), res.offerId);
+    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
+    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
     //FIXME: offer.wants becomes slightly less, thus limit-order-taker is not exactly getting what she asked for.
     assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
-    assertEq(Tick.unwrap(offer.tick()), -buyOrder.tick, "Incorrect offer tick");
+    assertEq(offer.logPrice(), -buyOrder.logPrice, "Incorrect offer price");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
     assertEq(detail.maker(), address(mgo), "Incorrect maker");
   }
@@ -462,10 +459,10 @@ contract MangroveOrder_Test is StratTest {
     sellOrder.restingOrder = true;
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
-      takerGot: reader.minusFee($(quote), $(base), takerWants(sellOrder) / 2) + 1,
+      takerGot: reader.minusFee(lo, takerWants(sellOrder) / 2) + 1,
       takerGave: takerGives(sellOrder) / 2 - 1,
       bounty: 0,
-      fee: takerWants(sellOrder) / 2 - reader.minusFee($(quote), $(base), takerWants(sellOrder) / 2) - 1,
+      fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
       offerId: 5
     });
 
@@ -481,16 +478,16 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(base, quote, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(base, quote, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(mgo.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(
       base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
     );
     assertEq(quote.balanceOf(fresh_taker), expectedResult.takerGot, "Incorrect obtained quote balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers($(base), $(quote), res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(base), $(quote), res.offerId);
+    MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
+    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
     assertEq(offer.gives(), makerGives(sellOrder) / 2 + 1, "Incorrect offer gives");
 
     assertApproxEqRel(offer.wants(), makerWants(sellOrder) / 2, 1e4, "Incorrect offer wants");
@@ -517,14 +514,14 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(base, quote, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(base, quote, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(mgo.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(base.balanceOf(fresh_taker), takerGives(sellOrder), "Incorrect remaining base balance");
     assertEq(quote.balanceOf(fresh_taker), 0, "Incorrect obtained quote balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers($(base), $(quote), res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(base), $(quote), res.offerId);
+    MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
+    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
     assertEq(offer.gives(), makerGives(sellOrder), "Incorrect offer gives");
     assertEq(offer.wants(), makerWants(sellOrder), "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
@@ -538,7 +535,7 @@ contract MangroveOrder_Test is StratTest {
     address fresh_taker = freshTaker(2 ether, 0);
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
-    assertEq(mgo.expiring(base, quote, res.offerId), block.timestamp + 1, "Incorrect expiry");
+    assertEq(mgo.expiring(olKey.hash(), res.offerId), block.timestamp + 1, "Incorrect expiry");
   }
 
   function test_resting_buy_order_for_blacklisted_reserve_for_inbound_reverts() public {
@@ -549,7 +546,7 @@ contract MangroveOrder_Test is StratTest {
     vm.mockCall(
       $(quote),
       abi.encodeWithSelector(
-        quote.transferFrom.selector, $(mgo), fresh_taker, reader.minusFee($(quote), $(base), takerWants(sellOrder)) + 1
+        quote.transferFrom.selector, $(mgo), fresh_taker, reader.minusFee(lo, takerWants(sellOrder)) + 1
       ),
       abi.encode(false)
     );
@@ -564,7 +561,7 @@ contract MangroveOrder_Test is StratTest {
     address fresh_taker = freshTaker(2 ether, 0);
     uint oldNativeBal = fresh_taker.balance;
     // pretend new offer failed for some reason
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByLogPrice.selector), abi.encode(uint(0)));
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
     assertEq(fresh_taker.balance, oldNativeBal, "Taker's provision was not returned");
@@ -576,7 +573,7 @@ contract MangroveOrder_Test is StratTest {
     sellOrder.fillOrKill = true;
     address fresh_taker = freshTaker(2 ether, 0);
     // pretend new offer failed for some reason
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByLogPrice.selector), abi.encode(uint(0)));
     vm.expectRevert("mgvOrder/partialFill");
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
@@ -595,7 +592,7 @@ contract MangroveOrder_Test is StratTest {
     TransferLib.approveToken(base, $(mgo.router()), type(uint).max);
     vm.stopPrank();
     // mocking MangroveOrder failure to post resting offer
-    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
+    vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByLogPrice.selector), abi.encode(uint(0)));
     /// since `sender` throws on `receive()`, this should fail.
     vm.expectRevert("mgvOrder/refundFail");
     vm.prank($(sender));
@@ -612,12 +609,11 @@ contract MangroveOrder_Test is StratTest {
     uint oldBaseBal = base.balanceOf($(this));
     uint oldQuoteBal = quote.balanceOf($(this)); // quote balance of test runner
 
-    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), cold_buyResult.offerId);
-    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    MgvStructs.OfferPacked offer = mgv.offers(lo, cold_buyResult.offerId);
+    int logPrice = mgv.offers(lo, cold_buyResult.offerId).logPrice();
 
     vm.prank($(sell_taker));
-    (uint takerGot, uint takerGave,, uint fee) =
-      mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1000 ether, true);
+    (uint takerGot, uint takerGave,, uint fee) = mgv.marketOrderByLogPrice(lo, logPrice, 1000 ether, true);
     // sell_taker.takeWithInfo({takerWants: 1000 ether, offerId: cold_buyResult.offerId});
 
     // offer delivers
@@ -627,7 +623,7 @@ contract MangroveOrder_Test is StratTest {
     // outbound taken from test runner
     assertEq(quote.balanceOf($(this)), oldQuoteBal - (takerGot + fee), "Incorrect quote balance");
     // checking residual
-    MgvStructs.OfferPacked offer_ = mgv.offers($(quote), $(base), cold_buyResult.offerId);
+    MgvStructs.OfferPacked offer_ = mgv.offers(lo, cold_buyResult.offerId);
     assertEq(offer_.gives(), offer.gives() - (takerGot + fee), "Incorrect residual");
   }
 
@@ -639,48 +635,47 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(buyResult.offerId > 0, "Resting order should succeed");
 
-    Tick tick = mgv.offers($(quote), $(base), buyResult.offerId).tick();
+    int logPrice = mgv.offers(lo, buyResult.offerId).logPrice();
 
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 40000 ether, true);
+    (uint takerGot,,,) = mgv.marketOrderByLogPrice(lo, logPrice, 40000 ether, true);
 
     assertTrue(takerGot > 0, "Offer should succeed");
   }
 
   function test_failing_resting_offer_releases_uncollected_provision() public {
-    uint provision = mgo.provisionOf(quote, base, cold_buyResult.offerId);
+    uint provision = mgo.provisionOf(lo, cold_buyResult.offerId);
     // empty quotes so that cold buy offer fails
-    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    int logPrice = mgv.offers(lo, cold_buyResult.offerId).logPrice();
     deal($(quote), address(this), 0);
     _gas();
     vm.prank($(sell_taker));
-    (,, uint bounty,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, false);
+    (,, uint bounty,) = mgv.marketOrderByLogPrice(lo, logPrice, 1991, false);
     uint g = gas_(true);
 
     assertTrue(bounty > 0, "snipe should have failed");
     assertTrue(
-      provision > mgo.provisionOf(quote, base, cold_buyResult.offerId),
-      "Remaining provision should be less than original"
+      provision > mgo.provisionOf(lo, cold_buyResult.offerId), "Remaining provision should be less than original"
     );
-    assertTrue(mgo.provisionOf(quote, base, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
+    assertTrue(mgo.provisionOf(lo, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
     assertTrue(bounty > g * reader.global().gasprice(), "taker not compensated");
     console.log("Taker gained %s matics", toFixed(bounty - g * reader.global().gasprice(), 18));
   }
 
   function test_offer_succeeds_when_time_is_not_expired() public {
-    mgo.setExpiry(quote, base, cold_buyResult.offerId, block.timestamp + 1);
-    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp + 1);
+    int logPrice = mgv.offers(lo, cold_buyResult.offerId).logPrice();
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, true);
+    (uint takerGot,,,) = mgv.marketOrderByLogPrice(lo, logPrice, 1991, true);
     assertTrue(takerGot > 0, "offer failed");
   }
 
   function test_offer_reneges_when_time_is_expired() public {
-    mgo.setExpiry(quote, base, cold_buyResult.offerId, block.timestamp);
+    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp);
     vm.warp(block.timestamp + 1);
-    Tick tick = mgv.offers($(quote), $(base), cold_buyResult.offerId).tick();
+    int logPrice = mgv.offers(lo, cold_buyResult.offerId).logPrice();
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick($(quote), $(base), Tick.unwrap(tick), 1991, true);
+    (uint takerGot,,,) = mgv.marketOrderByLogPrice(lo, logPrice, 1991, true);
     assertTrue(takerGot == 0, "offer should have failed");
   }
   //////////////////////////////
@@ -689,37 +684,37 @@ contract MangroveOrder_Test is StratTest {
 
   function test_user_can_retract_resting_offer() public {
     uint userWeiBalanceOld = $(this).balance;
-    uint credited = mgo.retractOffer(quote, base, cold_buyResult.offerId, true);
+    uint credited = mgo.retractOffer(lo, cold_buyResult.offerId, true);
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
 
-  event SetExpiry(address indexed outbound_tkn, address indexed inbound_tkn, uint offerId, uint date);
+  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));
-    emit SetExpiry($(quote), $(base), cold_buyResult.offerId, 42);
-    mgo.setExpiry(quote, base, cold_buyResult.offerId, 42);
-    assertEq(mgo.expiring(quote, base, cold_buyResult.offerId), 42, "expiry date was not set");
+    emit SetExpiry(lo.hash(), cold_buyResult.offerId, 42);
+    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, 42);
+    assertEq(mgo.expiring(lo.hash(), cold_buyResult.offerId), 42, "expiry date was not set");
   }
 
   function test_only_offer_owner_can_set_expiry() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.setExpiry(quote, base, cold_buyResult.offerId, 42);
+    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, 42);
   }
 
   function test_offer_owner_can_update_offer() public {
-    mgo.updateOffer(quote, base, 100, 2000 ether, cold_buyResult.offerId);
-    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), cold_buyResult.offerId);
-    assertEq(Tick.unwrap(offer.tick()), 100, "Incorrect updated tick");
+    mgo.updateOffer(lo, 100, 2000 ether, cold_buyResult.offerId);
+    MgvStructs.OfferPacked offer = mgv.offers(lo, cold_buyResult.offerId);
+    assertEq(offer.logPrice(), 100, "Incorrect updated price");
     assertEq(offer.gives(), 2000 ether, "Incorrect updated gives");
-    assertEq(mgo.ownerOf(quote, base, cold_buyResult.offerId), $(this), "Owner should not have changed");
+    assertEq(mgo.ownerOf(lo.hash(), cold_buyResult.offerId), $(this), "Owner should not have changed");
   }
 
   function test_only_offer_owner_can_update_offer() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.updateOffer(quote, base, 1 ether, 2000 ether, cold_buyResult.offerId);
+    mgo.updateOffer(lo, 1 ether, 2000 ether, cold_buyResult.offerId);
   }
 
   //////////////////////////////
@@ -751,8 +746,7 @@ contract MangroveOrder_Test is StratTest {
       takerGives: 0.5 ether,
       takerWants: 1991 ether / 2,
       partialFill: 2,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     // pranking a fresh taker to avoid heating test runner balance
@@ -767,9 +761,9 @@ contract MangroveOrder_Test is StratTest {
     mgo.makerExecute(sellOrder);
     uint exec_gas = gas_(true);
     // since offer reposts itself, making offer info, mgo credit on mangrove and mgv config hot in storage
-    mgv.config($(quote), $(base));
-    mgv.offers($(quote), $(base), sellOrder.offerId);
-    mgv.offerDetails($(quote), $(base), sellOrder.offerId);
+    mgv.config(lo);
+    mgv.offers(lo, sellOrder.offerId);
+    mgv.offerDetails(lo, sellOrder.offerId);
     mgv.fund{value: 1}($(mgo));
 
     vm.prank($(mgv));
@@ -784,16 +778,15 @@ contract MangroveOrder_Test is StratTest {
   function test_empirical_offer_gas_cost() public {
     // resting order buys 1 ether for (MID_PRICE-9 ether) dai
     // fresh taker sells 0.5 ether for 900 dai for any gasreq
-    address quoteAddress = $(quote);
-    address baseAddress = $(base);
-    int tick = Tick.unwrap(mgv.offers($(quote), $(base), cold_buyResult.offerId).tick());
+    OLKey memory _olKey = olKey;
+    int logPrice = mgv.offers(lo, cold_buyResult.offerId).logPrice();
     vm.prank(address(sell_taker));
     _gas();
     // cannot use TestTaker functions that have additional gas cost
     // simply using sell_taker's approvals and already filled balances
-    mgv.marketOrderByTick(quoteAddress, baseAddress, tick, 0.5 ether, true);
+    mgv.marketOrderByLogPrice(_olKey, logPrice, 0.5 ether, true);
     gas_();
     // assertTrue(successes == 1, "Snipe failed");
-    assertTrue(mgv.offers($(quote), $(base), cold_buyResult.offerId).gives() > 0, "Update failed");
+    assertTrue(mgv.offers(lo, cold_buyResult.offerId).gives() > 0, "Update failed");
   }
 }

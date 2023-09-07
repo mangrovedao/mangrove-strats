@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
@@ -15,12 +15,11 @@ import {TransferLib} from "mgv_lib/TransferLib.sol";
 abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, AbstractKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param base Address of the base token of the market Kandel will act on
-  ///@param quote Address of the quote token of the market Kandel will act on
+  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, address reserveId)
-    TradesBaseQuotePair(base, quote)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
+    TradesBaseQuotePair(olKeyBaseQuote)
     DirectWithBidsAndAsksDistribution(mgv, gasreq, reserveId)
   {}
 
@@ -43,16 +42,16 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       return;
     }
     if (offerId != 0) {
-      emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, offerId, "Kandel/updateOfferFailed", populateStatus);
+      emit LogIncident(MGV, args.olKey.hash(), offerId, "Kandel/updateOfferFailed", populateStatus);
     } else {
-      emit LogIncident(MGV, args.outbound_tkn, args.inbound_tkn, 0, "Kandel/newOfferFailed", populateStatus);
+      emit LogIncident(MGV, args.olKey.hash(), 0, "Kandel/newOfferFailed", populateStatus);
     }
   }
 
   ///@notice update or create dual offer according to transport logic
   ///@param order is a recall of the taker order that is at the origin of the current trade.
   function transportSuccessfulOrder(MgvLib.SingleOrder calldata order) internal {
-    OfferType ba = offerTypeOfOutbound(IERC20(order.outbound_tkn));
+    OfferType ba = offerTypeOfOutbound(IERC20(order.olKey.outbound));
 
     // adds any unpublished liquidity to pending[Base/Quote]
     // preparing arguments for the dual offer

@@ -15,10 +15,10 @@ contract HotKandelGasTest is CoreKandelGasTest {
     //printOB();
     // making Kandel hot
     vm.prank(taker);
-    mgv.marketOrderByTick($(base), $(quote), MAX_TICK, 0.5 ether, true);
+    mgv.marketOrderByLogPrice(olKey, MAX_LOG_PRICE, 0.5 ether, true);
     //printOB();
     vm.prank(taker);
-    mgv.marketOrderByTick($(quote), $(base), MAX_TICK, 0.54 ether, false);
+    mgv.marketOrderByLogPrice(lo, MAX_LOG_PRICE, 0.54 ether, false);
     //printOB();
     completeFill_ = 0.108 ether;
     partialFill_ = 0.09 ether;

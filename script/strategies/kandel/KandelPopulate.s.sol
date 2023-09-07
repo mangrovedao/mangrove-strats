@@ -13,6 +13,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove
@@ -105,8 +106,10 @@ contract KandelPopulate is Deployer {
       /*uint8 length*/
     ) = args.kdl.params();
 
-    vars.provAsk = vars.mgvReader.getProvision(address(vars.BASE), address(vars.QUOTE), vars.gasreq, vars.gasprice);
-    vars.provBid = vars.mgvReader.getProvision(address(vars.QUOTE), address(vars.BASE), vars.gasreq, vars.gasprice);
+    OLKey memory olKeyBaseQuote =
+      OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickScale: args.kdl.TICK_SCALE()});
+    vars.provAsk = vars.mgvReader.getProvision(olKeyBaseQuote, vars.gasreq, vars.gasprice);
+    vars.provBid = vars.mgvReader.getProvision(olKeyBaseQuote.flipped(), vars.gasreq, vars.gasprice);
     uint funds = (vars.provAsk + vars.provBid) * (args.to - args.from);
     if (broadcaster().balance < funds) {
       console.log(

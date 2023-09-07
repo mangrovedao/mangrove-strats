@@ -3,8 +3,8 @@ pragma solidity ^0.8.10;
 
 import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 contract DirectTester is ITesterContract, OfferMaker {
   mapping(address => address) public reserves;
@@ -39,24 +39,20 @@ contract DirectTester is ITesterContract, OfferMaker {
     );
   }
 
-  function newOfferFromVolume(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint gasreq)
+  function newOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
     external
     payable
     returns (uint offerId)
   {
-    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, gasreq);
+    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
+    return newOffer(olKey, logPrice, gives, gasreq);
   }
 
-  function updateOfferFromVolume(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    uint wants,
-    uint gives,
-    uint offerId,
-    uint gasreq
-  ) external payable {
-    int tick = Tick.unwrap(TickLib.tickFromVolumes(wants, gives));
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, gasreq);
+  function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
+    external
+    payable
+  {
+    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
+    updateOffer(olKey, logPrice, gives, offerId, gasreq);
   }
 }

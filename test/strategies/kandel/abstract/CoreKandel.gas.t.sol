@@ -5,7 +5,7 @@ import "./KandelTest.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {TickLib, Tick, MAX_TICK} from "mgv_lib/TickLib.sol";
+import {LogPriceLib, MAX_LOG_PRICE} from "mgv_lib/LogPriceLib.sol";
 
 abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;
@@ -25,8 +25,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank(deployer);
     kdl_ = new Kandel({
       mgv: IMangrove($(mgv)),
-      base: base,
-      quote: quote,
+      olKeyBaseQuote: olKey,
       //FIXME: measure
       gasreq: 260_000,
       gasprice: 0,
@@ -40,40 +39,40 @@ abstract contract CoreKandelGasTest is KandelTest {
     options.gasprice = 90;
     options.gasbase = 68_000;
     options.defaultFee = 30;
-    options.density = 2 ** 32;
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("USDC"));
-    setupMarket(base, quote);
+    olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+    lo = olKey.flipped();
+    setupMarket(olKey);
   }
 
   function densifyMissing(uint index, uint fold) internal {
     IndexStatus memory idx = getStatus(index);
     if (idx.status == OfferStatus.Bid) {
       // densify Ask position
-      densify(address(base), address(quote), idx.bid.gives(), idx.bid.wants(), 0, fold, address(this));
+      densify(olKey, idx.bid.logPrice(), idx.bid.gives(), 0, fold, address(this));
     } else {
       if (idx.status == OfferStatus.Ask) {
-        densify(address(quote), address(base), idx.ask.gives(), idx.ask.wants(), 0, fold, address(this));
+        densify(lo, idx.ask.logPrice(), idx.ask.gives(), 0, fold, address(this));
       }
     }
   }
 
   function test_log_mgv_config() public view {
-    (, MgvStructs.LocalPacked local) = mgv.config($(base), $(quote));
+    (, MgvStructs.LocalPacked local) = mgv.config(olKey);
     console.log("offer_gasbase", local.offer_gasbase());
     console.log("kandel gasreq", kdl.offerGasreq());
   }
 
   function test_complete_fill_bid_order() public {
     uint completeFill = completeFill_;
-    address baseAddress = $(base);
-    address quoteAddress = $(quote);
+    OLKey memory _olKey = olKey;
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting
-    (uint takerGot,,,) = mgv.marketOrderByTick(baseAddress, quoteAddress, MAX_TICK, completeFill, true);
+    (uint takerGot,,,) = mgv.marketOrderByLogPrice(_olKey, MAX_LOG_PRICE, completeFill, true);
     gas_();
     require(takerGot > 0);
   }
@@ -82,12 +81,11 @@ abstract contract CoreKandelGasTest is KandelTest {
     uint completeFill = completeFill_;
     uint partialFill = partialFill_;
     uint volume = completeFill * (n - 1) + partialFill;
-    address baseAddress = $(base);
-    address quoteAddress = $(quote);
+    OLKey memory _olKey = olKey;
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrderByTick(baseAddress, quoteAddress, MAX_TICK, volume, true);
+    (uint takerGot,,,) = mgv.marketOrderByLogPrice(_olKey, MAX_LOG_PRICE, volume, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(n, ",", g);
@@ -126,15 +124,14 @@ abstract contract CoreKandelGasTest is KandelTest {
       takerGives: ask.wants() / 2,
       takerWants: ask.gives() / 2,
       partialFill: 1,
-      base_: base,
-      quote_: quote,
+      _olBaseQuote: olKey,
       makerData: ""
     });
     order.offerId = kdl.offerIdOfIndex(Ask, 6);
     order.offer = ask;
     // making mgv mappings hot
-    mgv.config($(base), $(quote));
-    mgv.config($(quote), $(base));
+    mgv.config(olKey);
+    mgv.config(lo);
 
     vm.prank($(mgv));
     _gas();

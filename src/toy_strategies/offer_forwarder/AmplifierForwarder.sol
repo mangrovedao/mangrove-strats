@@ -4,12 +4,14 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 contract AmplifierForwarder is Forwarder {
   IERC20 public immutable BASE;
   IERC20 public immutable STABLE1;
+  uint public immutable TICK_SCALE1;
   IERC20 public immutable STABLE2;
+  uint public immutable TICK_SCALE2;
 
   struct OfferPair {
     uint id1;
@@ -18,11 +20,20 @@ contract AmplifierForwarder is Forwarder {
 
   mapping(address => OfferPair) offers; // mapping from maker address to id of the offers
 
-  constructor(IMangrove mgv, IERC20 base, IERC20 stable1, IERC20 stable2, address deployer, uint gasreq)
-    Forwarder(mgv, new SimpleRouter(), gasreq)
-  {
+  constructor(
+    IMangrove mgv,
+    IERC20 base,
+    IERC20 stable1,
+    IERC20 stable2,
+    uint tickScale1,
+    uint tickScale2,
+    address deployer,
+    uint gasreq
+  ) Forwarder(mgv, new SimpleRouter(), gasreq) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
+    TICK_SCALE1 = tickScale1;
+    TICK_SCALE2 = tickScale2;
     STABLE2 = stable2;
     BASE = base;
 
@@ -62,19 +73,21 @@ contract AmplifierForwarder is Forwarder {
     OfferPair memory offerPair = offers[msg.sender];
 
     require(
-      !MGV.offers(address(BASE), address(STABLE1), offerPair.id1).isLive(), "AmplifierForwarder/offer1AlreadyActive"
+      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SCALE1), offerPair.id1).isLive(),
+      "AmplifierForwarder/offer1AlreadyActive"
     );
     require(
-      !MGV.offers(address(BASE), address(STABLE2), offerPair.id2).isLive(), "AmplifierForwarder/offer2AlreadyActive"
+      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SCALE2), offerPair.id2).isLive(),
+      "AmplifierForwarder/offer2AlreadyActive"
     );
+
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
-    int tick = Tick.unwrap(TickLib.tickFromVolumes(args.wants1, args.gives));
+    int logPrice = LogPriceConversionLib.logPriceFromVolumes(args.wants1, args.gives);
 
     (uint _offerId1, bytes32 status1) = _newOffer(
       OfferArgs({
-        outbound_tkn: BASE,
-        inbound_tkn: STABLE1,
-        tick: tick,
+        olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+        logPrice: logPrice,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -84,16 +97,15 @@ contract AmplifierForwarder is Forwarder {
       msg.sender
     );
 
-    tick = Tick.unwrap(TickLib.tickFromVolumes(args.wants2, args.gives));
+    logPrice = LogPriceConversionLib.logPriceFromVolumes(args.wants2, args.gives);
 
     offers[msg.sender].id1 = _offerId1;
     // no need to fund this second call for provision
     // since the above call should be enough
     (uint _offerId2, bytes32 status2) = _newOffer(
       OfferArgs({
-        outbound_tkn: BASE,
-        inbound_tkn: STABLE2,
-        tick: tick,
+        olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+        logPrice: logPrice,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -123,35 +135,36 @@ contract AmplifierForwarder is Forwarder {
     // - not enough provision
     // - offer list is closed (governance call)
     // Get the owner of the order. That is the same owner as the alt offer
-    address owner = ownerOf(IERC20(order.outbound_tkn), IERC20(order.inbound_tkn), order.offerId);
+    address owner = ownerOf(order.olKey.hash(), order.offerId);
     OfferPair memory offerPair = offers[owner];
-    (IERC20 alt_stable, uint alt_offerId) =
-      IERC20(order.inbound_tkn) == STABLE1 ? (STABLE2, offerPair.id2) : (STABLE1, offerPair.id1);
+
+    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
+      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SCALE2), offerPair.id2)
+      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerPair.id1);
 
     if (repost_status == REPOST_SUCCESS) {
       uint new_alt_gives = __residualGives__(order); // in base units
 
       uint gasreq;
-      int tick;
+      int logPrice;
       {
-        MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
+        MgvStructs.OfferPacked alt_offer = MGV.offers(altOlKey, alt_offerId);
         uint new_alt_wants;
-        gasreq = MGV.offerDetails(order.outbound_tkn, address(alt_stable), alt_offerId).gasreq(); // to use alt_offer's old gasreq
+        gasreq = MGV.offerDetails(altOlKey, alt_offerId).gasreq(); // to use alt_offer's old gasreq
 
         unchecked {
           new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
         }
-        //FIXME: amplifiers should probably re-use tick instead of calculating.
-        tick = Tick.unwrap(TickLib.tickFromVolumes(new_alt_wants, new_alt_gives));
+        //FIXME: amplifiers should probably re-use logPrice instead of calculating.
+        logPrice = LogPriceConversionLib.logPriceFromVolumes(new_alt_wants, new_alt_gives);
       }
 
       //uint prov = getMissingProvision(IERC20(order.outbound_tkn), IERC20(alt_stable), type(uint).max, 0, 0);
 
       bytes32 reason = _updateOffer(
         OfferArgs({
-          outbound_tkn: IERC20(order.outbound_tkn),
-          inbound_tkn: IERC20(alt_stable),
-          tick: tick,
+          olKey: altOlKey,
+          logPrice: logPrice,
           gives: new_alt_gives,
           gasreq: gasreq,
           gasprice: 0, // ignored
@@ -169,35 +182,33 @@ contract AmplifierForwarder is Forwarder {
     } else {
       // repost failed or offer was entirely taken
       if (repost_status != "posthook/filled") {
-        retractOffer({
-          outbound_tkn: IERC20(order.outbound_tkn),
-          inbound_tkn: IERC20(order.inbound_tkn),
-          offerId: order.offerId,
-          deprovision: false
-        });
+        retractOffer({olKey: altOlKey, offerId: order.offerId, deprovision: false});
       }
-      retractOffer({
-        outbound_tkn: IERC20(order.outbound_tkn),
-        inbound_tkn: IERC20(alt_stable),
-        offerId: alt_offerId,
-        deprovision: false
-      });
+      retractOffer({olKey: altOlKey, offerId: alt_offerId, deprovision: false});
       return "posthook/bothRetracted";
     }
   }
 
-  function retractOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, bool deprovision)
+  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
-    mgvOrOwner(outbound_tkn, inbound_tkn, offerId)
+    mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(outbound_tkn, inbound_tkn, offerId, deprovision);
+    return _retractOffer(olKey, offerId, deprovision);
   }
 
   function retractOffers(bool deprovision) external {
     OfferPair memory offerPair = offers[msg.sender];
-    retractOffer({outbound_tkn: BASE, inbound_tkn: STABLE1, offerId: offerPair.id1, deprovision: deprovision});
-    retractOffer({outbound_tkn: BASE, inbound_tkn: STABLE2, offerId: offerPair.id2, deprovision: deprovision});
+    retractOffer({
+      olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+      offerId: offerPair.id1,
+      deprovision: deprovision
+    });
+    retractOffer({
+      olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+      offerId: offerPair.id2,
+      deprovision: deprovision
+    });
   }
 
   function __posthookFallback__(MgvLib.SingleOrder calldata order, MgvLib.OrderResult calldata)
@@ -206,14 +217,14 @@ contract AmplifierForwarder is Forwarder {
     returns (bytes32)
   {
     // Get the owner of the order. That is the same owner as the alt offer
-    address owner = ownerOf(IERC20(order.outbound_tkn), IERC20(order.inbound_tkn), order.offerId);
+    address owner = ownerOf(order.olKey.hash(), order.offerId);
     // if we reach this code, trade has failed for lack of base token
     OfferPair memory offerPair = offers[owner];
-    (IERC20 alt_stable, uint alt_offerId) =
-      IERC20(order.inbound_tkn) == STABLE1 ? (STABLE2, offerPair.id2) : (STABLE1, offerPair.id1);
+    (IERC20 alt_stable, uint tickScale, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
+      ? (STABLE2, TICK_SCALE1, offerPair.id2)
+      : (STABLE1, TICK_SCALE2, offerPair.id1);
     retractOffer({
-      outbound_tkn: IERC20(order.outbound_tkn),
-      inbound_tkn: IERC20(alt_stable),
+      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickScale),
       offerId: alt_offerId,
       deprovision: false
     });

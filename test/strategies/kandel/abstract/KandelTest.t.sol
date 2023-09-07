@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvStructs, MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {
   CoreKandel, TransferLib
@@ -16,7 +16,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 
 abstract contract KandelTest is StratTest {
   address payable maker;
@@ -33,8 +33,8 @@ abstract contract KandelTest is StratTest {
   uint PRECISION;
 
   event Mgv(IMangrove mgv);
-  event Pair(IERC20 base, IERC20 quote);
-  event NewKandel(address indexed owner, IMangrove indexed mgv, IERC20 indexed base, IERC20 quote);
+  event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
+  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
   event SetGeometricParams(uint spread, uint ratio);
   event SetCompoundRates(uint compoundRateBase, uint compoundRateQuote);
   event SetLength(uint value);
@@ -46,12 +46,7 @@ abstract contract KandelTest is StratTest {
   event RetractStart();
   event RetractEnd();
   event LogIncident(
-    IMangrove mangrove,
-    IERC20 indexed outbound_tkn,
-    IERC20 indexed inbound_tkn,
-    uint indexed offerId,
-    bytes32 makerData,
-    bytes32 mgvData
+    IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData
   );
 
   // sets environment default is local node with fake base and quote
@@ -62,7 +57,6 @@ abstract contract KandelTest is StratTest {
     options.quote.decimals = 6;
     options.defaultFee = 30;
     options.gasprice = 40;
-    options.density = 2 ** 32;
 
     MangroveTest.setUp();
   }
@@ -97,7 +91,7 @@ abstract contract KandelTest is StratTest {
     TransferLib.approveToken(quote, $(mgv), type(uint).max);
 
     // deploy and activate
-    (MgvStructs.GlobalPacked global,) = mgv.config(address(0), address(0));
+    (MgvStructs.GlobalPacked global,) = mgv.config(OLKey(address(0), address(0), 0));
     globalGasprice = global.gasprice();
     bufferedGasprice = globalGasprice * 10; // covering 10 times Mangrove's gasprice at deploy time
 
@@ -105,8 +99,8 @@ abstract contract KandelTest is StratTest {
     PRECISION = kdl.PRECISION();
 
     // funding Kandel on Mangrove
-    uint provAsk = reader.getProvision($(base), $(quote), kdl.offerGasreq(), bufferedGasprice);
-    uint provBid = reader.getProvision($(quote), $(base), kdl.offerGasreq(), bufferedGasprice);
+    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
     deal(maker, (provAsk + provBid) * 10 ether);
 
     // maker approves Kandel to be able to deposit funds on it
@@ -149,34 +143,30 @@ abstract contract KandelTest is StratTest {
   function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint) {
     (, MgvStructs.OfferPacked best) = getBestOffers();
     vm.prank(taker_);
-    return mgv.marketOrderByTick(
-      $(base), $(quote), Tick.unwrap(best.tick()), best.gives() >= amount ? amount : best.gives(), true
-    );
+    return mgv.marketOrderByLogPrice(olKey, best.logPrice(), best.gives() >= amount ? amount : best.gives(), true);
   }
 
   function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
     (MgvStructs.OfferPacked best,) = getBestOffers();
     vm.prank(taker_);
-    return mgv.marketOrderByTick(
-      $(quote), $(base), Tick.unwrap(best.tick()), best.wants() >= amount ? amount : best.wants(), false
-    );
+    return mgv.marketOrderByLogPrice(lo, best.logPrice(), best.wants() >= amount ? amount : best.wants(), false);
   }
 
   function cleanBuyBestAs(address taker_, uint amount) public returns (uint, uint) {
     (, MgvStructs.OfferPacked best) = getBestOffers();
-    uint offerId = mgv.best($(base), $(quote));
+    uint offerId = mgv.best(olKey);
     vm.prank(taker_);
     return mgv.cleanByImpersonation(
-      $(base), $(quote), wrap_dynamic(MgvLib.CleanTarget(offerId, Tick.unwrap(best.tick()), 1_000_000, amount)), taker_
+      olKey, wrap_dynamic(MgvLib.CleanTarget(offerId, best.logPrice(), 1_000_000, amount)), taker_
     );
   }
 
   function cleanSellBestAs(address taker_, uint amount) internal returns (uint, uint) {
     (MgvStructs.OfferPacked best,) = getBestOffers();
-    uint offerId = mgv.best($(quote), $(base));
+    uint offerId = mgv.best(lo);
     vm.prank(taker_);
     return mgv.cleanByImpersonation(
-      $(quote), $(base), wrap_dynamic(MgvLib.CleanTarget(offerId, Tick.unwrap(best.tick()), 1_000_000, amount)), taker_
+      lo, wrap_dynamic(MgvLib.CleanTarget(offerId, best.logPrice(), 1_000_000, amount)), taker_
     );
   }
 
@@ -299,8 +289,8 @@ abstract contract KandelTest is StratTest {
       }
     }
 
-    (, uint[] memory bidIds,,) = reader.offerList(address(quote), address(base), 0, 1000);
-    (, uint[] memory askIds,,) = reader.offerList(address(base), address(quote), 0, 1000);
+    (, uint[] memory bidIds,,) = reader.offerList(lo, 0, 1000);
+    (, uint[] memory askIds,,) = reader.offerList(olKey, 0, 1000);
     assertEq(expectedBids, bidIds.length, "Unexpected number of live bids on book");
     assertEq(expectedAsks, askIds.length, "Unexpected number of live asks on book");
   }
@@ -322,8 +312,8 @@ abstract contract KandelTest is StratTest {
   }
 
   function printOB() internal view {
-    printOrderBook($(base), $(quote));
-    printOrderBook($(quote), $(base));
+    printOrderBook(olKey);
+    printOrderBook(lo);
     uint pendingBase = uint(kdl.pending(Ask));
     uint pendingQuote = uint(kdl.pending(Bid));
 
@@ -398,10 +388,10 @@ abstract contract KandelTest is StratTest {
   }
 
   function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {
-    uint bestAskId = mgv.best($(base), $(quote));
-    uint bestBidId = mgv.best($(quote), $(base));
-    bestBid = mgv.offers($(quote), $(base), bestBidId);
-    bestAsk = mgv.offers($(base), $(quote), bestAskId);
+    uint bestAskId = mgv.best(olKey);
+    uint bestBidId = mgv.best(lo);
+    bestBid = mgv.offers(lo, bestBidId);
+    bestAsk = mgv.offers(olKey, bestAskId);
   }
 
   function getMidPrice() internal view returns (uint midWants, uint midGives) {

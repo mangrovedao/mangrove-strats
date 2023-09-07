@@ -14,6 +14,7 @@ import {CoreKandel, IERC20} from "mgv_strat_src/strategies/offer_maker/market_ma
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MangroveTest, Test} from "mgv_test/lib/MangroveTest.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 /**
  * @notice deploys a Kandel seeder
@@ -57,35 +58,40 @@ contract KandelSeederDeployer is Deployer {
     fork.set("AavePooledRouter", address(aaveSeeder.AAVE_ROUTER()));
 
     console.log("Deploying Kandel instances for code verification...");
-    IERC20 weth = IERC20(fork.get("WETH"));
-    IERC20 dai = IERC20(fork.get("DAI"));
+    address weth = fork.get("WETH");
+    address dai = fork.get("DAI");
+    //FIXME: what tickScale should be used? Why do we assume an open market?
+    uint tickScale = 1;
+    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickScale);
 
     prettyLog("Deploying Kandel instance...");
     broadcast();
-    new Kandel(mgv, weth, dai, 1, 1, address(0));
+    new Kandel(mgv, olKeyBaseQuote, 1, 1, address(0));
 
     prettyLog("Deploying AaveKandel instance...");
     broadcast();
-    new AaveKandel(mgv, weth, dai, 1, 1, address(0));
+    new AaveKandel(mgv, olKeyBaseQuote, 1, 1, address(0));
 
-    smokeTest(mgv, seeder, AbstractRouter(address(0)));
-    smokeTest(mgv, aaveSeeder, aaveSeeder.AAVE_ROUTER());
+    smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
+    smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
 
     console.log("Deployed!");
   }
 
-  function smokeTest(IMangrove mgv, AbstractKandelSeeder kandelSeeder, AbstractRouter expectedRouter) internal {
-    IERC20 base = IERC20(fork.get("WETH"));
-    IERC20 quote = IERC20(fork.get("DAI"));
-
+  function smokeTest(
+    IMangrove mgv,
+    OLKey memory olKeyBaseQuote,
+    AbstractKandelSeeder kandelSeeder,
+    AbstractRouter expectedRouter
+  ) internal {
     // Ensure that WETH/DAI market is open on Mangrove
     vm.startPrank(mgv.governance());
-    mgv.activate(address(base), address(quote), 0, 1, 1);
-    mgv.activate(address(quote), address(base), 0, 1, 1);
+    mgv.activate(olKeyBaseQuote, 0, 1, 1);
+    mgv.activate(olKeyBaseQuote.flipped(), 0, 1, 1);
     vm.stopPrank();
 
     AbstractKandelSeeder.KandelSeed memory seed =
-      AbstractKandelSeeder.KandelSeed({base: base, quote: quote, gasprice: 0, liquiditySharing: true});
+      AbstractKandelSeeder.KandelSeed({olKeyBaseQuote: olKeyBaseQuote, gasprice: 0, liquiditySharing: true});
     CoreKandel kandel = kandelSeeder.sow(seed);
 
     require(kandel.router() == expectedRouter, "Incorrect router address");
@@ -96,8 +102,8 @@ contract KandelSeederDeployer is Deployer {
       require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
     }
     IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
+    tokens[0] = IERC20(olKeyBaseQuote.outbound);
+    tokens[1] = IERC20(olKeyBaseQuote.inbound);
     kandel.checkList(tokens);
   }
 }

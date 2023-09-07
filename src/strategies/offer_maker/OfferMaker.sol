@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 
 import {Direct, AbstractRouter, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 contract OfferMaker is ILiquidityProvider, Direct {
   // router_ needs to bind to this contract
@@ -18,7 +19,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
     public
     payable
     override
@@ -27,9 +28,8 @@ contract OfferMaker is ILiquidityProvider, Direct {
   {
     (offerId,) = _newOffer(
       OfferArgs({
-        outbound_tkn: outbound_tkn,
-        inbound_tkn: inbound_tkn,
-        tick: tick,
+        olKey: olKey,
+        logPrice: logPrice,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -39,17 +39,12 @@ contract OfferMaker is ILiquidityProvider, Direct {
     );
   }
 
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives)
-    external
-    payable
-    onlyAdmin
-    returns (uint offerId)
-  {
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, offerGasreq());
+  function newOffer(OLKey memory olKey, int logPrice, uint gives) external payable onlyAdmin returns (uint offerId) {
+    return newOffer(olKey, logPrice, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
@@ -57,9 +52,8 @@ contract OfferMaker is ILiquidityProvider, Direct {
   {
     _updateOffer(
       OfferArgs({
-        outbound_tkn: outbound_tkn,
-        inbound_tkn: inbound_tkn,
-        tick: tick,
+        olKey: olKey,
+        logPrice: logPrice,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -70,21 +64,17 @@ contract OfferMaker is ILiquidityProvider, Direct {
     );
   }
 
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId)
-    external
-    payable
-    onlyAdmin
-  {
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, offerGasreq());
+  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId) external payable onlyAdmin {
+    updateOffer(olKey, logPrice, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function retractOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, bool deprovision)
+  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
     adminOrCaller(address(MGV))
     returns (uint freeWei)
   {
-    freeWei = _retractOffer(outbound_tkn, inbound_tkn, offerId, deprovision);
+    freeWei = _retractOffer(olKey, offerId, deprovision);
     if (freeWei > 0) {
       require(MGV.withdraw(freeWei), "Direct/withdrawFail");
       // sending native tokens to `msg.sender` prevents reentrancy issues

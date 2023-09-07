@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {Forwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(), 30_000) {
@@ -17,7 +17,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
     public
     payable
     override
@@ -25,9 +25,8 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   {
     (offerId,) = _newOffer(
       OfferArgs({
-        outbound_tkn: outbound_tkn,
-        inbound_tkn: inbound_tkn,
-        tick: tick,
+        olKey: olKey,
+        logPrice: logPrice,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -38,21 +37,17 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives)
-    public
-    payable
-    returns (uint offerId)
-  {
-    return newOffer(outbound_tkn, inbound_tkn, tick, gives, offerGasreq());
+  function newOffer(OLKey memory olKey, int logPrice, uint gives) public payable returns (uint offerId) {
+    return newOffer(olKey, logPrice, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
-    onlyOwner(outbound_tkn, inbound_tkn, offerId)
+    onlyOwner(olKey.hash(), offerId)
   {
     OfferArgs memory args;
 
@@ -60,9 +55,8 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     // it might be tempting to include `od.weiBalance` here but this will trigger a recomputation of the `gasprice`
     // each time a offer is updated.
     args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
-    args.outbound_tkn = outbound_tkn;
-    args.inbound_tkn = inbound_tkn;
-    args.tick = tick;
+    args.olKey = olKey;
+    args.logPrice = logPrice;
     args.gives = gives;
     args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
@@ -70,21 +64,21 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, int tick, uint gives, uint offerId)
+  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId)
     public
     payable
-    onlyOwner(outbound_tkn, inbound_tkn, offerId)
+    onlyOwner(olKey.hash(), offerId)
   {
-    updateOffer(outbound_tkn, inbound_tkn, tick, gives, offerId, offerGasreq());
+    updateOffer(olKey, logPrice, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function retractOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, bool deprovision)
+  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
-    mgvOrOwner(outbound_tkn, inbound_tkn, offerId)
+    mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(outbound_tkn, inbound_tkn, offerId, deprovision);
+    return _retractOffer(olKey, offerId, deprovision);
   }
 
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
