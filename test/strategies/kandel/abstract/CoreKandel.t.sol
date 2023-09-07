@@ -13,48 +13,17 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(kdl.pending(Ask), 0, "Incorrect initial pending");
   }
 
-  function full_compound() internal view returns (uint24) {
-    return uint24(10 ** PRECISION);
-  }
-
   function test_populates_order_book_correctly() public {
     printOB();
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   }
 
-  function test_bid_complete_fill_compound_1() public {
-    test_bid_complete_fill(full_compound(), 0);
+  function test_bid_complete_fill() public {
+    test_bid_complete_fill(4);
   }
 
-  function test_bid_complete_fill_compound_0() public {
-    test_bid_complete_fill(0, full_compound());
-  }
-
-  function test_bid_complete_fill_compound_half() public {
-    test_bid_complete_fill(5_000, full_compound());
-  }
-
-  function test_ask_complete_fill_compound_1() public {
-    test_ask_complete_fill(0, full_compound());
-  }
-
-  function test_ask_complete_fill_compound_0() public {
-    test_ask_complete_fill(full_compound(), 0);
-  }
-
-  function test_ask_complete_fill_compound_half() public {
-    test_ask_complete_fill(0, full_compound() / 2);
-  }
-
-  function test_bid_complete_fill(uint24 compoundRateBase, uint24 compoundRateQuote) public {
-    test_bid_complete_fill(compoundRateBase, compoundRateQuote, 4);
-  }
-
-  function test_bid_complete_fill(uint24 compoundRateBase, uint24 compoundRateQuote, uint index) internal {
-    vm.assume(compoundRateBase <= full_compound());
-    vm.assume(compoundRateQuote <= full_compound());
+  function test_bid_complete_fill(uint index) internal {
     vm.prank(maker);
-    kdl.setCompoundRates(compoundRateBase, compoundRateQuote);
 
     MgvStructs.OfferPacked oldAsk = kdl.getOffer(Ask, index + STEP);
     int oldPending = kdl.pending(Ask);
@@ -77,124 +46,16 @@ abstract contract CoreKandelTest is KandelTest {
       precisionForAssert(),
       "Incorrect net promised asset"
     );
-    if (compoundRateBase == full_compound()) {
-      assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "Full compounding should not yield pending");
-      assertTrue(newAsk.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
-    } else {
-      assertTrue(pendingDelta > 0, "Partial auto compounding should yield pending");
-    }
+
+    assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "There should be no pending since we compound all returns");
+    assertTrue(newAsk.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
   }
 
-  function test_ask_complete_fill(uint24 compoundRateBase, uint24 compoundRateQuote) public {
-    test_ask_complete_fill(compoundRateBase, compoundRateQuote, 5);
+  function test_ask_complete_fill() public {
+    test_ask_complete_fill(5);
   }
 
-  function test_update_compoundRateQuote(uint24 compoundRateQuote) public {
-    vm.assume(compoundRateQuote <= full_compound());
-    vm.assume(compoundRateQuote > 0);
-
-    GeometricKandel.Params memory params = getParams(kdl);
-    // taking ask #5
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
-    // updates bid #4
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 4);
-
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockBuyOrder({
-      takerGives: ask.wants(),
-      takerWants: ask.gives(),
-      partialFill: 1,
-      _olBaseQuote: olKey,
-      makerData: ""
-    });
-    order.offerId = kdl.offerIdOfIndex(Ask, 5);
-    order.offer = ask;
-
-    MgvStructs.OfferPacked bid_;
-    uint gives_for_0;
-    uint snapshotId = vm.snapshot();
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
-    bid_ = kdl.getOffer(Bid, 4);
-    gives_for_0 = bid_.gives();
-    require(vm.revertTo(snapshotId), "snapshot restore failed");
-
-    // at 0% compounding, one wants to buy back what was sent
-    // computation might have rounding error because bid_.wants is derived from bid_.gives
-    console.log(bid_.wants(), bid.wants(), ask.gives());
-    assertApproxEqRel(bid_.wants(), bid.wants() + ask.gives(), 1e14, "Incorrect wants when 0% compounding");
-
-    // changing compoundRates
-    vm.prank(maker);
-    kdl.setCompoundRates(params.compoundRateBase, compoundRateQuote);
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
-
-    bid_ = kdl.getOffer(Bid, 4);
-    if (compoundRateQuote == full_compound()) {
-      // 100% compounding, one gives what one got
-      assertEq(bid_.gives(), bid.gives() + ask.wants(), "Incorrect gives when 100% compounding");
-    } else {
-      // in between one just checks that one is giving more than before
-      assertTrue(bid_.gives() > gives_for_0, "Incorrect gives compounding");
-    }
-  }
-
-  function test_update_compoundRateBase(uint24 compoundRateBase) public {
-    vm.assume(compoundRateBase <= full_compound());
-    vm.assume(compoundRateBase > 0);
-
-    GeometricKandel.Params memory params = getParams(kdl);
-    // taking bid #4
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 4);
-    // updates ask #5
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
-
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: bid.wants(),
-      takerWants: bid.gives(),
-      partialFill: 1,
-      _olBaseQuote: olKey,
-      makerData: ""
-    });
-    order.offerId = kdl.offerIdOfIndex(Bid, 4);
-    order.offer = bid;
-
-    MgvStructs.OfferPacked ask_;
-    uint gives_for_0;
-    uint snapshotId = vm.snapshot();
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
-    ask_ = kdl.getOffer(Ask, 5);
-    gives_for_0 = ask_.gives();
-    require(vm.revertTo(snapshotId), "snapshot restore failed");
-
-    // at 0% compounding, one wants to buy back what was sent
-    // computation might have rounding error because ask_.wants is derived from ask_.gives
-    console.log(ask_.wants(), ask.wants(), bid.gives());
-    assertApproxEqRel(ask_.wants(), ask.wants() + bid.gives(), 1e14, "Incorrect wants when 0% compounding");
-
-    // changing compoundRates
-    vm.prank(maker);
-    kdl.setCompoundRates(compoundRateBase, params.compoundRateQuote);
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
-
-    ask_ = kdl.getOffer(Ask, 5);
-    if (compoundRateBase == full_compound()) {
-      // 100% compounding, one gives what one got
-      assertEq(ask_.gives(), ask.gives() + bid.wants(), "Incorrect gives when 100% compounding");
-    } else {
-      // in between one just checks that one is giving more than before
-      assertTrue(ask_.gives() > gives_for_0, "Incorrect gives compounding");
-    }
-  }
-
-  function test_ask_complete_fill(uint24 compoundRateBase, uint24 compoundRateQuote, uint index) internal {
-    vm.assume(compoundRateBase <= full_compound());
-    vm.assume(compoundRateQuote <= full_compound());
-    vm.prank(maker);
-    kdl.setCompoundRates(compoundRateBase, compoundRateQuote);
-
+  function test_ask_complete_fill(uint index) internal {
     MgvStructs.OfferPacked oldBid = kdl.getOffer(Bid, index - STEP);
     int oldPending = kdl.pending(Bid);
 
@@ -215,12 +76,9 @@ abstract contract CoreKandelTest is KandelTest {
       precisionForAssert(),
       "Incorrect net promised asset"
     );
-    if (compoundRateQuote == full_compound()) {
-      assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "Full compounding should not yield pending");
-      assertTrue(newBid.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
-    } else {
-      assertTrue(pendingDelta > 0, "Partial auto compounding should yield pending");
-    }
+
+    assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "We do full compounding so there should be no pending");
+    assertTrue(newBid.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
   }
 
   function test_bid_partial_fill() public {
@@ -338,8 +196,6 @@ abstract contract CoreKandelTest is KandelTest {
 
   function test_take_full_bid_and_ask_repeatedly(
     uint loops,
-    uint24 compoundRateBase,
-    uint24 compoundRateQuote,
     ExpectedChange baseVolumeChange,
     ExpectedChange quoteVolumeChange
   ) internal {
@@ -349,7 +205,7 @@ abstract contract CoreKandelTest is KandelTest {
     uint initialTotalVolumeQuote;
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
     for (uint i = 0; i < loops; i++) {
-      test_ask_complete_fill(compoundRateBase, compoundRateQuote, 5);
+      test_ask_complete_fill(5);
       assertStatus(dynamic([uint(1), 1, 1, 1, 1, 0, 2, 2, 2, 2]));
       if (i == 0) {
         // With the ask filled, what is the current volume for bids?
@@ -363,7 +219,7 @@ abstract contract CoreKandelTest is KandelTest {
         printOB();
       }
       console.log("loop %s", i);
-      test_bid_complete_fill(compoundRateBase, compoundRateQuote, 4);
+      test_bid_complete_fill(4);
 
       assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]));
       if (i == 0) {
@@ -380,34 +236,8 @@ abstract contract CoreKandelTest is KandelTest {
     }
   }
 
-  function test_take_full_bid_and_ask_10_times_full_compound() public {
-    test_take_full_bid_and_ask_repeatedly(
-      10, full_compound(), full_compound(), ExpectedChange.Increase, ExpectedChange.Increase
-    );
-  }
-
-  function test_take_full_bid_and_ask_10_times_zero_quote_compound() public {
-    test_take_full_bid_and_ask_repeatedly(10, full_compound(), 0, ExpectedChange.Same, ExpectedChange.Same);
-  }
-
-  function test_take_full_bid_and_ask_10_times_zero_base_compound() public {
-    test_take_full_bid_and_ask_repeatedly(10, 0, full_compound(), ExpectedChange.Same, ExpectedChange.Same);
-  }
-
-  function test_take_full_bid_and_ask_10_times_close_to_zero_base_compound() public {
-    test_take_full_bid_and_ask_repeatedly(10, 100, full_compound(), ExpectedChange.Increase, ExpectedChange.Increase);
-  }
-
-  function test_take_full_bid_and_ask_10_times_partial_compound_increasing_boundary() public {
-    test_take_full_bid_and_ask_repeatedly(10, 50000, 50000, ExpectedChange.Increase, ExpectedChange.Increase);
-  }
-
-  function test_take_full_bid_and_ask_10_times_partial_compound_decreasing_boundary() public {
-    test_take_full_bid_and_ask_repeatedly(10, 49030, 49030, ExpectedChange.Decrease, ExpectedChange.Decrease);
-  }
-
-  function test_take_full_bid_and_ask_10_times_zero_compound() public {
-    test_take_full_bid_and_ask_repeatedly(10, 0, 0, ExpectedChange.Decrease, ExpectedChange.Decrease);
+  function test_take_full_bid_and_ask_10_times() public {
+    test_take_full_bid_and_ask_repeatedly(10, ExpectedChange.Increase, ExpectedChange.Increase);
   }
 
   function retractDefaultSetup() internal {
@@ -856,8 +686,6 @@ abstract contract CoreKandelTest is KandelTest {
     paramsNew.pricePoints = params.pricePoints;
     paramsNew.ratio = params.ratio + 1;
     paramsNew.spread = params.spread + 1;
-    paramsNew.compoundRateBase = params.compoundRateBase + 1;
-    paramsNew.compoundRateQuote = params.compoundRateQuote + 2;
     paramsNew.gasprice = params.gasprice + 1;
     paramsNew.gasreq = params.gasreq + 1;
 
@@ -867,8 +695,6 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasprice(paramsNew.gasprice);
     expectFrom(address(kdl));
     emit SetGasreq(paramsNew.gasreq);
-    expectFrom(address(kdl));
-    emit SetCompoundRates(paramsNew.compoundRateBase, paramsNew.compoundRateQuote);
 
     vm.prank(maker);
     kdl.populate(emptyDist, 0, paramsNew, 0, 0);
@@ -879,8 +705,6 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(params_.gasreq, paramsNew.gasreq, "gasreq should be changed");
     assertEq(params_.pricePoints, params.pricePoints, "pricePoints should not be changed");
     assertEq(params_.ratio, paramsNew.ratio, "ratio should be changed");
-    assertEq(params_.compoundRateBase, paramsNew.compoundRateBase, "compoundRateBase should be changed");
-    assertEq(params_.compoundRateQuote, paramsNew.compoundRateQuote, "compoundRateQuote should be changed");
     assertEq(params_.spread, params.spread + 1, "spread should be changed");
     assertEq(offeredVolumeBase, kdl.offeredVolume(Ask), "ask volume should be unchanged");
     assertEq(offeredVolumeQuote, kdl.offeredVolume(Bid), "ask volume should be unchanged");
@@ -918,53 +742,11 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.populate(emptyDist, 0, params, 0, 0);
   }
 
-  function test_populate_invalidCompoundRatesBase_reverts() public {
-    GeometricKandel.Params memory params;
-    params.pricePoints = 10;
-    params.ratio = uint24(10 ** PRECISION);
-    params.spread = 1;
-    params.compoundRateBase = uint24(10 ** PRECISION + 1);
-    vm.prank(maker);
-    vm.expectRevert("Kandel/invalidCompoundRateBase");
-    kdl.populate(emptyDist, 0, params, 0, 0);
+  function test_populate_can_repopulate_decreased_size_and_other_params() public {
+    test_populate_can_repopulate_other_size_and_other_params();
   }
 
-  function test_populate_invalidCompoundRatesQuote_reverts() public {
-    GeometricKandel.Params memory params;
-    params.pricePoints = 10;
-    params.ratio = uint24(10 ** PRECISION);
-    params.spread = 1;
-    params.compoundRateQuote = uint24(10 ** PRECISION + 1);
-    vm.prank(maker);
-    vm.expectRevert("Kandel/invalidCompoundRateQuote");
-    kdl.populate(emptyDist, 0, params, 0, 0);
-  }
-
-  function test_setCompoundRatesBase_reverts() public {
-    uint wrong_rate = 10 ** PRECISION + 1;
-    vm.prank(maker);
-    vm.expectRevert("Kandel/invalidCompoundRateBase");
-    kdl.setCompoundRates(wrong_rate, 0);
-  }
-
-  function test_setCompoundRatesQuote_reverts() public {
-    uint wrong_rate = 10 ** PRECISION + 1;
-    vm.prank(maker);
-    vm.expectRevert("Kandel/invalidCompoundRateQuote");
-    kdl.setCompoundRates(0, wrong_rate);
-  }
-
-  function test_populate_can_repopulate_decreased_size_and_other_params_compoundRate0() public {
-    test_populate_can_repopulate_other_size_and_other_params(0, 0);
-  }
-
-  function test_populate_can_repopulate_decreased_size_and_other_params_compoundRate1() public {
-    test_populate_can_repopulate_other_size_and_other_params(full_compound(), full_compound());
-  }
-
-  function test_populate_can_repopulate_other_size_and_other_params(uint24 compoundRateBase, uint24 compoundRateQuote)
-    internal
-  {
+  function test_populate_can_repopulate_other_size_and_other_params() internal {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
@@ -976,16 +758,11 @@ abstract contract CoreKandelTest is KandelTest {
     params.pricePoints = 5;
     params.ratio = ratio;
     params.spread = 2;
-    params.compoundRateBase = compoundRateBase;
-    params.compoundRateQuote = compoundRateQuote;
 
     expectFrom(address(kdl));
     emit SetLength(params.pricePoints);
     vm.prank(maker);
     kdl.populate(distribution, 3, params, 0, 0);
-
-    vm.prank(maker);
-    kdl.setCompoundRates(compoundRateBase, compoundRateQuote);
 
     // This only verifies KandelLib
     assertStatus(dynamic([uint(1), 1, 1, 2, 2]));
@@ -1019,7 +796,7 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasprice(42);
     vm.prank(maker);
     kdl.setGasprice(42);
-    (uint16 gasprice,,,,,,) = kdl.params();
+    (uint16 gasprice,,,,) = kdl.params();
     assertEq(gasprice, uint16(42), "Incorrect gasprice in params");
   }
 
@@ -1034,7 +811,7 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasreq(42);
     vm.prank(maker);
     kdl.setGasreq(42);
-    (, uint24 gasreq,,,,,) = kdl.params();
+    (, uint24 gasreq,,,) = kdl.params();
     assertEq(gasreq, uint24(42), "Incorrect gasprice in params");
   }
 
@@ -1189,25 +966,15 @@ abstract contract CoreKandelTest is KandelTest {
     otherKandel.depositFunds(pendingBase, pendingQuote);
   }
 
-  function test_dualWantsGivesOfOffer_maxBitsPartialTakeFullCompound_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(true, 2, true);
+  function test_dualWantsGivesOfOffer_maxBitsPartialTake_correctCalculation() public {
+    test_dualWantsGivesOfOffer_maxBits_correctCalculation(true, 2);
   }
 
-  function test_dualWantsGivesOfOffer_maxBitsPartialTakeZeroCompound_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(true, 2, false);
+  function test_dualWantsGivesOfOffer_maxBitsFullTake_correctCalculation() public {
+    test_dualWantsGivesOfOffer_maxBits_correctCalculation(false, 2);
   }
 
-  function test_dualWantsGivesOfOffer_maxBitsFullTakeZeroCompound_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(false, 2, false);
-  }
-
-  function test_dualWantsGivesOfOffer_maxBitsFullTakeFullCompound_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(false, 2, true);
-  }
-
-  function test_dualWantsGivesOfOffer_maxBits_correctCalculation(bool partialTake, uint numTakes, bool fullCompound)
-    internal
-  {
+  function test_dualWantsGivesOfOffer_maxBits_correctCalculation(bool partialTake, uint numTakes) internal {
     // With partialTake false we verify uint160(givesR) != givesR in dualWantsGivesOfOffer
     // With partialTake true we verify the edge cases
     // uint160(givesR) != givesR
@@ -1219,8 +986,6 @@ abstract contract CoreKandelTest is KandelTest {
     uint8 pricePoints = type(uint8).max;
 
     uint precision = PRECISION;
-
-    uint compoundRate = fullCompound ? 10 ** precision : 0;
 
     vm.prank(maker);
     kdl.retractOffers(0, 10);
@@ -1238,8 +1003,6 @@ abstract contract CoreKandelTest is KandelTest {
         expectRevert: bytes("")
       });
 
-      vm.prank(maker);
-      kdl.setCompoundRates(compoundRate, compoundRate);
       // This only verifies KandelLib
 
       MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
@@ -1258,13 +1021,7 @@ abstract contract CoreKandelTest is KandelTest {
     uint[] memory statuses = new uint[](askIndex+2);
     if (partialTake) {
       MgvStructs.OfferPacked ask = kdl.getOffer(Ask, askIndex);
-      if (fullCompound) {
-        assertEq(1 ether * numTakes, ask.gives(), "ask should offer the provided 1 ether for each take");
-      } else {
-        assertGt(
-          1 ether * numTakes, ask.gives(), "due to low compound ask should not offer the full ether for each take"
-        );
-      }
+      assertEq(1 ether * numTakes, ask.gives(), "ask should offer the provided 1 ether for each take");
       statuses[0] = uint(OfferStatus.Bid);
     }
     statuses[askIndex] = uint(OfferStatus.Ask);
@@ -1299,10 +1056,6 @@ abstract contract CoreKandelTest is KandelTest {
       spread: spread,
       expectRevert: bytes("")
     });
-    uint compoundRate = full_compound();
-    vm.prank(maker);
-    kdl.setCompoundRates(compoundRate, compoundRate);
-
     (uint takerGot,,,) = ba == Bid ? sellToBestAs(taker, 1 ether) : buyFromBestAs(taker, 1 ether);
     assertGt(takerGot, 0, "offer should succeed");
 
@@ -1373,7 +1126,6 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));
     checkAuth(args, abi.encodeCall(kdl.withdrawFromMangrove, (0, maker)));
     checkAuth(args, abi.encodeCall(kdl.withdrawFunds, (0, 0, maker)));
-    checkAuth(args, abi.encodeCall(kdl.setCompoundRates, (0, 0)));
 
     // Only Mgv
     MgvLib.OrderResult memory oResult = MgvLib.OrderResult({makerData: bytes32(0), mgvData: ""});
