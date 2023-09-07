@@ -176,9 +176,10 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_provision_too_high_reverts() public {
     uint gasreq = makerContract.offerGasreq();
+    vm.deal(owner, 20 ether);
     vm.expectRevert("Forwarder/provisionTooHigh");
     vm.prank(owner);
-    makerContract.newOfferFromVolume{value: 10 ether}({
+    makerContract.newOfferFromVolume{value: 20 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,

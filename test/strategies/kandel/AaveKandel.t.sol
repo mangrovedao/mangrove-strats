@@ -276,9 +276,6 @@ contract AaveKandelTest is CoreKandelTest {
     // context base should not be available to redeem for the router, for this attack to succeed
     (, uint takerGave, uint bounty,) = mgv.marketOrderByVolume(olKey, 0.1 ether, type(uint96).max, true);
 
-    // (,, uint takerGave, uint bounty,) = testMgv.snipesInTest(
-    //   olKey, wrap_dynamic([offerId, 0.1 ether, type(uint96).max, type(uint).max]), true
-    // );
     require(takerGave == 0 && bounty > 0, "attack failed");
   }
 
@@ -302,7 +299,7 @@ contract AaveKandelTest is CoreKandelTest {
     }
   }
 
-  function test_liquidity_borrow_snipe_attack() public {
+  function test_liquidity_borrow_clean_attack() public {
     // base is weth and has a borrow cap, so trying the attack on quote
     address dai = fork.get("DAI");
     AaveCaller attacker = new AaveCaller(fork.get("Aave"), 2);

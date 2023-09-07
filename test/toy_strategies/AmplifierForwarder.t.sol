@@ -119,7 +119,7 @@ contract AmplifierForwarderTest is StratTest {
   {
     OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickScale);
     int logPrice = mgv.offers(_olKey, offerId).logPrice();
-    // try to snipe one of the offers (using the separate taker account)
+    // try to take one of the offers (using the separate taker account)
     vm.startPrank(taker);
     (takerGot, takerGave, bounty,) =
       mgv.marketOrderByLogPrice({olKey: _olKey, maxLogPrice: logPrice, fillVolume: makerGivesAmount, fillWants: true});
@@ -272,7 +272,7 @@ contract AmplifierForwarderTest is StratTest {
 
     //only take half of the tester offer
 
-    // try to snipe one of the offers (using the separate taker account)
+    // try to take one of the offers (using the separate taker account)
     int logPrice = mgv.offers(olKeyWethDai, testOffer.daiOffer).logPrice();
     vm.prank(taker);
     (uint successes, uint bounty) = mgv.cleanByImpersonation(

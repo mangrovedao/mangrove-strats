@@ -199,7 +199,7 @@ abstract contract CoreKandelTest is KandelTest {
     int oldPending = kdl.pending(Bid);
 
     (uint takerGot, uint takerGave,, uint fee) = buyFromBestAs(taker, 1000 ether);
-    assertTrue(takerGot > 0, "Snipe failed");
+    assertTrue(takerGot > 0, "buy failed");
     uint[] memory expectedStatus = new uint[](10);
     // Build this for index=5: assertStatus(dynamic([uint(1), 1, 1, 1, 1, 0, 2, 2, 2, 2]));
     for (uint i = 0; i < 10; i++) {
@@ -225,13 +225,13 @@ abstract contract CoreKandelTest is KandelTest {
 
   function test_bid_partial_fill() public {
     (uint takerGot,,,) = sellToBestAs(taker, 0.01 ether);
-    assertTrue(takerGot > 0, "Snipe failed");
+    assertTrue(takerGot > 0, "order failed");
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   }
 
   function test_ask_partial_fill() public {
     (uint takerGot,,,) = buyFromBestAs(taker, 0.01 ether);
-    assertTrue(takerGot > 0, "Snipe failed");
+    assertTrue(takerGot > 0, "order failed");
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
   }
 
@@ -263,7 +263,7 @@ abstract contract CoreKandelTest is KandelTest {
     if (!existingDual) {
       // Completely fill dual
       (takerGot,,,) = ba == Bid ? buyFromBestAs(taker, 1000 ether) : sellToBestAs(taker, 1000 ether);
-      assertTrue(takerGot > 0, "Snipe of dual failed");
+      assertTrue(takerGot > 0, "buy/sell of dual failed");
     }
 
     // Act
@@ -794,7 +794,6 @@ abstract contract CoreKandelTest is KandelTest {
     uint amount = bid.wants() - 1;
     vm.prank(taker);
     mgv.marketOrderByVolume(lo, 0, amount, false);
-    // testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
 
     // verify dual is increased
     MgvStructs.OfferPacked askPost = kdl.getOffer(Ask, index + STEP);
@@ -819,9 +818,6 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(taker);
     mgv.marketOrderByVolume(lo, 0, amount, false);
 
-    // (uint successes,,,,) =
-    //   testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
-    // assertTrue(successes == 1, "Snipe failed");
     ask = kdl.getOffer(Ask, index + STEP);
     assertTrue(!ask.isLive(), "ask should still not be live");
   }
@@ -842,10 +838,6 @@ abstract contract CoreKandelTest is KandelTest {
     uint amount = 10000;
     vm.prank(taker);
     mgv.marketOrderByVolume(lo, 0, amount, false);
-
-    // (uint successes,,,,) =
-    //   testMgv.snipesInTest(lo, wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
-    // assertTrue(successes == 1, "Snipe failed");
 
     ask = kdl.getOffer(Ask, index + STEP);
     assertTrue(!ask.isLive(), "ask should still not be live");
@@ -1258,7 +1250,7 @@ abstract contract CoreKandelTest is KandelTest {
       uint amount = partialTake ? 1 ether : bid.wants();
 
       (uint takerGot,,,) = sellToBestAs(taker, amount);
-      assertTrue(takerGot > 0, "offer should be sniped");
+      assertTrue(takerGot > 0, "offer should be sold");
     }
     uint askOfferId = mgv.best(olKey);
     uint askIndex = kdl.indexOfOfferId(Ask, askOfferId);

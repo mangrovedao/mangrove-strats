@@ -653,7 +653,7 @@ contract MangroveOrder_Test is StratTest {
     (,, uint bounty,) = mgv.marketOrderByLogPrice(lo, logPrice, 1991, false);
     uint g = gas_(true);
 
-    assertTrue(bounty > 0, "snipe should have failed");
+    assertTrue(bounty > 0, "offer should be cleaned");
     assertTrue(
       provision > mgo.provisionOf(lo, cold_buyResult.offerId), "Remaining provision should be less than original"
     );
@@ -786,7 +786,6 @@ contract MangroveOrder_Test is StratTest {
     // simply using sell_taker's approvals and already filled balances
     mgv.marketOrderByLogPrice(_olKey, logPrice, 0.5 ether, true);
     gas_();
-    // assertTrue(successes == 1, "Snipe failed");
     assertTrue(mgv.offers(lo, cold_buyResult.offerId).gives() > 0, "Update failed");
   }
 }
