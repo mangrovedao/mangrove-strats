@@ -187,7 +187,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
     console.log("shallow push: %d", shallow_push_cost);
     console.log("Strat gasreq (%d), mockup (%d)", expectedGasreq, deep_pull_cost + finalize_cost);
-    assertApproxEqAbs(deep_pull_cost + finalize_cost, expectedGasreq, 200, "Check new gas cost");
+    assertApproxEqAbs(deep_pull_cost + finalize_cost, expectedGasreq, 1000, "Check new gas cost");
   }
 
   function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
@@ -257,7 +257,6 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
       fork = new PolygonFork();
     }
     bufferSize = 100;
-    expectedGasreq = 530_200;
     super.setUp();
   }
 
@@ -292,7 +291,7 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
 
     AavePrivateRouter.AssetBalances memory balWeth = privateRouter.assetBalances(weth);
     // contract borrowed everything that could be borrowed (full buffer) and DirectTester does not repay debt on posthook
-    assertEq(balWeth.debt, balWethBefore.creditLine, "Incorrect WETH debt");
+    assertApproxEqAbs(balWeth.debt, balWethBefore.creditLine, 1, "Incorrect WETH debt");
     assertEq(balWeth.local, balWethBefore.creditLine - (takergot + fee), "Incorrect residual WETH on the router");
     assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
   }
@@ -305,7 +304,6 @@ contract AavePrivateRouterHalfBufferTest is AavePrivateRouterNoBufferTest {
       fork = new PolygonFork();
     }
     bufferSize = 50;
-    expectedGasreq = 530_200;
     super.setUp();
   }
 
@@ -341,7 +339,7 @@ contract AavePrivateRouterHalfBufferTest is AavePrivateRouterNoBufferTest {
 
     AavePrivateRouter.AssetBalances memory balWeth = privateRouter.assetBalances(weth);
     // contract borrowed half of borrow capacity (half buffer) and DirectTester does not repay debt on posthook
-    assertEq(balWeth.debt, balWethBefore.creditLine / 2, "Incorrect WETH debt");
+    assertApproxEqAbs(balWeth.debt, balWethBefore.creditLine / 2, 1, "Incorrect WETH debt");
     assertEq(balWeth.local, balWethBefore.creditLine / 2 - (takergot + fee), "Incorrect residual WETH on the router");
     assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
   }

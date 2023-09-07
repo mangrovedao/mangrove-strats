@@ -177,6 +177,8 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@inheritdoc AbstractRouter
   function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
     Memoizer memory m;
+    // invariant `localBalance === token.balanceOf(this)`
+    // `missing === max(0,localBalance - amount)`
     uint localBalance = balanceOf(token, m);
     uint missing = amount > localBalance ? amount - localBalance : 0;
     if (missing > 0) {
@@ -192,7 +194,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
         if (reason == bytes32(0)) {
           // success
           localBalance += withdrawn;
-          missing = localBalance > missing ? 0 : missing - localBalance;
+          missing = localBalance > amount ? 0 : amount - localBalance;
         } else {
           // failed to withdraw possibly because asset is used as collateral for borrow or pool is dry
           emit LogAaveIncident(msg.sender, address(token), reason);
