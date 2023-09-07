@@ -1,6 +1,6 @@
 {
   "name": "@mangrovedao/mangrove-strats",
-  "version": "0.0.1",
+  "version": "0.0.2-0",
   "author": "Mangrove DAO",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
@@ -32,7 +32,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "1.5.8-0"
+    "@mangrovedao/mangrove-core": "^1.5.8-1"
   },
   "devDependencies": {
     "@types/node": "^20.2.6",
