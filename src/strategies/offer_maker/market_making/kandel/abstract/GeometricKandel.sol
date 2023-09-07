@@ -11,7 +11,7 @@ import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  ///@notice `compoundRateBase`, and `compoundRateQuote` have PRECISION decimals, and ditto for GeometricKandel's `ratio`.
+  ///@notice GeometricKandel's `ratio` has PRECISION decimals
   ///@notice setting PRECISION higher than 5 will produce overflow in limit cases for GeometricKandel.
   uint public constant PRECISION = 5;
 
@@ -24,16 +24,12 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
   ///@param ratio of price progression (`2**16 > ratio >= 10**PRECISION`) expressed with `PRECISION` decimals, so geometric ratio is `ratio/10**PRECISION`
-  ///@param compoundRateBase percentage of the spread that is to be compounded for base, expressed with `PRECISION` decimals (`compoundRateBase <= 10**PRECISION`). Real compound rate for base is `compoundRateBase/10**PRECISION`
-  ///@param compoundRateQuote percentage of the spread that is to be compounded for quote, expressed with `PRECISION` decimals (`compoundRateQuote <= 10**PRECISION`). Real compound rate for quote is `compoundRateQuote/10**PRECISION`
   ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
     uint24 ratio; // max ratio is 2*10**5
-    uint24 compoundRateBase; // max compoundRate is 10**5
-    uint24 compoundRateQuote;
     uint8 spread;
     uint8 pricePoints;
   }
@@ -102,30 +98,6 @@ abstract contract GeometricKandel is CoreKandel {
     if (newParams.gasreq != 0 && newParams.gasreq != oldParams.gasreq) {
       setGasreq(newParams.gasreq);
     }
-
-    if (
-      oldParams.compoundRateBase != newParams.compoundRateBase
-        || oldParams.compoundRateQuote != newParams.compoundRateQuote
-    ) {
-      setCompoundRates(newParams.compoundRateBase, newParams.compoundRateQuote);
-    }
-  }
-
-  /// @inheritdoc AbstractKandel
-  function setCompoundRates(uint compoundRateBase, uint compoundRateQuote) public override onlyAdmin {
-    require(compoundRateBase <= 10 ** PRECISION, "Kandel/invalidCompoundRateBase");
-    require(compoundRateQuote <= 10 ** PRECISION, "Kandel/invalidCompoundRateQuote");
-    emit SetCompoundRates(compoundRateBase, compoundRateQuote);
-    params.compoundRateBase = uint24(compoundRateBase);
-    params.compoundRateQuote = uint24(compoundRateQuote);
-  }
-
-  /// @notice Gets the compound rate for the given offer type.
-  /// @param baDual the dual offer type.
-  /// @param memoryParams the Kandel params.
-  /// @return compoundRate to use for the gives of the offer type. Asks give base so this would be the `compoundRateBase`, and vice versa.
-  function compoundRateForDual(OfferType baDual, Params memory memoryParams) private pure returns (uint compoundRate) {
-    compoundRate = uint(baDual == OfferType.Ask ? memoryParams.compoundRateBase : memoryParams.compoundRateQuote);
   }
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
@@ -181,13 +153,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@return gives the new gives for the dual offer
   ///@dev Define the (maker) price of the order as `p_order := order.offer.wants() / order.offer.gives()` (what the offer originally wants by what the offer originally gives).
   /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` at which one should buy back at least what was sold.
-  /// thus `min_offer_wants := order.wants` at price `p_dual`
-  /// with `min_offer_gives / min_offer_wants = p_dual` we derive `min_offer_gives = order.gives/ratio^spread`.
-  /// Now at maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
-  /// So with compound rate we have:
-  /// `offer_gives := min_offer_gives + (max_offer_gives - min_offer_gives) * compoundRate`.
-  /// and we derive the formula:
-  /// `offer_gives = order.gives * ( 1/ratio^spread + (1 - 1/ratio^spread) * compoundRate)`
+  /// Now, since we do maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
   /// which we use in the code below where we also account for existing gives of the dual offer.
   function dualWantsGivesOfOffer(
     OfferType baDual,
@@ -199,18 +165,11 @@ abstract contract GeometricKandel is CoreKandel {
     // we verify we cannot overflow if PRECISION = 5
     // spread:8
     uint spread = uint(memoryParams.spread);
-    // compoundRate <= 10**PRECISION hence compoundRate:PRECISION*log2(10)
-    uint compoundRate = compoundRateForDual(baDual, memoryParams);
     // params.ratio <= 2*10**PRECISION, spread:8, r: 8 * (PRECISION*log2(10) + 1)
     uint r = uint(memoryParams.ratio) ** spread;
     uint p = 10 ** PRECISION;
     // order.gives:96
-    // p ~ compoundRate : log2(10) * PRECISION
-    // p ** spread : 8 * log2(10) * PRECISION
-    // (p - compoundRate) * p ** spread : 9 * log2(10) * PRECISION (=150 for PRECISION = 5)
-    // compoundRate * r : PRECISION*log2(10) + 8 * (PRECISION*log2(10) + 1) (=157 for PRECISION = 5)
-    // 157 + 96 < 256
-    gives = (order.gives * ((p - compoundRate) * p ** spread + compoundRate * r)) / (r * p);
+    gives = order.gives;
 
     // adding to gives what the offer was already giving so gives could be greater than 2**96
     // gives:97

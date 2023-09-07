@@ -36,7 +36,6 @@ abstract contract KandelTest is StratTest {
   event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
   event SetGeometricParams(uint spread, uint ratio);
-  event SetCompoundRates(uint compoundRateBase, uint compoundRateQuote);
   event SetLength(uint value);
   event SetGasreq(uint value);
   event Credit(IERC20 indexed token, uint amount);
@@ -171,21 +170,11 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (
-      uint16 gasprice,
-      uint24 gasreq,
-      uint24 ratio,
-      uint24 compoundRateBase,
-      uint24 compoundRateQuote,
-      uint8 spread,
-      uint8 pricePoints
-    ) = aKandel.params();
+    (uint16 gasprice, uint24 gasreq, uint24 ratio, uint8 spread, uint8 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
     params.ratio = ratio;
-    params.compoundRateBase = compoundRateBase;
-    params.compoundRateQuote = compoundRateQuote;
     params.spread = spread;
     params.pricePoints = pricePoints;
   }

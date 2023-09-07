@@ -99,8 +99,6 @@ contract KandelPopulate is Deployer {
       vars.gasreq,
       /*uint24 ratio*/
       ,
-      args.params.compoundRateBase,
-      args.params.compoundRateQuote,
       /*uint8 spread*/
       ,
       /*uint8 length*/
