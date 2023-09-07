@@ -12,7 +12,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
 
   AavePrivateRouter internal privateRouter;
 
-  uint internal expectedGasreq = 550_100;
+  uint internal expectedGasreq = 548_700;
 
   event SetAaveManager(address);
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);

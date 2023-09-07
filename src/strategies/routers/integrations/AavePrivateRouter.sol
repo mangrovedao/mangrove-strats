@@ -116,10 +116,9 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///to the max amount of `token` this contract can withdraw from the pool, and the max amount of `token` it can borrow in addition (after withdrawing `maxRedeem`)
   ///@param token the asset one wishes to get from the pool
   ///@param m the memoizer
-  ///@param withBorrow if true, computes borrow capacity after redeem.
+  ///@param target if `maxRedeem < target` will try also borrowing. Otherwise `maxBorrow = 0`
   ///@return (maxRedeem, maxBorrow) capacity of `this` contract on the pool.
-  ///@dev `!withBorrow ==> maxBorrow == 0`
-  function maxGettableUnderlying(IERC20 token, Memoizer memory m, bool withBorrow) public view returns (uint, uint) {
+  function maxGettableUnderlying(IERC20 token, Memoizer memory m, uint target) internal view returns (uint, uint) {
     Underlying memory underlying; // asset parameters
     (
       underlying.ltv, // collateral factor for lending
@@ -147,7 +146,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     maxRedeemableUnderlying =
       (maxRedeemableUnderlying < overlyingBalanceOf(token, m)) ? maxRedeemableUnderlying : overlyingBalanceOf(token, m);
 
-    if (!withBorrow) {
+    if (target <= maxRedeemableUnderlying) {
       return (maxRedeemableUnderlying, 0);
     }
     // computing max borrow capacity on the premisses that maxRedeemableUnderlying has been redeemed.
@@ -184,7 +183,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     if (missing > 0) {
       // there is not enough on the router's balance to pay the taker
       // one needs to withdraw and/or borrow on the pool
-      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, true);
+      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, missing);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
         uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
@@ -285,7 +284,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     bal.debt = debtBalanceOf(token, m);
     bal.local = balanceOf(token, m);
     bal.onPool = overlyingBalanceOf(token, m);
-    (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, true);
+    (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, type(uint).max);
   }
 
   ///@notice view of user account data
