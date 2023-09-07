@@ -213,14 +213,10 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     vm.prank(address(makerContract));
     uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict);
     /// no buffer imposes strict <=> !strict because router will always withdraw `amount` from the pool
-    assertEq(pulled, strict ? 10 : bal.liquid, "Incorrect pulled amount");
-    // checking:
-    // * 1 wei of DAI is transferred to maker contract
-    // * 0 DAI remains as buffer on the router
-    // * 999_999 weis of DAI remain on the pool
+    assertEq(pulled, 10, "Incorrect pulled amount");
     AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
     assertEq(bal_.local, 0, "Incorrect buffer on the router");
-    assertApproxEqAbs(bal_.onPool, bal.onPool - 10, 1, "No collateral should be left on the pool");
+    assertApproxEqAbs(bal_.onPool, bal.onPool - pulled, 1, "No collateral should be left on the pool");
     assertEq(dai.balanceOf(address(makerContract)), pulled, "Unexpected amount of dai on the maker contract");
   }
 
@@ -279,7 +275,7 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
     AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
     assertEq(bal_.local, strict ? bal.onPool - 10 : 0, "Incorrect buffer on the router");
     assertEq(bal_.onPool, 0, "No collateral should be left on the pool");
-    assertEq(dai.balanceOf(address(makerContract)), 10, "Unexpected amount of dai on the maker contract");
+    assertEq(dai.balanceOf(address(makerContract)), pulled, "Unexpected amount of dai on the maker contract");
   }
 
   // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances
@@ -325,9 +321,9 @@ contract AavePrivateRouterHalfBufferTest is AavePrivateRouterNoBufferTest {
     // * 1 wei of DAI is transferred to maker contract
     // * 1 DAI - 1 wei remains as buffer on the router
     AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
-    assertEq(bal_.local, bal.onPool / 2 - 10, "Incorrect buffer on the router");
+    assertEq(bal_.local, bal.onPool / 2 - pulled, "Incorrect buffer on the router");
     assertApproxEqAbs(bal_.onPool, bal.onPool / 2, 1, "Incorrect collateral left on the pool");
-    assertEq(dai.balanceOf(address(makerContract)), 10, "Unexpected amount of dai on the maker contract");
+    assertEq(dai.balanceOf(address(makerContract)), pulled, "Unexpected amount of dai on the maker contract");
   }
 
   // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances

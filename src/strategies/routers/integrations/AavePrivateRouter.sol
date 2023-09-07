@@ -178,44 +178,37 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
     Memoizer memory m;
     uint localBalance = balanceOf(token, m);
-    if (amount > localBalance) {
-      uint missing = amount - localBalance;
+    uint missing = amount > localBalance ? amount - localBalance : 0;
+    if (missing > 0) {
       // there is not enough on the router's balance to pay the taker
       // one needs to withdraw and/or borrow on the pool
       (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, true);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
-        // withdrawing all that can be redeemed from AAVE
         uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
-
+        // withdrawing max(buffer,min(missing,maxWithdraw)`
         uint toWithdraw = withdrawBuffer > missing ? withdrawBuffer : (maxWithdraw > missing ? missing : maxWithdraw);
         (uint withdrawn, bytes32 reason) = _redeem(token, toWithdraw, address(this), true);
-        localBalance += withdrawn;
         if (reason == bytes32(0)) {
-          // localBalance has possibly more than required amount now
-          missing = withdrawn > missing ? 0 : missing - withdrawn;
+          // success
+          localBalance += withdrawn;
+          missing = localBalance > missing ? 0 : missing - localBalance;
         } else {
           // failed to withdraw possibly because asset is used as collateral for borrow or pool is dry
           emit LogAaveIncident(msg.sender, address(token), reason);
         }
       }
       // testing whether one still misses funds to pay the taker and if so, whether one can borrow what's missing
-      if (missing <= maxBorrow && missing > 0) {
-        // missing funds and able to borrow what's missing
-        uint buffer = (BUFFER_SIZE * maxBorrow) / 100;
+      if (missing > 0) {
+        // because we might already have pulled some tokens from the pool, the code below reverts if anything goes wrong
+        uint borrowBuffer = (BUFFER_SIZE * maxBorrow) / 100;
         // if buffer < missing, we still borrow missing from the pool in order not to make offer fail if possible
-        uint toBorrow = buffer > missing ? buffer : missing;
-        bytes32 reason = _borrow(token, toBorrow, address(this), true);
-        if (reason != bytes32(0)) {
-          // we failed to borrow missing amount
-          // note we do not try to borrow a part of missing for gas reason
-          emit LogAaveIncident(msg.sender, address(token), reason);
-        } else {
-          // localBalance now has the full required amount
-          localBalance += toBorrow;
-        }
-      } else {
-        amount = strict ? amount : localBalance;
+        uint toBorrow = borrowBuffer > missing ? borrowBuffer : missing;
+
+        require(toBorrow <= maxBorrow, "AavePrivateRouter/NotEnoughFundsOnPool");
+        // try to borrow and revert if Aave throws
+        _borrow(token, toBorrow, address(this), false);
+        localBalance += toBorrow;
       }
     }
     pulled = strict ? amount : localBalance;
