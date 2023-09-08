@@ -30,7 +30,7 @@ contract AaveKandelTest is LongKandelTest {
 
   function __setForkEnvironment__() internal override {
     if (useForkAave) {
-      fork = new PinnedPolygonFork();
+      fork = new PinnedPolygonFork(39880000);
       fork.setUp();
       options.gasprice = 90;
       options.gasbase = 68_000;

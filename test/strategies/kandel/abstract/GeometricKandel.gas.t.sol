@@ -33,7 +33,7 @@ abstract contract GeometricKandelGasTest is KandelTest {
   }
 
   function __setForkEnvironment__() internal virtual override {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 140;
     options.gasbase = 120_000;

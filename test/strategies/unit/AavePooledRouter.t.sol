@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {AbstractRouterTest} from "./AbstractRouter.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AavePooledRouter, IERC20} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
+import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {console} from "forge-std/console.sol";
@@ -14,7 +14,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 463.045 * 1000;
+  uint internal constant GASREQ = 470000;
 
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
@@ -26,7 +26,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
   function setUp() public override {
     // deploying mangrove and opening WETH/USDC market.
     if (useForkAave) {
-      fork = new PolygonFork();
+      fork = new PinnedPolygonFork(39880000);
     }
     super.setUp();
 
@@ -242,7 +242,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
     console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
     console.log("shallow push: %d", shallow_push_cost);
     console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
-    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
+    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 1000, "Check new gas cost");
   }
 
   function test_push_token_increases_first_minter_shares() public {

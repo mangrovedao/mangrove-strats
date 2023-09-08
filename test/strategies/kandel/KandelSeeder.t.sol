@@ -39,7 +39,7 @@ contract KandelSeederTest is StratTest {
   }
 
   function setEnvironment() internal {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));

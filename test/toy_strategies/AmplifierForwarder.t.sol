@@ -25,7 +25,7 @@ contract AmplifierForwarderTest is StratTest {
 
   function setUp() public override {
     // use the pinned Polygon fork
-    fork = new PinnedPolygonFork(); // use polygon fork, to use dai, usdc, weth addresses
+    fork = new PinnedPolygonFork(39880000); // use polygon fork, to use dai, usdc, weth addresses
     fork.setUp();
 
     // use convenience helpers to setup Mangrove

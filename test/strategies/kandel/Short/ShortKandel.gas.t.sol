@@ -42,7 +42,7 @@ contract ShortKandelGasTest is GeometricKandelGasTest {
   }
 
   function __setForkEnvironment__() internal override {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 140;
     options.gasbase = 120000;
