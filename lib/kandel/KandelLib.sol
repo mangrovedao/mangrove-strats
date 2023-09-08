@@ -5,9 +5,10 @@ import {CoreKandel, OfferType} from "mgv_strat_src/strategies/offer_maker/market
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
+import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 
 library KandelLib {
-  function calculateDistribution(uint from, uint to, uint initBase, uint initQuote, uint ratio, uint precision)
+  function calculateDistribution(uint from, uint to, uint initBase, uint initQuote, uint logPriceOffset)
     internal
     pure
     returns (CoreKandel.Distribution memory vars, uint lastQuote)
@@ -20,8 +21,8 @@ library KandelLib {
       vars.indices[i] = from;
       vars.baseDist[i] = initBase;
       vars.quoteDist[i] = initQuote;
-      // the ratio gives the price difference between two price points - the spread is involved when calculating the jump between a bid and its dual ask.
-      initQuote = (initQuote * uint(ratio)) / (10 ** precision);
+      // the logPriceOffset gives the price difference between two price points - the spread is involved when calculating the jump between a bid and its dual ask.
+      initQuote = (initQuote * LogPriceLib.inboundFromOutbound(int(logPriceOffset), 1 ether)) / 1 ether;
       ++i;
     }
     return (vars, initQuote);

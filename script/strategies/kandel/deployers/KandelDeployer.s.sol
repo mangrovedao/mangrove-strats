@@ -51,7 +51,6 @@ contract KandelDeployer is Deployer {
       broadcaster()
     );
 
-    uint precision = current.PRECISION();
     broadcast();
 
     string memory kandelName = new KandelSower().getName(name, olKeyBaseQuote, false);
