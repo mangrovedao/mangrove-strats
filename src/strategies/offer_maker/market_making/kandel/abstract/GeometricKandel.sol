@@ -8,42 +8,31 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
 import {AbstractKandel} from "./AbstractKandel.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  ///@notice GeometricKandel's `ratio` has PRECISION decimals
-  ///@notice setting PRECISION higher than 5 will produce overflow in limit cases for GeometricKandel.
-  uint public constant PRECISION = 5;
-
   ///@notice the parameters for Geometric Kandel have been set.
   ///@param spread in amount of price slots to jump for posting dual offer
-  ///@param ratio of price progression
-  event SetGeometricParams(uint spread, uint ratio);
+  ///@param logPriceOffset of price progression
+  event SetGeometricParams(uint spread, uint logPriceOffset);
 
   ///@notice Geometric Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
-  ///@param ratio of price progression (`2**16 > ratio >= 10**PRECISION`) expressed with `PRECISION` decimals, so geometric ratio is `ratio/10**PRECISION`
+  ///@param logPriceOffset the offset between logPrice for two consecutive price points.
   ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
   ///@param pricePoints the number of price points for the Kandel instance.
-  struct InternalParams {
-    uint16 gasprice;
-    uint24 gasreq;
-    int24 logPriceStep; // max ratio is 2*10**5 and is converted to a logPriceStep
-    uint8 spread;
-    uint8 pricePoints;
-  }
-
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
-    uint24 ratio; // max ratio is 2*10**5 and is converted to a logPriceStep
+    uint24 logPriceOffset;
     uint8 spread;
     uint8 pricePoints;
   }
 
   ///@notice Storage of the parameters for the strat.
-  InternalParams public params;
+  Params public params;
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
@@ -76,7 +65,7 @@ abstract contract GeometricKandel is CoreKandel {
   /// @notice Updates the params to new values.
   /// @param newParams the new params to set.
   function setParams(Params calldata newParams) internal {
-    InternalParams memory oldParams = params;
+    Params memory oldParams = params;
 
     if (oldParams.pricePoints != newParams.pricePoints) {
       setLength(newParams.pricePoints);
@@ -85,11 +74,9 @@ abstract contract GeometricKandel is CoreKandel {
 
     bool geometricChanged = false;
 
-    int logPriceStep =
-      LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(newParams.ratio) / (10 ** PRECISION), 1 ether);
-    if (oldParams.logPriceStep != logPriceStep) {
-      require(newParams.ratio >= 10 ** PRECISION && newParams.ratio <= 2 * 10 ** PRECISION, "Kandel/invalidRatio");
-      params.logPriceStep = int24(logPriceStep);
+    if (oldParams.logPriceOffset != newParams.logPriceOffset) {
+      require(int(uint(newParams.logPriceOffset)) <= MAX_LOG_PRICE - MIN_LOG_PRICE, "Kandel/invalidLogPriceOffset");
+      params.logPriceOffset = newParams.logPriceOffset;
       geometricChanged = true;
     }
     if (oldParams.spread != newParams.spread) {
@@ -99,7 +86,7 @@ abstract contract GeometricKandel is CoreKandel {
     }
 
     if (geometricChanged) {
-      emit SetGeometricParams(newParams.spread, newParams.ratio);
+      emit SetGeometricParams(newParams.spread, newParams.logPriceOffset);
     }
 
     if (newParams.gasprice != 0 && newParams.gasprice != oldParams.gasprice) {
@@ -119,7 +106,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param quoteAmount quote amount to deposit
   ///@dev This function is used at initialization and can fund with provision for the offers.
   ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
-  ///@dev If this function is invoked with different ratio, pricePoints, spread, then first retract all offers.
+  ///@dev If this function is invoked with different logPriceOffset, pricePoints, spread, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
     Distribution calldata distribution,
@@ -162,15 +149,16 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param memoryParams the Kandel params (possibly with modified spread due to boundary condition)
   ///@return logPrice the log price for the dual offer
   ///@return gives the new gives for the dual offer
-  ///@dev Define the (maker) price of the order as `p_order := order.offer.wants() / order.offer.gives()` (what the offer originally wants by what the offer originally gives).
-  /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` at which one should buy back at least what was sold.
+  ///@dev Define the (maker) price of the order as `p_order` with the log price of the order being `l_order := order.offer.logPrice()`
+  /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` which with the `logPriceOffset` defining the ratio means the log price of the dual
+  /// becomes `l_dual := -(l_order - logPriceOffset*spread)` at which one should buy back at least what was sold.
   /// Now, since we do maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
   /// which we use in the code below where we also account for existing gives of the dual offer.
   function dualWantsGivesOfOffer(
     OfferType baDual,
     uint dualOfferGives,
     MgvLib.SingleOrder calldata order,
-    InternalParams memory memoryParams
+    Params memory memoryParams
   ) internal pure returns (int logPrice, uint gives) {
     uint spread = uint(memoryParams.spread);
     // order.gives:96
@@ -181,11 +169,11 @@ abstract contract GeometricKandel is CoreKandel {
     gives += dualOfferGives;
     if (uint96(gives) != gives) {
       // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
-      // to prevent gives to be too high, we let the surplus be pending
+      // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
       gives = type(uint96).max;
     }
     //FIXME: can wants be too high or too low?
-    logPrice = -(order.offer.logPrice() - memoryParams.logPriceStep * int(spread));
+    logPrice = -(order.offer.logPrice() - int(uint(memoryParams.logPriceOffset)) * int(spread));
   }
 
   ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
@@ -227,7 +215,7 @@ abstract contract GeometricKandel is CoreKandel {
     returns (OfferType baDual, uint dualOfferId, uint dualIndex, OfferArgs memory args)
   {
     uint index = indexOfOfferId(ba, order.offerId);
-    InternalParams memory memoryParams = params;
+    Params memory memoryParams = params;
     baDual = dual(ba);
 
     // because of boundaries, actual spread might be lower than the one loaded in memoryParams

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "./KandelTest.t.sol";
+import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {
@@ -524,13 +525,13 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
-    uint24 ratio = uint24(107992);
+    uint24 logPriceOffset = 769; // corresponding to roughly to 107.992%
 
     (CoreKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
+      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset);
 
     (CoreKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, ratio, PRECISION);
+      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, logPriceOffset);
 
     // setting params.spread to 2
     GeometricKandel.Params memory params = getParams(kdl);
@@ -684,13 +685,13 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory paramsNew;
     paramsNew.pricePoints = params.pricePoints;
-    paramsNew.ratio = params.ratio + 1;
+    paramsNew.logPriceOffset = params.logPriceOffset + 1;
     paramsNew.spread = params.spread + 1;
     paramsNew.gasprice = params.gasprice + 1;
     paramsNew.gasreq = params.gasreq + 1;
 
     expectFrom(address(kdl));
-    emit SetGeometricParams(paramsNew.spread, paramsNew.ratio);
+    emit SetGeometricParams(paramsNew.spread, paramsNew.logPriceOffset);
     expectFrom(address(kdl));
     emit SetGasprice(paramsNew.gasprice);
     expectFrom(address(kdl));
@@ -704,28 +705,17 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(params_.gasprice, paramsNew.gasprice, "gasprice should be changed");
     assertEq(params_.gasreq, paramsNew.gasreq, "gasreq should be changed");
     assertEq(params_.pricePoints, params.pricePoints, "pricePoints should not be changed");
-    assertEq(params_.ratio, paramsNew.ratio, "ratio should be changed");
+    assertEq(params_.logPriceOffset, paramsNew.logPriceOffset, "logPriceOffset should be changed");
     assertEq(params_.spread, params.spread + 1, "spread should be changed");
     assertEq(offeredVolumeBase, kdl.offeredVolume(Ask), "ask volume should be unchanged");
     assertEq(offeredVolumeQuote, kdl.offeredVolume(Bid), "ask volume should be unchanged");
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]), type(uint).max, type(uint).max);
   }
 
-  function test_populate_throws_on_invalid_ratio() public {
-    uint precision = PRECISION;
-    GeometricKandel.Params memory params;
-    params.pricePoints = 10;
-    params.ratio = uint24(10 ** precision - 1);
-    params.spread = 1;
-    vm.prank(maker);
-    vm.expectRevert("Kandel/invalidRatio");
-    kdl.populate(emptyDist, 0, params, 0, 0);
-  }
-
   function test_populate_throws_on_invalid_spread_low() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.ratio = uint24(10 ** PRECISION);
+    params.logPriceOffset = 769;
     params.spread = 0;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
@@ -735,7 +725,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_populate_throws_on_invalid_spread_high() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.ratio = uint24(10 ** PRECISION);
+    params.logPriceOffset = 769;
     params.spread = 9;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
@@ -750,13 +740,13 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
-    uint24 ratio = uint24(102 * 10 ** PRECISION / 100);
+    uint24 logPriceOffset = 200;
     (CoreKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
+      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset);
 
     GeometricKandel.Params memory params;
     params.pricePoints = 5;
-    params.ratio = ratio;
+    params.logPriceOffset = logPriceOffset;
     params.spread = 2;
 
     expectFrom(address(kdl));
@@ -930,7 +920,7 @@ abstract contract CoreKandelTest is KandelTest {
     //assertTrue(makerExecuteCost + posthookCost <= kdl.offerGasreq() + local.offer_gasbase(), "Strat is spending more gas");
   }
 
-  function deployOtherKandel(uint base0, uint quote0, uint24 ratio, uint8 spread, uint8 pricePoints) internal {
+  function deployOtherKandel(uint base0, uint quote0, uint24 logPriceOffset, uint8 spread, uint8 pricePoints) internal {
     address otherMaker = freshAddress();
 
     GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker);
@@ -948,11 +938,11 @@ abstract contract CoreKandelTest is KandelTest {
     deal(otherMaker, totalProvision);
 
     (CoreKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, pricePoints, base0, quote0, ratio, otherKandel.PRECISION());
+      KandelLib.calculateDistribution(0, pricePoints, base0, quote0, logPriceOffset);
 
     GeometricKandel.Params memory params;
     params.pricePoints = pricePoints;
-    params.ratio = ratio;
+    params.logPriceOffset = logPriceOffset;
     params.spread = spread;
     vm.prank(otherMaker);
     otherKandel.populate{value: totalProvision}(distribution, pricePoints / 2, params, 0, 0);
@@ -985,8 +975,6 @@ abstract contract CoreKandelTest is KandelTest {
     uint8 spread = 8;
     uint8 pricePoints = type(uint8).max;
 
-    uint precision = PRECISION;
-
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
@@ -998,7 +986,7 @@ abstract contract CoreKandelTest is KandelTest {
         quote: type(uint96).max,
         firstAskIndex: 2,
         pricePoints: pricePoints,
-        ratio: 2 * 10 ** precision,
+        logPriceOffset: 2 ** 24,
         spread: spread,
         expectRevert: bytes("")
       });
@@ -1037,10 +1025,9 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_dualWantsGivesOfOffer_nearBoundary_correctPrice(OfferType ba) internal {
+    //FIXME what should we do near boundaries? Should dual posting just fail?
     uint8 spread = 3;
     uint8 pricePoints = 6;
-
-    uint precision = PRECISION;
 
     vm.prank(maker);
     kdl.retractOffers(0, 10);
@@ -1052,7 +1039,7 @@ abstract contract CoreKandelTest is KandelTest {
       quote: initQuote,
       firstAskIndex: ba == Bid ? pricePoints : 0,
       pricePoints: pricePoints,
-      ratio: 2 * 10 ** precision,
+      logPriceOffset: uint(MAX_LOG_PRICE - MIN_LOG_PRICE),
       spread: spread,
       expectRevert: bytes("")
     });
@@ -1062,11 +1049,11 @@ abstract contract CoreKandelTest is KandelTest {
     if (ba == Bid) {
       MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
       assertApproxEqRel(ask.gives(), initBase, 1e14, "wrong gives");
-      assertApproxEqRel(ask.wants(), ask.gives() * 2 / 1000000000, 1e14, "wrong price");
+      assertApproxEqRel(ask.logPrice(), 42, 1e14, "wrong price");
     } else {
       MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
       assertApproxEqRel(bid.gives(), initQuote, 1e14, "wrong gives");
-      assertApproxEqRel(bid.wants(), bid.gives() * 2 * 1000000000, 1e14, "wrong price");
+      assertApproxEqRel(bid.logPrice(), 42, 1e14, "wrong price");
     }
   }
 
@@ -1088,7 +1075,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.MGV();
     kdl.NO_ROUTER();
     kdl.OFFER_GASREQ();
-    kdl.PRECISION();
     kdl.QUOTE();
     kdl.RESERVE_ID();
     kdl.TICK_SCALE();

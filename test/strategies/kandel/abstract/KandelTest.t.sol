@@ -30,12 +30,11 @@ abstract contract KandelTest is StratTest {
 
   OfferType constant Ask = OfferType.Ask;
   OfferType constant Bid = OfferType.Bid;
-  uint PRECISION;
 
   event Mgv(IMangrove mgv);
   event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
-  event SetGeometricParams(uint spread, uint ratio);
+  event SetGeometricParams(uint spread, uint logPriceOffset);
   event SetLength(uint value);
   event SetGasreq(uint value);
   event Credit(IERC20 indexed token, uint amount);
@@ -95,7 +94,6 @@ abstract contract KandelTest is StratTest {
     bufferedGasprice = globalGasprice * 10; // covering 10 times Mangrove's gasprice at deploy time
 
     kdl = __deployKandel__(maker, maker);
-    PRECISION = kdl.PRECISION();
 
     // funding Kandel on Mangrove
     uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
@@ -108,16 +106,20 @@ abstract contract KandelTest is StratTest {
     vm.prank(maker);
     TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
-    uint ratio = uint24(107993);
+    // A ratio of ~108% can be converted to a log price step of ~769 via
+    //int logPriceOffset = LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
+    uint logPriceOffset = 769;
+    // and vice versa with
+    // ratio = uint24(LogPriceLib.inboundFromOutbound(logPriceOffset, 1 ether) * 100000 / LogPriceLib.inboundFromOutbound(0, 1 ether)
 
     (CoreKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
+      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset);
 
     (CoreKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, ratio, PRECISION);
+      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, logPriceOffset);
 
     GeometricKandel.Params memory params;
-    params.ratio = uint24(ratio);
+    params.logPriceOffset = uint24(logPriceOffset);
     params.spread = STEP;
     params.pricePoints = 10;
     vm.prank(maker);
@@ -170,14 +172,11 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint16 gasprice, uint24 gasreq, int24 logPriceStep, uint8 spread, uint8 pricePoints) = aKandel.params();
+    (uint16 gasprice, uint24 gasreq, uint24 logPriceOffset, uint8 spread, uint8 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
-    params.ratio = uint24(
-      LogPriceLib.inboundFromOutbound(logPriceStep, 1 ether) * 10 ** PRECISION
-        / LogPriceLib.inboundFromOutbound(0, 1 ether)
-    );
+    params.logPriceOffset = logPriceOffset;
     params.spread = spread;
     params.pricePoints = pricePoints;
   }
@@ -269,7 +268,7 @@ abstract contract KandelTest is StratTest {
       OfferStatus offerStatus = OfferStatus(offerStatuses[i]);
       assertStatus(i, offerStatus, q, b);
       if (q != type(uint).max) {
-        q = (q * uint(params.ratio)) / (10 ** PRECISION);
+        q = (q * LogPriceLib.inboundFromOutbound(int(uint(params.logPriceOffset)), 1 ether)) / 1 ether;
       }
       if (offerStatus == OfferStatus.Ask) {
         expectedAsks++;
@@ -322,7 +321,7 @@ abstract contract KandelTest is StratTest {
   ) internal {
     GeometricKandel.Params memory params = getParams(kdl);
     populateSingle(
-      kandel, index, base, quote, firstAskIndex, params.pricePoints, params.ratio, params.spread, expectRevert
+      kandel, index, base, quote, firstAskIndex, params.pricePoints, params.logPriceOffset, params.spread, expectRevert
     );
   }
 
@@ -333,7 +332,7 @@ abstract contract KandelTest is StratTest {
     uint quote,
     uint firstAskIndex,
     uint pricePoints,
-    uint ratio,
+    uint logPriceOffset,
     uint spread,
     bytes memory expectRevert
   ) internal {
@@ -351,7 +350,7 @@ abstract contract KandelTest is StratTest {
     }
     GeometricKandel.Params memory params;
     params.pricePoints = uint8(pricePoints);
-    params.ratio = uint24(ratio);
+    params.logPriceOffset = uint24(logPriceOffset);
     params.spread = uint8(spread);
 
     kandel.populate{value: 0.1 ether}(distribution, firstAskIndex, params, 0, 0);
@@ -419,7 +418,7 @@ abstract contract KandelTest is StratTest {
         numDead++;
       }
       quoteAtIndex[i] = quote;
-      quote = (quote * uint(params.ratio)) / 10 ** PRECISION;
+      quote = (quote * LogPriceLib.inboundFromOutbound(int(uint(params.logPriceOffset)), 1 ether)) / 1 ether;
     }
 
     // truncate indices - cannot do push to memory array
