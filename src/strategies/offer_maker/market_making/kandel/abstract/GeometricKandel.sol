@@ -26,16 +26,24 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param ratio of price progression (`2**16 > ratio >= 10**PRECISION`) expressed with `PRECISION` decimals, so geometric ratio is `ratio/10**PRECISION`
   ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
   ///@param pricePoints the number of price points for the Kandel instance.
+  struct InternalParams {
+    uint16 gasprice;
+    uint24 gasreq;
+    int24 logPriceStep; // max ratio is 2*10**5 and is converted to a logPriceStep
+    uint8 spread;
+    uint8 pricePoints;
+  }
+
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
-    uint24 ratio; // max ratio is 2*10**5
+    uint24 ratio; // max ratio is 2*10**5 and is converted to a logPriceStep
     uint8 spread;
     uint8 pricePoints;
   }
 
   ///@notice Storage of the parameters for the strat.
-  Params public params;
+  InternalParams public params;
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
@@ -68,7 +76,7 @@ abstract contract GeometricKandel is CoreKandel {
   /// @notice Updates the params to new values.
   /// @param newParams the new params to set.
   function setParams(Params calldata newParams) internal {
-    Params memory oldParams = params;
+    InternalParams memory oldParams = params;
 
     if (oldParams.pricePoints != newParams.pricePoints) {
       setLength(newParams.pricePoints);
@@ -76,9 +84,12 @@ abstract contract GeometricKandel is CoreKandel {
     }
 
     bool geometricChanged = false;
-    if (oldParams.ratio != newParams.ratio) {
+
+    int logPriceStep =
+      LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(newParams.ratio) / (10 ** PRECISION), 1 ether);
+    if (oldParams.logPriceStep != logPriceStep) {
       require(newParams.ratio >= 10 ** PRECISION && newParams.ratio <= 2 * 10 ** PRECISION, "Kandel/invalidRatio");
-      params.ratio = newParams.ratio;
+      params.logPriceStep = int24(logPriceStep);
       geometricChanged = true;
     }
     if (oldParams.spread != newParams.spread) {
@@ -149,7 +160,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param dualOfferGives the dual offer's current gives (can be 0)
   ///@param order a recap of the taker order (order.offer is the executed offer)
   ///@param memoryParams the Kandel params (possibly with modified spread due to boundary condition)
-  ///@return wants the new wants for the dual offer
+  ///@return logPrice the log price for the dual offer
   ///@return gives the new gives for the dual offer
   ///@dev Define the (maker) price of the order as `p_order := order.offer.wants() / order.offer.gives()` (what the offer originally wants by what the offer originally gives).
   /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` at which one should buy back at least what was sold.
@@ -159,15 +170,9 @@ abstract contract GeometricKandel is CoreKandel {
     OfferType baDual,
     uint dualOfferGives,
     MgvLib.SingleOrder calldata order,
-    Params memory memoryParams
-  ) internal pure returns (uint wants, uint gives) {
-    // computing gives/wants for dual offer
-    // we verify we cannot overflow if PRECISION = 5
-    // spread:8
+    InternalParams memory memoryParams
+  ) internal pure returns (int logPrice, uint gives) {
     uint spread = uint(memoryParams.spread);
-    // params.ratio <= 2*10**PRECISION, spread:8, r: 8 * (PRECISION*log2(10) + 1)
-    uint r = uint(memoryParams.ratio) ** spread;
-    uint p = 10 ** PRECISION;
     // order.gives:96
     gives = order.gives;
 
@@ -179,28 +184,8 @@ abstract contract GeometricKandel is CoreKandel {
       // to prevent gives to be too high, we let the surplus be pending
       gives = type(uint96).max;
     }
-    // adjusting wants to price:
-    // gives * r : 237 so offerGives must be < 2**19 to completely avoid overflow.
-    // Since offerGives is high when gives * r is, we check whether the full precision can be used and only if not then we use less precision.
-    uint givesR = gives * r;
-    uint offerGives = order.offer.gives();
-    if (uint160(givesR) == givesR || offerGives < 2 ** 19) {
-      // using max precision
-      wants = (offerGives * givesR) / (order.offer.wants() * (p ** spread));
-    } else {
-      // we divide `gives*r` by `order.offer.wants()` with max precision so that the resulting `givesR:160` in order to make sure it can be multiplied by `offerGives`
-      givesR = (givesR * 2 ** 19) / order.offer.wants();
-      wants = (offerGives * givesR) / (p ** spread);
-      // we correct for the added precision above
-      wants /= 2 ** 19;
-    }
-    // wants is higher than offerGives
-    // this may cause wants to be higher than 2**96 allowed by Mangrove (for instance if one needs many quotes to buy sell base tokens)
-    // so we adjust the price so as to want an amount of tokens that mangrove will accept.
-    if (uint96(wants) != wants) {
-      gives = (type(uint96).max * gives) / wants;
-      wants = type(uint96).max;
-    }
+    //FIXME: can wants be too high or too low?
+    logPrice = -(order.offer.logPrice() - memoryParams.logPriceStep * int(spread));
   }
 
   ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
@@ -242,7 +227,7 @@ abstract contract GeometricKandel is CoreKandel {
     returns (OfferType baDual, uint dualOfferId, uint dualIndex, OfferArgs memory args)
   {
     uint index = indexOfOfferId(ba, order.offerId);
-    Params memory memoryParams = params;
+    InternalParams memory memoryParams = params;
     baDual = dual(ba);
 
     // because of boundaries, actual spread might be lower than the one loaded in memoryParams
@@ -254,17 +239,7 @@ abstract contract GeometricKandel is CoreKandel {
     args.olKey = offerListOfOfferType(baDual);
     MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    // computing gives/wants for dual offer
-    // At least: gives = order.gives/ratio and wants is then order.wants
-    // At most: gives = order.gives and wants is adapted to match the price
-    uint wants;
-    (wants, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
-    if (wants > 0) {
-      // FIXME: logPrice should only be updated on new offer or due to price updates, so would be better to set it outside
-      args.logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, args.gives);
-    } else {
-      args.gives = 0;
-    }
+    (args.logPrice, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents

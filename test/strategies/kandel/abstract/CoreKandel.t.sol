@@ -524,7 +524,7 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
-    uint24 ratio = uint24(108 * 10 ** PRECISION / 100);
+    uint24 ratio = uint24(107992);
 
     (CoreKandel.Distribution memory distribution1, uint lastQuote) =
       KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);

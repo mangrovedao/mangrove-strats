@@ -108,7 +108,7 @@ abstract contract KandelTest is StratTest {
     vm.prank(maker);
     TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
-    uint ratio = 108 * 10 ** (PRECISION - 2);
+    uint ratio = uint24(107993);
 
     (CoreKandel.Distribution memory distribution1, uint lastQuote) =
       KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
@@ -170,11 +170,14 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint16 gasprice, uint24 gasreq, uint24 ratio, uint8 spread, uint8 pricePoints) = aKandel.params();
+    (uint16 gasprice, uint24 gasreq, int24 logPriceStep, uint8 spread, uint8 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
-    params.ratio = ratio;
+    params.ratio = uint24(
+      LogPriceLib.inboundFromOutbound(logPriceStep, 1 ether) * 10 ** PRECISION
+        / LogPriceLib.inboundFromOutbound(0, 1 ether)
+    );
     params.spread = spread;
     params.pricePoints = pricePoints;
   }
