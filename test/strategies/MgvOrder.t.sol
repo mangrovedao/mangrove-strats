@@ -658,8 +658,8 @@ contract MangroveOrder_Test is StratTest {
       provision > mgo.provisionOf(lo, cold_buyResult.offerId), "Remaining provision should be less than original"
     );
     assertTrue(mgo.provisionOf(lo, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
-    assertTrue(bounty > g * reader.global().gasprice(), "taker not compensated");
-    console.log("Taker gained %s matics", toFixed(bounty - g * reader.global().gasprice(), 18));
+    assertTrue(bounty > g * mgv.global().gasprice(), "taker not compensated");
+    console.log("Taker gained %s matics", toFixed(bounty - g * mgv.global().gasprice(), 18));
   }
 
   function test_offer_succeeds_when_time_is_not_expired() public {

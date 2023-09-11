@@ -317,7 +317,7 @@ abstract contract CoreKandelTest is KandelTest {
     expectFrom($(kdl));
     emit RetractStart();
     expectFrom($(mgv));
-    emit OfferRetract(lo.hash(), kdl.offerIdOfIndex(Bid, 0), true);
+    emit OfferRetract(lo.hash(), $(kdl), kdl.offerIdOfIndex(Bid, 0), true);
     expectFrom($(kdl));
     emit RetractEnd();
 
