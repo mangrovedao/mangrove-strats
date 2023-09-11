@@ -6,21 +6,24 @@ import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_makin
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 library KandelLib {
-  function calculateDistribution(uint from, uint to, uint initBase, uint initQuote, uint logPriceOffset)
+  function calculateDistribution(uint from, uint to, uint initBase, uint initQuote, uint logPriceOffset, uint firstAskIndex)
     internal
     pure
     returns (CoreKandel.Distribution memory vars, uint lastQuote)
   {
     vars.indices = new uint[](to-from);
-    vars.baseDist = new uint[](to-from);
-    vars.quoteDist = new uint[](to-from);
+    vars.logPriceDist = new int[](to-from);
+    vars.givesDist = new uint[](to-from);
     uint i = 0;
     for (; from < to; ++from) {
       vars.indices[i] = from;
-      vars.baseDist[i] = initBase;
-      vars.quoteDist[i] = initQuote;
+      int logPrice = from < firstAskIndex ? LogPriceConversionLib.logPriceFromVolumes(initBase, initQuote) : LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
+      uint gives = from < firstAskIndex ? initQuote : initBase;
+      vars.logPriceDist[i] = logPrice;
+      vars.givesDist[i] = gives;
       // the logPriceOffset gives the price difference between two price points - the spread is involved when calculating the jump between a bid and its dual ask.
       initQuote = (initQuote * LogPriceLib.inboundFromOutbound(int(logPriceOffset), 1 ether)) / 1 ether;
       ++i;

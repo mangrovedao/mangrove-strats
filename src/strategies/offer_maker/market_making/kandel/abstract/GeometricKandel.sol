@@ -98,7 +98,7 @@ abstract contract GeometricKandel is CoreKandel {
     }
   }
 
-  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
+  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
   ///@param distribution the distribution of base and quote for Kandel indices
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
@@ -125,7 +125,7 @@ abstract contract GeometricKandel is CoreKandel {
     populateChunkInternal(distribution, firstAskIndex);
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
+  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
   ///@dev internal version does not check onlyAdmin
   ///@param distribution the distribution of base and quote for Kandel indices
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
@@ -133,7 +133,7 @@ abstract contract GeometricKandel is CoreKandel {
     populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
+  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
   ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
   ///@param distribution the distribution of base and quote for Kandel indices.
@@ -143,7 +143,6 @@ abstract contract GeometricKandel is CoreKandel {
   }
 
   ///@notice calculates the wants and gives for the dual offer according to the geometric price distribution.
-  ///@param baDual the dual offer type.
   ///@param dualOfferGives the dual offer's current gives (can be 0)
   ///@param order a recap of the taker order (order.offer is the executed offer)
   ///@param memoryParams the Kandel params (possibly with modified spread due to boundary condition)
@@ -154,12 +153,11 @@ abstract contract GeometricKandel is CoreKandel {
   /// becomes `l_dual := -(l_order - logPriceOffset*spread)` at which one should buy back at least what was sold.
   /// Now, since we do maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
   /// which we use in the code below where we also account for existing gives of the dual offer.
-  function dualWantsGivesOfOffer(
-    OfferType baDual,
-    uint dualOfferGives,
-    MgvLib.SingleOrder calldata order,
-    Params memory memoryParams
-  ) internal pure returns (int logPrice, uint gives) {
+  function dualWantsGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order, Params memory memoryParams)
+    internal
+    pure
+    returns (int logPrice, uint gives)
+  {
     uint spread = uint(memoryParams.spread);
     // order.gives:96
     gives = order.gives;
@@ -227,7 +225,7 @@ abstract contract GeometricKandel is CoreKandel {
     args.olKey = offerListOfOfferType(baDual);
     MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    (args.logPrice, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
+    (args.logPrice, args.gives) = dualWantsGivesOfOffer(dualOffer.gives(), order, memoryParams);
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents

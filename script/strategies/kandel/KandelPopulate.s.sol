@@ -176,9 +176,10 @@ contract KandelPopulate is Deployer {
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args) public view returns (CoreKandel.Distribution memory distribution) {
-    (distribution, /* uint lastQuote */ ) =
-      KandelLib.calculateDistribution(args.from, args.to, args.volume, args.initQuote, args.params.logPriceOffset);
+  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
+    (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
+      args.from, args.to, args.volume, args.initQuote, args.params.logPriceOffset, args.firstAskIndex
+    );
   }
 
   ///@notice evaluates required amounts that need to be published on Mangrove
