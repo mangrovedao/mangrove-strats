@@ -7,11 +7,6 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 
 ///@title Core external functions and events for Kandel strats.
 abstract contract AbstractKandel {
-  ///@notice the compound rates have been set to `compoundRateBase` and `compoundRateQuote` which will take effect for future compounding.
-  ///@param compoundRateBase the compound rate for base.
-  ///@param compoundRateQuote the compound rate for quote.
-  event SetCompoundRates(uint compoundRateBase, uint compoundRateQuote);
-
   ///@notice the gasprice has been set.
   ///@param value the gasprice for offers.
   event SetGasprice(uint value);
@@ -52,15 +47,6 @@ abstract contract AbstractKandel {
   ///@param recipient the recipient of the funds.
   ///@dev it is up to the caller to make sure there are still enough funds for live offers.
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual;
-
-  ///@notice set the compound rates. It will take effect for future compounding.
-  ///@param compoundRateBase the compound rate for base.
-  ///@param compoundRateQuote the compound rate for quote.
-  ///@dev For low compound rates Kandel can end up with everything as pending and nothing offered.
-  ///@dev To avoid this, then for equal compound rates `C` then $C >= 1/(sqrt(ratio^spread)+1)$.
-  ///@dev With one rate being 0 and the other 1 the amount earned from the spread will accumulate as pending
-  ///@dev for the token at 0 compounding and the offered volume will stay roughly static (modulo rounding).
-  function setCompoundRates(uint compoundRateBase, uint compoundRateQuote) public virtual;
 
   ///@notice sets the gasprice for offers
   ///@param gasprice the gasprice.

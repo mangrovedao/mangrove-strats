@@ -61,8 +61,6 @@ abstract contract AbstractKandelSeeder {
     require(local.active() && local_.active(), "KandelSeeder/inactiveMarket");
 
     kandel = _deployKandel(seed);
-    uint fullCompound = 10 ** kandel.PRECISION();
-    kandel.setCompoundRates(fullCompound, fullCompound);
     kandel.setAdmin(msg.sender);
   }
 
