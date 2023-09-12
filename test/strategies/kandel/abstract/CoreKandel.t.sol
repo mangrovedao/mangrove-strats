@@ -80,6 +80,7 @@ abstract contract CoreKandelTest is KandelTest {
 
     assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "We do full compounding so there should be no pending");
     assertTrue(newBid.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
+    printOB();
   }
 
   function test_bid_partial_fill() public {

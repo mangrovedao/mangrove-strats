@@ -128,6 +128,7 @@ abstract contract KandelTest is StratTest {
 
     vm.prank(maker);
     kdl.populateChunk(distribution2, firstAskIndex);
+    printOB();
 
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
