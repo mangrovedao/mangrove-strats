@@ -252,7 +252,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@dev put received inbound tokens on offer maker's reserve during `makerExecute`
   /// if nothing is done at that stage then it could still be done during `makerPosthook`.
   /// However one would then need to pay attention to the following fact:
-  /// if `order.inbound_tkn` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.inbound_tkn` balance of this contract would then contain
+  /// if `order.olKey.inbound` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.olKey.inbound` balance of this contract would then contain
   /// the sum of all payments of offers managed by `this` that are in a better position in the offer list (because posthook is called in the call stack order).
   /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound` and `order.olKey.outbound`) at the end of `makerExecute`.
   ///@inheritdoc MangroveOffer
