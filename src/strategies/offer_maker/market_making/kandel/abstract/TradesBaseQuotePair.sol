@@ -38,12 +38,10 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   ///@notice tickScale of the market Kandel is making
   uint public immutable TICK_SCALE;
 
-  ///@notice The traded pair
-  ///@param base of the market Kandel is making
-  ///@param quote of the market Kandel is making
-  ///@param tickScale the tickScale of the market
-  ///FIXME: Why do we need this event? the New(Aave)Kandel event emits the OlKeyHash, and mgv has the reverse mapping.
-  event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
+  ///@notice The traded offerlist
+  ///@param olKeyHash of the market Kandel is making
+  ///@notice we only emit this, so that the events for a Kandel is self contained. If one uses the KandelSeeder to deploy, then this information is already available from NewKandel or NewAaveKandel events.
+  event OfferListKey(bytes32 olKeyHash);
 
   ///@notice Constructor
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
@@ -51,7 +49,7 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
     BASE = IERC20(olKeyBaseQuote.outbound);
     QUOTE = IERC20(olKeyBaseQuote.inbound);
     TICK_SCALE = olKeyBaseQuote.tickScale;
-    emit OfferListKey(BASE, QUOTE, TICK_SCALE);
+    emit OfferListKey(olKeyBaseQuote.hash());
   }
 
   ///@inheritdoc IHasOfferListOfOfferType

@@ -18,7 +18,7 @@ contract OfferForwarderTest is OfferLogicTest {
     super.setUp();
   }
 
-  event NewOwnedOffer(IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, address owner);
+  event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
 
   function setupMakerContract() internal virtual override {
     deployer = freshAddress("deployer");
@@ -162,7 +162,7 @@ contract OfferForwarderTest is OfferLogicTest {
     (, MgvStructs.LocalPacked local) = mgv.config(olKey);
     uint next_id = local.last() + 1;
     vm.expectEmit(true, true, true, false, address(forwarder));
-    emit NewOwnedOffer(IMangrove($(mgv)), olKey.hash(), next_id, owner);
+    emit NewOwnedOffer(olKey.hash(), next_id, owner);
 
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({

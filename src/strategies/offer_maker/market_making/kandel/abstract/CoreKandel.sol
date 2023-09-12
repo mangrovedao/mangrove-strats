@@ -42,9 +42,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       return;
     }
     if (offerId != 0) {
-      emit LogIncident(MGV, args.olKey.hash(), offerId, "Kandel/updateOfferFailed", populateStatus);
+      emit LogIncident(args.olKey.hash(), offerId, "Kandel/updateOfferFailed", populateStatus);
     } else {
-      emit LogIncident(MGV, args.olKey.hash(), 0, "Kandel/newOfferFailed", populateStatus);
+      emit LogIncident(args.olKey.hash(), 0, "Kandel/newOfferFailed", populateStatus);
     }
   }
 
