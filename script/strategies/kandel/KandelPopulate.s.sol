@@ -21,7 +21,7 @@ import {OLKey} from "mgv_src/MgvLib.sol";
 
 /**
  * KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
- *    RATIO=101 SPREAD=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
+ *    LOG_PRICE_OFFSET=769 SPREAD=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
  *    forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
  */
 
@@ -29,8 +29,8 @@ contract KandelPopulate is Deployer {
   function run() public {
     GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
-    params.ratio = uint24(vm.envUint("RATIO"));
-    require(params.ratio == vm.envUint("RATIO"), "Invalid RATIO");
+    params.logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
+    require(params.logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
     params.pricePoints = uint8(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
     params.spread = uint8(vm.envUint("SPREAD"));
@@ -99,8 +99,6 @@ contract KandelPopulate is Deployer {
       vars.gasreq,
       /*uint24 ratio*/
       ,
-      args.params.compoundRateBase,
-      args.params.compoundRateQuote,
       /*uint8 spread*/
       ,
       /*uint8 length*/
@@ -178,9 +176,9 @@ contract KandelPopulate is Deployer {
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args) public view returns (CoreKandel.Distribution memory distribution) {
+  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
     (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
-      args.from, args.to, args.volume, args.initQuote, args.params.ratio, args.kdl.PRECISION()
+      args.from, args.to, args.volume, args.initQuote, args.params.logPriceOffset, args.firstAskIndex
     );
   }
 

@@ -38,24 +38,24 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   {}
 
   ///@param indices the indices to populate, in ascending order
-  ///@param baseDist base distribution for the indices (the `wants` for bids and the `gives` for asks)
-  ///@param quoteDist the distribution of quote for the indices (the `gives` for bids and the `wants` for asks)
+  ///@param logPriceDist the log price distribution for the indices (the log price of base per quote for bids and quote per base for asks)
+  ///@param givesDist the distribution of gives for the indices (the `quote` for bids and the `base` for asks)
   struct Distribution {
     uint[] indices;
-    uint[] baseDist;
-    uint[] quoteDist;
+    int[] logPriceDist;
+    uint[] givesDist;
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
-  ///@param distribution the distribution of base and quote for indices.
+  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
+  ///@param distribution the distribution of prices for gives of base and quote for indices.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
   function populateChunk(Distribution calldata distribution, uint firstAskIndex, uint gasreq, uint gasprice) internal {
     emit PopulateStart();
     uint[] calldata indices = distribution.indices;
-    uint[] calldata quoteDist = distribution.quoteDist;
-    uint[] calldata baseDist = distribution.baseDist;
+    int[] calldata logPriceDist = distribution.logPriceDist;
+    uint[] calldata givesDist = distribution.givesDist;
 
     uint i;
 
@@ -69,15 +69,8 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       if (index >= firstAskIndex) {
         break;
       }
-      //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
-      if (baseDist[i] > 0) {
-        int logPrice = LogPriceConversionLib.logPriceFromVolumes(baseDist[i], quoteDist[i]);
-        args.logPrice = logPrice;
-        args.gives = quoteDist[i];
-      } else {
-        // unused: args.logPrice;
-        args.gives = 0;
-      }
+      args.logPrice = logPriceDist[i];
+      args.gives = givesDist[i];
       args.gasreq = gasreq;
       args.gasprice = gasprice;
 
@@ -88,15 +81,8 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
 
     for (; i < indices.length; ++i) {
       uint index = indices[i];
-      //TODO change to fillVolume in dist - and don't allow old "wants" to be 0
-      if (quoteDist[i] > 0) {
-        int logPrice = LogPriceConversionLib.logPriceFromVolumes(quoteDist[i], baseDist[i]);
-        args.logPrice = logPrice;
-        args.gives = baseDist[i];
-      } else {
-        // unused: args.logPrice;
-        args.gives = 0;
-      }
+      args.logPrice = logPriceDist[i];
+      args.gives = givesDist[i];
       args.gasreq = gasreq;
       args.gasprice = gasprice;
 

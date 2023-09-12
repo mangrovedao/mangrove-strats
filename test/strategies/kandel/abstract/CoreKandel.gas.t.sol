@@ -15,7 +15,6 @@ abstract contract CoreKandelGasTest is KandelTest {
   function setUp() public virtual override {
     super.setUp();
     vm.prank(maker);
-    kdl.setCompoundRates(10 ** PRECISION, 10 ** PRECISION);
     // non empty balances for tests
     deal($(base), address(this), 1);
     base.approve($(mgv), 1);
