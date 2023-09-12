@@ -42,6 +42,7 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   ///@param base of the market Kandel is making
   ///@param quote of the market Kandel is making
   ///@param tickScale the tickScale of the market
+  ///FIXME: Why do we need this event? the New(Aave)Kandel event emits the OlKeyHash, and mgv has the reverse mapping.
   event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
 
   ///@notice Constructor

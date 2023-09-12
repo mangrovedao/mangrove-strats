@@ -18,6 +18,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice the parameters for Geometric Kandel have been set.
   ///@param spread in amount of price slots to jump for posting dual offer
   ///@param ratio of price progression
+  ///@notice By emitting this data, an indexer will be able to keep track of what the spread and ratio is for the Kandel instance.
   event SetGeometricParams(uint spread, uint ratio);
 
   ///@notice Geometric Kandel parameters

@@ -14,12 +14,14 @@ abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
 
   ///@notice the length of the index has been set.
   ///@param value the length.
+  ///@notice By emitting this data, an indexer will be able to keep track of what length is used.
   event SetLength(uint value);
 
   ///@notice a new offer of type `ba` with `offerId` was created at price `index`
   ///@param ba the offer type
   ///@param index the index
   ///@param offerId the Mangrove offer id.
+  ///@notice By emitting this data, an indexer will be able to keep track of what offer has what index.
   event SetIndexMapping(OfferType indexed ba, uint index, uint offerId);
 
   ///@notice Constructor

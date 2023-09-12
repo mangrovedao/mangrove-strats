@@ -37,12 +37,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
-  ///@notice The expiry of the offer has been set
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId the Mangrove offer id.
-  ///@param date in seconds since unix epoch
-  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
-
   ///@inheritdoc IOrderLogic
   ///@dev We also allow Mangrove to call this so that it can part of an offer logic.
   function setExpiry(bytes32 olKeyHash, uint offerId, uint date) public mgvOrOwner(olKeyHash, offerId) {
@@ -135,6 +129,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
     // * (NAT_THIS+`msg.value`, OUT_THIS, IN_THIS+`takerGives`)
+    logOrderData(tko);
 
     (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrderByLogPrice({
       olKey: tko.olKey,
@@ -212,30 +207,22 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // POST (else)
     // * (NAT_USER+`res.bounty`, OUT_USER+`res.takerGot`, IN_USER-`res.takerGave`)
     // * (NAT_THIS, OUT_THIS, IN_THIS)
-    logOrderData(tko, res);
+
     return res;
   }
 
-  ///@notice logs `OrderSummary`
+  ///@notice logs `OrderStartSummary`
   ///@param tko the arguments in memory of the taker order
-  ///@param res the result of the taker order.
   ///@dev this function avoids loading too many variables on the stack
-  function logOrderData(TakerOrder memory tko, TakerOrderResult memory res) internal {
-    emit OrderSummary({
-      mangrove: MGV,
+  function logOrderData(TakerOrder memory tko) internal {
+    emit OrderStartSummary({
       olKeyHash: tko.olKey.hash(),
       taker: msg.sender,
       fillOrKill: tko.fillOrKill,
       logPrice: tko.logPrice,
       fillVolume: tko.fillVolume,
       fillWants: tko.fillWants,
-      restingOrder: tko.restingOrder,
-      expiryDate: tko.expiryDate,
-      takerGot: res.takerGot,
-      takerGave: res.takerGave,
-      bounty: res.bounty,
-      fee: res.fee,
-      restingOrderId: res.offerId
+      restingOrder: tko.restingOrder
     });
   }
 

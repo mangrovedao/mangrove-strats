@@ -8,12 +8,11 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 ///@notice Interface for contracts that manage liquidity on Mangrove on behalf of multiple offer makers
 interface IForwarder {
   ///@notice Logging new offer owner
-  ///@param mangrove Mangrove contract on which the offer is posted
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId the Mangrove offer id.
-  ///@param owner the offer maker that can manage the offer.
-  //FIXME: address index owner?
-  event NewOwnedOffer(IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, address owner);
+  ///@param olKeyHash the hash of the offer list key. This is indexed to allow RPC calls to filter on it.
+  ///@param offerId the Mangrove offer id. This is indexed to allow RPC calls to filter on it.
+  ///@param owner the offer maker that can manage the offer. It is indexed to allow RPC calls to filter on it.
+  ///@notice By emitting this data, an indexer will be able to keep track of the real owner of an offer
+  event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
 
   /// @notice view on offer owners.
   /// @param olKeyHash the hash of the offer list key.
