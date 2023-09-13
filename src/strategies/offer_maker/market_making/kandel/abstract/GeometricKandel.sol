@@ -17,6 +17,10 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param value the spread in amount of price slots to jump for posting dual offer
   event SetSpread(uint value);
 
+  ///@notice the log price offset has been set.
+  ///@param value the log price offset used for the on-chain geometric progression deployment.
+  event SetLogPriceOffset(int value);
+
   ///@notice Geometric Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
@@ -32,6 +36,9 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice Storage of the parameters for the strat.
   Params public params;
 
+  ///@notice The log price offset used for the on-chain geometric progression deployment.
+  int public logPriceOffset;
+
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
@@ -46,14 +53,14 @@ abstract contract GeometricKandel is CoreKandel {
 
   ///@notice sets the spread
   ///@param spread the spread.
-  function setSpread(uint spread) public onlyAdmin {
+  function setSpread(uint spread) public adminOrCaller(address(this)) {
     require(spread > 0 && spread <= 8, "Kandel/invalidSpread");
     params.spread = uint8(spread);
     emit SetSpread(spread);
   }
 
   /// @inheritdoc AbstractKandel
-  function setGasprice(uint gasprice) public override onlyAdmin {
+  function setGasprice(uint gasprice) public override adminOrCaller(address(this)) {
     uint16 gasprice_ = uint16(gasprice);
     require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
     params.gasprice = gasprice_;
@@ -61,7 +68,7 @@ abstract contract GeometricKandel is CoreKandel {
   }
 
   /// @inheritdoc AbstractKandel
-  function setGasreq(uint gasreq) public override onlyAdmin {
+  function setGasreq(uint gasreq) public override adminOrCaller(address(this)) {
     uint24 gasreq_ = uint24(gasreq);
     require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
     params.gasreq = gasreq_;
@@ -91,6 +98,46 @@ abstract contract GeometricKandel is CoreKandel {
     }
   }
 
+  ///@notice sets the log price offset
+  ///@param _logPriceOffset the log price offset.
+  function setLogPriceOffset(int _logPriceOffset) public onlyAdmin {
+    require(int24(_logPriceOffset) == _logPriceOffset, "Kandel/logPriceOffsetTooHigh");
+    logPriceOffset = _logPriceOffset;
+    emit SetLogPriceOffset(_logPriceOffset);
+  }
+
+  ///@notice publishes bids/asks for the distribution given by
+  function populate(
+    int baseQuoteLogPrice0,
+    int _logPriceOffset,
+    uint firstAskIndex,
+    Params calldata parameters,
+    uint baseAmount,
+    uint quoteAmount,
+    uint[] calldata givesDist
+  ) external payable onlyAdmin {
+    setLogPriceOffset(_logPriceOffset);
+    Distribution memory distribution;
+    distribution.indices = new uint[](parameters.pricePoints);
+    distribution.logPriceDist = new int[](parameters.pricePoints);
+    distribution.givesDist = givesDist;
+    distribution.createDual = true;
+    int logPrice = baseQuoteLogPrice0;
+    for (uint i = 0; i < parameters.pricePoints; ++i) {
+      if (i == firstAskIndex) {
+        logPrice = -logPrice;
+      }
+      distribution.indices[i] = i;
+      distribution.logPriceDist[i] = logPrice;
+      if (i >= firstAskIndex) {
+        logPrice += _logPriceOffset;
+      } else {
+        logPrice -= _logPriceOffset;
+      }
+    }
+    this.populate{value: msg.value}(distribution, firstAskIndex, parameters, baseAmount, quoteAmount);
+  }
+
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
   ///@param distribution the distribution of base and quote for Kandel indices
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
@@ -107,7 +154,7 @@ abstract contract GeometricKandel is CoreKandel {
     Params calldata parameters,
     uint baseAmount,
     uint quoteAmount
-  ) external payable onlyAdmin {
+  ) public payable adminOrCaller(address(this)) {
     if (msg.value > 0) {
       MGV.fund{value: msg.value}();
     }

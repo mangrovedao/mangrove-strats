@@ -122,11 +122,22 @@ abstract contract KandelTest is StratTest {
     GeometricKandel.Params memory params;
     params.spread = STEP;
     params.pricePoints = 10;
-    vm.prank(maker);
-    kdl.populate{value: (provAsk + provBid) * 10}(distribution1, firstAskIndex, params, 0, 0);
+
+    uint[] memory givesDist = new uint[](params.pricePoints);
+    for (uint i; i < params.pricePoints; i++) {
+      givesDist[i] = i < 5 ? distribution1.givesDist[i] : distribution2.givesDist[i - 5];
+    }
 
     vm.prank(maker);
-    kdl.populateChunk(distribution2, firstAskIndex);
+    kdl.populate{value: (provAsk + provBid) * 10}({
+      baseQuoteLogPrice0: int(distribution1.logPriceDist[0]),
+      _logPriceOffset: int(logPriceOffset),
+      firstAskIndex: firstAskIndex,
+      parameters: params,
+      baseAmount: 0,
+      quoteAmount: 0,
+      givesDist: givesDist
+    });
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
     deal($(base), maker, pendingBase);
