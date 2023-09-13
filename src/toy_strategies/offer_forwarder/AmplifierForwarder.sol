@@ -143,7 +143,7 @@ contract AmplifierForwarder is Forwarder {
       : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerPair.id1);
 
     if (repost_status == REPOST_SUCCESS) {
-      uint new_alt_gives = __residualGives__(order); // in base units
+      (uint new_alt_gives,) = __residualValues__(order); // in base units
 
       uint gasreq;
       int logPrice;

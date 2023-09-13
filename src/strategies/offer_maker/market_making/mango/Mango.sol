@@ -253,14 +253,20 @@ contract Mango is Direct {
 
   // residual gives is default (i.e offer.gives - order.wants) + PENDING
   // this overrides the corresponding function in `Persistent`
-  function __residualGives__(MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
+  function __residualValues__(MgvLib.SingleOrder calldata order)
+    internal
+    virtual
+    override
+    returns (uint newGives, int newLogPrice)
+  {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
+    (newGives, newLogPrice) = super.__residualValues__(order);
     if (order.olKey.outbound == address(BASE)) {
       // Ask offer
-      return super.__residualGives__(order) + mStr.pending_base;
+      newGives += mStr.pending_base;
     } else {
       // Bid offer
-      return super.__residualGives__(order) + mStr.pending_quote;
+      newGives += mStr.pending_quote;
     }
   }
 
@@ -277,14 +283,14 @@ contract Mango is Direct {
     if (order.olKey.outbound == address(BASE)) {
       if (!repost_success) {
         // residual could not be reposted --either below density or Mango went out of provision on Mangrove
-        mStr.pending_base = __residualGives__(order); // this includes previous `pending_base`
+        (mStr.pending_base,) = __residualValues__(order);
       } else {
         mStr.pending_base = 0;
       }
     } else {
       if (!repost_success) {
         // residual could not be reposted --either below density or Mango went out of provision on Mangrove
-        mStr.pending_quote = __residualGives__(order); // this includes previous `pending_base`
+        (mStr.pending_quote,) = __residualValues__(order);
       } else {
         mStr.pending_quote = 0;
       }
