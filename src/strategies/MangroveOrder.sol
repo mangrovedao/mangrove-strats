@@ -281,6 +281,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
       if (_updateOffer(args, offerId) == REPOST_SUCCESS) {
         res.offerId = offerId;
+      } else {
+        res.offerId = 0;
       }
     }
     if (res.offerId == 0) {

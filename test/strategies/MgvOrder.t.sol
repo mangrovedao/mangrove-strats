@@ -14,6 +14,7 @@ import {toFixed} from "mgv_lib/Test2.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import "mgv_lib/Debug.sol";
+import {MAX_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 contract MangroveOrder_Test is StratTest {
   uint constant GASREQ = 150_000;
@@ -351,6 +352,63 @@ contract MangroveOrder_Test is StratTest {
     assertEq(quote.balanceOf(fresh_taker), 0, "incorrect quote balance");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "incorrect base balance");
     assertEq(fresh_taker.balance, nativeBalBefore, "value was not returned to taker");
+  }
+
+  function test_taken_resting_order_reused() public {
+    // Arrange - Take resting order
+    vm.prank($(sell_taker));
+    mgv.marketOrderByLogPrice(lo, MAX_LOG_PRICE, 1000000 ether, true);
+    assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
+
+    // Act - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+
+    // Assert
+    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
+    assertEq(res.offerId, buyOrder.offerId, "OfferId should be reused");
+    assertTrue(offer.isLive(), "Offer be live");
+    assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
+    assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
+    assertEq(offer.logPrice(), -buyOrder.logPrice, "Incorrect offer price");
+  }
+
+  function test_taken_resting_order_not_reused_if_live() public {
+    // Arrange
+    assertTrue(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should live");
+
+    // Act - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+
+    // Assert
+    vm.expectRevert("mgvOrder/offerAlreadyActive");
+    mgo.take{value: 0.1 ether}(buyOrder);
+  }
+
+  function test_taken_resting_order_not_reused_if_not_owned() public {
+    // Arrange - Take resting order
+    vm.prank($(sell_taker));
+    mgv.marketOrderByLogPrice(lo, MAX_LOG_PRICE, 1000000 ether, true);
+    assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
+
+    // Act/assert - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+
+    address router = $(mgo.router());
+    vm.prank($(sell_taker));
+    TransferLib.approveToken(quote, router, takerGives(buyOrder) + makerGives(buyOrder));
+    deal($(quote), $(sell_taker), takerGives(buyOrder) + makerGives(buyOrder));
+
+    vm.expectRevert("AccessControlled/Invalid");
+    // Not owner
+    vm.prank($(sell_taker));
+    mgo.take{value: 0.1 ether}(buyOrder);
   }
 
   ///////////////////////
