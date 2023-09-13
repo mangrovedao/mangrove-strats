@@ -14,6 +14,7 @@ interface IOrderLogic {
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
+  ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
@@ -22,6 +23,7 @@ interface IOrderLogic {
     bool fillWants;
     bool restingOrder;
     uint expiryDate;
+    uint offerId;
   }
 
   ///@notice Result of an order from the takers side.
