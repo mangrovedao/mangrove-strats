@@ -264,18 +264,25 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
-    (res.offerId,) = _newOffer(
-      OfferArgs({
-        olKey: olKey,
-        logPrice: offerLogPrice,
-        gives: residualGives,
-        gasreq: offerGasreq(), // using default gasreq of the strat
-        gasprice: 0, // ignored
-        fund: fund,
-        noRevert: true // returns 0 when MGV reverts
-      }),
-      msg.sender
-    );
+    OfferArgs memory args = OfferArgs({
+      olKey: olKey,
+      logPrice: offerLogPrice,
+      gives: residualGives,
+      gasreq: offerGasreq(), // using default gasreq of the strat
+      gasprice: 0, // ignored
+      fund: fund,
+      noRevert: true // returns 0 when MGV reverts
+    });
+    if (tko.offerId == 0) {
+      (res.offerId,) = _newOffer(args, msg.sender);
+    } else {
+      uint offerId = tko.offerId;
+      require(ownerData[olKey.hash()][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
+      if (_updateOffer(args, offerId) == REPOST_SUCCESS) {
+        res.offerId = offerId;
+      }
+    }
     if (res.offerId == 0) {
       // either:
       // - residualGives is below current density

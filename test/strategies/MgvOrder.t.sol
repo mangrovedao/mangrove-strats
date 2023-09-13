@@ -203,7 +203,8 @@ contract MangroveOrder_Test is StratTest {
       fillVolume: fillVolume,
       logPrice: logPriceFromPrice_e18(MID_PRICE - 1e18),
       restingOrder: false,
-      expiryDate: 0 //NA
+      expiryDate: 0, //NA
+      offerId: 0
     });
   }
 
@@ -246,7 +247,8 @@ contract MangroveOrder_Test is StratTest {
       logPrice: -logPriceFromPrice_e18(MID_PRICE - 9e18),
       fillVolume: fillVolume,
       restingOrder: false,
-      expiryDate: 0 //NA
+      expiryDate: 0, //NA
+      offerId: 0
     });
   }
 
