@@ -211,11 +211,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     return res;
   }
 
-  ///@notice logs `OrderStartSummary`
+  ///@notice logs `MangroveOrderStart`
   ///@param tko the arguments in memory of the taker order
   ///@dev this function avoids loading too many variables on the stack
   function logOrderData(TakerOrder memory tko) internal {
-    emit OrderStartSummary({
+    emit MangroveOrderStart({
       olKeyHash: tko.olKey.hash(),
       taker: msg.sender,
       fillOrKill: tko.fillOrKill,

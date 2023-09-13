@@ -47,7 +47,7 @@ interface IOrderLogic {
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with
   ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters was use to start the order.
-  event OrderStartSummary(
+  event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
@@ -59,10 +59,10 @@ interface IOrderLogic {
 
   ///@notice The expiry of the offer has been set
   ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
-  ///@param offerId the Mangrove offer id. Should this be indexed?
+  ///@param offerId the Mangrove offer id.
   ///@param date in seconds since unix epoch
   ///@notice By emitting this data, an indexer will be able to keep track of the expiry date of an offer.
-  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   ///@notice Timestamp beyond which the given `offerId` should renege on trade.
   ///@param olKeyHash the hash of the offer list key.

@@ -12,13 +12,13 @@ interface IOfferLogic is IMaker {
   ///@notice Log incident (during post trade execution)
   ///@param olKeyHash the hash of the offer list key. This is indexed so that RPC calls can filter on it.
   ///@param offerId the Mangrove offer id. This is indexed so that RPC calls can filter on it.
-  ///@param makerData from the maker. Should we index this?
-  ///@param mgvData from Mangrove. Should we index this?
+  ///@param makerData from the maker.
+  ///@param mgvData from Mangrove.
   ///@notice By emitting this data, an indexer can keep track of what indcidents that has happended.
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   ///@notice Logging change of router address
-  ///@param router the new router address. Should we index this?
+  ///@param router the new router address.
   ///@notice By emitting this an indexer can keep track of what router is used.
   event SetRouter(AbstractRouter router);
 

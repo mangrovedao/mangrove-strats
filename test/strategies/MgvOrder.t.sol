@@ -22,7 +22,7 @@ contract MangroveOrder_Test is StratTest {
 
   event Transfer(address indexed from, address indexed to, uint value);
 
-  event OrderStartSummary(
+  event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
@@ -349,7 +349,7 @@ contract MangroveOrder_Test is StratTest {
   ///////////////////////
 
   function logOrderData(address taker, IOrderLogic.TakerOrder memory tko) internal {
-    emit OrderStartSummary(
+    emit MangroveOrderStart(
       tko.olKey.hash(), taker, tko.fillOrKill, tko.logPrice, tko.fillVolume, tko.fillWants, tko.restingOrder
     );
   }
@@ -657,7 +657,7 @@ contract MangroveOrder_Test is StratTest {
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
 
-  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));
