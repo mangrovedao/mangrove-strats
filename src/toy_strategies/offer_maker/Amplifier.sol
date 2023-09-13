@@ -131,7 +131,7 @@ contract Amplifier is Direct {
       ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SCALE2), offerId2)
       : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerId1);
     if (repost_status == REPOST_SUCCESS) {
-      uint new_alt_gives = __residualGives__(order); // in base units
+      (uint new_alt_gives,) = __residualValues__(order); // in base units
       MgvStructs.OfferPacked alt_offer = MGV.offers(altOlKey, alt_offerId);
       MgvStructs.OfferDetailPacked alt_detail = MGV.offerDetails(altOlKey, alt_offerId);
 
