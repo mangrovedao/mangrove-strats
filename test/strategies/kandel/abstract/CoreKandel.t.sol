@@ -80,7 +80,6 @@ abstract contract CoreKandelTest is KandelTest {
 
     assertApproxEqAbs(pendingDelta, 0, precisionForAssert(), "We do full compounding so there should be no pending");
     assertTrue(newBid.wants() >= takerGot + fee, "Auto compounding should want more than what taker gave");
-    printOB();
   }
 
   function test_bid_partial_fill() public {
@@ -395,6 +394,10 @@ abstract contract CoreKandelTest is KandelTest {
     distribution.indices = indices;
     distribution.logPriceDist = logPriceDist;
     distribution.givesDist = givesDist;
+    GeometricKandel.Params memory params = getParams(kdl);
+    vm.prank(maker);
+    // Fund mangrove
+    kdl.populate{value: 1 ether}(emptyDist(), firstAskIndex, params, 0, 0);
     vm.prank(maker);
     kdl.populateChunk(distribution, firstAskIndex);
   }
@@ -562,31 +565,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.makerPosthook(order, result);
     MgvStructs.OfferPacked bid_ = kdl.getOffer(Bid, 0);
     assertTrue(bid.gives() < bid_.gives(), "Bid was not updated");
-  }
-
-  function test_fail_to_create_dual_offer_logs_incident() public {
-    // closing bid market
-    vm.prank(mgv.governance());
-    mgv.deactivate(olKey);
-    // taking a bid
-    uint offerId = kdl.offerIdOfIndex(Bid, 3);
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 3);
-
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: bid.wants(),
-      takerWants: bid.gives(),
-      partialFill: 1,
-      _olBaseQuote: olKey,
-      makerData: ""
-    });
-
-    order.offerId = offerId;
-    order.offer = bid;
-
-    expectFrom($(kdl));
-    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "Kandel/newOfferFailed", "mgv/inactive");
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
   }
 
   function test_fail_to_update_dual_offer_logs_incident() public {
@@ -1031,7 +1009,7 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_dualWantsGivesOfOffer_nearBoundary_correctPrice(OfferType ba) internal {
-    //FIXME what should we do near boundaries? Should dual posting just fail?
+    //FIXME what should we do near boundaries? Should dual posting just fail? - this test is no longer representative
     uint8 spread = 3;
     uint8 pricePoints = 6;
 
@@ -1055,11 +1033,11 @@ abstract contract CoreKandelTest is KandelTest {
     if (ba == Bid) {
       MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
       assertApproxEqRel(ask.gives(), initBase, 1e14, "wrong gives");
-      assertEq(ask.logPrice(), -200312, "wrong price");
+      assertEq(ask.logPrice(), -203399, "wrong price");
     } else {
       MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
       assertApproxEqRel(bid.gives(), initQuote, 1e14, "wrong gives");
-      assertEq(bid.logPrice(), 214175, "wrong price");
+      assertEq(bid.logPrice(), 207243, "wrong price");
     }
   }
 

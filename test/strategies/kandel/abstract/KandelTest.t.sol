@@ -128,8 +128,6 @@ abstract contract KandelTest is StratTest {
 
     vm.prank(maker);
     kdl.populateChunk(distribution2, firstAskIndex);
-    printOB();
-
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
     deal($(base), maker, pendingBase);
@@ -346,6 +344,10 @@ abstract contract KandelTest is StratTest {
     int logPrice = index < firstAskIndex
       ? LogPriceConversionLib.logPriceFromVolumes(base, quote)
       : LogPriceConversionLib.logPriceFromVolumes(quote, base);
+    if (base == 0 || quote == 0) {
+      // logPrice API should set a meaningful log price, for now, just set price to 1.
+      logPrice = 0;
+    }
     uint gives = index < firstAskIndex ? quote : base;
 
     distribution.indices[0] = index;

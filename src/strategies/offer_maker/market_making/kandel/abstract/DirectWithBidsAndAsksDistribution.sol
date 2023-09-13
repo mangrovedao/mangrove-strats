@@ -8,10 +8,10 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {MgvStructs} from "mgv_src/MgvLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
 abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
-  ///@notice The offer has too low volume to be posted.
   bytes32 internal constant LOW_VOLUME = "Kandel/volumeTooLow";
 
   ///@notice logs the start of a call to populate
@@ -40,6 +40,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint[] indices;
     int[] logPriceDist;
     uint[] givesDist;
+    bool createDual;
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
@@ -59,7 +60,31 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     // args.fund = 0; offers are already funded
     // args.noRevert = false; we want revert in case of failure
 
-    (args.olKey) = offerListOfOfferType(OfferType.Bid);
+    args.olKey = offerListOfOfferType(OfferType.Bid);
+    args.gasreq = gasreq;
+    args.gasprice = gasprice;
+
+    OfferArgs memory argsDual;
+    // argsDual.fund = 0; offers are already funded
+    // argsDual.noRevert = false; we want revert in case of failure
+    // argsDual.gives = 0; // only reserve offer id.
+
+    argsDual.olKey = args.olKey.flipped();
+    argsDual.gasreq = distribution.createDual ? gasreq : 0;
+    argsDual.gasprice = gasprice;
+
+    // Minimum gives for offers (to post and retract)
+    uint minGivesBid;
+    uint minGivesAsk;
+    {
+      MgvStructs.LocalPacked local = MGV.local(argsDual.olKey);
+      minGivesBid = local.density().multiplyUp(gasreq + local.offer_gasbase());
+    }
+    {
+      MgvStructs.LocalPacked local = MGV.local(args.olKey);
+      minGivesAsk = local.density().multiplyUp(gasreq + local.offer_gasbase());
+    }
+
     for (; i < indices.length; ++i) {
       uint index = indices[i];
       if (index >= firstAskIndex) {
@@ -67,22 +92,27 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       }
       args.logPrice = logPriceDist[i];
       args.gives = givesDist[i];
-      args.gasreq = gasreq;
-      args.gasprice = gasprice;
 
-      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args);
+      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGivesBid);
+      if (argsDual.gasreq > 0) {
+        //FIXME: Consider duals not having exactly the inverse price.
+        argsDual.logPrice = -args.logPrice;
+        populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, argsDual, minGivesAsk);
+      }
     }
 
-    args.olKey = args.olKey.flipped();
+    (args.olKey, argsDual.olKey) = (argsDual.olKey, args.olKey);
 
     for (; i < indices.length; ++i) {
       uint index = indices[i];
       args.logPrice = logPriceDist[i];
       args.gives = givesDist[i];
-      args.gasreq = gasreq;
-      args.gasprice = gasprice;
 
-      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args);
+      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGivesAsk);
+      if (argsDual.gasreq > 0) {
+        argsDual.logPrice = -args.logPrice;
+        populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, argsDual, minGivesBid);
+      }
     }
     emit PopulateEnd();
   }
@@ -92,8 +122,9 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param offerId the Mangrove offer id (0 for a new offer).
   ///@param index the price index.
   ///@param args the argument of the offer.
+  ///@param minGives the minimum gives to satisfy density requirement - used for reserving offerIds.
   ///@return result the result from Mangrove or Direct (an error if `args.noRevert` is `true`).
-  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args)
+  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args, uint minGives)
     internal
     returns (bytes32 result)
   {
@@ -101,13 +132,16 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     if (offerId == 0) {
       // and offer should exist
       if (args.gives > 0) {
-        // create it
+        // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
         (offerId, result) = _newOffer(args);
-        if (offerId != 0) {
-          setIndexMapping(ba, index, offerId);
-        }
+        setIndexMapping(ba, index, offerId);
       } else {
-        // else offerId && gives are 0 and the offer is left not posted
+        // else offerId && gives are 0 and the offer is posted and retracted to reserve the offerId
+        args.gives = minGives;
+        (offerId, result) = _newOffer(args);
+        args.gives = 0;
+        _retractOffer(args.olKey, offerId, false);
+        setIndexMapping(ba, index, offerId);
         result = LOW_VOLUME;
       }
     }
@@ -115,13 +149,15 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     else {
       // but the offer should be dead since gives is 0
       if (args.gives == 0) {
-        // This may happen in the following cases:
-        // * `gives == 0` may not come from `DualWantsGivesOfOffer` computation, but `wants==0` might.
         // * `gives == 0` may happen from populate in case of re-population where the offers in the spread are then retracted by setting gives to 0.
+        // Update offer to set correct price, gasreq, gasprice, then retract
+        args.gives = minGives;
+        _updateOffer(args, offerId);
+        args.gives = 0;
         _retractOffer(args.olKey, offerId, false);
         result = LOW_VOLUME;
       } else {
-        // so the offer exists and it should, we simply update it with potentially new volume
+        // so the offer exists and it should, we simply update it with potentially new volume and price
         result = _updateOffer(args, offerId);
       }
     }

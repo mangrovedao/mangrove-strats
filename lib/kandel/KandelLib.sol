@@ -17,6 +17,7 @@ library KandelLib {
     vars.indices = new uint[](to-from);
     vars.logPriceDist = new int[](to-from);
     vars.givesDist = new uint[](to-from);
+    vars.createDual = true;
     uint i = 0;
     for (; from < to; ++from) {
       vars.indices[i] = from;

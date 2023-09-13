@@ -12,6 +12,7 @@ import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
+  //TODO remove offset.
   ///@notice the parameters for Geometric Kandel have been set.
   ///@param spread in amount of price slots to jump for posting dual offer
   ///@param logPriceOffset of price progression
@@ -142,24 +143,12 @@ abstract contract GeometricKandel is CoreKandel {
     populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
   }
 
-  ///@notice calculates the wants and gives for the dual offer according to the geometric price distribution.
+  ///@notice calculates the gives for the dual offer.
   ///@param dualOfferGives the dual offer's current gives (can be 0)
   ///@param order a recap of the taker order (order.offer is the executed offer)
-  ///@param memoryParams the Kandel params (possibly with modified spread due to boundary condition)
-  ///@return logPrice the log price for the dual offer
   ///@return gives the new gives for the dual offer
-  ///@dev Define the (maker) price of the order as `p_order` with the log price of the order being `l_order := order.offer.logPrice()`
-  /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` which with the `logPriceOffset` defining the ratio means the log price of the dual
-  /// becomes `l_dual := -(l_order - logPriceOffset*spread)` at which one should buy back at least what was sold.
-  /// Now, since we do maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
-  /// which we use in the code below where we also account for existing gives of the dual offer.
-  function dualWantsGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order, Params memory memoryParams)
-    internal
-    pure
-    returns (int logPrice, uint gives)
-  {
-    uint spread = uint(memoryParams.spread);
-    // order.gives:96
+  function dualGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order) internal pure returns (uint gives) {
+    // gives from order.gives:96
     gives = order.gives;
 
     // adding to gives what the offer was already giving so gives could be greater than 2**96
@@ -171,7 +160,6 @@ abstract contract GeometricKandel is CoreKandel {
       gives = type(uint96).max;
     }
     //FIXME: can wants be too high or too low?
-    logPrice = -(order.offer.logPrice() - int(uint(memoryParams.logPriceOffset)) * int(spread));
   }
 
   ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
@@ -180,28 +168,21 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param step the number of price steps improvements
   ///@param pricePoints the number of price points
   ///@return better destination index
-  ///@return spread the size of the price jump, which is `step` if the index boundaries were not reached
   function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
     internal
     pure
-    returns (uint better, uint8 spread)
+    returns (uint better)
   {
     if (ba == OfferType.Ask) {
       better = index + step;
       if (better >= pricePoints) {
         better = pricePoints - 1;
-        spread = uint8(better - index);
-      } else {
-        spread = uint8(step);
       }
     } else {
       if (index >= step) {
         better = index - step;
-        spread = uint8(step);
-      } else {
-        // else better = 0
-        spread = uint8(index - better);
       }
+      // else better = 0
     }
   }
 
@@ -210,22 +191,22 @@ abstract contract GeometricKandel is CoreKandel {
     internal
     virtual
     override
-    returns (OfferType baDual, uint dualOfferId, uint dualIndex, OfferArgs memory args)
+    returns (uint dualOfferId, OfferArgs memory args)
   {
     uint index = indexOfOfferId(ba, order.offerId);
     Params memory memoryParams = params;
-    baDual = dual(ba);
+    OfferType baDual = dual(ba);
 
     // because of boundaries, actual spread might be lower than the one loaded in memoryParams
     // this would result populating a price index at a wrong price (too high for an Ask and too low for a Bid)
-    (dualIndex, memoryParams.spread) =
-      transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
+    uint dualIndex = transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
     args.olKey = offerListOfOfferType(baDual);
     MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    (args.logPrice, args.gives) = dualWantsGivesOfOffer(dualOffer.gives(), order, memoryParams);
+    args.gives = dualGivesOfOffer(dualOffer.gives(), order);
+    args.logPrice = dualOffer.logPrice();
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents

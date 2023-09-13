@@ -29,23 +29,16 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     return token.balanceOf(address(this));
   }
 
-  ///@notice takes care of status for populating dual and logging of potential issues.
-  ///@param offerId the Mangrove offer id (or 0 if newOffer failed).
+  ///@notice takes care of status for updating dual and logging of potential issues.
+  ///@param offerId the Mangrove offer id.
   ///@param args the arguments of the offer.
-  ///@param populateStatus the status returned from the populateIndex function.
-  function logPopulateStatus(uint offerId, OfferArgs memory args, bytes32 populateStatus) internal {
-    if (
-      populateStatus == REPOST_SUCCESS || populateStatus == NEW_OFFER_SUCCESS
-        || populateStatus == "mgv/writeOffer/density/tooLow" || populateStatus == LOW_VOLUME
-    ) {
+  ///@param updateOfferStatus the status returned from the `_updateOffer` function.
+  function logUpdateOfferStatus(uint offerId, OfferArgs memory args, bytes32 updateOfferStatus) internal {
+    if (updateOfferStatus == REPOST_SUCCESS || updateOfferStatus == "mgv/writeOffer/density/tooLow") {
       // Low density will mean some amount is not posted and will be available for withdrawal or later posting via populate.
       return;
     }
-    if (offerId != 0) {
-      emit LogIncident(MGV, args.olKey.hash(), offerId, "Kandel/updateOfferFailed", populateStatus);
-    } else {
-      emit LogIncident(MGV, args.olKey.hash(), 0, "Kandel/newOfferFailed", populateStatus);
-    }
+    emit LogIncident(MGV, args.olKey.hash(), offerId, "Kandel/updateOfferFailed", updateOfferStatus);
   }
 
   ///@notice update or create dual offer according to transport logic
@@ -55,22 +48,22 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     // adds any unpublished liquidity to pending[Base/Quote]
     // preparing arguments for the dual offer
-    (OfferType baDual, uint offerId, uint index, OfferArgs memory args) = transportLogic(ba, order);
-    bytes32 populateStatus = populateIndex(baDual, offerId, index, args);
-    logPopulateStatus(offerId, args, populateStatus);
+    (uint offerId, OfferArgs memory args) = transportLogic(ba, order);
+
+    // All offers are created up front (see populateChunk), so here we update to set new gives.
+    bytes32 updateOfferStatus = _updateOffer(args, offerId);
+    logUpdateOfferStatus(offerId, args, updateOfferStatus);
   }
 
   ///@notice transport logic followed by Kandel
   ///@param ba whether the offer that was executed is a bid or an ask
   ///@param order a recap of the taker order (order.offer is the executed offer)
-  ///@return baDual the type of dual offer that will re-invest inbound liquidity
   ///@return offerId the offer id of the dual offer
-  ///@return index the index of the dual offer
-  ///@return args the argument for `populateIndex` specifying gives and wants
+  ///@return args the argument for updating an offer
   function transportLogic(OfferType ba, MgvLib.SingleOrder calldata order)
     internal
     virtual
-    returns (OfferType baDual, uint offerId, uint index, OfferArgs memory args);
+    returns (uint offerId, OfferArgs memory args);
 
   /// @notice gets pending liquidity for base (ask) or quote (bid). Will be negative if funds are not enough to cover all offer's promises.
   /// @param ba offer type.
