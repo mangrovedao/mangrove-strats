@@ -12,22 +12,19 @@ import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  //TODO remove offset.
-  ///@notice the parameters for Geometric Kandel have been set.
-  ///@param spread in amount of price slots to jump for posting dual offer
-  ///@param logPriceOffset of price progression
-  event SetGeometricParams(uint spread, uint logPriceOffset);
+  //TODO move to AbstractKandel? Reconsider limits
+  ///@notice the spread has been set.
+  ///@param value the spread in amount of price slots to jump for posting dual offer
+  event SetSpread(uint value);
 
   ///@notice Geometric Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
-  ///@param logPriceOffset the offset between logPrice for two consecutive price points.
   ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
-    uint24 logPriceOffset;
     uint8 spread;
     uint8 pricePoints;
   }
@@ -45,6 +42,14 @@ abstract contract GeometricKandel is CoreKandel {
     CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
   {
     setGasprice(gasprice);
+  }
+
+  ///@notice sets the spread
+  ///@param spread the spread.
+  function setSpread(uint spread) public onlyAdmin {
+    require(spread > 0 && spread <= 8, "Kandel/invalidSpread");
+    params.spread = uint8(spread);
+    emit SetSpread(spread);
   }
 
   /// @inheritdoc AbstractKandel
@@ -73,21 +78,8 @@ abstract contract GeometricKandel is CoreKandel {
       params.pricePoints = newParams.pricePoints;
     }
 
-    bool geometricChanged = false;
-
-    if (oldParams.logPriceOffset != newParams.logPriceOffset) {
-      require(int(uint(newParams.logPriceOffset)) <= MAX_LOG_PRICE - MIN_LOG_PRICE, "Kandel/invalidLogPriceOffset");
-      params.logPriceOffset = newParams.logPriceOffset;
-      geometricChanged = true;
-    }
     if (oldParams.spread != newParams.spread) {
-      require(newParams.spread > 0 && newParams.spread <= 8, "Kandel/invalidSpread");
-      params.spread = newParams.spread;
-      geometricChanged = true;
-    }
-
-    if (geometricChanged) {
-      emit SetGeometricParams(newParams.spread, newParams.logPriceOffset);
+      setSpread(newParams.spread);
     }
 
     if (newParams.gasprice != 0 && newParams.gasprice != oldParams.gasprice) {
@@ -107,7 +99,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param quoteAmount quote amount to deposit
   ///@dev This function is used at initialization and can fund with provision for the offers.
   ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
-  ///@dev If this function is invoked with different logPriceOffset, pricePoints, spread, then first retract all offers.
+  ///@dev If this function is invoked with different pricePoints or spread, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
     Distribution calldata distribution,

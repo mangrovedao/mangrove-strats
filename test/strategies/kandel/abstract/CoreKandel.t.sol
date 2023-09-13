@@ -668,13 +668,12 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory paramsNew;
     paramsNew.pricePoints = params.pricePoints;
-    paramsNew.logPriceOffset = params.logPriceOffset + 1;
     paramsNew.spread = params.spread + 1;
     paramsNew.gasprice = params.gasprice + 1;
     paramsNew.gasreq = params.gasreq + 1;
 
     expectFrom(address(kdl));
-    emit SetGeometricParams(paramsNew.spread, paramsNew.logPriceOffset);
+    emit SetSpread(paramsNew.spread);
     expectFrom(address(kdl));
     emit SetGasprice(paramsNew.gasprice);
     expectFrom(address(kdl));
@@ -688,7 +687,6 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(params_.gasprice, paramsNew.gasprice, "gasprice should be changed");
     assertEq(params_.gasreq, paramsNew.gasreq, "gasreq should be changed");
     assertEq(params_.pricePoints, params.pricePoints, "pricePoints should not be changed");
-    assertEq(params_.logPriceOffset, paramsNew.logPriceOffset, "logPriceOffset should be changed");
     assertEq(params_.spread, params.spread + 1, "spread should be changed");
     assertEq(offeredVolumeBase, kdl.offeredVolume(Ask), "ask volume should be unchanged");
     assertEq(offeredVolumeQuote, kdl.offeredVolume(Bid), "ask volume should be unchanged");
@@ -698,7 +696,6 @@ abstract contract CoreKandelTest is KandelTest {
   function test_populate_throws_on_invalid_spread_low() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.logPriceOffset = 769;
     params.spread = 0;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
@@ -708,7 +705,6 @@ abstract contract CoreKandelTest is KandelTest {
   function test_populate_throws_on_invalid_spread_high() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.logPriceOffset = 769;
     params.spread = 9;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
@@ -723,14 +719,13 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
-    uint24 logPriceOffset = 200;
+    logPriceOffset = 200;
     uint firstAskIndex = 3;
     (CoreKandel.Distribution memory distribution,) =
       KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset, firstAskIndex);
 
     GeometricKandel.Params memory params;
     params.pricePoints = 5;
-    params.logPriceOffset = logPriceOffset;
     params.spread = 2;
 
     expectFrom(address(kdl));
@@ -770,7 +765,7 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasprice(42);
     vm.prank(maker);
     kdl.setGasprice(42);
-    (uint16 gasprice,,,,) = kdl.params();
+    (uint16 gasprice,,,) = kdl.params();
     assertEq(gasprice, uint16(42), "Incorrect gasprice in params");
   }
 
@@ -785,7 +780,7 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasreq(42);
     vm.prank(maker);
     kdl.setGasreq(42);
-    (, uint24 gasreq,,,) = kdl.params();
+    (, uint24 gasreq,,) = kdl.params();
     assertEq(gasreq, uint24(42), "Incorrect gasprice in params");
   }
 
@@ -926,7 +921,6 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory params;
     params.pricePoints = pricePoints;
-    params.logPriceOffset = logPriceOffset;
     params.spread = spread;
     vm.prank(otherMaker);
     otherKandel.populate{value: totalProvision}(distribution, firstAskIndex, params, 0, 0);
@@ -938,66 +932,6 @@ abstract contract CoreKandelTest is KandelTest {
 
     vm.prank(otherMaker);
     otherKandel.depositFunds(pendingBase, pendingQuote);
-  }
-
-  function test_dualWantsGivesOfOffer_maxBitsPartialTake_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(true, 2);
-  }
-
-  function test_dualWantsGivesOfOffer_maxBitsFullTake_correctCalculation() public {
-    test_dualWantsGivesOfOffer_maxBits_correctCalculation(false, 2);
-  }
-
-  function test_dualWantsGivesOfOffer_maxBits_correctCalculation(bool partialTake, uint numTakes) internal {
-    // With partialTake false we verify uint160(givesR) != givesR in dualWantsGivesOfOffer
-    // With partialTake true we verify the edge cases
-    // uint160(givesR) != givesR
-    // uint96(wants) != wants
-    // uint96(gives) != gives
-    // in dualWantsGivesOfOffer
-
-    uint8 spread = 8;
-    uint8 pricePoints = type(uint8).max;
-
-    vm.prank(maker);
-    kdl.retractOffers(0, 10);
-
-    for (uint i = 0; i < numTakes; i++) {
-      populateSingle({
-        kandel: kdl,
-        index: 0,
-        base: type(uint96).max,
-        quote: type(uint96).max,
-        firstAskIndex: 2,
-        pricePoints: pricePoints,
-        logPriceOffset: 2 ** 24,
-        spread: spread,
-        expectRevert: bytes("")
-      });
-
-      // This only verifies KandelLib
-
-      MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
-
-      deal($(quote), address(kdl), bid.gives());
-      deal($(base), address(taker), bid.wants());
-
-      uint amount = partialTake ? 1 ether : bid.wants();
-
-      (uint takerGot,,,) = sellToBestAs(taker, amount);
-      assertTrue(takerGot > 0, "offer should be sold");
-    }
-    uint askOfferId = mgv.best(olKey);
-    uint askIndex = kdl.indexOfOfferId(Ask, askOfferId);
-
-    uint[] memory statuses = new uint[](askIndex+2);
-    if (partialTake) {
-      MgvStructs.OfferPacked ask = kdl.getOffer(Ask, askIndex);
-      assertEq(1 ether * numTakes, ask.gives(), "ask should offer the provided 1 ether for each take");
-      statuses[0] = uint(OfferStatus.Bid);
-    }
-    statuses[askIndex] = uint(OfferStatus.Ask);
-    assertStatus(statuses, type(uint96).max, type(uint96).max);
   }
 
   function test_dualWantsGivesOfOffer_bidNearBoundary_correctPrice() public {
@@ -1023,7 +957,6 @@ abstract contract CoreKandelTest is KandelTest {
       quote: initQuote,
       firstAskIndex: ba == Bid ? pricePoints : 0,
       pricePoints: pricePoints,
-      logPriceOffset: uint(int(LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(200000) / (100000), 1 ether))),
       spread: spread,
       expectRevert: bytes("")
     });
@@ -1089,6 +1022,7 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setAdmin, (maker)));
     checkAuth(args, abi.encodeCall(kdl.retractAndWithdraw, (0, 0, 0, 0, 0, maker)));
     checkAuth(args, abi.encodeCall(kdl.setGasprice, (42)));
+    checkAuth(args, abi.encodeCall(kdl.setSpread, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
     checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, 0, getParams(kdl), 0, 0)));

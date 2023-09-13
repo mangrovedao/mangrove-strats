@@ -29,8 +29,8 @@ contract KandelPopulate is Deployer {
   function run() public {
     GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
-    params.logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
-    require(params.logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
+    uint24 logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
+    require(logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
     params.pricePoints = uint8(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
     params.spread = uint8(vm.envUint("SPREAD"));
@@ -41,6 +41,7 @@ contract KandelPopulate is Deployer {
         from: vm.envUint("FROM"),
         to: vm.envUint("TO"),
         firstAskIndex: vm.envUint("FIRST_ASK_INDEX"),
+        logPriceOffset: logPriceOffset,
         params: params,
         initQuote: vm.envUint("INIT_QUOTE"),
         volume: vm.envUint("VOLUME"),
@@ -65,6 +66,7 @@ contract KandelPopulate is Deployer {
     uint from;
     uint to;
     uint firstAskIndex;
+    uint24 logPriceOffset;
     Kandel.Params params;
     uint initQuote;
     uint volume;
@@ -97,8 +99,6 @@ contract KandelPopulate is Deployer {
     (
       vars.gasprice,
       vars.gasreq,
-      /*uint24 ratio*/
-      ,
       /*uint8 spread*/
       ,
       /*uint8 length*/
@@ -178,7 +178,7 @@ contract KandelPopulate is Deployer {
 
   function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
     (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
-      args.from, args.to, args.volume, args.initQuote, args.params.logPriceOffset, args.firstAskIndex
+      args.from, args.to, args.volume, args.initQuote, args.logPriceOffset, args.firstAskIndex
     );
   }
 
