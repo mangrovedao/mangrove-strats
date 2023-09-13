@@ -232,14 +232,12 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param fund amount of WEIs used to cover for the offer bounty (covered gasprice is derived from `fund`).
   ///@param res the result of the taker order.
   ///@return refund the amount to refund to the taker of the fund.
-  ///FIXME: is the following true regarding entailed price? or should it just be "tko.logPrice"?
-  ///@dev entailed price that should be preserved for the maker order are:
-  /// * `tko.takerGives/tko.takerWants` for buy orders (i.e `fillWants==true`)
-  /// * `tko.takerWants/tko.takerGives` for sell orders (i.e `fillWants==false`)
+  ///@dev the price of the resting order should be the same as for the max price for the market order.
   function postRestingOrder(TakerOrder calldata tko, OLKey memory olKey, TakerOrderResult memory res, uint fund)
     internal
     returns (uint refund)
   {
+    // Log price is in olKey.outbound/olKey.inbound units. The resting order should be in the inverse units, so we flip the log price.
     int offerLogPrice = -tko.logPrice;
     uint residualGives;
     if (tko.fillWants) {
