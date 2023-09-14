@@ -313,11 +313,11 @@ contract OfferLogicTest is StratTest {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
     order.offerId = offerId;
-    order.wants = offerGives / 2;
+    order.takerWants = offerGives / 2;
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
-    order.gives = LogPriceLib.outboundFromInbound(order.offer.logPrice(), offerGives / 2);
+    order.takerGives = LogPriceLib.outboundFromInbound(order.offer.logPrice(), offerGives / 2);
     (order.global, order.local) = mgv.config(olKey);
 
     vm.expectRevert("mgv/writeOffer/density/tooLow");
@@ -344,8 +344,8 @@ contract OfferLogicTest is StratTest {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
     order.offerId = offerId;
-    order.wants = 0.5 ether;
-    order.gives = cash(usdc, 1000);
+    order.takerWants = 0.5 ether;
+    order.takerGives = cash(usdc, 1000);
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
@@ -370,8 +370,8 @@ contract OfferLogicTest is StratTest {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
     order.offerId = offerId;
-    order.wants = 0.5 ether;
-    order.gives = cash(usdc, 1000);
+    order.takerWants = 0.5 ether;
+    order.takerGives = cash(usdc, 1000);
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);

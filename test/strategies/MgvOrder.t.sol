@@ -74,7 +74,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function setUp() public override {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
     options.gasbase = 68_000;
@@ -802,18 +802,18 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function test_mockup_offerLogic_gas_cost() public {
-    (MgvLib.SingleOrder memory sellOrder, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: 0.5 ether,
+    (MgvLib.SingleOrder memory sellOrder, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: 1991 ether / 2,
+      logPrice: LogPriceConversionLib.logPriceFromVolumes(0.5 ether, 1991 ether / 2),
       partialFill: 2,
       _olBaseQuote: olKey,
       makerData: ""
     });
     // pranking a fresh taker to avoid heating test runner balance
     vm.prank($(mgv));
-    base.transferFrom(address(sell_taker), $(mgv), 0.5 ether);
+    base.transferFrom(address(sell_taker), $(mgv), sellOrder.takerGives);
     vm.prank($(mgv));
-    base.transfer($(mgo), 0.5 ether);
+    base.transfer($(mgo), sellOrder.takerGives);
 
     sellOrder.offerId = cold_buyResult.offerId;
     vm.prank($(mgv));

@@ -272,7 +272,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.stopPrank();
 
     order.olKey = olKey;
-    order.gives = 10 ** 6;
+    order.takerGives = 10 ** 6;
     order.offerId = offerId;
     vm.expectRevert("mgvOffer/abort/putFailed");
     vm.prank($(mgv));
