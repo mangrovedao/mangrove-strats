@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {AbstractRouter} from "../AbstractRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {AaveMemoizer, ReserveConfiguration} from "./AaveMemoizer.sol";
+import {AaveMemoizer, ReserveConfiguration, DataTypes} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
 ///@title Router for smart offers that borrow promised assets on AAVE
@@ -110,6 +110,14 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
     uint liquidationThreshold;
     uint decimals;
     uint price;
+  }
+
+  ///@notice queries the reserve data of a particular token on Aave
+  ///@param token the asset reserve
+  ///@return reserveData of the asset
+  function reserveData(IERC20 token) external view returns (DataTypes.ReserveData memory) {
+    Memoizer memory m;
+    return reserveData(token, m);
   }
 
   ///@notice returns line of credit of `this` contract in the form of a pair (maxRedeem, maxBorrow) corresponding respectively

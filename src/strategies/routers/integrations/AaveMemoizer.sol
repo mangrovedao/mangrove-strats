@@ -125,22 +125,6 @@ contract AaveMemoizer is AaveV3Borrower {
     return m.debtBalanceOf;
   }
 
-  ///@notice fetches (and memoizes reserve data if need be) the current supply cap for a given asset
-  ///@param token the asset whole supply cap is needed
-  ///@param m the memoizer
-  ///@return supplyCap of the asset (in raw token units)
-  function supplyCap(IERC20 token, Memoizer memory m) internal view returns (uint) {
-    return ReserveConfiguration.getSupplyCap(reserveData(token, m).configuration);
-  }
-
-  ///@notice fetches (and memoizes reserve data if need be) the current borrow cap for a given asset
-  ///@param token the asset whole borrow cap is needed
-  ///@param m the memoizer
-  ///@return borrowCap of the asset (in raw token units)
-  function borrowCap(IERC20 token, Memoizer memory m) internal view returns (uint) {
-    return ReserveConfiguration.getBorrowCap(reserveData(token, m).configuration);
-  }
-
   ///@notice fetches and memoizes `this` contract's account data on the pool
   ///@param m the memoizer
   ///@return accountData of `this` contract

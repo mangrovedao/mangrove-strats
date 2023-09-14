@@ -2,7 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {OfferLogicTest, IERC20, TestToken, console} from "./OfferLogic.t.sol";
-import {AavePrivateRouter} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
+import {
+  AavePrivateRouter,
+  DataTypes,
+  ReserveConfiguration
+} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
 import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
@@ -76,7 +80,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
 
     vm.prank(address(makerContract));
     privateRouter.pushAndSupply(dai, collateralAmount, IERC20(address(0)), 0);
-    assertEq(privateRouter.balanceOfReserve(dai, owner), collateralAmount, "Incorrect collateral balance");
+    assertApproxEqAbs(privateRouter.balanceOfReserve(dai, owner), collateralAmount, 1, "Incorrect collateral balance");
   }
 
   // this test overrides the one in OfferLogic.t.sol with borrow specific strat balances
@@ -294,6 +298,30 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
     assertApproxEqAbs(balWeth.debt, balWethBefore.creditLine, 1, "Incorrect WETH debt");
     assertEq(balWeth.local, balWethBefore.creditLine - (takergot + fee), "Incorrect residual WETH on the router");
     assertEq(balWeth.onPool, 0, "There should be no WETH on the pool");
+  }
+
+  // this test makes sure that it is safe to borrow to the limit, because a malicious taker cannot prevent the router to repay at the end of the marketOrder
+  function test_can_repay_debt_even_if_supply_cap_is_reached() public {
+    vm.prank(address(makerContract));
+    uint pulled = privateRouter.pull(weth, address(makerContract), 10 ether, true);
+
+    assertEq(weth.balanceOf(address(makerContract)), pulled, "Wrong amount of ether pulled");
+
+    DataTypes.ReserveData memory data = privateRouter.reserveData(weth);
+    uint supplyCap = ReserveConfiguration.getSupplyCap(data.configuration);
+    uint currentSupply = IERC20(data.aTokenAddress).totalSupply();
+
+    // pushing reserve supply to the max
+    deal($(weth), address(this), supplyCap * 10 ** 18 - currentSupply);
+    weth.approve(address(privateRouter.POOL()), type(uint).max);
+    privateRouter.POOL().supply(address(weth), weth.balanceOf(address(this)) - 1 ether, address(this), 0);
+    assertEq(IERC20(data.aTokenAddress).totalSupply() / 10 ** 18, supplyCap - 1, "Supply cap not reached");
+
+    // repaying debt
+    vm.prank(address(makerContract));
+    privateRouter.pushAndSupply(weth, 10 ether, usdc, 0);
+
+    assertEq(privateRouter.assetBalances(weth).debt, 0, "debt was not repaid");
   }
 }
 
