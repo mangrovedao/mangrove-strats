@@ -7,9 +7,7 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
 
-abstract contract AbstractRouter is AccessControlled {
-  ///@notice the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  uint24 internal immutable ROUTER_GASREQ;
+abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice the bound maker contracts which are allowed to call this router.
   mapping(address => bool) internal boundMakerContracts;
 
@@ -33,13 +31,6 @@ abstract contract AbstractRouter is AccessControlled {
   ///@param maker the maker address
   event MakerUnbind(address indexed maker);
 
-  ///@notice constructor for abstract routers.
-  ///@param routerGasreq_ is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  constructor(uint routerGasreq_) AccessControlled(msg.sender) {
-    require(uint24(routerGasreq_) == routerGasreq_, "Router/gasreqTooHigh");
-    ROUTER_GASREQ = uint24(routerGasreq_);
-  }
-
   ///@notice getter for the `makers: addr => bool` mapping
   ///@param mkr the address of a maker contract
   ///@return true if `mkr` is authorized to call this router.
@@ -48,10 +39,14 @@ abstract contract AbstractRouter is AccessControlled {
   }
 
   ///@notice view for gas overhead of this router.
+  ///@param reserveId identifies the fund owner (router implementation dependent).
   ///@return overhead the added (overapproximated) gas cost of `push` and `pull`.
-  function routerGasreq() public view returns (uint overhead) {
-    return ROUTER_GASREQ;
+  function routerGasreq(address reserveId) public view returns (uint overhead) {
+    return __routerGasreq__(reserveId);
   }
+
+  ///@notice router and reserveId dependent gasreq
+  function __routerGasreq__(address) internal view virtual returns (uint);
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset

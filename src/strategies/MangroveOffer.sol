@@ -5,7 +5,7 @@ import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
@@ -60,10 +60,10 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function offerGasreq() public view returns (uint) {
+  function offerGasreq(address reserveId) internal view returns (uint) {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
-      return OFFER_GASREQ + router_.routerGasreq();
+      return OFFER_GASREQ + router_.routerGasreq(reserveId);
     } else {
       return OFFER_GASREQ;
     }

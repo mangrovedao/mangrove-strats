@@ -3,7 +3,7 @@ pragma solidity >=0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20, IMaker} from "mgv_src/MgvLib.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title IOfferLogic interface for offer management
 ///@notice It is an IMaker for Mangrove.
@@ -30,8 +30,9 @@ interface IOfferLogic is IMaker {
   event SetRouter(AbstractRouter router);
 
   ///@notice Actual gas requirement when posting offers via this strategy. Returned value may change if this contract's router is updated.
+  ///@param reserveId Direct or Forwarder specific parameter that may influence router's gas cost
   ///@return total gas cost including router specific costs (if any).
-  function offerGasreq() external view returns (uint total);
+  function offerGasreq(address reserveId) external view returns (uint total);
 
   ///@notice sets a new router to pull outbound tokens from contract's reserve to `this` and push inbound tokens to reserve.
   ///@param router_ the new router contract that this contract should use. Use `NO_ROUTER` for no router.
