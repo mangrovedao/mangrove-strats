@@ -33,6 +33,10 @@ contract AmplifierForwarder is Forwarder {
     }
   }
 
+  function offerGasreq() public returns (uint) {
+    return offerGasreq(msg.sender);
+  }
+
   /**
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals

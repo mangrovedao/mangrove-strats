@@ -8,6 +8,10 @@ import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContra
 contract ForwarderTester is OfferForwarder, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
 
+  function offerGasreq() public returns (uint) {
+    return offerGasreq(msg.sender);
+  }
+
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
     AbstractRouter router_ = router();
     return router_.balanceOfReserve(token, owner);
