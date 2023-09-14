@@ -248,6 +248,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@dev if relative limit price of taker order is `p` in the (outbound, inbound) offer list
   ///@dev then entailed relative price for resting order must be `1/p` (relative price on the (inbound, outbound) offer list)
   ///@dev with log prices that is `-log(p)`
+  ///@dev the price of the resting order should be the same as for the max price for the market order.
   function postRestingOrder(TakerOrder calldata tko, OLKey memory olKey, TakerOrderResult memory res, uint fund)
     internal
     returns (uint refund)
@@ -263,18 +264,27 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
-    (res.offerId,) = _newOffer(
-      OfferArgs({
-        olKey: olKey,
-        logPrice: residualLogPrice,
-        gives: residualGives,
-        gasreq: offerGasreq(), // using default gasreq of the strat
-        gasprice: 0, // ignored
-        fund: fund,
-        noRevert: true // returns 0 when MGV reverts
-      }),
-      msg.sender
-    );
+    OfferArgs memory args = OfferArgs({
+      olKey: olKey,
+      logPrice: residualLogPrice,
+      gives: residualGives,
+      gasreq: offerGasreq(), // using default gasreq of the strat
+      gasprice: 0, // ignored
+      fund: fund,
+      noRevert: true // returns 0 when MGV reverts
+    });
+    if (tko.offerId == 0) {
+      (res.offerId,) = _newOffer(args, msg.sender);
+    } else {
+      uint offerId = tko.offerId;
+      require(ownerData[olKey.hash()][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
+      if (_updateOffer(args, offerId) == REPOST_SUCCESS) {
+        res.offerId = offerId;
+      } else {
+        res.offerId = 0;
+      }
+    }
     if (res.offerId == 0) {
       // either:
       // - residualGives is below current density
