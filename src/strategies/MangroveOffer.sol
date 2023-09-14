@@ -82,7 +82,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /// NB #2: `makerExecute` may return a `bytes32` word to pass information to posthook w/o using storage reads/writes.
   /// NB #3: Reneging on trade will have the following effects:
   /// * Offer is removed from the Order Book
-  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to the maker account on Mangrove
+  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to `this` contract's account on Mangrove
   function makerExecute(MgvLib.SingleOrder calldata order)
     external
     override
@@ -101,7 +101,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /// @notice reverting during its execution will not renege on trade. Revert reason (casted to 32 bytes) is then logged by Mangrove in event `PosthookFail`.
   /// @param order a data structure that recapitulates the taker order and the offer as it was posted on mangrove
   /// @param result a data structure that gathers information about trade execution
-  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__` and `__posthookFallback__` (see below).
+  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__`, `__posthookFallback__` and `__handleResidualProvision__` (see below).
   function makerPosthook(MgvLib.SingleOrder calldata order, MgvLib.OrderResult calldata result)
     external
     override

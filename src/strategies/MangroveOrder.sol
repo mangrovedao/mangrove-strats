@@ -245,28 +245,28 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param fund amount of WEIs used to cover for the offer bounty (covered gasprice is derived from `fund`).
   ///@param res the result of the taker order.
   ///@return refund the amount to refund to the taker of the fund.
+  ///@dev if relative limit price of taker order is `p` in the (outbound, inbound) offer list
+  ///@dev then entailed relative price for resting order must be `1/p` (relative price on the (inbound, outbound) offer list)
+  ///@dev with log prices that is `-log(p)`
   ///@dev the price of the resting order should be the same as for the max price for the market order.
   function postRestingOrder(TakerOrder calldata tko, OLKey memory olKey, TakerOrderResult memory res, uint fund)
     internal
     returns (uint refund)
   {
-    // Log price is in olKey.outbound/olKey.inbound units. The resting order should be in the inverse units, so we flip the log price.
-    int offerLogPrice = -tko.logPrice;
+    int residualLogPrice = -tko.logPrice;
     uint residualGives;
     if (tko.fillWants) {
-      uint residualWants;
       // partialFill => tko.fillVolume > res.takerGot + res.fee
-      residualWants = tko.fillVolume - (res.takerGot + res.fee);
-      // adapting residualGives to match initial price
-      //FIXME: correct rounding?
-      residualGives = LogPriceLib.outboundFromInbound(offerLogPrice, residualWants);
+      uint residualWants = tko.fillVolume - (res.takerGot + res.fee);
+      // adapting residualGives to match relative limit price chosen by the taker
+      residualGives = LogPriceLib.outboundFromInbound(residualLogPrice, residualWants);
     } else {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
     OfferArgs memory args = OfferArgs({
       olKey: olKey,
-      logPrice: offerLogPrice,
+      logPrice: residualLogPrice,
       gives: residualGives,
       gasreq: offerGasreq(), // using default gasreq of the strat
       gasprice: 0, // ignored
@@ -303,20 +303,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       if (tko.expiryDate > 0) {
         setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
       }
-      // if one wants to maintain an inverse mapping owner => offerIds
-      __logOwnershipRelation__({owner: msg.sender, olKey: olKey, offerId: res.offerId});
     }
-  }
-
-  /**
-   * @notice This is invoked for each new offer created for resting orders, e.g., to maintain an inverse mapping from owner to offers.
-   * @param owner the owner of the new offer
-   * @param olKey the offer list key.
-   * @param offerId the id of the new offer
-   */
-  function __logOwnershipRelation__(address owner, OLKey memory olKey, uint offerId) internal virtual {
-    owner; //ssh
-    olKey; //ssh
-    offerId; //ssh
   }
 }
