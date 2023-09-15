@@ -17,7 +17,7 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
 abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice Gas requirement when posting offers via this strategy, excluding router requirement.
-  uint public immutable OFFER_GASREQ;
+  uint public immutable CONSTANT_GASREQ;
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
   ///@notice constant for no router
@@ -50,7 +50,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   constructor(IMangrove mgv, uint gasreq) AccessControlled(msg.sender) {
     require(uint24(gasreq) == gasreq, "mgvOffer/gasreqOverflow");
     MGV = mgv;
-    OFFER_GASREQ = gasreq;
+    CONSTANT_GASREQ = gasreq;
     emit Mgv(mgv);
   }
 
@@ -60,12 +60,17 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function offerGasreq(address reserveId) internal view returns (uint) {
+  function offerGasreq() public view returns (uint) {
+    return offerGasreq(IERC20(address(0)), address(0));
+  }
+
+  /// @inheritdoc IOfferLogic
+  function offerGasreq(IERC20 token, address reserveId) public view returns (uint) {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
-      return OFFER_GASREQ + router_.routerGasreq(reserveId);
+      return CONSTANT_GASREQ + router_.routerGasreq(token, reserveId);
     } else {
-      return OFFER_GASREQ;
+      return CONSTANT_GASREQ;
     }
   }
 

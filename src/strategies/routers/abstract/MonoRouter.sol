@@ -15,7 +15,7 @@ abstract contract MonoRouter is AbstractRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function __routerGasreq__(address) internal view override returns (uint) {
+  function __routerGasreq__(IERC20, address) internal view override returns (uint) {
     return routerGasreq();
   }
 

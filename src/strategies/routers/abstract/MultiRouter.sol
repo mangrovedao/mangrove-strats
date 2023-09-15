@@ -7,14 +7,14 @@ import {MonoRouter, AbstractRouter} from "./MonoRouter.sol";
 
 ///@title `MultiRouter` instances have reserveId dependant sourcing strategies.
 abstract contract MultiRouter is AbstractRouter {
-  mapping(address => MonoRouter) public routes;
+  mapping(IERC20 token => mapping(address reserveId => MonoRouter)) public routes;
 
   ///@inheritdoc AbstractRouter
-  function __routerGasreq__(address reserveId) internal view override returns (uint) {
-    return routes[reserveId].routerGasreq();
+  function __routerGasreq__(IERC20 token, address reserveId) internal view override returns (uint) {
+    return routes[token][reserveId].routerGasreq();
   }
 
-  function setRoute(address reserveId, MonoRouter router) external onlyBound {
-    routes[reserveId] = router;
+  function setRoute(IERC20 token, address reserveId, MonoRouter router) external onlyBound {
+    routes[token][reserveId] = router;
   }
 }
