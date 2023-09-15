@@ -92,7 +92,6 @@ abstract contract GeometricKandel is CoreKandel {
     distribution.indices = new uint[](count);
     distribution.logPriceDist = new int[](count);
     distribution.givesDist = givesDist;
-    distribution.createDual = true;
     int baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + baseQuoteLogPriceOffset * int(from));
     uint i = 0;
     for (uint index = from; index < firstAskIndex; ++index) {
@@ -109,50 +108,6 @@ abstract contract GeometricKandel is CoreKandel {
       ++i;
     }
 
-    populateChunkInternal(distribution, firstAskIndex);
-  }
-
-  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
-  ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
-  ///@param baseAmount base amount to deposit
-  ///@param quoteAmount quote amount to deposit
-  ///@dev This function is used at initialization and can fund with provision for the offers.
-  ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
-  ///@dev If this function is invoked with different pricePoints or spread, then first retract all offers.
-  ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
-  function populate(
-    Distribution memory distribution,
-    uint firstAskIndex,
-    Params calldata parameters,
-    uint baseAmount,
-    uint quoteAmount
-  ) public payable onlyAdmin {
-    if (msg.value > 0) {
-      MGV.fund{value: msg.value}();
-    }
-    setParams(parameters);
-
-    depositFunds(baseAmount, quoteAmount);
-
-    populateChunkInternal(distribution, firstAskIndex);
-  }
-
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
-  ///@dev internal version does not check onlyAdmin
-  ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunkInternal(Distribution memory distribution, uint firstAskIndex) internal {
-    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
-  }
-
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
-  ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
-  ///@notice This function is not payable, use `populate` to fund along with populate.
-  ///@param distribution the distribution of base and quote for Kandel indices.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunk(Distribution calldata distribution, uint firstAskIndex) external onlyAdmin {
-    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
+    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice, true);
   }
 }

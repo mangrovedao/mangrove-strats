@@ -182,7 +182,7 @@ contract KandelPopulate is Deployer {
     broadcast();
 
     args.kdl.populate{value: funds}(
-      vars.distribution, args.firstAskIndex, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
+      vars.distribution, true, args.firstAskIndex, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
     );
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }

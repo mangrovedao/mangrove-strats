@@ -40,7 +40,6 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint[] indices;
     int[] logPriceDist;
     uint[] givesDist;
-    bool createDual;
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
@@ -48,7 +47,16 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
-  function populateChunk(Distribution memory distribution, uint firstAskIndex, uint gasreq, uint gasprice) internal {
+  ///@param bookDual whether to book the dual offer's id on Mangrove (should not be set when changing a single offer, e.g., to heal, and when known that dual is booked).
+  ///@dev Invariant: After invoking this function an offer and its dual will be booked (unless `bookDual` is false).
+  ///Gives of 0 means retract offer (but update price, gasreq, gasprice of the offer)
+  function populateChunk(
+    Distribution memory distribution,
+    uint firstAskIndex,
+    uint gasreq,
+    uint gasprice,
+    bool bookDual
+  ) internal {
     emit PopulateStart();
     uint[] memory indices = distribution.indices;
     int[] memory logPriceDist = distribution.logPriceDist;
@@ -70,7 +78,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     // argsDual.gives = 0; // only reserve offer id.
 
     argsDual.olKey = args.olKey.flipped();
-    argsDual.gasreq = distribution.createDual ? gasreq : 0;
+    argsDual.gasreq = gasreq;
     argsDual.gasprice = gasprice;
 
     // Minimum gives for offers (to post and retract)
@@ -94,7 +102,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       args.gives = givesDist[i];
 
       populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGivesBid);
-      if (argsDual.gasreq > 0) {
+      if (bookDual) {
         //FIXME: Consider duals not having exactly the inverse price.
         argsDual.logPrice = -args.logPrice;
         populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, argsDual, minGivesAsk);
@@ -109,7 +117,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       args.gives = givesDist[i];
 
       populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGivesAsk);
-      if (argsDual.gasreq > 0) {
+      if (bookDual) {
         argsDual.logPrice = -args.logPrice;
         populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, argsDual, minGivesBid);
       }

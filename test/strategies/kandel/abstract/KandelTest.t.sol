@@ -382,7 +382,7 @@ abstract contract KandelTest is StratTest {
     params.pricePoints = uint8(pricePoints);
     params.spread = uint8(spread);
 
-    kandel.populate{value: 0.1 ether}(distribution, firstAskIndex, params, 0, 0);
+    kandel.populate{value: 0.1 ether}(distribution, false, firstAskIndex, params, 0, 0);
   }
 
   function populateFixedDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
@@ -409,7 +409,7 @@ abstract contract KandelTest is StratTest {
 
     GeometricKandel.Params memory params = getParams(kdl);
     vm.prank(maker);
-    kdl.populate{value: maker.balance}(distribution, firstAskIndex, params, 0, 0);
+    kdl.populate{value: maker.balance}(distribution, true, firstAskIndex, params, 0, 0);
   }
 
   function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {

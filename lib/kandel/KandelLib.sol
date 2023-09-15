@@ -17,7 +17,6 @@ library KandelLib {
     vars.indices = new uint[](to-from);
     vars.logPriceDist = new int[](to-from);
     vars.givesDist = new uint[](to-from);
-    vars.createDual = true;
     uint i = 0;
     for (; from < to; ++from) {
       vars.indices[i] = from;
@@ -40,7 +39,7 @@ library KandelLib {
     GeometricKandel.Params memory params,
     uint funds
   ) internal returns (uint baseAmountRequired, uint quoteAmountRequired) {
-    kandel.populate{value: funds}(distribution, firstAskIndex, params, 0, 0);
+    kandel.populate{value: funds}(distribution, true, firstAskIndex, params, 0, 0);
     for (uint i = 0; i < distribution.indices.length; ++i) {
       uint index = distribution.indices[i];
       OfferType ba = index < firstAskIndex ? OfferType.Bid : OfferType.Ask;
