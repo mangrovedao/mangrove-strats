@@ -12,29 +12,9 @@ import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  //TODO move to AbstractKandel? Reconsider limits
-  ///@notice the spread has been set.
-  ///@param value the spread in amount of price slots to jump for posting dual offer
-  event SetSpread(uint value);
-
   ///@notice the base quote log price offset has been set.
   ///@param value the base quote log price offset used for the on-chain geometric progression deployment.
   event SetBaseQuoteLogPriceOffset(int value);
-
-  ///@notice Geometric Kandel parameters
-  ///@param gasprice the gasprice to use for offers
-  ///@param gasreq the gasreq to use for offers
-  ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
-  ///@param pricePoints the number of price points for the Kandel instance.
-  struct Params {
-    uint16 gasprice;
-    uint24 gasreq;
-    uint8 spread;
-    uint8 pricePoints;
-  }
-
-  ///@notice Storage of the parameters for the strat.
-  Params public params;
 
   ///@notice The log price offset used for the on-chain geometric progression deployment.
   int public baseQuoteLogPriceOffset;
@@ -46,57 +26,8 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
-    CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
-  {
-    setGasprice(gasprice);
-  }
-
-  ///@notice sets the spread
-  ///@param spread the spread.
-  function setSpread(uint spread) public onlyAdmin {
-    require(spread > 0 && spread <= 8, "Kandel/invalidSpread");
-    params.spread = uint8(spread);
-    emit SetSpread(spread);
-  }
-
-  /// @inheritdoc AbstractKandel
-  function setGasprice(uint gasprice) public override onlyAdmin {
-    uint16 gasprice_ = uint16(gasprice);
-    require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
-    params.gasprice = gasprice_;
-    emit SetGasprice(gasprice_);
-  }
-
-  /// @inheritdoc AbstractKandel
-  function setGasreq(uint gasreq) public override onlyAdmin {
-    uint24 gasreq_ = uint24(gasreq);
-    require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
-    params.gasreq = gasreq_;
-    emit SetGasreq(gasreq_);
-  }
-
-  /// @notice Updates the params to new values.
-  /// @param newParams the new params to set.
-  function setParams(Params calldata newParams) internal {
-    Params memory oldParams = params;
-
-    if (oldParams.pricePoints != newParams.pricePoints) {
-      setLength(newParams.pricePoints);
-      params.pricePoints = newParams.pricePoints;
-    }
-
-    if (oldParams.spread != newParams.spread) {
-      setSpread(newParams.spread);
-    }
-
-    if (newParams.gasprice != 0 && newParams.gasprice != oldParams.gasprice) {
-      setGasprice(newParams.gasprice);
-    }
-
-    if (newParams.gasreq != 0 && newParams.gasreq != oldParams.gasreq) {
-      setGasreq(newParams.gasreq);
-    }
-  }
+    CoreKandel(mgv, olKeyBaseQuote, gasreq, gasprice, reserveId)
+  {}
 
   ///@notice sets the log price offset if different from existing.
   ///@param _baseQuoteLogPriceOffset the new log price offset.
@@ -223,77 +154,5 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   function populateChunk(Distribution calldata distribution, uint firstAskIndex) external onlyAdmin {
     populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
-  }
-
-  ///@notice calculates the gives for the dual offer.
-  ///@param dualOfferGives the dual offer's current gives (can be 0)
-  ///@param order a recap of the taker order (order.offer is the executed offer)
-  ///@return gives the new gives for the dual offer
-  function dualGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order) internal pure returns (uint gives) {
-    // gives from order.gives:96
-    gives = order.gives;
-
-    // adding to gives what the offer was already giving so gives could be greater than 2**96
-    // gives:97
-    gives += dualOfferGives;
-    if (uint96(gives) != gives) {
-      // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
-      // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
-      gives = type(uint96).max;
-    }
-    //FIXME: can wants be too high or too low?
-  }
-
-  ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
-  ///@param ba the offer type to transport to
-  ///@param index the price index one is willing to improve
-  ///@param step the number of price steps improvements
-  ///@param pricePoints the number of price points
-  ///@return better destination index
-  function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
-    internal
-    pure
-    returns (uint better)
-  {
-    if (ba == OfferType.Ask) {
-      better = index + step;
-      if (better >= pricePoints) {
-        better = pricePoints - 1;
-      }
-    } else {
-      if (index >= step) {
-        better = index - step;
-      }
-      // else better = 0
-    }
-  }
-
-  ///@inheritdoc CoreKandel
-  function transportLogic(OfferType ba, MgvLib.SingleOrder calldata order)
-    internal
-    virtual
-    override
-    returns (uint dualOfferId, OfferArgs memory args)
-  {
-    uint index = indexOfOfferId(ba, order.offerId);
-    Params memory memoryParams = params;
-    OfferType baDual = dual(ba);
-
-    // because of boundaries, actual spread might be lower than the one loaded in memoryParams
-    // this would result populating a price index at a wrong price (too high for an Ask and too low for a Bid)
-    uint dualIndex = transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
-
-    dualOfferId = offerIdOfIndex(baDual, dualIndex);
-    args.olKey = offerListOfOfferType(baDual);
-    MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
-
-    args.gives = dualGivesOfOffer(dualOffer.gives(), order);
-    args.logPrice = dualOffer.logPrice();
-
-    // args.fund = 0; the offers are already provisioned
-    // posthook should not fail if unable to post offers, we capture the error as incidents
-    args.noRevert = true;
-    args.gasprice = memoryParams.gasprice;
-    args.gasreq = memoryParams.gasreq;
   }
 }
