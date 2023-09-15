@@ -48,11 +48,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
-  function populateChunk(Distribution calldata distribution, uint firstAskIndex, uint gasreq, uint gasprice) internal {
+  function populateChunk(Distribution memory distribution, uint firstAskIndex, uint gasreq, uint gasprice) internal {
     emit PopulateStart();
-    uint[] calldata indices = distribution.indices;
-    int[] calldata logPriceDist = distribution.logPriceDist;
-    uint[] calldata givesDist = distribution.givesDist;
+    uint[] memory indices = distribution.indices;
+    int[] memory logPriceDist = distribution.logPriceDist;
+    uint[] memory givesDist = distribution.givesDist;
 
     uint i;
 

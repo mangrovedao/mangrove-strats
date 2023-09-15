@@ -84,7 +84,7 @@ contract AaveKandelTest is CoreKandelTest {
     super.test_allExternalFunctions_differentCallers_correctAuth();
     CheckAuthArgs memory args;
     args.callee = $(kdl);
-    args.callers = dynamic([address($(mgv)), maker, $(this)]);
+    args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
     args.allowed = dynamic([address(maker)]);
     args.revertMessage = "AccessControlled/Invalid";
 

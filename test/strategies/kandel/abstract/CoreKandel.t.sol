@@ -1008,11 +1008,14 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.reserveBalance(Ask);
     kdl.provisionOf(olKey, 0);
     kdl.router();
+    kdl.baseQuoteLogPriceOffset();
 
     CoreKandel.Distribution memory dist;
+    GeometricKandel.Params memory params = getParams(kdl);
+    params.pricePoints = 0;
     CheckAuthArgs memory args;
     args.callee = $(kdl);
-    args.callers = dynamic([address($(mgv)), maker, $(this)]);
+    args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
     args.revertMessage = "AccessControlled/Invalid";
 
     // Only admin
@@ -1025,7 +1028,12 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setSpread, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
     checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
-    //checkAuth(args, abi.encodeCall(kdl.populate, (dist, 0, getParams(kdl), 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.setBaseQuoteLogPriceOffset, (1)));
+
+    checkAuth(args, abi.encodeCall(kdl.populate, (dist, 0, params, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, new uint[](0), params, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, new uint[](0))));
+
     checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist, 42)));
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));
     checkAuth(args, abi.encodeCall(kdl.withdrawFromMangrove, (0, maker)));

@@ -17,9 +17,9 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param value the spread in amount of price slots to jump for posting dual offer
   event SetSpread(uint value);
 
-  ///@notice the log price offset has been set.
-  ///@param value the log price offset used for the on-chain geometric progression deployment.
-  event SetLogPriceOffset(int value);
+  ///@notice the base quote log price offset has been set.
+  ///@param value the base quote log price offset used for the on-chain geometric progression deployment.
+  event SetBaseQuoteLogPriceOffset(int value);
 
   ///@notice Geometric Kandel parameters
   ///@param gasprice the gasprice to use for offers
@@ -37,7 +37,7 @@ abstract contract GeometricKandel is CoreKandel {
   Params public params;
 
   ///@notice The log price offset used for the on-chain geometric progression deployment.
-  int public logPriceOffset;
+  int public baseQuoteLogPriceOffset;
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
@@ -53,14 +53,14 @@ abstract contract GeometricKandel is CoreKandel {
 
   ///@notice sets the spread
   ///@param spread the spread.
-  function setSpread(uint spread) public adminOrCaller(address(this)) {
+  function setSpread(uint spread) public onlyAdmin {
     require(spread > 0 && spread <= 8, "Kandel/invalidSpread");
     params.spread = uint8(spread);
     emit SetSpread(spread);
   }
 
   /// @inheritdoc AbstractKandel
-  function setGasprice(uint gasprice) public override adminOrCaller(address(this)) {
+  function setGasprice(uint gasprice) public override onlyAdmin {
     uint16 gasprice_ = uint16(gasprice);
     require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
     params.gasprice = gasprice_;
@@ -68,7 +68,7 @@ abstract contract GeometricKandel is CoreKandel {
   }
 
   /// @inheritdoc AbstractKandel
-  function setGasreq(uint gasreq) public override adminOrCaller(address(this)) {
+  function setGasreq(uint gasreq) public override onlyAdmin {
     uint24 gasreq_ = uint24(gasreq);
     require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
     params.gasreq = gasreq_;
@@ -98,44 +98,87 @@ abstract contract GeometricKandel is CoreKandel {
     }
   }
 
-  ///@notice sets the log price offset
-  ///@param _logPriceOffset the log price offset.
-  function setLogPriceOffset(int _logPriceOffset) public onlyAdmin {
-    require(int24(_logPriceOffset) == _logPriceOffset, "Kandel/logPriceOffsetTooHigh");
-    logPriceOffset = _logPriceOffset;
-    emit SetLogPriceOffset(_logPriceOffset);
+  ///@notice sets the log price offset if different from existing.
+  ///@param _baseQuoteLogPriceOffset the new log price offset.
+  function setBaseQuoteLogPriceOffset(int _baseQuoteLogPriceOffset) public onlyAdmin {
+    require(int24(_baseQuoteLogPriceOffset) == _baseQuoteLogPriceOffset, "Kandel/logPriceOffsetTooHigh");
+    if (baseQuoteLogPriceOffset != _baseQuoteLogPriceOffset) {
+      baseQuoteLogPriceOffset = _baseQuoteLogPriceOffset;
+      emit SetBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
+    }
   }
 
-  ///@notice publishes bids/asks for the distribution given by
-  function populate(
-    int baseQuoteLogPrice0,
-    int _logPriceOffset,
+  ///@notice publishes bids/asks for the gives distribution in the `givesDist` array.
+  ///@param from populate offers starting from this index (inclusive).
+  ///@param to populate offers until this index (exclusive).
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
+  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment.
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param givesDist the distribution of gives for the indices (the `quote` for bids and the `base` for asks)
+  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
+  ///@param baseAmount base amount to deposit
+  ///@param quoteAmount quote amount to deposit
+  function populateFromOffset(
+    uint from,
+    uint to,
+    int baseQuoteLogPriceIndex0,
+    int _baseQuoteLogPriceOffset,
     uint firstAskIndex,
+    uint[] calldata givesDist,
     Params calldata parameters,
     uint baseAmount,
-    uint quoteAmount,
+    uint quoteAmount
+  ) public payable onlyAdmin {
+    if (msg.value > 0) {
+      MGV.fund{value: msg.value}();
+    }
+    setParams(parameters);
+
+    depositFunds(baseAmount, quoteAmount);
+
+    populateChunkFromOffset(from, to, baseQuoteLogPriceIndex0, _baseQuoteLogPriceOffset, firstAskIndex, givesDist);
+  }
+
+  ///@notice publishes bids/asks for the gives distribution in the `givesDist` array.
+  ///@param from populate offers starting from this index (inclusive).
+  ///@param to populate offers until this index (exclusive).
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
+  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment.
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param givesDist the distribution of gives for the indices (the `quote` for bids and the `base` for asks)
+  ///@dev Index0 is lowest price offer (at a base/quote absolute price of baseQuoteLogPriceIndex0), and baseQuoteLogPriceOffset moves the price higher. Bids are posted at -logPrice since they are on the inverse offer list.
+  function populateChunkFromOffset(
+    uint from,
+    uint to,
+    int baseQuoteLogPriceIndex0,
+    int _baseQuoteLogPriceOffset,
+    uint firstAskIndex,
     uint[] calldata givesDist
-  ) external payable onlyAdmin {
-    setLogPriceOffset(_logPriceOffset);
+  ) public payable onlyAdmin {
+    setBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
+    uint count = to - from;
     Distribution memory distribution;
-    distribution.indices = new uint[](parameters.pricePoints);
-    distribution.logPriceDist = new int[](parameters.pricePoints);
+    distribution.indices = new uint[](count);
+    distribution.logPriceDist = new int[](count);
     distribution.givesDist = givesDist;
     distribution.createDual = true;
-    int logPrice = baseQuoteLogPrice0;
-    for (uint i = 0; i < parameters.pricePoints; ++i) {
-      if (i == firstAskIndex) {
-        logPrice = -logPrice;
-      }
-      distribution.indices[i] = i;
-      distribution.logPriceDist[i] = logPrice;
-      if (i >= firstAskIndex) {
-        logPrice += _logPriceOffset;
-      } else {
-        logPrice -= _logPriceOffset;
-      }
+    int baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + baseQuoteLogPriceOffset * int(from));
+    uint i = 0;
+    for (uint index = from; index < firstAskIndex; ++index) {
+      distribution.indices[i] = index;
+      distribution.logPriceDist[i] = -baseQuoteLogPrice;
+      baseQuoteLogPrice += baseQuoteLogPriceOffset;
+      ++i;
     }
-    this.populate{value: msg.value}(distribution, firstAskIndex, parameters, baseAmount, quoteAmount);
+
+    for (uint index = firstAskIndex; index < to; ++index) {
+      distribution.indices[i] = index;
+      distribution.logPriceDist[i] = baseQuoteLogPrice;
+      baseQuoteLogPrice += baseQuoteLogPriceOffset;
+      ++i;
+    }
+
+    populateChunkInternal(distribution, firstAskIndex);
   }
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
@@ -149,12 +192,12 @@ abstract contract GeometricKandel is CoreKandel {
   ///@dev If this function is invoked with different pricePoints or spread, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
-    Distribution calldata distribution,
+    Distribution memory distribution,
     uint firstAskIndex,
     Params calldata parameters,
     uint baseAmount,
     uint quoteAmount
-  ) public payable adminOrCaller(address(this)) {
+  ) public payable onlyAdmin {
     if (msg.value > 0) {
       MGV.fund{value: msg.value}();
     }
@@ -169,7 +212,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@dev internal version does not check onlyAdmin
   ///@param distribution the distribution of base and quote for Kandel indices
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunkInternal(Distribution calldata distribution, uint firstAskIndex) internal {
+  function populateChunkInternal(Distribution memory distribution, uint firstAskIndex) internal {
     populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice);
   }
 

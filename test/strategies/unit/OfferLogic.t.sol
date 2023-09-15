@@ -275,7 +275,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: 2 * makerContract.offerGasreq()
     });
     vm.stopPrank();
 
