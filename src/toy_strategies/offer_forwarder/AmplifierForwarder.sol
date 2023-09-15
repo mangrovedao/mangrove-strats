@@ -33,10 +33,6 @@ contract AmplifierForwarder is Forwarder {
     }
   }
 
-  function offerGasreq() public returns (uint) {
-    return offerGasreq(msg.sender);
-  }
-
   /**
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
@@ -82,7 +78,7 @@ contract AmplifierForwarder is Forwarder {
         inbound_tkn: STABLE1,
         wants: args.wants1,
         gives: args.gives,
-        gasreq: offerGasreq(),
+        gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
         gasprice: 0, // ignored
         pivotId: args.pivot1,
         fund: args.fund1,
