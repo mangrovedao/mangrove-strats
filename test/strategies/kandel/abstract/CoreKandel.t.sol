@@ -508,9 +508,9 @@ abstract contract CoreKandelTest is KandelTest {
     populateSingle(kdl, n - 1, ask.gives(), ask.wants(), n, "");
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, n - 1);
 
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: bid.wants(),
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: bid.gives(),
+      logPrice: bid.logPrice(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""
@@ -549,9 +549,9 @@ abstract contract CoreKandelTest is KandelTest {
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
     MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 1);
 
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockBuyOrder({
-      takerGives: ask.wants(),
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: ask.gives(),
+      logPrice: ask.logPrice(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""
@@ -572,9 +572,9 @@ abstract contract CoreKandelTest is KandelTest {
     uint offerId = kdl.offerIdOfIndex(Bid, 3);
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 3);
 
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: bid.wants(),
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: bid.gives(),
+      logPrice: bid.logPrice(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""
@@ -599,9 +599,9 @@ abstract contract CoreKandelTest is KandelTest {
 
     MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 4);
 
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: bid.wants(),
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: bid.gives(),
+      logPrice: bid.logPrice(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""
@@ -898,7 +898,10 @@ abstract contract CoreKandelTest is KandelTest {
 
   function marketOrder_dualOffer_expectedGasreq(bool dualNew, uint deltaGasForNew) internal {
     // Arrange
-    MgvLib.SingleOrder memory order = mockBuyOrder({takerGives: cash(quote, 100), takerWants: 0.1 ether});
+    MgvLib.SingleOrder memory order = mockCompleteFillBuyOrder({
+      takerWants: 0.1 ether,
+      logPrice: LogPriceConversionLib.logPriceFromVolumes(0.1 ether, cash(quote, 100))
+    });
     order.offerId = kdl.offerIdOfIndex(Ask, dualNew ? 6 : 5);
 
     // Act
@@ -1122,7 +1125,7 @@ abstract contract CoreKandelTest is KandelTest {
     // Only Mgv
     MgvLib.OrderResult memory oResult = MgvLib.OrderResult({makerData: bytes32(0), mgvData: ""});
     args.allowed = dynamic([address($(mgv))]);
-    checkAuth(args, abi.encodeCall(kdl.makerExecute, mockBuyOrder(1, 1)));
-    checkAuth(args, abi.encodeCall(kdl.makerPosthook, (mockBuyOrder(1, 1), oResult)));
+    checkAuth(args, abi.encodeCall(kdl.makerExecute, mockCompleteFillBuyOrder(1, 1)));
+    checkAuth(args, abi.encodeCall(kdl.makerPosthook, (mockCompleteFillBuyOrder(1, 1), oResult)));
   }
 }

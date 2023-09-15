@@ -160,7 +160,7 @@ abstract contract GeometricKandel is CoreKandel {
   {
     uint spread = uint(memoryParams.spread);
     // order.gives:96
-    gives = order.gives;
+    gives = order.takerGives;
 
     // adding to gives what the offer was already giving so gives could be greater than 2**96
     // gives:97

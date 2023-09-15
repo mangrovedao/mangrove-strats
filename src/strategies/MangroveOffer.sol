@@ -81,7 +81,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /// NB #1: if `makerExecute` reverts, the offer will be considered to be refusing the trade.
   /// NB #2: `makerExecute` may return a `bytes32` word to pass information to posthook w/o using storage reads/writes.
   /// NB #3: Reneging on trade will have the following effects:
-  /// * Offer is removed from the Order Book
+  /// * Offer is removed from the Offer List
   /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to `this` contract's account on Mangrove
   function makerExecute(MgvLib.SingleOrder calldata order)
     external
@@ -92,9 +92,9 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     // Invoke hook that implements a last look check during execution - it may renege on trade by reverting.
     ret = __lastLook__(order);
     // Invoke hook to put the inbound token, which are brought by the taker, into a specific reserve.
-    require(__put__(order.gives, order) == 0, "mgvOffer/abort/putFailed");
+    require(__put__(order.takerGives, order) == 0, "mgvOffer/abort/putFailed");
     // Invoke hook to fetch the outbound token, which are promised to the taker, from a specific reserve.
-    require(__get__(order.wants, order) == 0, "mgvOffer/abort/getFailed");
+    require(__get__(order.takerWants, order) == 0, "mgvOffer/abort/getFailed");
   }
 
   /// @notice `makerPosthook` is the callback function that is called by Mangrove *after* the offer execution.
@@ -249,7 +249,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     virtual
     returns (uint newGives, int newLogPrice)
   {
-    newGives = order.offer.gives() - order.wants;
+    newGives = order.offer.gives() - order.takerWants;
     newLogPrice = order.offer.logPrice();
   }
 
@@ -261,7 +261,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   ///@notice Post-hook that implements default behavior when Taker Order's execution succeeded.
   ///@param order is a recall of the taker order that is at the origin of the current trade.
-  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the book.
+  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the list.
   ///@return data can be:
   /// * `COMPLETE_FILL` when offer was completely filled
   /// * returned data of `_updateOffer` signalling the status of the reposting attempt.
