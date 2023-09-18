@@ -35,7 +35,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /**
    * @notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   *   @param mgv The Mangrove deployment.
+   * @param mgv The Mangrove deployment.
+   * @notice By emitting this event, an indexer will be able to create a mapping from this contract address to the used Mangrove address.
    */
   event Mgv(IMangrove mgv);
 
@@ -111,7 +112,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       __posthookSuccess__(order, result.makerData);
     } else {
       // logging what went wrong during `makerExecute`
-      emit LogIncident(MGV, order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
+      emit LogIncident(order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
       // calling strat specific todos in case of failure
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
@@ -130,7 +131,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       return;
     } else {
       // Offer failed to repost for bad reason, logging the incident
-      emit LogIncident(MGV, order.olKey.hash(), order.offerId, makerData, repostStatus);
+      emit LogIncident(order.olKey.hash(), order.offerId, makerData, repostStatus);
     }
   }
 

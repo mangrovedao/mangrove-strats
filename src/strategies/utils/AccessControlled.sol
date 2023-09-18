@@ -8,6 +8,7 @@ contract AccessControlled {
   /**
    * @notice logs new `admin` of `this`
    * @param admin The new admin.
+   * @notice By emitting this data, an indexer will be able to keep track of what address is the admin of this contract.
    */
   event SetAdmin(address admin);
   /**

@@ -23,21 +23,14 @@ contract MangroveOrder_Test is StratTest {
 
   event Transfer(address indexed from, address indexed to, uint value);
 
-  event OrderSummary(
-    IMangrove mangrove,
+  event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
     int logPrice,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder,
-    uint expiryDate,
-    uint takerGot,
-    uint takerGave,
-    uint bounty,
-    uint fee,
-    uint restingOrderId
+    bool restingOrder
   );
 
   MgvOrder internal mgo;
@@ -415,27 +408,9 @@ contract MangroveOrder_Test is StratTest {
   /// Test maker side ///
   ///////////////////////
 
-  function logOrderData(
-    IMangrove iMgv,
-    address taker,
-    IOrderLogic.TakerOrder memory tko,
-    IOrderLogic.TakerOrderResult memory res_
-  ) internal {
-    emit OrderSummary(
-      iMgv,
-      tko.olKey.hash(),
-      taker,
-      tko.fillOrKill,
-      tko.logPrice,
-      tko.fillVolume,
-      tko.fillWants,
-      tko.restingOrder,
-      tko.expiryDate,
-      res_.takerGot,
-      res_.takerGave,
-      res_.bounty,
-      res_.fee,
-      res_.offerId
+  function logOrderData(address taker, IOrderLogic.TakerOrder memory tko) internal {
+    emit MangroveOrderStart(
+      tko.olKey.hash(), taker, tko.fillOrKill, tko.logPrice, tko.fillVolume, tko.fillWants, tko.restingOrder
     );
   }
 
@@ -456,7 +431,7 @@ contract MangroveOrder_Test is StratTest {
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
+    logOrderData(fresh_taker, buyOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -483,15 +458,12 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.restingOrder = true;
 
-    IOrderLogic.TakerOrderResult memory expectedResult =
-      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
-
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
+    logOrderData(fresh_taker, buyOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -531,7 +503,7 @@ contract MangroveOrder_Test is StratTest {
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, sellOrder, expectedResult);
+    logOrderData(fresh_taker, sellOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -559,15 +531,12 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrderLowerPrice();
     sellOrder.restingOrder = true;
 
-    IOrderLogic.TakerOrderResult memory expectedResult =
-      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
-
     address fresh_taker = freshTaker(2 ether, 0);
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, sellOrder, expectedResult);
+    logOrderData(fresh_taker, sellOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -748,7 +717,7 @@ contract MangroveOrder_Test is StratTest {
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
 
-  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));

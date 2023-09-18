@@ -73,7 +73,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// @param leftover the fraction of `msg.value` that is not locked in the offer provision due to rounding error (see `_newOffer`).
   function addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) internal {
     ownerData[olKeyHash][offerId] = OwnerData({owner: owner, weiBalance: uint96(leftover)});
-    emit NewOwnedOffer(MGV, olKeyHash, offerId, owner);
+    emit NewOwnedOffer(olKeyHash, offerId, owner);
   }
 
   /// @notice computes the maximum `gasprice` that can be covered by the amount of provision given in argument.

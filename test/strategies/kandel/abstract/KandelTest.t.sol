@@ -33,7 +33,7 @@ abstract contract KandelTest is StratTest {
   OfferType constant Bid = OfferType.Bid;
 
   event Mgv(IMangrove mgv);
-  event OfferListKey(IERC20 base, IERC20 quote, uint tickScale);
+  event OfferListKey(bytes32 olKeyHash);
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
   event SetGeometricParams(uint spread, uint logPriceOffset);
   event SetLength(uint value);
@@ -44,9 +44,7 @@ abstract contract KandelTest is StratTest {
   event PopulateEnd();
   event RetractStart();
   event RetractEnd();
-  event LogIncident(
-    IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData
-  );
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {

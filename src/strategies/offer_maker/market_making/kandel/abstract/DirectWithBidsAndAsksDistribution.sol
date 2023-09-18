@@ -15,13 +15,17 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   bytes32 internal constant LOW_VOLUME = "Kandel/volumeTooLow";
 
   ///@notice logs the start of a call to populate
+  ///@notice By emitting this, an indexer will be able to know that the following events are in the context of populate.
   event PopulateStart();
   ///@notice logs the end of a call to populate
+  ///@notice By emitting this, an indexer will know that the previous PopulateStart event is over.
   event PopulateEnd();
 
   ///@notice logs the start of a call to retractOffers
+  ///@notice By emitting this, an indexer will be able to know that the following events are in the context of retract.
   event RetractStart();
   ///@notice logs the end of a call to retractOffers
+  ///@notice By emitting this, an indexer will know that the previous RetractStart event is over.
   event RetractEnd();
 
   ///@notice Constructor

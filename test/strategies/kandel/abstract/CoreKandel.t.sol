@@ -113,7 +113,7 @@ abstract contract CoreKandelTest is KandelTest {
 
   function testFail_ask_partial_fill_noDual_noIncident() public {
     vm.expectEmit(false, false, false, false, $(kdl));
-    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "", "");
+    emit LogIncident(olKey.hash(), 0, "", "");
     partial_fill(Ask, false);
   }
 
@@ -584,7 +584,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = bid;
 
     expectFrom($(kdl));
-    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "Kandel/newOfferFailed", "mgv/inactive");
+    emit LogIncident(olKey.hash(), 0, "Kandel/newOfferFailed", "mgv/inactive");
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
   }
@@ -611,7 +611,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = bid;
 
     expectFrom($(kdl));
-    emit LogIncident(IMangrove($(mgv)), olKey.hash(), offerId_, "Kandel/updateOfferFailed", "mgv/inactive");
+    emit LogIncident(olKey.hash(), offerId_, "Kandel/updateOfferFailed", "mgv/inactive");
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
   }
