@@ -78,8 +78,9 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   function updateOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint wants, uint gives, uint pivotId, uint offerId)
     public
     payable
-    onlyOwner(outbound_tkn, inbound_tkn, offerId)
   {
+    address owner = ownerOf(outbound_tkn, inbound_tkn, offerId);
+    require(owner == msg.sender, "OfferForwarder/unauthorized");
     updateOffer(outbound_tkn, inbound_tkn, wants, gives, pivotId, offerId, offerGasreq());
   }
 

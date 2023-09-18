@@ -7,9 +7,7 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
 
-abstract contract AbstractRouter is AccessControlled {
-  ///@notice the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  uint24 internal immutable ROUTER_GASREQ;
+abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice the bound maker contracts which are allowed to call this router.
   mapping(address => bool) internal boundMakerContracts;
 
@@ -33,13 +31,6 @@ abstract contract AbstractRouter is AccessControlled {
   ///@param maker the maker address
   event MakerUnbind(address indexed maker);
 
-  ///@notice constructor for abstract routers.
-  ///@param routerGasreq_ is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  constructor(uint routerGasreq_) AccessControlled(msg.sender) {
-    require(uint24(routerGasreq_) == routerGasreq_, "Router/gasreqTooHigh");
-    ROUTER_GASREQ = uint24(routerGasreq_);
-  }
-
   ///@notice getter for the `makers: addr => bool` mapping
   ///@param mkr the address of a maker contract
   ///@return true if `mkr` is authorized to call this router.
@@ -48,10 +39,18 @@ abstract contract AbstractRouter is AccessControlled {
   }
 
   ///@notice view for gas overhead of this router.
-  ///@return overhead the added (overapproximated) gas cost of `push` and `pull`.
-  function routerGasreq() public view returns (uint overhead) {
-    return ROUTER_GASREQ;
+  ///@param reserveId that should be considered if a reserve specific route is defined.
+  ///@param token that should be considered if a token specific route is defined.
+  ///@return overhead the added (overapproximated) gas cost of `push` and `pull` for the routing strategy.
+  function routerGasreq(IERC20 token, address reserveId) public view returns (uint overhead) {
+    return __routerGasreq__(token, reserveId);
   }
+
+  ///@notice hook that implements router specific gas requirement for a given routing strategy.
+  ///@param reserveId that should be considered if a reserve specific route is defined.
+  ///@param token that should be considered if a token specific route is defined.
+  ///@return overhead the added (overapproximated) gas cost of `push` and `pull`.
+  function __routerGasreq__(IERC20 token, address reserveId) internal view virtual returns (uint overhead);
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset

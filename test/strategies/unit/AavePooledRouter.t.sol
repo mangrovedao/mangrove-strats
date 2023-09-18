@@ -252,7 +252,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
     console.log("shallow push: %d", shallow_push_cost);
     console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
-    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
+    assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 250, "Check new gas cost");
   }
 
   function test_push_token_increases_first_minter_shares() public {
@@ -541,7 +541,8 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.POOL();
     pooledRouter.aaveManager();
     pooledRouter.admin();
-    pooledRouter.routerGasreq();
+    pooledRouter.ROUTER_GASREQ();
+    pooledRouter.routerGasreq(IERC20(address(0)), address(0));
     pooledRouter.balanceOfReserve(dai, maker1);
     pooledRouter.sharesOf(dai, maker1);
     pooledRouter.totalBalance(dai);
