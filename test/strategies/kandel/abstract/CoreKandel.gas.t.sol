@@ -33,7 +33,7 @@ abstract contract CoreKandelGasTest is KandelTest {
   }
 
   function __setForkEnvironment__() internal virtual override {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
     options.gasbase = 68_000;
@@ -119,9 +119,9 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank($(mgv));
     base.transferFrom(address(this), $(mgv), 1);
 
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockBuyOrder({
-      takerGives: ask.wants() / 2,
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: ask.gives() / 2,
+      logPrice: ask.logPrice(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""

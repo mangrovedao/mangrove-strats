@@ -10,17 +10,16 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.so
 
 interface IOfferLogic is IMaker {
   ///@notice Log incident (during post trade execution)
-  ///@param mangrove The mangrove deployment.
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId the Mangrove offer id.
+  ///@param olKeyHash the hash of the offer list key. This is indexed so that RPC calls can filter on it.
+  ///@param offerId the Mangrove offer id. This is indexed so that RPC calls can filter on it.
   ///@param makerData from the maker.
   ///@param mgvData from Mangrove.
-  event LogIncident(
-    IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData
-  );
+  ///@notice By emitting this data, an indexer can keep track of what indcidents that has happended.
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   ///@notice Logging change of router address
-  ///@param router the new router address
+  ///@param router the new router address.
+  ///@notice By emitting this an indexer can keep track of what router is used.
   event SetRouter(AbstractRouter router);
 
   ///@notice Actual gas requirement when posting offers via this strategy. Returned value may change if this contract's router is updated.

@@ -16,6 +16,7 @@ import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -28,7 +29,7 @@ contract AaveKandelTest is CoreKandelTest {
 
   function __setForkEnvironment__() internal override {
     if (useForkAave) {
-      fork = new PinnedPolygonFork();
+      fork = new PinnedPolygonFork(39880000);
       fork.setUp();
       options.gasprice = 90;
       options.gasbase = 68_000;
@@ -114,8 +115,8 @@ contract AaveKandelTest is CoreKandelTest {
   function test_first_offer_sends_first_puller_to_posthook() public {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
-    order.wants = 0.1 ether;
-    order.gives = 120 * 10 ** 6;
+    order.takerWants = 0.1 ether;
+    order.takerGives = 120 * 10 ** 6;
     vm.prank($(mgv));
     bytes32 makerData = kdl.makerExecute(order);
     assertEq(makerData, "IS_FIRST_PULLER", "Unexpected returned data");
@@ -124,8 +125,8 @@ contract AaveKandelTest is CoreKandelTest {
   function test_not_first_offer_sends_proceed_to_posthook() public {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
-    order.wants = 0.1 ether;
-    order.gives = 120 * 10 ** 6;
+    order.takerWants = 0.1 ether;
+    order.takerGives = 120 * 10 ** 6;
     // faking buffer on the router
     deal($(base), $(router), 1 ether);
     vm.prank($(mgv));
@@ -136,8 +137,8 @@ contract AaveKandelTest is CoreKandelTest {
   function test_not_first_offer_sends_first_puller_to_posthook_when_buffer_is_small() public {
     MgvLib.SingleOrder memory order;
     order.olKey = olKey;
-    order.wants = 0.1 ether;
-    order.gives = 120 * 10 ** 6;
+    order.takerWants = 0.1 ether;
+    order.takerGives = 120 * 10 ** 6;
     // faking small buffer on the router
     deal($(base), $(router), 0.09 ether);
     vm.prank($(mgv));
@@ -146,7 +147,10 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function test_first_puller_posthook_calls_pushAndSupply() public {
-    MgvLib.SingleOrder memory order = mockBuyOrder({takerGives: 120 * 10 ** 6, takerWants: 0.1 ether});
+    MgvLib.SingleOrder memory order = mockCompleteFillBuyOrder({
+      takerWants: 0.1 ether,
+      logPrice: LogPriceConversionLib.logPriceFromVolumes(120 * 10 ** 6, 0.1 ether)
+    });
     MgvLib.OrderResult memory result = MgvLib.OrderResult({makerData: "IS_FIRST_PULLER", mgvData: "mgv/tradeSuccess"});
 
     //1. faking accumulated outbound on the router

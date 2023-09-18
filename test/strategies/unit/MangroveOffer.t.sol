@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import {DirectTester, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 contract MangroveOfferTest is StratTest {
   TestToken weth;
@@ -12,9 +13,7 @@ contract MangroveOfferTest is StratTest {
   DirectTester makerContract;
 
   // tracking IOfferLogic logs
-  event LogIncident(
-    IMangrove mangrove, bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData
-  );
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   event SetAdmin(address);
   event SetRouter(address);
@@ -181,21 +180,21 @@ contract MangroveOfferTest is StratTest {
     result.makerData = "failReason";
 
     vm.expectEmit(true, false, false, true);
-    emit LogIncident(IMangrove(payable(mgv)), order.olKey.hash(), 0, result.makerData, result.mgvData);
+    emit LogIncident(order.olKey.hash(), 0, result.makerData, result.mgvData);
     vm.prank(address(mgv));
     makerContract.makerPosthook(order, result);
   }
 
   function test_failed_to_repost_is_logged() public {
-    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockBuyOrder({
-      takerGives: 1500 * 10 ** 6,
+    (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: 1 ether,
+      logPrice: LogPriceConversionLib.logPriceFromVolumes(1500 * 10 ** 6, 1 ether),
       partialFill: 2, // half of offer is consumed
       _olBaseQuote: olKey,
       makerData: "whatever"
     });
     expectFrom(address(makerContract));
-    emit LogIncident(IMangrove($(mgv)), olKey.hash(), 0, "whatever", "mgv/updateOffer/unauthorized");
+    emit LogIncident(olKey.hash(), 0, "whatever", "mgv/updateOffer/unauthorized");
     vm.expectRevert("posthook/failed");
     /// since order.offerId is 0, updateOffer will revert. This revert should be caught and logged
     vm.prank($(mgv));
@@ -244,7 +243,7 @@ contract MangroveOfferTest is StratTest {
     MgvLib.SingleOrder memory order;
     deal($(usdc), $(this), 0);
     order.olKey = olKey;
-    order.wants = 10 ** 6;
+    order.takerWants = 10 ** 6;
     vm.expectRevert("mgvOffer/abort/getFailed");
     vm.prank($(mgv));
     makerContract.makerExecute(order);

@@ -35,7 +35,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /**
    * @notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   *   @param mgv The Mangrove deployment.
+   * @param mgv The Mangrove deployment.
+   * @notice By emitting this event, an indexer will be able to create a mapping from this contract address to the used Mangrove address.
    */
   event Mgv(IMangrove mgv);
 
@@ -81,8 +82,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /// NB #1: if `makerExecute` reverts, the offer will be considered to be refusing the trade.
   /// NB #2: `makerExecute` may return a `bytes32` word to pass information to posthook w/o using storage reads/writes.
   /// NB #3: Reneging on trade will have the following effects:
-  /// * Offer is removed from the Order Book
-  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to the maker account on Mangrove
+  /// * Offer is removed from the Offer List
+  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to `this` contract's account on Mangrove
   function makerExecute(MgvLib.SingleOrder calldata order)
     external
     override
@@ -92,16 +93,16 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     // Invoke hook that implements a last look check during execution - it may renege on trade by reverting.
     ret = __lastLook__(order);
     // Invoke hook to put the inbound token, which are brought by the taker, into a specific reserve.
-    require(__put__(order.gives, order) == 0, "mgvOffer/abort/putFailed");
+    require(__put__(order.takerGives, order) == 0, "mgvOffer/abort/putFailed");
     // Invoke hook to fetch the outbound token, which are promised to the taker, from a specific reserve.
-    require(__get__(order.wants, order) == 0, "mgvOffer/abort/getFailed");
+    require(__get__(order.takerWants, order) == 0, "mgvOffer/abort/getFailed");
   }
 
   /// @notice `makerPosthook` is the callback function that is called by Mangrove *after* the offer execution.
   /// @notice reverting during its execution will not renege on trade. Revert reason (casted to 32 bytes) is then logged by Mangrove in event `PosthookFail`.
   /// @param order a data structure that recapitulates the taker order and the offer as it was posted on mangrove
   /// @param result a data structure that gathers information about trade execution
-  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__` and `__posthookFallback__` (see below).
+  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__`, `__posthookFallback__` and `__handleResidualProvision__` (see below).
   function makerPosthook(MgvLib.SingleOrder calldata order, MgvLib.OrderResult calldata result)
     external
     override
@@ -111,7 +112,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       __posthookSuccess__(order, result.makerData);
     } else {
       // logging what went wrong during `makerExecute`
-      emit LogIncident(MGV, order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
+      emit LogIncident(order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
       // calling strat specific todos in case of failure
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
@@ -130,7 +131,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       return;
     } else {
       // Offer failed to repost for bad reason, logging the incident
-      emit LogIncident(MGV, order.olKey.hash(), order.offerId, makerData, repostStatus);
+      emit LogIncident(order.olKey.hash(), order.offerId, makerData, repostStatus);
     }
   }
 
@@ -249,7 +250,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     virtual
     returns (uint newGives, int newLogPrice)
   {
-    newGives = order.offer.gives() - order.wants;
+    newGives = order.offer.gives() - order.takerWants;
     newLogPrice = order.offer.logPrice();
   }
 
@@ -261,7 +262,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   ///@notice Post-hook that implements default behavior when Taker Order's execution succeeded.
   ///@param order is a recall of the taker order that is at the origin of the current trade.
-  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the book.
+  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the list.
   ///@return data can be:
   /// * `COMPLETE_FILL` when offer was completely filled
   /// * returned data of `_updateOffer` signalling the status of the reposting attempt.

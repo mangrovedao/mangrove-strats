@@ -14,6 +14,7 @@ import {toFixed} from "mgv_lib/Test2.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import "mgv_lib/Debug.sol";
+import {MAX_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 contract MangroveOrder_Test is StratTest {
   uint constant GASREQ = 150_000;
@@ -22,21 +23,14 @@ contract MangroveOrder_Test is StratTest {
 
   event Transfer(address indexed from, address indexed to, uint value);
 
-  event OrderSummary(
-    IMangrove mangrove,
+  event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
     int logPrice,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder,
-    uint expiryDate,
-    uint takerGot,
-    uint takerGave,
-    uint bounty,
-    uint fee,
-    uint restingOrderId
+    bool restingOrder
   );
 
   MgvOrder internal mgo;
@@ -73,7 +67,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function setUp() public override {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
     options.gasbase = 68_000;
@@ -203,7 +197,8 @@ contract MangroveOrder_Test is StratTest {
       fillVolume: fillVolume,
       logPrice: logPriceFromPrice_e18(MID_PRICE - 1e18),
       restingOrder: false,
-      expiryDate: 0 //NA
+      expiryDate: 0, //NA
+      offerId: 0
     });
   }
 
@@ -246,7 +241,8 @@ contract MangroveOrder_Test is StratTest {
       logPrice: -logPriceFromPrice_e18(MID_PRICE - 9e18),
       fillVolume: fillVolume,
       restingOrder: false,
-      expiryDate: 0 //NA
+      expiryDate: 0, //NA
+      offerId: 0
     });
   }
 
@@ -351,31 +347,70 @@ contract MangroveOrder_Test is StratTest {
     assertEq(fresh_taker.balance, nativeBalBefore, "value was not returned to taker");
   }
 
+  function test_taken_resting_order_reused() public {
+    // Arrange - Take resting order
+    vm.prank($(sell_taker));
+    mgv.marketOrderByLogPrice(lo, MAX_LOG_PRICE, 1000000 ether, true);
+    assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
+
+    // Act - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+
+    // Assert
+    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
+    assertEq(res.offerId, buyOrder.offerId, "OfferId should be reused");
+    assertTrue(offer.isLive(), "Offer be live");
+    assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
+    assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
+    assertEq(offer.logPrice(), -buyOrder.logPrice, "Incorrect offer price");
+  }
+
+  function test_taken_resting_order_not_reused_if_live() public {
+    // Arrange
+    assertTrue(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should live");
+
+    // Act - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+
+    // Assert
+    vm.expectRevert("mgvOrder/offerAlreadyActive");
+    mgo.take{value: 0.1 ether}(buyOrder);
+  }
+
+  function test_taken_resting_order_not_reused_if_not_owned() public {
+    // Arrange - Take resting order
+    vm.prank($(sell_taker));
+    mgv.marketOrderByLogPrice(lo, MAX_LOG_PRICE, 1000000 ether, true);
+    assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
+
+    // Act/assert - Create new resting order, but reuse id
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.offerId = cold_buyResult.offerId;
+    buyOrder.restingOrder = true;
+
+    address router = $(mgo.router());
+    vm.prank($(sell_taker));
+    TransferLib.approveToken(quote, router, takerGives(buyOrder) + makerGives(buyOrder));
+    deal($(quote), $(sell_taker), takerGives(buyOrder) + makerGives(buyOrder));
+
+    vm.expectRevert("AccessControlled/Invalid");
+    // Not owner
+    vm.prank($(sell_taker));
+    mgo.take{value: 0.1 ether}(buyOrder);
+  }
+
   ///////////////////////
   /// Test maker side ///
   ///////////////////////
 
-  function logOrderData(
-    IMangrove iMgv,
-    address taker,
-    IOrderLogic.TakerOrder memory tko,
-    IOrderLogic.TakerOrderResult memory res_
-  ) internal {
-    emit OrderSummary(
-      iMgv,
-      tko.olKey.hash(),
-      taker,
-      tko.fillOrKill,
-      tko.logPrice,
-      tko.fillVolume,
-      tko.fillWants,
-      tko.restingOrder,
-      tko.expiryDate,
-      res_.takerGot,
-      res_.takerGave,
-      res_.bounty,
-      res_.fee,
-      res_.offerId
+  function logOrderData(address taker, IOrderLogic.TakerOrder memory tko) internal {
+    emit MangroveOrderStart(
+      tko.olKey.hash(), taker, tko.fillOrKill, tko.logPrice, tko.fillVolume, tko.fillWants, tko.restingOrder
     );
   }
 
@@ -396,7 +431,7 @@ contract MangroveOrder_Test is StratTest {
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
+    logOrderData(fresh_taker, buyOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -423,15 +458,12 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.restingOrder = true;
 
-    IOrderLogic.TakerOrderResult memory expectedResult =
-      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
-
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
+    logOrderData(fresh_taker, buyOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -471,7 +503,7 @@ contract MangroveOrder_Test is StratTest {
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, sellOrder, expectedResult);
+    logOrderData(fresh_taker, sellOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -499,15 +531,12 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrderLowerPrice();
     sellOrder.restingOrder = true;
 
-    IOrderLogic.TakerOrderResult memory expectedResult =
-      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
-
     address fresh_taker = freshTaker(2 ether, 0);
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
     expectFrom($(mgo));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, sellOrder, expectedResult);
+    logOrderData(fresh_taker, sellOrder);
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -688,7 +717,7 @@ contract MangroveOrder_Test is StratTest {
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
 
-  event SetExpiry(bytes32 indexed olKeyHash, uint offerId, uint date);
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));
@@ -742,18 +771,18 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function test_mockup_offerLogic_gas_cost() public {
-    (MgvLib.SingleOrder memory sellOrder, MgvLib.OrderResult memory result) = mockSellOrder({
-      takerGives: 0.5 ether,
+    (MgvLib.SingleOrder memory sellOrder, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: 1991 ether / 2,
+      logPrice: LogPriceConversionLib.logPriceFromVolumes(0.5 ether, 1991 ether / 2),
       partialFill: 2,
       _olBaseQuote: olKey,
       makerData: ""
     });
     // pranking a fresh taker to avoid heating test runner balance
     vm.prank($(mgv));
-    base.transferFrom(address(sell_taker), $(mgv), 0.5 ether);
+    base.transferFrom(address(sell_taker), $(mgv), sellOrder.takerGives);
     vm.prank($(mgv));
-    base.transfer($(mgo), 0.5 ether);
+    base.transfer($(mgo), sellOrder.takerGives);
 
     sellOrder.offerId = cold_buyResult.offerId;
     vm.prank($(mgv));

@@ -26,11 +26,13 @@ abstract contract AbstractRouter is AccessControlled {
   }
 
   ///@notice logging bound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerBind(address indexed maker);
 
   ///@notice logging unbound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerUnbind(address indexed maker);
 
   ///@notice constructor for abstract routers.

@@ -25,13 +25,15 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
 
   ///@notice The `aaveManager` has been set.
   ///@param manager the new manager.
+  ///@notice By emitting this data, an indexer will be able to keep track of what manager is used.
   event SetAaveManager(address manager);
 
   ///@notice An error occurred during deposit to AAVE.
-  ///@param token the deposited token.
-  ///@param maker the maker contract that was calling `pushAndSupply`.
-  ///@param reserveId the reserve identifier that was calling `pushAndSupply`.
+  ///@param token the deposited token. This is indexed so that RPC calls can filter on it.
+  ///@param maker the maker contract that was calling `pushAndSupply`. This is indexed so that RPC calls can filter on it.
+  ///@param reserveId the reserve identifier that was calling `pushAndSupply`. This is indexed so that RPC calls can filter on it.
   ///@param aaveReason the reason from AAVE.
+  ///@notice By emitting this data, an indexer will be able to keep track of what incidents that has happended.
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
 
   ///@notice the total shares for each token, i.e. the total shares one would need to possess in order to claim the entire pool of tokens.

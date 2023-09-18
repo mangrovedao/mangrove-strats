@@ -11,9 +11,10 @@ interface IOrderLogic {
   ///@param fillOrKill true to revert if market order cannot be filled and resting order failed or is not enabled; otherwise, false
   ///@param logPrice the price
   ///@param fillVolume the volume to fill
-  ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
+  ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
+  ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
@@ -22,6 +23,7 @@ interface IOrderLogic {
     bool fillWants;
     bool restingOrder;
     uint expiryDate;
+    uint offerId;
   }
 
   ///@notice Result of an order from the takers side.
@@ -39,36 +41,30 @@ interface IOrderLogic {
   }
 
   ///@notice Information about the order.
-  ///@param mangrove The Mangrove contract on which the offer was posted
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param taker The address of the taker
+  ///@param olKeyHash the hash of the offer list key. This could be found by the OrderStart event, but is needed for RPC call. This is indexed so that RPC calls can filter on it.
+  ///@param taker The address of the taker. This could be found by the OrderStart event, but is needed for RPC call. This is indexed so that RPC calls can filter on it.
   ///@param fillOrKill The fillOrKill that take was called with
-  ///@param logPrice The price
-  ///@param fillVolume the volume to fill
+  ///@param logPrice The logPrice of the order. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
+  ///@param fillVolume the volume to fill. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with
-  ///@param expiryDate The expiry date take was called with
-  ///@param takerGot How much the taker got
-  ///@param takerGave How much the taker gave
-  ///@param bounty How much bounty was given
-  ///@param fee How much fee was paid for the order
-  ///@param restingOrderId If a restingOrder was posted, then this holds the offerId for the restingOrder
-  event OrderSummary(
-    IMangrove mangrove,
+  ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters was use to start the order.
+  event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
     int logPrice,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder,
-    uint expiryDate,
-    uint takerGot,
-    uint takerGave,
-    uint bounty,
-    uint fee,
-    uint restingOrderId
+    bool restingOrder
   );
+
+  ///@notice The expiry of the offer has been set
+  ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
+  ///@param offerId the Mangrove offer id.
+  ///@param date in seconds since unix epoch
+  ///@notice By emitting this data, an indexer will be able to keep track of the expiry date of an offer.
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   ///@notice Timestamp beyond which the given `offerId` should renege on trade.
   ///@param olKeyHash the hash of the offer list key.

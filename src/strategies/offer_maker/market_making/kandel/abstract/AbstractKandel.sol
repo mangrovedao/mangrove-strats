@@ -9,10 +9,12 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 abstract contract AbstractKandel {
   ///@notice the gasprice has been set.
   ///@param value the gasprice for offers.
+  ///@notice By emitting this data, an indexer will be able to keep track of what gasprice is used.
   event SetGasprice(uint value);
 
   ///@notice the gasreq has been set.
   ///@param value the gasreq (including router's gasreq) for offers
+  ///@notice By emitting this data, an indexer will be able to keep track of what gasreq is used.
   event SetGasreq(uint value);
 
   ///@notice the spread has been set.
@@ -20,13 +22,15 @@ abstract contract AbstractKandel {
   event SetSpread(uint value);
 
   ///@notice the Kandel instance is credited of `amount` by its owner.
-  ///@param token the asset.
+  ///@param token the asset. This is indexed so that RPC calls can filter on it.
   ///@param amount the amount.
+  ///@notice By emitting this data, an indexer will be able to keep track of what credits are made.
   event Credit(IERC20 indexed token, uint amount);
 
   ///@notice the Kandel instance is debited of `amount` by its owner.
-  ///@param token the asset.
+  ///@param token the asset. This is indexed so that RPC calls can filter on it.
   ///@param amount the amount.
+  ///@notice By emitting this data, an indexer will be able to keep track of what debits are made.
   event Debit(IERC20 indexed token, uint amount);
 
   ///@notice the amount of liquidity that is available for the strat but not offered by the given offer type.

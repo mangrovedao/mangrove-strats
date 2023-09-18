@@ -142,7 +142,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       // Low density will mean some amount is not posted and will be available for withdrawal or later posting via populate.
       return;
     }
-    emit LogIncident(MGV, args.olKey.hash(), offerId, "Kandel/updateOfferFailed", updateOfferStatus);
+    emit LogIncident(args.olKey.hash(), offerId, "Kandel/updateOfferFailed", updateOfferStatus);
   }
 
   ///@notice update or create dual offer according to transport logic
@@ -164,8 +164,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param order a recap of the taker order (order.offer is the executed offer)
   ///@return gives the new gives for the dual offer
   function dualGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order) internal pure returns (uint gives) {
-    // gives from order.gives:96
-    gives = order.gives;
+    // gives from order.takerGives:96
+    gives = order.takerGives;
 
     // adding to gives what the offer was already giving so gives could be greater than 2**96
     // gives:97
@@ -175,7 +175,6 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
       gives = type(uint96).max;
     }
-    //FIXME: can wants be too high or too low?
   }
 
   ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.

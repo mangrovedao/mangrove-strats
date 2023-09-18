@@ -495,7 +495,7 @@ contract MangoImplementation {
         updateBid({
           index: index_of_position(pos - 1),
           reset: false, // top up old value with received amount
-          amount: order.gives, // in QUOTES
+          amount: order.takerGives, // in QUOTES
           gasreq: gasreq
         });
         if (pos - 1 <= mStr.min_buffer) {
@@ -519,7 +519,7 @@ contract MangoImplementation {
         updateAsk({
           index: index_of_position(pos + 1),
           reset: false, // top up old value with received amount
-          amount: order.gives, // in BASE
+          amount: order.takerGives, // in BASE
           gasreq: gasreq
         });
         if (pos + 1 >= NSLOTS - mStr.min_buffer) {

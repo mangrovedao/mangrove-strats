@@ -16,6 +16,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice the base quote log price offset has been set.
   ///@param value the base quote log price offset used for the on-chain geometric progression deployment.
   event SetBaseQuoteLogPriceOffset(int value);
+  ///@notice By emitting this data, an indexer will be able to keep track of what the spread and logPriceOffset is for the Kandel instance.
 
   ///@notice The log price offset used for the on-chain geometric progression deployment.
   int public baseQuoteLogPriceOffset;
