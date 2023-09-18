@@ -1455,6 +1455,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.indexOfOfferId(Ask, 42);
     kdl.offerIdOfIndex(Ask, 0);
     kdl.offerGasreq();
+    kdl.offerGasreq(IERC20(address(0)), address(0));
     kdl.offeredVolume(Ask);
     kdl.params();
     kdl.pending(Ask);

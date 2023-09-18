@@ -246,7 +246,7 @@ contract MangroveOfferTest is StratTest {
     SimpleRouter router = new SimpleRouter();
     router.setAdmin(address(makerContract));
     makerContract.setRouter(router);
-    assertEq(makerContract.offerGasreq(), gasreq + router.routerGasreq(), "incorrect gasreq");
+    assertEq(makerContract.offerGasreq(), gasreq + router.ROUTER_GASREQ(), "incorrect gasreq");
     vm.stopPrank();
   }
 
