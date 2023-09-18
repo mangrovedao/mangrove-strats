@@ -10,8 +10,102 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_init() public {
-    assertEq(kdl.pending(Ask), kdl.pending(Bid), "Incorrect initial pending");
-    assertEq(kdl.pending(Ask), 0, "Incorrect initial pending");
+    assertApproxEqAbs(kdl.pending(Ask), 0, 1, "Incorrect initial pending (can be off by 1 due to rounding for Aave)");
+    assertApproxEqAbs(kdl.pending(Bid), 0, 1, "Incorrect initial pending (can be off by 1 due to rounding for Aave)");
+  }
+
+  function test_createDistribution_constantAskBidGives(uint firstAskIndex, uint bidGives, uint askGives) internal {
+    bool constantAsk = askGives != type(uint).max;
+    bool constantBid = bidGives != type(uint).max;
+    int baseQuoteLogPriceOffset = 1000;
+    int baseQuoteLogPriceIndex0 = 500;
+    uint from = 100;
+    uint to = 200;
+    CoreKandel.Distribution memory distribution = kdl.createDistribution({
+      from: from,
+      to: to,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: baseQuoteLogPriceOffset,
+      firstAskIndex: firstAskIndex,
+      askGives: askGives,
+      bidGives: bidGives
+    });
+
+    int logPrice = baseQuoteLogPriceIndex0 + int(distribution.indices[0]) * int(baseQuoteLogPriceOffset);
+    for (uint i = 0; i < to - from; i++) {
+      uint index = i + from;
+      assertEq(distribution.indices[i], index);
+      if (index < firstAskIndex) {
+        assertEq(distribution.logPriceDist[i], -logPrice);
+        if (constantBid) {
+          assertEq(distribution.givesDist[i], bidGives, "givesDist should be constant for bids which give quote");
+        } else {
+          uint wants = LogPriceLib.inboundFromOutbound(distribution.logPriceDist[i], distribution.givesDist[i]);
+          assertApproxEqRel(wants, askGives, 1e1, "base (inbound for bids) should be constant");
+        }
+      } else {
+        assertEq(distribution.logPriceDist[i], logPrice);
+        if (constantAsk) {
+          assertEq(distribution.givesDist[i], askGives, "givesDist should be constant for asks which give base");
+        } else {
+          uint wants = LogPriceLib.inboundFromOutbound(distribution.logPriceDist[i], distribution.givesDist[i]);
+          assertApproxEqRel(wants, bidGives, 1e10, "quote (inbound for asks) should be constant");
+        }
+      }
+      logPrice += baseQuoteLogPriceOffset;
+    }
+  }
+
+  function test_createDistribution_constantAskGives() public {
+    test_createDistribution_constantAskBidGives(0, type(uint).max, 2 ether);
+    test_createDistribution_constantAskBidGives(99, type(uint).max, 2 ether);
+    test_createDistribution_constantAskBidGives(100, type(uint).max, 2 ether);
+    test_createDistribution_constantAskBidGives(140, type(uint).max, 2 ether);
+    test_createDistribution_constantAskBidGives(199, type(uint).max, 2 ether);
+    test_createDistribution_constantAskBidGives(200, type(uint).max, 2 ether);
+  }
+
+  function test_createDistribution_constantBidGives() public {
+    test_createDistribution_constantAskBidGives(0, 2 ether, type(uint).max);
+    test_createDistribution_constantAskBidGives(99, 2 ether, type(uint).max);
+    test_createDistribution_constantAskBidGives(100, 2 ether, type(uint).max);
+    test_createDistribution_constantAskBidGives(140, 2 ether, type(uint).max);
+    test_createDistribution_constantAskBidGives(199, 2 ether, type(uint).max);
+    test_createDistribution_constantAskBidGives(200, 2 ether, type(uint).max);
+  }
+
+  function test_createDistribution_constantGives() public {
+    test_createDistribution_constantAskBidGives(140, 2 ether, 4 ether);
+  }
+
+  function test_createDistribution_constantGives_0() public {
+    test_createDistribution_constantAskBidGives(150, 0, 0);
+  }
+
+  function test_createDistribution_bothVariable() public {
+    vm.expectRevert("Kandel/bothGivesVariable");
+    kdl.createDistribution({
+      from: 0,
+      to: 2,
+      baseQuoteLogPriceIndex0: 0,
+      _baseQuoteLogPriceOffset: 0,
+      firstAskIndex: 0,
+      askGives: type(uint).max,
+      bidGives: type(uint).max
+    });
+  }
+
+  function test_createDistribution_bothFromAfterTo() public {
+    vm.expectRevert();
+    kdl.createDistribution({
+      from: 4,
+      to: 3,
+      baseQuoteLogPriceIndex0: 0,
+      _baseQuoteLogPriceOffset: 0,
+      firstAskIndex: 0,
+      askGives: 0,
+      bidGives: 0
+    });
   }
 
   function test_populates_order_book_correctly() public {
@@ -1031,8 +1125,8 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteLogPriceOffset, (1)));
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, false, 0, params, 0, 0)));
-    checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, new uint[](0), params, 0, 0)));
-    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, new uint[](0))));
+    checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, 0, 0, params, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, 0, 0)));
 
     checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist, false, 42)));
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));

@@ -113,11 +113,8 @@ abstract contract KandelTest is StratTest {
     TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
     uint firstAskIndex = 5;
-    (CoreKandel.Distribution memory distribution1, uint lastQuote) =
+    (CoreKandel.Distribution memory distribution1,) =
       KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset, firstAskIndex);
-
-    (CoreKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, logPriceOffset, firstAskIndex);
 
     GeometricKandel.Params memory params;
     params.spread = STEP;
@@ -130,7 +127,8 @@ abstract contract KandelTest is StratTest {
       baseQuoteLogPriceIndex0: -int(distribution1.logPriceDist[0]),
       _baseQuoteLogPriceOffset: int(logPriceOffset),
       firstAskIndex: firstAskIndex,
-      givesDist: distribution1.givesDist,
+      bidGives: type(uint).max,
+      askGives: initBase,
       parameters: params,
       baseAmount: 0,
       quoteAmount: 0
@@ -142,7 +140,8 @@ abstract contract KandelTest is StratTest {
       baseQuoteLogPriceIndex0: -int(distribution1.logPriceDist[0]),
       _baseQuoteLogPriceOffset: int(logPriceOffset),
       firstAskIndex: firstAskIndex,
-      givesDist: distribution2.givesDist
+      bidGives: type(uint).max,
+      askGives: initBase
     });
     printOB();
     uint pendingBase = uint(-kdl.pending(Ask));
