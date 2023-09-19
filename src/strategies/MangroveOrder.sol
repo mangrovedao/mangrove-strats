@@ -261,12 +261,14 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       noRevert: true // returns 0 when MGV reverts
     });
     if (tko.offerId == 0) {
-      (res.offerId,) = _newOffer(args, msg.sender);
+      (res.offerId, res.offerWriteData) = _newOffer(args, msg.sender);
     } else {
       uint offerId = tko.offerId;
       require(ownerData[olKey.hash()][offerId].owner == msg.sender, "AccessControlled/Invalid");
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
-      if (_updateOffer(args, offerId) == REPOST_SUCCESS) {
+      bytes32 repostData = _updateOffer(args, offerId);
+      res.offerWriteData = repostData;
+      if (repostData == REPOST_SUCCESS) {
         res.offerId = offerId;
       } else {
         res.offerId = 0;
