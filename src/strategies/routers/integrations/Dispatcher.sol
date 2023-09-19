@@ -6,6 +6,7 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {ViewDelegator, IViewDelegator} from "../../utils/ViewDelegator.sol";
 
+/// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
 contract Dispatcher is MultiRouter, ViewDelegator {
   /// @notice Get the current router for the given token and reserveId
   /// @dev This will revert if the router contract does not exist
