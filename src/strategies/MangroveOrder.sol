@@ -251,7 +251,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
-    (res.offerId,) = _newOffer(
+    (res.offerId, res.offerWriteData) = _newOffer(
       OfferArgs({
         olKey: olKey,
         logPrice: offerLogPrice,

@@ -363,7 +363,8 @@ contract MangroveOrder_Test is StratTest {
       takerGave: takerGives(buyOrder) / 2 - 1,
       bounty: 0,
       fee: 1 ether - reader.minusFee(lo, 1 ether),
-      offerId: 5
+      offerId: 5,
+      offerWriteData: "offer/created"
     });
 
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
@@ -385,6 +386,7 @@ contract MangroveOrder_Test is StratTest {
       quote.balanceOf(fresh_taker), takerGives(buyOrder) - expectedResult.takerGave, "Incorrect remaining quote balance"
     );
     assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
+    assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     // checking price of offer
     MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
@@ -435,7 +437,8 @@ contract MangroveOrder_Test is StratTest {
       takerGave: takerGives(sellOrder) / 2 - 1,
       bounty: 0,
       fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
-      offerId: 5
+      offerId: 5,
+      offerWriteData: "offer/created"
     });
 
     address fresh_taker = freshTaker(takerGives(sellOrder), 0);
@@ -457,6 +460,7 @@ contract MangroveOrder_Test is StratTest {
       base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
     );
     assertEq(quote.balanceOf(fresh_taker), expectedResult.takerGot, "Incorrect obtained quote balance");
+    assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     // checking price of offer
     MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
