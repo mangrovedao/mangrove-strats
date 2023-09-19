@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AbstractRouter} from "../AbstractRouter.sol";
+import {MonoRouter, AbstractRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration, DataTypes} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
@@ -10,7 +10,7 @@ import {IERC20} from "mgv_src/IERC20.sol";
 ///@dev router assumes all bound makers share the same liquidity
 ///@dev if the same maker has many smart offers that are succeptible to be consumed in the same market order, it can set `BUFFER_SIZE` to a non zero value to increase gas efficiency (see below)
 
-contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
+contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@notice Logs unexpected throws from AAVE
   ///@param maker the address of the smart offer that called the router
   ///@param asset the type of asset involved in the interaction with the pool
@@ -32,7 +32,7 @@ contract AavePrivateRouter is AaveMemoizer, AbstractRouter {
   ///@dev `msg.sender` will be admin of this router
   constructor(address addressesProvider, uint interestRate, uint overhead, uint buffer_size)
     AaveMemoizer(addressesProvider, interestRate)
-    AbstractRouter(overhead)
+    MonoRouter(overhead)
   {
     require(buffer_size <= 100, "PrivateRouter/InvalidBufferSize");
     BUFFER_SIZE = buffer_size;
