@@ -10,7 +10,7 @@ import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 

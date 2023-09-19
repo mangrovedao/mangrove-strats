@@ -78,7 +78,7 @@ contract AmplifierForwarder is Forwarder {
         inbound_tkn: STABLE1,
         wants: args.wants1,
         gives: args.gives,
-        gasreq: offerGasreq(),
+        gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
         gasprice: 0, // ignored
         pivotId: args.pivot1,
         fund: args.fund1,

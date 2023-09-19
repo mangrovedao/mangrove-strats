@@ -15,7 +15,7 @@ import {
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/LongKandel.sol";
 import {console2} from "forge-std/Test.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 

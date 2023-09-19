@@ -531,7 +531,8 @@ contract AavePooledRouterTest is AbstractRouterTest {
     pooledRouter.POOL();
     pooledRouter.aaveManager();
     pooledRouter.admin();
-    pooledRouter.routerGasreq();
+    pooledRouter.ROUTER_GASREQ();
+    pooledRouter.routerGasreq(IERC20(address(0)), address(0));
     pooledRouter.balanceOfReserve(dai, maker1);
     pooledRouter.sharesOf(dai, maker1);
     pooledRouter.totalBalance(dai);
