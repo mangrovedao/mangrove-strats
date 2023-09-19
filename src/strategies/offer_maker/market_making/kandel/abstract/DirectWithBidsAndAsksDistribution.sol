@@ -12,8 +12,6 @@ import {MgvStructs} from "mgv_src/MgvLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
 abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
-  bytes32 internal constant LOW_VOLUME = "Kandel/volumeTooLow";
-
   ///@notice logs the start of a call to populate
   ///@notice By emitting this, an indexer will be able to know that the following events are in the context of populate.
   event PopulateStart();
@@ -47,26 +45,21 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
-  ///@param distribution the distribution of prices for gives of base and quote for indices.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param bidDistribution the distribution of prices for gives of quote for indices.
+  ///@param askDistribution the distribution of prices for gives of base for indices.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
-  ///@param bookDual whether to book the dual offer's id on Mangrove (should not be set when changing a single offer, e.g., to heal, and when known that dual is booked).
-  ///@dev Invariant: After invoking this function an offer and its dual will be booked (unless `bookDual` is false).
-  ///Gives of 0 means retract offer (but update price, gasreq, gasprice of the offer)
+  ///@dev Gives of 0 means retract offer (but update price, gasreq, gasprice of the offer)
   function populateChunk(
-    Distribution memory distribution,
-    uint firstAskIndex,
+    Distribution memory bidDistribution,
+    Distribution memory askDistribution,
     uint gasreq,
-    uint gasprice,
-    bool bookDual
+    uint gasprice
   ) internal {
     emit PopulateStart();
-    uint[] memory indices = distribution.indices;
-    int[] memory logPriceDist = distribution.logPriceDist;
-    uint[] memory givesDist = distribution.givesDist;
-
-    uint i;
+    uint[] memory indices = bidDistribution.indices;
+    int[] memory logPriceDist = bidDistribution.logPriceDist;
+    uint[] memory givesDist = bidDistribution.givesDist;
 
     OfferArgs memory args;
     // args.fund = 0; offers are already funded
@@ -76,55 +69,29 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     args.gasreq = gasreq;
     args.gasprice = gasprice;
 
-    OfferArgs memory argsDual;
-    // argsDual.fund = 0; offers are already funded
-    // argsDual.noRevert = false; we want revert in case of failure
-    // argsDual.gives = 0; // only reserve offer id.
-
-    argsDual.olKey = args.olKey.flipped();
-    argsDual.gasreq = gasreq;
-    argsDual.gasprice = gasprice;
-
     // Minimum gives for offers (to post and retract)
-    uint minGivesBid;
-    uint minGivesAsk;
-    {
-      MgvStructs.LocalPacked local = MGV.local(argsDual.olKey);
-      minGivesBid = local.density().multiplyUp(gasreq + local.offer_gasbase());
-    }
-    {
-      MgvStructs.LocalPacked local = MGV.local(args.olKey);
-      minGivesAsk = local.density().multiplyUp(gasreq + local.offer_gasbase());
-    }
-
-    for (; i < indices.length; ++i) {
-      uint index = indices[i];
-      if (index >= firstAskIndex) {
-        break;
-      }
-      args.logPrice = logPriceDist[i];
-      args.gives = givesDist[i];
-
-      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGivesBid);
-      if (bookDual) {
-        //FIXME: Consider duals not having exactly the inverse price.
-        argsDual.logPrice = -args.logPrice;
-        populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, argsDual, minGivesAsk);
-      }
-    }
-
-    (args.olKey, argsDual.olKey) = (argsDual.olKey, args.olKey);
-
-    for (; i < indices.length; ++i) {
+    uint minGives;
+    MgvStructs.LocalPacked local = MGV.local(args.olKey);
+    minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
+    for (uint i; i < indices.length; ++i) {
       uint index = indices[i];
       args.logPrice = logPriceDist[i];
       args.gives = givesDist[i];
+      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGives);
+    }
 
-      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGivesAsk);
-      if (bookDual) {
-        argsDual.logPrice = -args.logPrice;
-        populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, argsDual, minGivesBid);
-      }
+    indices = askDistribution.indices;
+    logPriceDist = askDistribution.logPriceDist;
+    givesDist = askDistribution.givesDist;
+    args.olKey = args.olKey.flipped();
+
+    local = MGV.local(args.olKey);
+    minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
+    for (uint i; i < indices.length; ++i) {
+      uint index = indices[i];
+      args.logPrice = logPriceDist[i];
+      args.gives = givesDist[i];
+      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGives);
     }
     emit PopulateEnd();
   }
@@ -135,26 +102,21 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param index the price index.
   ///@param args the argument of the offer.
   ///@param minGives the minimum gives to satisfy density requirement - used for reserving offerIds.
-  ///@return result the result from Mangrove or Direct (an error if `args.noRevert` is `true`).
-  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args, uint minGives)
-    internal
-    returns (bytes32 result)
-  {
+  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args, uint minGives) internal {
     // if offer does not exist on mangrove yet
     if (offerId == 0) {
       // and offer should exist
       if (args.gives > 0) {
         // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
-        (offerId, result) = _newOffer(args);
+        (offerId,) = _newOffer(args);
         setIndexMapping(ba, index, offerId);
       } else {
         // else offerId && gives are 0 and the offer is posted and retracted to reserve the offerId
         args.gives = minGives;
-        (offerId, result) = _newOffer(args);
+        (offerId,) = _newOffer(args);
         args.gives = 0;
         _retractOffer(args.olKey, offerId, false);
         setIndexMapping(ba, index, offerId);
-        result = LOW_VOLUME;
       }
     }
     // else offer exists
@@ -167,10 +129,9 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
         _updateOffer(args, offerId);
         args.gives = 0;
         _retractOffer(args.olKey, offerId, false);
-        result = LOW_VOLUME;
       } else {
         // so the offer exists and it should, we simply update it with potentially new volume and price
-        result = _updateOffer(args, offerId);
+        _updateOffer(args, offerId);
       }
     }
   }

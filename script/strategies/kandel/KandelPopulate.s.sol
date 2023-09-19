@@ -11,7 +11,6 @@ import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_makin
 
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
@@ -86,7 +85,8 @@ contract KandelPopulate is Deployer {
   }
 
   struct HeapVars {
-    CoreKandel.Distribution distribution;
+    CoreKandel.Distribution bidDistribution;
+    CoreKandel.Distribution askDistribution;
     uint baseAmountRequired;
     uint quoteAmountRequired;
     bool bidding;
@@ -130,10 +130,10 @@ contract KandelPopulate is Deployer {
     }
 
     prettyLog("Calculating base and quote...");
-    vars.distribution = calculateBaseQuote(args);
+    (vars.bidDistribution, vars.askDistribution) = calculateBaseQuote(args);
 
     prettyLog("Evaluating required collateral...");
-    evaluateAmountsRequired(vars.distribution, args, vars, funds);
+    evaluateAmountsRequired(vars);
     // after the above call, `vars.base/quoteAmountRequired` are filled
     uint baseDecimals = vars.BASE.decimals();
     uint quoteDecimals = vars.QUOTE.decimals();
@@ -182,30 +182,38 @@ contract KandelPopulate is Deployer {
     broadcast();
 
     args.kdl.populate{value: funds}(
-      vars.distribution, true, args.firstAskIndex, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
+      vars.bidDistribution, vars.askDistribution, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
     );
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
-    (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
-      args.from, args.to, args.volume, args.initQuote, args.logPriceOffset, args.firstAskIndex
+  function calculateBaseQuote(HeapArgs memory args)
+    public
+    pure
+    returns (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution)
+  {
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(args.initQuote, args.volume);
+    (bidDistribution, askDistribution) = args.kdl.createDistribution(
+      args.from,
+      args.to,
+      baseQuoteLogPriceIndex0,
+      int(uint(args.logPriceOffset)),
+      args.firstAskIndex,
+      type(uint).max,
+      args.volume,
+      args.params.pricePoints,
+      args.params.spread
     );
   }
 
   ///@notice evaluates required amounts that need to be published on Mangrove
   ///@dev we use foundry cheats to revert all changes to the local node in order to prevent inconsistent tests.
-  function evaluateAmountsRequired(
-    CoreKandel.Distribution memory distribution,
-    HeapArgs memory args,
-    HeapVars memory vars,
-    uint funds
-  ) public {
-    vars.snapshotId = vm.snapshot();
-    vm.startPrank(broadcaster());
-    (vars.baseAmountRequired, vars.quoteAmountRequired) =
-      KandelLib.estimateRequiredAmount(distribution, GeometricKandel(args.kdl), args.firstAskIndex, args.params, funds);
-    vm.stopPrank();
-    require(vm.revertTo(vars.snapshotId), "snapshot restore failed");
+  function evaluateAmountsRequired(HeapVars memory vars) public pure {
+    for (uint i = 0; i < vars.bidDistribution.givesDist.length; ++i) {
+      vars.quoteAmountRequired += vars.bidDistribution.givesDist[i];
+    }
+    for (uint i = 0; i < vars.askDistribution.givesDist.length; ++i) {
+      vars.baseAmountRequired += vars.askDistribution.givesDist[i];
+    }
   }
 }

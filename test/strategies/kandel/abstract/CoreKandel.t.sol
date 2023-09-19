@@ -14,100 +14,6 @@ abstract contract CoreKandelTest is KandelTest {
     assertApproxEqAbs(kdl.pending(Bid), 0, 1, "Incorrect initial pending (can be off by 1 due to rounding for Aave)");
   }
 
-  function test_createDistribution_constantAskBidGives(uint firstAskIndex, uint bidGives, uint askGives) internal {
-    bool constantAsk = askGives != type(uint).max;
-    bool constantBid = bidGives != type(uint).max;
-    int baseQuoteLogPriceOffset = 1000;
-    int baseQuoteLogPriceIndex0 = 500;
-    uint from = 100;
-    uint to = 200;
-    CoreKandel.Distribution memory distribution = kdl.createDistribution({
-      from: from,
-      to: to,
-      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
-      _baseQuoteLogPriceOffset: baseQuoteLogPriceOffset,
-      firstAskIndex: firstAskIndex,
-      askGives: askGives,
-      bidGives: bidGives
-    });
-
-    int logPrice = baseQuoteLogPriceIndex0 + int(distribution.indices[0]) * int(baseQuoteLogPriceOffset);
-    for (uint i = 0; i < to - from; i++) {
-      uint index = i + from;
-      assertEq(distribution.indices[i], index);
-      if (index < firstAskIndex) {
-        assertEq(distribution.logPriceDist[i], -logPrice);
-        if (constantBid) {
-          assertEq(distribution.givesDist[i], bidGives, "givesDist should be constant for bids which give quote");
-        } else {
-          uint wants = LogPriceLib.inboundFromOutbound(distribution.logPriceDist[i], distribution.givesDist[i]);
-          assertApproxEqRel(wants, askGives, 1e1, "base (inbound for bids) should be constant");
-        }
-      } else {
-        assertEq(distribution.logPriceDist[i], logPrice);
-        if (constantAsk) {
-          assertEq(distribution.givesDist[i], askGives, "givesDist should be constant for asks which give base");
-        } else {
-          uint wants = LogPriceLib.inboundFromOutbound(distribution.logPriceDist[i], distribution.givesDist[i]);
-          assertApproxEqRel(wants, bidGives, 1e10, "quote (inbound for asks) should be constant");
-        }
-      }
-      logPrice += baseQuoteLogPriceOffset;
-    }
-  }
-
-  function test_createDistribution_constantAskGives() public {
-    test_createDistribution_constantAskBidGives(0, type(uint).max, 2 ether);
-    test_createDistribution_constantAskBidGives(99, type(uint).max, 2 ether);
-    test_createDistribution_constantAskBidGives(100, type(uint).max, 2 ether);
-    test_createDistribution_constantAskBidGives(140, type(uint).max, 2 ether);
-    test_createDistribution_constantAskBidGives(199, type(uint).max, 2 ether);
-    test_createDistribution_constantAskBidGives(200, type(uint).max, 2 ether);
-  }
-
-  function test_createDistribution_constantBidGives() public {
-    test_createDistribution_constantAskBidGives(0, 2 ether, type(uint).max);
-    test_createDistribution_constantAskBidGives(99, 2 ether, type(uint).max);
-    test_createDistribution_constantAskBidGives(100, 2 ether, type(uint).max);
-    test_createDistribution_constantAskBidGives(140, 2 ether, type(uint).max);
-    test_createDistribution_constantAskBidGives(199, 2 ether, type(uint).max);
-    test_createDistribution_constantAskBidGives(200, 2 ether, type(uint).max);
-  }
-
-  function test_createDistribution_constantGives() public {
-    test_createDistribution_constantAskBidGives(140, 2 ether, 4 ether);
-  }
-
-  function test_createDistribution_constantGives_0() public {
-    test_createDistribution_constantAskBidGives(150, 0, 0);
-  }
-
-  function test_createDistribution_bothVariable() public {
-    vm.expectRevert("Kandel/bothGivesVariable");
-    kdl.createDistribution({
-      from: 0,
-      to: 2,
-      baseQuoteLogPriceIndex0: 0,
-      _baseQuoteLogPriceOffset: 0,
-      firstAskIndex: 0,
-      askGives: type(uint).max,
-      bidGives: type(uint).max
-    });
-  }
-
-  function test_createDistribution_bothFromAfterTo() public {
-    vm.expectRevert();
-    kdl.createDistribution({
-      from: 4,
-      to: 3,
-      baseQuoteLogPriceIndex0: 0,
-      _baseQuoteLogPriceOffset: 0,
-      firstAskIndex: 0,
-      askGives: 0,
-      bidGives: 0
-    });
-  }
-
   function test_populates_order_book_correctly() public {
     printOB();
     assertStatus(dynamic([uint(1), 1, 1, 1, 1, 2, 2, 2, 2, 2]));
@@ -359,7 +265,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_reserveBalance_withOffers_returnsFundAmount() public {
     // Arrange
     retractDefaultSetup();
-    populateFixedDistribution(4);
+    populateConstantDistribution(4);
 
     assertEq(kdl.reserveBalance(Ask), 0, "Base balance should be empty");
     assertEq(kdl.reserveBalance(Bid), 0, "Quote balance should be empty");
@@ -376,7 +282,7 @@ abstract contract CoreKandelTest is KandelTest {
     // Arrange
     retractDefaultSetup();
 
-    (uint baseAmount, uint quoteAmount) = populateFixedDistribution(4);
+    (uint baseAmount, uint quoteAmount) = populateConstantDistribution(4);
 
     // Act/assert
     assertEq(kdl.offeredVolume(Bid), quoteAmount, "Bid volume should be sum of quote dist");
@@ -400,7 +306,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_pending_withOffers_disregardsOfferedVolume() public {
     // Arrange
     retractDefaultSetup();
-    (uint baseAmount, uint quoteAmount) = populateFixedDistribution(4);
+    (uint baseAmount, uint quoteAmount) = populateConstantDistribution(4);
 
     assertEq(-kdl.pending(Ask), int(baseAmount), "Base pending should be correct");
     assertEq(-kdl.pending(Bid), int(quoteAmount), "Quote pending should be correct");
@@ -423,16 +329,16 @@ abstract contract CoreKandelTest is KandelTest {
   function test_populate_allBidsAsks_successful(bool bids) internal {
     retractDefaultSetup();
 
+    CoreKandel.Distribution memory emptyDistribution;
     CoreKandel.Distribution memory distribution;
     distribution.indices = dynamic([uint(0), 1, 2, 3]);
     distribution.logPriceDist = dynamic([int(0), 0, 0, 0]);
     distribution.givesDist = dynamic([uint(1 ether), 1 ether, 1 ether, 1 ether]);
 
-    uint firstAskIndex = bids ? 4 : 0;
     vm.prank(maker);
     mgv.fund{value: maker.balance}($(kdl));
     vm.prank(maker);
-    kdl.populateChunk(distribution, true, firstAskIndex);
+    kdl.populateChunk(bids ? distribution : emptyDistribution, bids ? emptyDistribution : distribution);
 
     uint status = bids ? uint(OfferStatus.Bid) : uint(OfferStatus.Ask);
     assertStatus(dynamic([status, status, status, status]), type(uint).max, type(uint).max);
@@ -451,11 +357,18 @@ abstract contract CoreKandelTest is KandelTest {
     uint baseDensity = densityBid;
     uint quoteDensity = densityAsk;
 
+    CoreKandel.Distribution memory bidDistribution;
+    CoreKandel.Distribution memory askDistribution;
+
     (uint[] memory indices, uint[] memory quoteAtIndex, uint numBids) = getDeadOffers(midGives, midWants);
 
     // build arrays for populate
-    int[] memory logPriceDist = new int[](indices.length);
-    uint[] memory givesDist = new uint[](indices.length);
+    bidDistribution.logPriceDist = new int[](numBids);
+    bidDistribution.givesDist = new uint[](numBids);
+    bidDistribution.indices = new uint[](numBids);
+    askDistribution.logPriceDist = new int[](indices.length - numBids);
+    askDistribution.givesDist = new uint[](indices.length - numBids);
+    askDistribution.indices = new uint[](indices.length - numBids);
 
     uint pendingQuote = uint(kdl.pending(Bid));
     uint pendingBase = uint(kdl.pending(Ask));
@@ -467,8 +380,10 @@ abstract contract CoreKandelTest is KandelTest {
     for (int i = int(numBids) - 1; i >= 0; i--) {
       uint d = pendingQuote < baseDensity ? pendingQuote : baseDensity;
       pendingQuote -= d;
-      givesDist[uint(i)] = d;
-      logPriceDist[uint(i)] = LogPriceConversionLib.logPriceFromVolumes(initBase, quoteAtIndex[indices[uint(i)]]);
+      askDistribution.indices[uint(i)] = indices[uint(i)];
+      bidDistribution.givesDist[uint(i)] = d;
+      bidDistribution.logPriceDist[uint(i)] =
+        LogPriceConversionLib.logPriceFromVolumes(initBase, quoteAtIndex[indices[uint(i)]]);
     }
 
     uint numAsks = indices.length - numBids;
@@ -479,21 +394,18 @@ abstract contract CoreKandelTest is KandelTest {
     for (uint i = numBids; i < indices.length; i++) {
       uint d = pendingBase < quoteDensity ? pendingBase : quoteDensity;
       pendingBase -= d;
-      givesDist[uint(i)] = d;
-      logPriceDist[uint(i)] = LogPriceConversionLib.logPriceFromVolumes(quoteAtIndex[indices[uint(i)]], initBase);
+      askDistribution.indices[uint(i) - numBids] = indices[uint(i)];
+      askDistribution.givesDist[uint(i) - numBids] = d;
+      askDistribution.logPriceDist[uint(i) - numBids] =
+        LogPriceConversionLib.logPriceFromVolumes(quoteAtIndex[indices[uint(i)]], initBase);
     }
 
-    uint firstAskIndex = numAsks > 0 ? indices[numBids] : indices[indices.length - 1] + 1;
-    CoreKandel.Distribution memory distribution;
-    distribution.indices = indices;
-    distribution.logPriceDist = logPriceDist;
-    distribution.givesDist = givesDist;
     GeometricKandel.Params memory params = getParams(kdl);
     vm.prank(maker);
     // Fund mangrove
-    kdl.populate{value: 1 ether}(emptyDist(), false, firstAskIndex, params, 0, 0);
+    kdl.populate{value: 1 ether}(emptyDist(), emptyDist(), params, 0, 0);
     vm.prank(maker);
-    kdl.populateChunk(distribution, false, firstAskIndex);
+    kdl.populateChunk(bidDistribution, askDistribution);
   }
 
   function test_heal_someFailedOffers_reposts(OfferType ba, uint failures, uint[] memory expectedMidStatus) internal {
@@ -556,7 +468,7 @@ abstract contract CoreKandelTest is KandelTest {
     dist.logPriceDist = new int[](0);
     dist.givesDist = new uint[](1);
     dist.givesDist[0] = 1;
-    kdl.populateChunk(dist, false, 0);
+    kdl.populateChunk(emptyDist(), dist);
 
     // quote
     vm.prank(maker);
@@ -565,7 +477,7 @@ abstract contract CoreKandelTest is KandelTest {
     dist.logPriceDist = new int[](1);
     dist.givesDist = new uint[](0);
     dist.logPriceDist[0] = 1;
-    kdl.populateChunk(dist, false, 0);
+    kdl.populateChunk(dist, emptyDist());
   }
 
   function test_populate_retracts_at_zero() public {
@@ -623,22 +535,44 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
-    uint24 logPriceOffset = 769; // corresponding to roughly to 107.992%
+    int24 logPriceOffset = 769; // corresponding to roughly to 107.992%
     uint firstAskIndex = 5;
-    (CoreKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset, firstAskIndex);
 
-    (CoreKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, logPriceOffset, firstAskIndex);
-
-    // setting params.spread to 2
+    // setting params.spread to 4
     GeometricKandel.Params memory params = getParams(kdl);
     params.spread = 4;
+
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
+    (CoreKandel.Distribution memory bidDistribution1, CoreKandel.Distribution memory askDistribution1) = kdl
+      .createDistribution(
+      0,
+      5,
+      baseQuoteLogPriceIndex0,
+      logPriceOffset,
+      firstAskIndex,
+      type(uint).max,
+      initBase,
+      params.pricePoints,
+      params.spread
+    );
+    (CoreKandel.Distribution memory bidDistribution2, CoreKandel.Distribution memory askDistribution2) = kdl
+      .createDistribution(
+      5,
+      10,
+      baseQuoteLogPriceIndex0,
+      logPriceOffset,
+      firstAskIndex,
+      type(uint).max,
+      initBase,
+      params.pricePoints,
+      params.spread
+    );
+
     // repopulating to update the spread (but with the same distribution)
     vm.prank(maker);
-    kdl.populate{value: 1 ether}(distribution1, true, firstAskIndex, params, 0, 0);
+    kdl.populate{value: 1 ether}(bidDistribution1, askDistribution1, params, 0, 0);
     vm.prank(maker);
-    kdl.populateChunk(distribution2, true, firstAskIndex);
+    kdl.populateChunk(bidDistribution2, askDistribution2);
     // placing an ask at index 1
     // dual of this ask will try to place a bid at -1 and should place it at 0
     populateSingle(kdl, 1, 0.1 ether, 100 * 10 ** 6, 0, "");
@@ -747,11 +681,6 @@ abstract contract CoreKandelTest is KandelTest {
     assertTrue(!ask.isLive(), "ask should still not be live");
   }
 
-  function emptyDist() internal pure returns (CoreKandel.Distribution memory) {
-    CoreKandel.Distribution memory emptyDist_;
-    return emptyDist_;
-  }
-
   uint[] empty = new uint[](0);
 
   function test_populate_can_get_set_params_keeps_offers() public {
@@ -774,7 +703,7 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasreq(paramsNew.gasreq);
 
     vm.prank(maker);
-    kdl.populate(emptyDist(), false, 0, paramsNew, 0, 0);
+    kdl.populate(emptyDist(), emptyDist(), paramsNew, 0, 0);
 
     GeometricKandel.Params memory params_ = getParams(kdl);
 
@@ -793,7 +722,7 @@ abstract contract CoreKandelTest is KandelTest {
     params.spread = 0;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
-    kdl.populate(emptyDist(), false, 0, params, 0, 0);
+    kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
   }
 
   function test_populate_throws_on_invalid_spread_high() public {
@@ -802,7 +731,7 @@ abstract contract CoreKandelTest is KandelTest {
     params.spread = 9;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
-    kdl.populate(emptyDist(), false, 0, params, 0, 0);
+    kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
   }
 
   function test_populate_can_repopulate_decreased_size_and_other_params() public {
@@ -815,17 +744,30 @@ abstract contract CoreKandelTest is KandelTest {
 
     logPriceOffset = 200;
     uint firstAskIndex = 3;
-    (CoreKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset, firstAskIndex);
 
     GeometricKandel.Params memory params;
     params.pricePoints = 5;
     params.spread = 2;
 
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
+
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution(
+      0,
+      5,
+      baseQuoteLogPriceIndex0,
+      logPriceOffset,
+      firstAskIndex,
+      type(uint).max,
+      initBase,
+      params.pricePoints,
+      params.spread
+    );
+
     expectFrom(address(kdl));
     emit SetLength(params.pricePoints);
     vm.prank(maker);
-    kdl.populate(distribution, true, firstAskIndex, params, 0, 0);
+    kdl.populate(bidDistribution, askDistribution, params, 0, 0);
 
     // This only verifies KandelLib
     assertStatus(dynamic([uint(1), 1, 1, 2, 2]));
@@ -996,7 +938,9 @@ abstract contract CoreKandelTest is KandelTest {
     //assertTrue(makerExecuteCost + posthookCost <= kdl.offerGasreq() + local.offer_gasbase(), "Strat is spending more gas");
   }
 
-  function deployOtherKandel(uint base0, uint quote0, uint24 logPriceOffset, uint8 spread, uint8 pricePoints) internal {
+  function deployOtherKandel(uint base0, uint quote0, int24 logPriceOffset, GeometricKandel.Params memory otherParams)
+    internal
+  {
     address otherMaker = freshAddress();
 
     GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker);
@@ -1012,15 +956,24 @@ abstract contract CoreKandelTest is KandelTest {
     ) * 10 ether;
 
     deal(otherMaker, totalProvision);
-    uint firstAskIndex = pricePoints / 2;
-    (CoreKandel.Distribution memory distribution,) =
-      KandelLib.calculateDistribution(0, pricePoints, base0, quote0, logPriceOffset, firstAskIndex);
 
-    GeometricKandel.Params memory params;
-    params.pricePoints = pricePoints;
-    params.spread = spread;
+    CoreKandel.Distribution[] memory distribution = new CoreKandel.Distribution[](2);
+    {
+      (distribution[0], distribution[1]) = kdl.createDistribution(
+        0,
+        otherParams.pricePoints,
+        LogPriceConversionLib.logPriceFromVolumes(quote0, base0),
+        logPriceOffset,
+        otherParams.pricePoints / 2,
+        type(uint).max,
+        base0,
+        otherParams.pricePoints,
+        otherParams.spread
+      );
+    }
+
     vm.prank(otherMaker);
-    otherKandel.populate{value: totalProvision}(distribution, true, firstAskIndex, params, 0, 0);
+    otherKandel.populate{value: totalProvision}(distribution[0], distribution[1], otherParams, 0, 0);
 
     uint pendingBase = uint(-otherKandel.pending(Ask));
     uint pendingQuote = uint(-otherKandel.pending(Bid));
@@ -1106,7 +1059,8 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.provisionOf(olKey, 0);
     kdl.router();
     kdl.baseQuoteLogPriceOffset();
-    kdl.createDistribution(0, 0, 0, 0, 0, 0, 0);
+    kdl.createDistribution(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    kdl.createDistribution(0, 0, 0, 0, 0, 0);
 
     CoreKandel.Distribution memory dist;
     GeometricKandel.Params memory params = getParams(kdl);
@@ -1128,11 +1082,11 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteLogPriceOffset, (1)));
 
-    checkAuth(args, abi.encodeCall(kdl.populate, (dist, false, 0, params, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populate, (dist, dist, params, 0, 0)));
     checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, 0, 0, params, 0, 0)));
     checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, 0, 0)));
 
-    checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist, false, 42)));
+    checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist, dist)));
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));
     checkAuth(args, abi.encodeCall(kdl.withdrawFromMangrove, (0, maker)));
     checkAuth(args, abi.encodeCall(kdl.withdrawFunds, (0, 0, maker)));

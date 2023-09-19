@@ -89,9 +89,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   }
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
-  ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param bookDual whether to book the dual offer's id on Mangrove (should not be set when changing a single offer, e.g., to heal, and when known that dual is booked).
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param bidDistribution the distribution of prices for gives of quote for indices.
+  ///@param askDistribution the distribution of prices for gives of base for indices.
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
   ///@param baseAmount base amount to deposit
   ///@param quoteAmount quote amount to deposit
@@ -100,9 +99,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@dev If this function is invoked with different pricePoints or spread, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
-    Distribution memory distribution,
-    bool bookDual,
-    uint firstAskIndex,
+    Distribution memory bidDistribution,
+    Distribution memory askDistribution,
     Params calldata parameters,
     uint baseAmount,
     uint quoteAmount
@@ -114,17 +112,19 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     depositFunds(baseAmount, quoteAmount);
 
-    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice, bookDual);
+    populateChunk(bidDistribution, askDistribution, params.gasreq, params.gasprice);
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
   ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
-  ///@param distribution the distribution of base and quote for Kandel indices.
-  ///@param bookDual whether to book the dual offer's id on Mangrove (should not be set when changing a single offer, e.g., to heal, and when known that dual is booked).
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunk(Distribution calldata distribution, bool bookDual, uint firstAskIndex) external onlyAdmin {
-    populateChunk(distribution, firstAskIndex, params.gasreq, params.gasprice, bookDual);
+  ///@param bidDistribution the distribution of prices for gives of quote for indices.
+  ///@param askDistribution the distribution of prices for gives of base for indices.
+  function populateChunk(Distribution calldata bidDistribution, Distribution calldata askDistribution)
+    external
+    onlyAdmin
+  {
+    populateChunk(bidDistribution, askDistribution, params.gasreq, params.gasprice);
   }
 
   ///@inheritdoc AbstractKandel
