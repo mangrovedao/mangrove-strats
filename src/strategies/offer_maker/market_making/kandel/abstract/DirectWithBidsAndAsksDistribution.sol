@@ -49,7 +49,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param askDistribution the distribution of prices for gives of base for indices.
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
-  ///@dev Gives of 0 means retract offer (but update price, gasreq, gasprice of the offer)
+  ///@dev Gives of 0 means create/update and then retract offer (but update price, gasreq, gasprice of the offer)
   function populateChunk(
     Distribution memory bidDistribution,
     Distribution memory askDistribution,
@@ -129,7 +129,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     else {
       // but the offer should be dead since gives is 0
       if (args.gives == 0) {
-        // * `gives == 0` may happen from populate in case of re-population where the offers in the spread are then retracted by setting gives to 0.
+        // * `gives == 0` may happen from populate in case of re-population where some offers are then retracted by setting gives to 0.
         // set args.gives to minGives to be above density requirement, we do it here since we use the args.gives=0 to signal a dead offer.
         args.gives = minGives;
         // Update offer to set correct price, gasreq, gasprice, then retract

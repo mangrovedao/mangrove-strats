@@ -32,7 +32,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param spread the spread.
   function setSpread(uint spread) public onlyAdmin {
     uint104 spread_ = uint104(spread);
-    require(spread_ == spread && spread > 0, "Kandel/invalidSpread");
+    require(spread > 0, "Kandel/spreadTooLow");
+    require(spread_ == spread && spread < params.pricePoints, "Kandel/spreadTooHigh");
     params.spread = spread_;
     emit SetSpread(spread);
   }

@@ -13,12 +13,12 @@ import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`.
+  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   ///@param value the log price offset.
   event SetBaseQuoteLogPriceOffset(uint value);
   ///@notice By emitting this data, an indexer will be able to keep track of what the spread and logPriceOffset is for the Kandel instance.
 
-  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`.
+  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   uint public baseQuoteLogPriceOffset;
 
   ///@notice Constructor
@@ -44,7 +44,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice Creates a distribution of bids and asks given by the parameters, while reading additional parameters from the Kandel instance. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive).
   ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
@@ -76,12 +76,12 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
   ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
-  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment. Must be at least 1.
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
+  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment. Must be at least 1. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask. Must be at most `pricePoints`.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  ///@param spread in amount of price slots to jump for posting dual offer. Must be less than `pricePoints`.
+  ///@param spread in amount of price points to jump for posting dual offer. Must be less than `pricePoints`.
   ///@param pricePoints the number of price points for the Kandel instance. Must be at least 2.
   ///@return bidDistribution the distribution of bids.
   ///@return askDistribution the distribution of asks.
@@ -201,8 +201,8 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice publishes bids/asks according to a geometric distribution, and sets all parameters according to inputs.
   ///@param from populate offers starting from this index (inclusive).
   ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
-  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment.
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
+  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
@@ -236,7 +236,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice publishes bids/asks according to a geometric distribution, and reads parameters from the Kandel instance.
   ///@param from populate offers starting from this index (inclusive).
   ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.

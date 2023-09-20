@@ -18,7 +18,7 @@ abstract contract AbstractKandel {
   event SetGasreq(uint value);
 
   ///@notice the spread has been set.
-  ///@param value the spread in amount of price slots to jump for posting dual offer
+  ///@param value the spread in amount of price points to jump for posting dual offer
   event SetSpread(uint value);
 
   ///@notice the Kandel instance is credited of `amount` by its owner.

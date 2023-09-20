@@ -704,16 +704,22 @@ abstract contract CoreKandelTest is KandelTest {
     params.pricePoints = 10;
     params.spread = 0;
     vm.prank(maker);
-    vm.expectRevert("Kandel/invalidSpread");
+    vm.expectRevert("Kandel/spreadTooLow");
     kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
   }
 
   function test_populate_throws_on_invalid_spread_high() public {
+    vm.prank(maker);
+    vm.expectRevert("Kandel/spreadTooHigh");
+    kdl.setSpread(2 ** 104);
+  }
+
+  function test_populate_throws_on_invalid_spread_wrt_pricePoints() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.spread = uint104(uint(2 ** 104));
+    params.spread = 10;
     vm.prank(maker);
-    vm.expectRevert("Kandel/invalidSpread");
+    vm.expectRevert("Kandel/spreadTooHigh");
     kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
   }
 
@@ -1029,6 +1035,36 @@ abstract contract CoreKandelTest is KandelTest {
 
     // Assert inverse price
     assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]), initBase, initQuote);
+  }
+
+  function test_tickScale100_misaligned_offset_price0() public {
+    // A low misalignment gets rounded away so test is simple, larger offsets from tick scale would yield different results.
+    test_tickScale100_aligned_offset_price0(1);
+  }
+
+  function test_tickScale100_aligned_offset_price0() public {
+    test_tickScale100_aligned_offset_price0(0);
+  }
+
+  function test_tickScale100_aligned_offset_price0(uint offset) internal {
+    options.defaultTickScale = 100;
+    logPriceOffset = 700 + offset;
+    initBase = LogPriceLib.outboundFromInbound(1000 + int(offset), initQuote);
+    setUp();
+
+    assertEq(kdl.TICK_SCALE(), 100);
+    uint pricePoints = getParams(kdl).pricePoints;
+    for (uint i; i < getParams(kdl).pricePoints; i++) {
+      assertEq(kdl.getOffer(Ask, i).logPrice(), i < STEP ? int(0) : int(1000 + i * 700), "wrong ask price");
+      // bids are rounded down when misaligned
+      assertEq(
+        kdl.getOffer(Bid, i).logPrice(),
+        i >= pricePoints - STEP
+          ? int(0)
+          : (offset == 0 ? -int(1000 + i * 700) : -int(1000 + i * 700 + options.defaultTickScale)),
+        "wrong bid price"
+      );
+    }
   }
 
   function test_dualWantsGivesOfOffer_bidNearBoundary_correctPrice() public {
