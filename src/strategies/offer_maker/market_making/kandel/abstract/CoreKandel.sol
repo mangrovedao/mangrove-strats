@@ -16,13 +16,13 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Core Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
-  ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
+  ///@param spread in amount of price points to jump for posting dual offer.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
-    uint8 spread;
-    uint8 pricePoints;
+    uint104 spread;
+    uint112 pricePoints;
   }
 
   ///@notice Storage of the parameters for the strat.
@@ -31,8 +31,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the spread
   ///@param spread the spread.
   function setSpread(uint spread) public onlyAdmin {
-    require(spread > 0 && spread <= 8, "Kandel/invalidSpread");
-    params.spread = uint8(spread);
+    uint104 spread_ = uint104(spread);
+    require(spread_ == spread && spread > 0, "Kandel/invalidSpread");
+    params.spread = spread_;
     emit SetSpread(spread);
   }
 
@@ -58,8 +59,10 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory oldParams = params;
 
     if (oldParams.pricePoints != newParams.pricePoints) {
-      setLength(newParams.pricePoints);
-      params.pricePoints = newParams.pricePoints;
+      uint112 pricePoints_ = uint112(newParams.pricePoints);
+      require(pricePoints_ == newParams.pricePoints && pricePoints_ >= 2, "Kandel/invalidPricePoints");
+      setLength(pricePoints_);
+      params.pricePoints = pricePoints_;
     }
 
     if (oldParams.spread != newParams.spread) {

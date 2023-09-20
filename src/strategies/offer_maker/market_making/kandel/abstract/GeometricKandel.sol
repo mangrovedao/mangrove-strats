@@ -50,12 +50,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
   ///@return bidDistribution the distribution of bids.
   ///@return askDistribution the distribution of asks.
-  ///@dev the absolute price of an offer is the ratio of quote/base volumes of tokens it trades
-  ///@dev the log price of offers on Mangrove are in relative taker price of maker's inbound/outbound volumes of tokens it trades
-  ///@dev for Bids, outbound=quote, inbound=base so relative taker price of a a bid is the inverse of the absolute price.
-  ///@dev for Asks, outbound=base, inbound=quote so relative taker price of an ask coincides with absolute price.
-  ///@dev Index0 will contain the ask with the lowest relative price and the bid with the highest relative price. Absolute price is geometrically increasing over indexes.
-  ///@dev logPriceOffset moves an offer relative price s.t. `AskLogPrice_{i+1} = AskLogPrice_i + logPriceOffset` and `BidLogPrice_{i+1} = BidLogPrice_i - logPriceOffset`
+  ///@dev See `createDistribution` overload for further details.
   function createDistribution(
     uint from,
     uint to,
@@ -82,7 +77,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
   ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
   ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
-  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment.
+  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment. Must be at least 1.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask. Must be at most `pricePoints`.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
@@ -97,6 +92,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@dev Index0 will contain the ask with the lowest relative price and the bid with the highest relative price. Absolute price is geometrically increasing over indexes.
   ///@dev logPriceOffset moves an offer relative price s.t. `AskLogPrice_{i+1} = AskLogPrice_i + logPriceOffset` and `BidLogPrice_{i+1} = BidLogPrice_i - logPriceOffset`
   ///@dev A hole is left in the middle at the size of spread - either an offer or its dual is posted, not both.
+  ///@dev The caller should make sure the minimum and maximum log price does not exceed the MIN_LOG_PRICE and MAX_LOG_PRICE from respectively; otherwise, populate will fail for those offers.
   function createDistribution(
     uint from,
     uint to,
@@ -213,6 +209,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
   ///@param baseAmount base amount to deposit
   ///@param quoteAmount quote amount to deposit
+  ///@dev See `createDistribution` for further details.
   function populateFromOffset(
     uint from,
     uint to,
@@ -243,7 +240,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  ///@dev This is typically used after a call to `populateFromOffset` to populate the rest of the offers with the same parameters.
+  ///@dev This is typically used after a call to `populateFromOffset` to populate the rest of the offers with the same parameters. See that function for further details.
   function populateChunkFromOffset(
     uint from,
     uint to,

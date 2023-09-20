@@ -41,9 +41,9 @@ contract KandelPopulate is Deployer {
       logPriceOffset = uint24(uint(int(_logPriceOffset)));
       require(logPriceOffset == uint(_logPriceOffset), "Invalid ratio");
     }
-    params.pricePoints = uint8(vm.envUint("PRICE_POINTS"));
+    params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.spread = uint8(vm.envUint("SPREAD"));
+    params.spread = uint104(vm.envUint("SPREAD"));
     require(params.spread == vm.envUint("SPREAD"), "Invalid SPREAD");
 
     innerRun(
@@ -107,13 +107,7 @@ contract KandelPopulate is Deployer {
     vars.mgvReader = args.mgvReader;
     vars.BASE = args.kdl.BASE();
     vars.QUOTE = args.kdl.QUOTE();
-    (
-      vars.gasprice,
-      vars.gasreq,
-      /*uint8 spread*/
-      ,
-      /*uint8 length*/
-    ) = args.kdl.params();
+    (vars.gasprice, vars.gasreq,,) = args.kdl.params();
 
     OLKey memory olKeyBaseQuote =
       OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickScale: args.kdl.TICK_SCALE()});

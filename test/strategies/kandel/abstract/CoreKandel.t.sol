@@ -711,9 +711,27 @@ abstract contract CoreKandelTest is KandelTest {
   function test_populate_throws_on_invalid_spread_high() public {
     GeometricKandel.Params memory params;
     params.pricePoints = 10;
-    params.spread = 9;
+    params.spread = uint104(uint(2 ** 104));
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidSpread");
+    kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
+  }
+
+  function test_populate_throws_on_invalid_pricePoints_low() public {
+    GeometricKandel.Params memory params;
+    params.pricePoints = 1;
+    params.spread = 1;
+    vm.prank(maker);
+    vm.expectRevert("Kandel/invalidPricePoints");
+    kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
+  }
+
+  function test_populate_throws_on_invalid_pricePoints_high() public {
+    GeometricKandel.Params memory params;
+    params.pricePoints = uint112(uint(2 ** 112));
+    params.spread = 1;
+    vm.prank(maker);
+    vm.expectRevert("Kandel/invalidPricePoints");
     kdl.populate(emptyDist(), emptyDist(), params, 0, 0);
   }
 
@@ -1023,8 +1041,8 @@ abstract contract CoreKandelTest is KandelTest {
 
   function test_dualWantsGivesOfOffer_nearBoundary_correctPrice(OfferType ba) internal {
     //FIXME what should we do near boundaries? Should dual posting just fail? - this test is no longer representative
-    uint8 spread = 3;
-    uint8 pricePoints = 6;
+    uint104 spread = 3;
+    uint112 pricePoints = 6;
 
     vm.prank(maker);
     kdl.retractOffers(0, 10);
