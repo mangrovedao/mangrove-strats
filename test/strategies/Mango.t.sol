@@ -157,7 +157,7 @@ contract MangoTest is StratTest {
     // - run a market order and check that bid is not updated after ask is being consumed
     // - verify takerGave is pending
     // - put back the density and run another market order
-    mgv.setDensity(olKey, cash(weth, 1));
+    mgv.setDensity96X32(olKey, 1e32);
 
     vm.prank(taker);
     (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
@@ -179,7 +179,7 @@ contract MangoTest is StratTest {
 
     assertEq(pendingBase_, pendingBase + gave, "Missing pending base");
 
-    mgv.setDensity(olKey, 100);
+    mgv.setDensity96X32(olKey, 100);
 
     vm.prank(taker);
     mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
@@ -196,8 +196,8 @@ contract MangoTest is StratTest {
   }
 
   function part_text_residual_1() public {
-    mgv.setDensity(lo, cash(usdc, 1));
-    mgv.setDensity(olKey, cash(weth, 1));
+    mgv.setDensity96X32(lo, 1e32);
+    mgv.setDensity96X32(olKey, 1e32);
 
     // market order will take the following best offer
     uint best_id = mgv.best(lo);
@@ -237,8 +237,8 @@ contract MangoTest is StratTest {
     );
 
     // putting density back to normal
-    mgv.setDensity(lo, 100);
-    mgv.setDensity(olKey, 100);
+    mgv.setDensity96X32(lo, 100);
+    mgv.setDensity96X32(olKey, 100);
 
     // Offer 3 and 4 were unable to repost so they should be out of the book
 

@@ -365,7 +365,7 @@ contract AaveKandelTest is CoreKandelTest {
     } catch Error(string memory reason) {
       console.log(reason);
     }
-    printOrderBook(lo);
+    printOfferList(lo);
   }
 
   function test_cannot_create_aaveKandel_with_aToken_for_base() public {
