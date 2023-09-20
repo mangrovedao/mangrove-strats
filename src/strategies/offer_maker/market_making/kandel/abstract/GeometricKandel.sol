@@ -93,6 +93,7 @@ abstract contract GeometricKandel is CoreKandel {
   ///@dev logPriceOffset moves an offer relative price s.t. `AskLogPrice_{i+1} = AskLogPrice_i + logPriceOffset` and `BidLogPrice_{i+1} = BidLogPrice_i - logPriceOffset`
   ///@dev A hole is left in the middle at the size of spread - either an offer or its dual is posted, not both.
   ///@dev The caller should make sure the minimum and maximum log price does not exceed the MIN_LOG_PRICE and MAX_LOG_PRICE from respectively; otherwise, populate will fail for those offers.
+  ///@dev If type(uint).max is used for `bidGives` or `askGives` then very high or low prices can yield gives=0 (which results in both offer an dual being dead) or gives>=type(uin96).max which is not supported by Mangrove.
   function createDistribution(
     uint from,
     uint to,

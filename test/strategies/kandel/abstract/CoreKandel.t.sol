@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "./KandelTest.t.sol";
-import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
+import {MAX_LOG_PRICE, MIN_LOG_PRICE, MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {
@@ -1055,56 +1055,243 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(kdl.TICK_SCALE(), 100);
     uint pricePoints = getParams(kdl).pricePoints;
     for (uint i; i < getParams(kdl).pricePoints; i++) {
-      assertEq(kdl.getOffer(Ask, i).logPrice(), i < STEP ? int(0) : int(1000 + i * 700), "wrong ask price");
-      // bids are rounded down when misaligned
       assertEq(
-        kdl.getOffer(Bid, i).logPrice(),
-        i >= pricePoints - STEP
-          ? int(0)
-          : (offset == 0 ? -int(1000 + i * 700) : -int(1000 + i * 700 + options.defaultTickScale)),
-        "wrong bid price"
+        kdl.getOffer(Ask, i).logPrice(),
+        i < STEP ? int(0) : (offset == 0 ? int(1000 + i * 700) : int(1000 + i * 700 + options.defaultTickScale)),
+        "wrong ask price"
+      );
+      // bids are rounded up when misaligned
+      assertEq(
+        kdl.getOffer(Bid, i).logPrice(), i >= pricePoints - STEP ? int(0) : -int(1000 + i * 700), "wrong bid price"
       );
     }
   }
 
-  function test_dualWantsGivesOfOffer_bidNearBoundary_correctPrice() public {
-    test_dualWantsGivesOfOffer_nearBoundary_correctPrice(Bid);
+  function test_extremes_max_log_price_bid() public {
+    test_extremes_min_max_log_price(Bid, false);
   }
 
-  function test_dualWantsGivesOfOffer_askNearBoundary_correctPrice() public {
-    test_dualWantsGivesOfOffer_nearBoundary_correctPrice(Ask);
+  function test_extremes_max_log_price_ask() public {
+    test_extremes_min_max_log_price(Ask, false);
   }
 
-  function test_dualWantsGivesOfOffer_nearBoundary_correctPrice(OfferType ba) internal {
-    //FIXME what should we do near boundaries? Should dual posting just fail? - this test is no longer representative
-    uint104 spread = 3;
-    uint112 pricePoints = 6;
+  function test_extremes_min_log_price_bid() public {
+    test_extremes_min_max_log_price(Bid, true);
+  }
 
+  function test_extremes_min_log_price_ask() public {
+    test_extremes_min_max_log_price(Ask, true);
+  }
+
+  function test_extremes_min_max_log_price(OfferType ba, bool min) internal {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
-    populateSingle({
-      kandel: kdl,
-      index: ba == Bid ? 4 : 1,
-      base: initBase,
-      quote: initQuote,
-      firstAskIndex: ba == Bid ? pricePoints : 0,
-      pricePoints: pricePoints,
-      spread: spread,
-      expectRevert: bytes("")
+    GeometricKandel.Params memory params;
+
+    // With price at MAX_LOG_PRICE dual appears at MIN_LOG_PRICE, so there can only be two offers, and no offset
+    int baseQuoteLogPriceIndex0 = min ? MIN_LOG_PRICE : MAX_LOG_PRICE;
+    params.pricePoints = 2;
+    params.spread = 1;
+    logPriceOffset = 0;
+
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution({
+      from: 0,
+      to: 2,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: ba == Bid ? params.spread + 1 : 0,
+      bidGives: 2 ** 96 - 1,
+      askGives: 2 ** 96 - 1,
+      pricePoints: params.pricePoints,
+      spread: params.spread
     });
-    (uint takerGot,,,) = ba == Bid ? sellToBestAs(taker, 1 ether) : buyFromBestAs(taker, 1 ether);
-    assertGt(takerGot, 0, "offer should succeed");
+    vm.prank(maker);
+    kdl.populate(bidDistribution, askDistribution, params, 0, 0);
+
+    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
 
     if (ba == Bid) {
-      MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 5);
-      assertApproxEqRel(ask.gives(), initBase, 1e14, "wrong gives");
-      assertEq(ask.logPrice(), -203399, "wrong price");
+      assertEq(bestBid.logPrice(), min ? MAX_LOG_PRICE : MIN_LOG_PRICE, "wrong bid price");
+      assertEq(bestBid.gives(), 2 ** 96 - 1, "wrong bid gives");
+      assertEq(bestAsk.isLive(), false, "ask should not be live");
     } else {
-      MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
-      assertApproxEqRel(bid.gives(), initQuote, 1e14, "wrong gives");
-      assertEq(bid.logPrice(), 207243, "wrong price");
+      assertEq(bestAsk.logPrice(), min ? MIN_LOG_PRICE : MAX_LOG_PRICE, "wrong ask price");
+      assertEq(bestAsk.gives(), 2 ** 96 - 1, "wrong ask gives");
+      assertEq(bestBid.isLive(), false, "bid should not be live");
     }
+  }
+
+  function test_extremes_max_offset_bid() public {
+    test_extremes_max_offset(Bid);
+  }
+
+  function test_extremes_max_offset_ask() public {
+    test_extremes_max_offset(Ask);
+  }
+
+  function test_extremes_max_offset(OfferType ba) internal {
+    vm.prank(maker);
+    kdl.retractOffers(0, 10);
+
+    GeometricKandel.Params memory params;
+
+    int baseQuoteLogPriceIndex0 = 0;
+    params.pricePoints = 2;
+    params.spread = 1;
+    logPriceOffset = uint(MAX_LOG_PRICE);
+
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution({
+      from: 0,
+      to: 2,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: ba == Bid ? params.spread + 1 : 0,
+      bidGives: 2 ** 96 - 1,
+      askGives: 2 ** 96 - 1,
+      pricePoints: params.pricePoints,
+      spread: params.spread
+    });
+    vm.prank(maker);
+    kdl.populate(bidDistribution, askDistribution, params, 0, 0);
+
+    if (ba == Bid) {
+      deal($(base), address(taker), type(uint).max);
+      deal($(quote), address(kdl), 2 ** 96);
+    } else {
+      deal($(base), address(kdl), 2 ** 96);
+      deal($(quote), address(taker), type(uint).max);
+    }
+    // Take order
+    vm.prank(taker);
+    (uint takerGot, uint takerGave,,) =
+      mgv.marketOrderByLogPrice(ba == Bid ? lo : olKey, MAX_LOG_PRICE, MAX_SAFE_VOLUME, false);
+    assertGt(takerGot + takerGave, 0, "offer should succeed");
+
+    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+
+    if (ba == Bid) {
+      assertEq(bestBid.logPrice(), 0, "wrong bid price");
+      assertEq(bestAsk.logPrice(), MAX_LOG_PRICE, "wrong ask price");
+    } else {
+      assertEq(bestBid.logPrice(), 0, "wrong bid price");
+      assertEq(bestAsk.logPrice(), MAX_LOG_PRICE, "wrong ask price");
+    }
+  }
+
+  function test_extremes_outside_range_bid() public {
+    test_extremes_outside_range(Bid);
+  }
+
+  function test_extremes_outside_range_ask() public {
+    test_extremes_outside_range(Ask);
+  }
+
+  function test_extremes_outside_range(OfferType ba) internal {
+    vm.prank(maker);
+    kdl.retractOffers(0, 10);
+
+    GeometricKandel.Params memory params;
+
+    int baseQuoteLogPriceIndex0 = MAX_LOG_PRICE;
+    params.pricePoints = 2;
+    params.spread = 1;
+    logPriceOffset = 1;
+
+    vm.expectRevert("mgv/writeOffer/logPrice/outOfRange");
+    vm.prank(maker);
+    kdl.populateFromOffset({
+      from: 0,
+      to: 2,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: ba == Bid ? params.spread + 1 : 0,
+      bidGives: 2 ** 96 - 1,
+      askGives: 2 ** 96 - 1,
+      parameters: params,
+      baseAmount: 0,
+      quoteAmount: 0
+    });
+  }
+
+  function test_extremes_min_log_price_max_offset_bid() public {
+    test_extremes_min_log_price_max_offset(Bid);
+  }
+
+  function test_extremes_min_log_price_max_offset_ask() public {
+    test_extremes_min_log_price_max_offset(Ask);
+  }
+
+  function test_extremes_min_log_price_max_offset(OfferType ba) internal {
+    vm.prank(maker);
+    kdl.retractOffers(0, 10);
+
+    GeometricKandel.Params memory params;
+
+    // With price at MAX_LOG_PRICE dual appears at MIN_LOG_PRICE, so there can only be two offers, and no offset
+    int baseQuoteLogPriceIndex0 = MIN_LOG_PRICE;
+    params.pricePoints = 2;
+    params.spread = 1;
+    logPriceOffset = uint(MAX_LOG_PRICE - MIN_LOG_PRICE);
+
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution({
+      from: 0,
+      to: 2,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: ba == Bid ? params.spread + 1 : 0,
+      bidGives: 2 ** 96 - 1,
+      askGives: 2 ** 96 - 1,
+      pricePoints: params.pricePoints,
+      spread: params.spread
+    });
+    vm.prank(maker);
+    kdl.populate(bidDistribution, askDistribution, params, 0, 0);
+
+    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+
+    if (ba == Bid) {
+      assertEq(bestBid.logPrice(), MAX_LOG_PRICE, "wrong bid price");
+      assertEq(bestBid.gives(), 2 ** 96 - 1, "wrong bid gives");
+      assertEq(bestAsk.isLive(), false, "ask should not be live");
+    } else {
+      assertEq(bestAsk.logPrice(), MAX_LOG_PRICE, "wrong ask price");
+      assertEq(bestAsk.gives(), 2 ** 96 - 1, "wrong ask gives");
+      assertEq(bestBid.isLive(), false, "bid should not be live");
+    }
+  }
+
+  function test_extremes_many_price_points() public {
+    vm.prank(maker);
+    kdl.retractOffers(0, 10);
+
+    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
+
+    GeometricKandel.Params memory params;
+
+    int baseQuoteLogPriceIndex0 = 2;
+    params.pricePoints = 1000;
+    params.spread = 11;
+    logPriceOffset = 77;
+
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution({
+      from: 0,
+      to: 1000,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: params.pricePoints / 2,
+      bidGives: 2 ** 96 - 1,
+      askGives: 2 ** 96 - 1,
+      pricePoints: params.pricePoints,
+      spread: params.spread
+    });
+    vm.prank(maker);
+    kdl.populate{value: (provAsk + provBid) * params.pricePoints}(bidDistribution, askDistribution, params, 0, 0);
   }
 
   function test_allExternalFunctions_differentCallers_correctAuth() public virtual {

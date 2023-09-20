@@ -320,6 +320,27 @@ abstract contract KandelTest is StratTest {
     }
   }
 
+  function printDistribution(CoreKandel.Distribution memory distribution) internal view {
+    for (uint i; i < distribution.indices.length; ++i) {
+      console.log(
+        "Index: %s LogPrice: %s Gives: %s",
+        distribution.indices[i],
+        vm.toString(distribution.logPriceDist[i]),
+        distribution.givesDist[i]
+      );
+    }
+  }
+
+  function printDistributions(
+    CoreKandel.Distribution memory bidDistribution,
+    CoreKandel.Distribution memory askDistribution
+  ) internal view {
+    console.log("Bids:");
+    printDistribution(bidDistribution);
+    console.log("Asks:");
+    printDistribution(askDistribution);
+  }
+
   function printOB() internal view {
     printOfferList(olKey);
     printOfferList(lo);
