@@ -13,13 +13,13 @@ import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  ///@notice the base quote log price offset has been set.
-  ///@param value the base quote log price offset used for the on-chain geometric progression deployment.
-  event SetBaseQuoteLogPriceOffset(int value);
+  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`.
+  ///@param value the log price offset.
+  event SetBaseQuoteLogPriceOffset(uint value);
   ///@notice By emitting this data, an indexer will be able to keep track of what the spread and logPriceOffset is for the Kandel instance.
 
-  ///@notice The log price offset used for the on-chain geometric progression deployment.
-  int public baseQuoteLogPriceOffset;
+  ///@notice The log price offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`.
+  uint public baseQuoteLogPriceOffset;
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
@@ -33,8 +33,8 @@ abstract contract GeometricKandel is CoreKandel {
 
   ///@notice sets the log price offset if different from existing.
   ///@param _baseQuoteLogPriceOffset the new log price offset.
-  function setBaseQuoteLogPriceOffset(int _baseQuoteLogPriceOffset) public onlyAdmin {
-    require(int24(_baseQuoteLogPriceOffset) == _baseQuoteLogPriceOffset, "Kandel/logPriceOffsetTooHigh");
+  function setBaseQuoteLogPriceOffset(uint _baseQuoteLogPriceOffset) public onlyAdmin {
+    require(uint24(_baseQuoteLogPriceOffset) == _baseQuoteLogPriceOffset, "Kandel/logPriceOffsetTooHigh");
     if (baseQuoteLogPriceOffset != _baseQuoteLogPriceOffset) {
       baseQuoteLogPriceOffset = _baseQuoteLogPriceOffset;
       emit SetBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
@@ -101,7 +101,7 @@ abstract contract GeometricKandel is CoreKandel {
     uint from,
     uint to,
     int baseQuoteLogPriceIndex0,
-    int _baseQuoteLogPriceOffset,
+    uint _baseQuoteLogPriceOffset,
     uint firstAskIndex,
     uint bidGives,
     uint askGives,
@@ -154,7 +154,7 @@ abstract contract GeometricKandel is CoreKandel {
     // Start bids at from
     uint index = from;
     // Calculate the absolute log price of the first price point
-    int baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + _baseQuoteLogPriceOffset * int(index));
+    int baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
     // A counter for insertion in the distribution structs
     uint i = 0;
     for (; index < bidBound; ++index) {
@@ -169,18 +169,18 @@ abstract contract GeometricKandel is CoreKandel {
       // Add dual (dead) ask
       uint dualIndex = transportDestination(OfferType.Ask, index, spread, pricePoints);
       askDistribution.indices[i] = dualIndex;
-      askDistribution.logPriceDist[i] = (baseQuoteLogPriceIndex0 + _baseQuoteLogPriceOffset * int(dualIndex));
+      askDistribution.logPriceDist[i] = (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex));
       //askDistribution.givesDist[i] = 0; // set to 0 by default
 
       // Next log price
-      baseQuoteLogPrice += _baseQuoteLogPriceOffset;
+      baseQuoteLogPrice += int(_baseQuoteLogPriceOffset);
       ++i;
     }
 
     // Start asks from (adjusted) firstAskIndex
     index = firstAskIndex;
     // Calculate the absolute log price of the first ask
-    baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + _baseQuoteLogPriceOffset * int(index));
+    baseQuoteLogPrice = (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
     for (; index < to; ++index) {
       // Add live ask
       askDistribution.indices[i] = index;
@@ -191,11 +191,11 @@ abstract contract GeometricKandel is CoreKandel {
       // Add dual (dead) bid
       uint dualIndex = transportDestination(OfferType.Bid, index, spread, pricePoints);
       bidDistribution.indices[i] = dualIndex;
-      bidDistribution.logPriceDist[i] = -(baseQuoteLogPriceIndex0 + _baseQuoteLogPriceOffset * int(dualIndex));
+      bidDistribution.logPriceDist[i] = -(baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex));
       //bidDistribution.givesDist[i] = 0; // set to 0 by default
 
       // Next log price
-      baseQuoteLogPrice += _baseQuoteLogPriceOffset;
+      baseQuoteLogPrice += int(_baseQuoteLogPriceOffset);
       ++i;
     }
 
@@ -217,7 +217,7 @@ abstract contract GeometricKandel is CoreKandel {
     uint from,
     uint to,
     int baseQuoteLogPriceIndex0,
-    int _baseQuoteLogPriceOffset,
+    uint _baseQuoteLogPriceOffset,
     uint firstAskIndex,
     uint bidGives,
     uint askGives,

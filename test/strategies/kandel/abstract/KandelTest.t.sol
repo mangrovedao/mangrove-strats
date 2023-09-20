@@ -28,8 +28,8 @@ abstract contract KandelTest is StratTest {
   uint globalGasprice;
   uint bufferedGasprice;
   // A ratio of ~108% can be converted to a log price step of ~769 via
-  // int logPriceOffset = LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
-  int logPriceOffset = 769;
+  // uint logPriceOffset = LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
+  uint logPriceOffset = 769;
   // and vice versa with
   // ratio = uint24(LogPriceLib.inboundFromOutbound(logPriceOffset, 1 ether) * 100000 / LogPriceLib.inboundFromOutbound(0, 1 ether)
 
@@ -49,7 +49,7 @@ abstract contract KandelTest is StratTest {
   event RetractStart();
   event RetractEnd();
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
-  event SetBaseQuoteLogPriceOffset(int value);
+  event SetBaseQuoteLogPriceOffset(uint value);
 
   // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
@@ -122,7 +122,7 @@ abstract contract KandelTest is StratTest {
       from: 0,
       to: 5,
       baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
-      _baseQuoteLogPriceOffset: int(logPriceOffset),
+      _baseQuoteLogPriceOffset: logPriceOffset,
       firstAskIndex: firstAskIndex,
       bidGives: type(uint).max,
       askGives: initBase,
@@ -139,7 +139,6 @@ abstract contract KandelTest is StratTest {
       bidGives: type(uint).max,
       askGives: initBase
     });
-    printOB();
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
     deal($(base), maker, pendingBase);
@@ -278,7 +277,7 @@ abstract contract KandelTest is StratTest {
     uint[] memory offerStatuses, // 1:bid 2:ask 3:crossed 0:dead - see OfferStatus
     uint q, // initial quote at first price point, type(uint).max to ignore in verification
     uint b, // initial base at first price point, type(uint).max to ignore in verification
-    int _logPriceOffset
+    uint _logPriceOffset
   ) internal {
     uint expectedBids = 0;
     uint expectedAsks = 0;
@@ -287,7 +286,7 @@ abstract contract KandelTest is StratTest {
       OfferStatus offerStatus = OfferStatus(offerStatuses[i]);
       assertStatus(i, offerStatus, q, b);
       if (q != type(uint).max) {
-        q = (q * LogPriceLib.inboundFromOutbound(int(uint(_logPriceOffset)), 1 ether)) / 1 ether;
+        q = (q * LogPriceLib.inboundFromOutbound(int(_logPriceOffset), 1 ether)) / 1 ether;
       }
       if (offerStatus == OfferStatus.Ask) {
         expectedAsks++;

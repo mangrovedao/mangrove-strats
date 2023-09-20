@@ -540,7 +540,7 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_transport_below_min_price_accumulates_at_index_0() public {
-    int24 logPriceOffset = 769; // corresponding to roughly to 107.992%
+    uint24 logPriceOffset = 769; // corresponding to roughly to 107.992%
     uint firstAskIndex = 5;
 
     // setting params.spread to 4
@@ -940,7 +940,7 @@ abstract contract CoreKandelTest is KandelTest {
     //assertTrue(makerExecuteCost + posthookCost <= kdl.offerGasreq() + local.offer_gasbase(), "Strat is spending more gas");
   }
 
-  function deployOtherKandel(uint base0, uint quote0, int24 logPriceOffset, GeometricKandel.Params memory otherParams)
+  function deployOtherKandel(uint base0, uint quote0, uint24 logPriceOffset, GeometricKandel.Params memory otherParams)
     internal
   {
     address otherMaker = freshAddress();
@@ -984,6 +984,33 @@ abstract contract CoreKandelTest is KandelTest {
 
     vm.prank(otherMaker);
     otherKandel.depositFunds(pendingBase, pendingQuote);
+  }
+
+  function test_reverseLogPrice() public {
+    vm.prank(maker);
+    kdl.retractOffers(0, 10);
+
+    GeometricKandel.Params memory params = getParams(kdl);
+
+    // reversed price
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(initBase, initQuote);
+
+    vm.prank(maker);
+    kdl.populateFromOffset({
+      from: 0,
+      to: 10,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: 5,
+      bidGives: type(uint).max,
+      askGives: initQuote,
+      parameters: params,
+      baseAmount: 0,
+      quoteAmount: 0
+    });
+
+    // Assert inverse price
+    assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]), initBase, initQuote);
   }
 
   function test_dualWantsGivesOfOffer_bidNearBoundary_correctPrice() public {

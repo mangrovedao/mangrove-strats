@@ -38,7 +38,7 @@ contract NoRouterKandelTest is CoreKandelTest {
 
   function validateDistribution(
     CoreKandel.Distribution memory distribution,
-    int baseQuoteLogPriceOffset,
+    uint baseQuoteLogPriceOffset,
     int baseQuoteLogPriceIndex0,
     OfferType ba,
     uint gives,
@@ -76,7 +76,7 @@ contract NoRouterKandelTest is CoreKandelTest {
 
   struct SimpleDistributionHeapArgs {
     int baseQuoteLogPriceIndex0;
-    int baseQuoteLogPriceOffset;
+    uint baseQuoteLogPriceOffset;
     uint firstAskIndex;
     uint askGives;
     uint bidGives;

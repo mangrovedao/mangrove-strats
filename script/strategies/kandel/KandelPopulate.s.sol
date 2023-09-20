@@ -197,7 +197,7 @@ contract KandelPopulate is Deployer {
       args.from,
       args.to,
       baseQuoteLogPriceIndex0,
-      int(uint(args.logPriceOffset)),
+      args.logPriceOffset,
       args.firstAskIndex,
       type(uint).max,
       args.volume,
