@@ -41,42 +41,7 @@ abstract contract GeometricKandel is CoreKandel {
     }
   }
 
-  ///@notice publishes bids/asks for the gives distribution in the `givesDist` array.
-  ///@param from populate offers starting from this index (inclusive).
-  ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
-  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
-  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
-  ///@param baseAmount base amount to deposit
-  ///@param quoteAmount quote amount to deposit
-  function populateFromOffset(
-    uint from,
-    uint to,
-    int baseQuoteLogPriceIndex0,
-    int _baseQuoteLogPriceOffset,
-    uint firstAskIndex,
-    uint bidGives,
-    uint askGives,
-    Params calldata parameters,
-    uint baseAmount,
-    uint quoteAmount
-  ) public payable onlyAdmin {
-    if (msg.value > 0) {
-      MGV.fund{value: msg.value}();
-    }
-    setParams(parameters);
-
-    depositFunds(baseAmount, quoteAmount);
-
-    populateChunkFromOffset(
-      from, to, baseQuoteLogPriceIndex0, _baseQuoteLogPriceOffset, firstAskIndex, bidGives, askGives
-    );
-  }
-
-  ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
+  ///@notice Creates a distribution of bids and asks given by the parameters, while reading additional parameters from the Kandel instance. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive).
   ///@param to populate offers until this index (exclusive).
   ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
@@ -237,7 +202,7 @@ abstract contract GeometricKandel is CoreKandel {
     return (bidDistribution, askDistribution);
   }
 
-  ///@notice publishes bids/asks for the distribution given by the parameters.
+  ///@notice publishes bids/asks according to a geometric distribution, and sets all parameters according to inputs.
   ///@param from populate offers starting from this index (inclusive).
   ///@param to populate offers until this index (exclusive).
   ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
@@ -245,22 +210,54 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  function populateChunkFromOffset(
+  ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
+  ///@param baseAmount base amount to deposit
+  ///@param quoteAmount quote amount to deposit
+  function populateFromOffset(
     uint from,
     uint to,
     int baseQuoteLogPriceIndex0,
     int _baseQuoteLogPriceOffset,
     uint firstAskIndex,
     uint bidGives,
+    uint askGives,
+    Params calldata parameters,
+    uint baseAmount,
+    uint quoteAmount
+  ) public payable onlyAdmin {
+    if (msg.value > 0) {
+      MGV.fund{value: msg.value}();
+    }
+    setParams(parameters);
+    setBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
+
+    depositFunds(baseAmount, quoteAmount);
+
+    populateChunkFromOffset(from, to, baseQuoteLogPriceIndex0, firstAskIndex, bidGives, askGives);
+  }
+
+  ///@notice publishes bids/asks according to a geometric distribution, and reads parameters from the Kandel instance.
+  ///@param from populate offers starting from this index (inclusive).
+  ///@param to populate offers until this index (exclusive).
+  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0.
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
+  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
+  ///@dev This is typically used after a call to `populateFromOffset` to populate the rest of the offers with the same parameters.
+  function populateChunkFromOffset(
+    uint from,
+    uint to,
+    int baseQuoteLogPriceIndex0,
+    uint firstAskIndex,
+    uint bidGives,
     uint askGives
   ) public payable onlyAdmin {
     Params memory parameters = params;
-    setBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
     (Distribution memory bidDistribution, Distribution memory askDistribution) = createDistribution(
       from,
       to,
       baseQuoteLogPriceIndex0,
-      _baseQuoteLogPriceOffset,
+      baseQuoteLogPriceOffset,
       firstAskIndex,
       bidGives,
       askGives,

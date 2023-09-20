@@ -1086,7 +1086,7 @@ abstract contract CoreKandelTest is KandelTest {
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, dist, params, 0, 0)));
     checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, 0, 0, params, 0, 0)));
-    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, 0)));
 
     checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist, dist)));
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));

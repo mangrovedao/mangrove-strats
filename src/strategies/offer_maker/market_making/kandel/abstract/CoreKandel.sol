@@ -88,7 +88,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     setGasprice(gasprice);
   }
 
-  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
+  ///@notice publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
   ///@param bidDistribution the distribution of prices for gives of quote for indices.
   ///@param askDistribution the distribution of prices for gives of base for indices.
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
@@ -115,7 +115,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     populateChunk(bidDistribution, askDistribution, params.gasreq, params.gasprice);
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
+  ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
   ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
   ///@param bidDistribution the distribution of prices for gives of quote for indices.

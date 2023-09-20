@@ -135,7 +135,6 @@ abstract contract KandelTest is StratTest {
       from: 5,
       to: 10,
       baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
-      _baseQuoteLogPriceOffset: int(logPriceOffset),
       firstAskIndex: firstAskIndex,
       bidGives: type(uint).max,
       askGives: initBase

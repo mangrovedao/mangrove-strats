@@ -44,7 +44,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint[] givesDist;
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `logPriceDist` and `givesDist`.
+  ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For instance, for Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
   ///@param bidDistribution the distribution of prices for gives of quote for indices.
   ///@param askDistribution the distribution of prices for gives of base for indices.
   ///@param gasreq the amount of gas units that are required to execute the trade.
