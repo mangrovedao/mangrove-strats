@@ -321,8 +321,8 @@ abstract contract KandelTest is StratTest {
   }
 
   function printOB() internal view {
-    printOrderBook(olKey);
-    printOrderBook(lo);
+    printOfferList(olKey);
+    printOfferList(lo);
     uint pendingBase = uint(kdl.pending(Ask));
     uint pendingQuote = uint(kdl.pending(Bid));
 
