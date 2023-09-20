@@ -52,8 +52,10 @@ contract NoRouterKandelTest is CoreKandelTest {
 
       int absoluteLogPriceAtIndex = baseQuoteLogPriceIndex0 + int(index) * int(baseQuoteLogPriceOffset);
       if (ba == Bid) {
+        // console.log("B %s %s %s", distribution.indices[i], vm.toString(distribution.logPriceDist[i]), distribution.givesDist[i]);
         assertEq(distribution.logPriceDist[i], -absoluteLogPriceAtIndex);
       } else {
+        // console.log("A %s %s %s", distribution.indices[i], vm.toString(distribution.logPriceDist[i]), distribution.givesDist[i]);
         assertEq(distribution.logPriceDist[i], absoluteLogPriceAtIndex);
       }
       // can be a dual
@@ -223,6 +225,8 @@ contract NoRouterKandelTest is CoreKandelTest {
     test_createDistributionSimple_constantAskBidGives(4, type(uint).max, 2 ether);
     test_createDistributionSimple_constantAskBidGives(5, type(uint).max, 2 ether, 4);
     test_createDistributionSimple_constantAskBidGives(0, type(uint).max, 2 ether, 4);
+    test_createDistributionSimple_constantAskBidGives(3, type(uint).max, 2 ether, 2);
+    test_createDistributionSimple_constantAskBidGives(2, type(uint).max, 2 ether, 2);
   }
 
   function test_createDistribution_constantBidGives() public {

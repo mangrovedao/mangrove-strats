@@ -49,6 +49,7 @@ abstract contract KandelTest is StratTest {
   event RetractStart();
   event RetractEnd();
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+  event SetBaseQuoteLogPriceOffset(int value);
 
   // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
@@ -445,20 +446,38 @@ abstract contract KandelTest is StratTest {
 
     uint quote = initQuote;
 
-    // find missing offers
-    uint numDead = 0;
+    uint firstAskIndex = type(uint).max;
     for (uint i = 0; i < params.pricePoints; i++) {
+      // Decide on bid/ask via mid
       OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
-      MgvStructs.OfferPacked offer = kdl.getOffer(ba, i);
-      if (!offer.isLive()) {
-        if (ba == Bid) {
-          numBids++;
-        }
-        indicesPre[numDead] = i;
-        numDead++;
+      if (ba == Ask && firstAskIndex == type(uint).max) {
+        firstAskIndex = i;
       }
       quoteAtIndex[i] = quote;
       quote = (quote * LogPriceLib.inboundFromOutbound(int(uint(logPriceOffset)), 1 ether)) / 1 ether;
+    }
+
+    // find missing offers
+    uint numDead = 0;
+    for (uint i = 0; i < params.pricePoints; i++) {
+      MgvStructs.OfferPacked offer = kdl.getOffer(i < firstAskIndex ? Bid : Ask, i);
+      if (!offer.isLive()) {
+        bool unexpectedDead = false;
+        if (i < firstAskIndex) {
+          if (i < firstAskIndex - params.spread / 2 - params.spread % 2) {
+            numBids++;
+            unexpectedDead = true;
+          }
+        } else {
+          if (i >= firstAskIndex + params.spread / 2) {
+            unexpectedDead = true;
+          }
+        }
+        if (unexpectedDead) {
+          indicesPre[numDead] = i;
+          numDead++;
+        }
+      }
     }
 
     // truncate indices - cannot do push to memory array
