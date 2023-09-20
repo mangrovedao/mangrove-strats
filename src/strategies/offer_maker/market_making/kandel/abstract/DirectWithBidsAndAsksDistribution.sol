@@ -57,17 +57,18 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint gasprice
   ) internal {
     emit PopulateStart();
-    uint[] memory indices = bidDistribution.indices;
-    int[] memory logPriceDist = bidDistribution.logPriceDist;
-    uint[] memory givesDist = bidDistribution.givesDist;
-
+    // Initialize static values of args
     OfferArgs memory args;
     // args.fund = 0; offers are already funded
     // args.noRevert = false; we want revert in case of failure
-
-    args.olKey = offerListOfOfferType(OfferType.Bid);
     args.gasreq = gasreq;
     args.gasprice = gasprice;
+
+    // Populate bids
+    uint[] memory indices = bidDistribution.indices;
+    int[] memory logPriceDist = bidDistribution.logPriceDist;
+    uint[] memory givesDist = bidDistribution.givesDist;
+    args.olKey = offerListOfOfferType(OfferType.Bid);
 
     // Minimum gives for offers (to post and retract)
     uint minGives;
@@ -80,6 +81,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGives);
     }
 
+    // Populate asks
     indices = askDistribution.indices;
     logPriceDist = askDistribution.logPriceDist;
     givesDist = askDistribution.givesDist;
@@ -100,21 +102,25 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param ba whether the offer is a bid or an ask.
   ///@param offerId the Mangrove offer id (0 for a new offer).
   ///@param index the price index.
-  ///@param args the argument of the offer.
-  ///@param minGives the minimum gives to satisfy density requirement - used for reserving offerIds.
+  ///@param args the argument of the offer. `args.gives=0` means offer will be created/updated and then retracted.
+  ///@param minGives the minimum gives to satisfy density requirement - used for creating/updating offers when args.gives=0.
   function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args, uint minGives) internal {
     // if offer does not exist on mangrove yet
     if (offerId == 0) {
-      // and offer should exist
+      // and offer should be live
       if (args.gives > 0) {
         // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
         (offerId,) = _newOffer(args);
         setIndexMapping(ba, index, offerId);
       } else {
-        // else offerId && gives are 0 and the offer is posted and retracted to reserve the offerId
+        // else offerId && gives are 0 and the offer is posted and retracted to reserve the offerId and set the price
+        // set args.gives to minGives to be above density requirement, we do it here since we use the args.gives=0 to signal a dead offer.
         args.gives = minGives;
+        // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
         (offerId,) = _newOffer(args);
+        // reset args.gives since args is reused
         args.gives = 0;
+        // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
         _retractOffer(args.olKey, offerId, false);
         setIndexMapping(ba, index, offerId);
       }
@@ -124,10 +130,13 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       // but the offer should be dead since gives is 0
       if (args.gives == 0) {
         // * `gives == 0` may happen from populate in case of re-population where the offers in the spread are then retracted by setting gives to 0.
-        // Update offer to set correct price, gasreq, gasprice, then retract
+        // set args.gives to minGives to be above density requirement, we do it here since we use the args.gives=0 to signal a dead offer.
         args.gives = minGives;
+        // Update offer to set correct price, gasreq, gasprice, then retract
         _updateOffer(args, offerId);
+        // reset args.gives since args is reused
         args.gives = 0;
+        // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
         _retractOffer(args.olKey, offerId, false);
       } else {
         // so the offer exists and it should, we simply update it with potentially new volume and price
