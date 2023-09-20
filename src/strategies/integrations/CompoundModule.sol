@@ -12,8 +12,6 @@ interface WETH is IERC20 {
   function withdraw(uint) external;
 }
 
-// TODO-foundry-merge explain what this contract does
-
 contract CompoundModule is Exponential {
   event ErrorOnRedeem(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, uint errorCode);
   event ErrorOnMint(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, uint errorCode);

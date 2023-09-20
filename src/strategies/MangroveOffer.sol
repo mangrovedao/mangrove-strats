@@ -113,7 +113,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     } else {
       // logging what went wrong during `makerExecute`
       emit LogIncident(order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
-      // calling strat specific todos in case of failure
+      // calling strat specific handlers in case of failure
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
     }
