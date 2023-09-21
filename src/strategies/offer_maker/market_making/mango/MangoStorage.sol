@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 library MangoStorage {
   /**

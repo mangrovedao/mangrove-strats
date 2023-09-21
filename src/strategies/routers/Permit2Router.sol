@@ -3,16 +3,17 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {StratTransferLib} from "mgv_strat_src/strategies/utils/StratTransferLib.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {SimpleRouterWithoutGasReq} from "./SimpleRouter.sol";
+import {MonoRouter} from "./abstract/MonoRouter.sol";
 
 //@title `Permit2Router` instances pull (push) liquidity directly from (to) the an offer owner's account using permit2 contract
 //@dev Maker contracts using this router must make sure that the reserve approves the permit2 for all asset that will be pulled (outbound tokens), and then the user needs either approve router inside permit2 or he can use just in time signature to authorize transfer
-contract Permit2Router is SimpleRouterWithoutGasReq {
+contract Permit2Router is MonoRouter {
   IPermit2 public permit2;
 
-  constructor(IPermit2 _permit2) SimpleRouterWithoutGasReq(74_000) {
+  constructor(IPermit2 _permit2) MonoRouter(74_000) {
     permit2 = _permit2;
   }
 
@@ -63,6 +64,16 @@ contract Permit2Router is SimpleRouterWithoutGasReq {
     } else {
       return 0;
     }
+  }
+
+  /// @notice transfers an amount of tokens from the maker to the reserve.
+  function __push__(IERC20 token, address owner, uint amount) internal virtual override returns (uint) {
+    bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
+    return success ? amount : 0;
+  }
+
+  function balanceOfReserve(IERC20 token, address owner) public view override returns (uint) {
+    return token.balanceOf(owner);
   }
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.

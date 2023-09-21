@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import {DirectTester, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract MangroveOfferTest is StratTest {
   TestToken weth;
@@ -157,7 +157,7 @@ contract MangroveOfferTest is StratTest {
   }
 
   function test_offerGasreq_with_no_router_is_constant() public {
-    assertEq(makerContract.OFFER_GASREQ(), makerContract.offerGasreq(), "Incorrect gasreq for offer");
+    assertEq(makerContract.CONSTANT_GASREQ(), makerContract.offerGasreq(), "Incorrect gasreq for offer");
   }
 
   // makerExecute and makerPosthook guards
@@ -247,7 +247,7 @@ contract MangroveOfferTest is StratTest {
     SimpleRouter router = new SimpleRouter();
     router.setAdmin(address(makerContract));
     makerContract.setRouter(router);
-    assertEq(makerContract.offerGasreq(), gasreq + router.routerGasreq(), "incorrect gasreq");
+    assertEq(makerContract.offerGasreq(), gasreq + router.ROUTER_GASREQ(), "incorrect gasreq");
     vm.stopPrank();
   }
 

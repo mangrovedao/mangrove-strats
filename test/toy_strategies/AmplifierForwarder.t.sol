@@ -311,8 +311,8 @@ contract AmplifierForwarderTest is StratTest {
     (testOffer.daiOffer, testOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
     //Find missing provision for both markets
-    uint prov1Tester = reader.getProvision($(weth), $(usdc), strat.offerGasreq(), 0);
-    uint prov2Tester = reader.getProvision($(weth), $(dai), strat.offerGasreq(), 0);
+    uint prov1Tester = reader.getProvision($(weth), $(usdc), strat.offerGasreq());
+    uint prov2Tester = reader.getProvision($(weth), $(dai), strat.offerGasreq());
 
     vm.expectRevert("AmplifierForwarder/offer1AlreadyActive");
 
@@ -337,8 +337,8 @@ contract AmplifierForwarderTest is StratTest {
 
     strat.retractOffer(weth, usdc, makerOffer.usdcOffer, false);
 
-    uint prov1Maker = reader.getProvision($(weth), $(usdc), strat.offerGasreq(), 0);
-    uint prov2Maker = reader.getProvision($(weth), $(dai), strat.offerGasreq(), 0);
+    uint prov1Maker = reader.getProvision($(weth), $(usdc), strat.offerGasreq());
+    uint prov2Maker = reader.getProvision($(weth), $(dai), strat.offerGasreq());
 
     vm.expectRevert("AmplifierForwarder/offer2AlreadyActive");
 

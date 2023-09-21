@@ -1444,9 +1444,9 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.BASE();
     kdl.MGV();
     kdl.NO_ROUTER();
-    kdl.OFFER_GASREQ();
     kdl.PRECISION();
     kdl.QUOTE();
+    kdl.CONSTANT_GASREQ();
     kdl.RESERVE_ID();
     kdl.admin();
     kdl.checkList(new IERC20[](0));
@@ -1455,12 +1455,14 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.indexOfOfferId(Ask, 42);
     kdl.offerIdOfIndex(Ask, 0);
     kdl.offerGasreq();
+    kdl.offerGasreq(IERC20(address(0)), address(0));
     kdl.offeredVolume(Ask);
     kdl.params();
     kdl.pending(Ask);
     kdl.reserveBalance(Ask);
     kdl.provisionOf(base, quote, 0);
     kdl.router();
+    kdl.offerGasreq();
 
     CoreKandel.Distribution memory dist;
     CheckAuthArgs memory args;

@@ -13,7 +13,7 @@ import {AbstractKandelSeeder} from
 import {CoreKandel, IERC20} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MangroveTest, Test} from "mgv_test/lib/MangroveTest.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 /**
  * @notice deploys a Kandel seeder
