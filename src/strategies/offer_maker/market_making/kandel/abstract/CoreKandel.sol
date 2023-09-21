@@ -208,11 +208,13 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       args.gives = type(uint96).max;
     }
 
+    // keep existing price of offer
     args.logPrice = dualOffer.logPrice();
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents
     args.noRevert = true;
+    // use newest gasreq and gasprice
     args.gasprice = memoryParams.gasprice;
     args.gasreq = memoryParams.gasreq;
   }

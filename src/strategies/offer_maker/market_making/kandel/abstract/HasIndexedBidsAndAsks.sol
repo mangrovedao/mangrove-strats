@@ -78,7 +78,7 @@ abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
   ///@param length_ the new length.
   function setLength(uint length_) internal {
     length = length_;
-    emit SetLength(length);
+    emit SetLength(length_);
   }
 
   ///@notice gets the Mangrove offer at the given index for the offer type.

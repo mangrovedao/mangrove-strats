@@ -38,7 +38,7 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   ///@notice tickScale of the market Kandel is making
   uint public immutable TICK_SCALE;
 
-  ///@notice The traded offerlist
+  ///@notice The traded offer list
   ///@param olKeyHash of the market Kandel is making
   ///@notice we only emit this, so that the events for a Kandel is self contained. If one uses the KandelSeeder to deploy, then this information is already available from NewKandel or NewAaveKandel events.
   event OfferListKey(bytes32 olKeyHash);

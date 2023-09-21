@@ -2,9 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 

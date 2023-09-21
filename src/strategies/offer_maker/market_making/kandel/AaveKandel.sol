@@ -106,7 +106,7 @@ contract AaveKandel is GeometricKandel {
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
       repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
     } else {
-      // reposting offer residual if any - call super to let flush tokens to router
+      // reposting offer residual if any - call super to flush tokens to router
       repostStatus = super.__posthookSuccess__(order, makerData);
     }
   }
