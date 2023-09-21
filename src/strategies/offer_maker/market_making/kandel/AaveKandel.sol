@@ -6,7 +6,7 @@ import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {AbstractRouter, AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
-import {AbstractKandel} from "./abstract/AbstractKandel.sol";
+import {ICoreKandel} from "./abstract/ICoreKandel.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
@@ -54,7 +54,7 @@ contract AaveKandel is GeometricKandel {
     setGasreq(offerGasreq());
   }
 
-  ///@inheritdoc AbstractKandel
+  ///@inheritdoc ICoreKandel
   function depositFunds(uint baseAmount, uint quoteAmount) public override {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
@@ -62,7 +62,7 @@ contract AaveKandel is GeometricKandel {
     AavePooledRouter(address(router())).pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, RESERVE_ID);
   }
 
-  ///@inheritdoc AbstractKandel
+  ///@inheritdoc ICoreKandel
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public override onlyAdmin {
     if (baseAmount != 0) {
       AavePooledRouter(address(router())).withdraw(BASE, RESERVE_ID, baseAmount);
@@ -74,7 +74,7 @@ contract AaveKandel is GeometricKandel {
   }
 
   ///@notice returns the amount of the router's balance that belong to this contract for the token offered for the offer type.
-  ///@inheritdoc AbstractKandel
+  ///@inheritdoc ICoreKandel
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
     return AavePooledRouter(address(router())).balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);

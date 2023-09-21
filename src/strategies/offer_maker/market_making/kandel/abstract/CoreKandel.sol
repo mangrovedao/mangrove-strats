@@ -7,12 +7,12 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
-import {AbstractKandel} from "./AbstractKandel.sol";
+import {ICoreKandel} from "./ICoreKandel.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
-abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, AbstractKandel {
+abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, ICoreKandel {
   ///@notice Core Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
@@ -28,9 +28,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Storage of the parameters for the strat.
   Params public params;
 
-  ///@notice sets the step size
-  ///@param stepSize the step size.
-  function setStepSize(uint stepSize) public onlyAdmin {
+  /// @inheritdoc ICoreKandel
+  function setStepSize(uint stepSize) public override onlyAdmin {
     uint104 stepSize_ = uint104(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
@@ -38,7 +37,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     emit SetStepSize(stepSize);
   }
 
-  /// @inheritdoc AbstractKandel
+  /// @inheritdoc ICoreKandel
   function setGasprice(uint gasprice) public override onlyAdmin {
     uint16 gasprice_ = uint16(gasprice);
     require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
@@ -46,7 +45,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     emit SetGasprice(gasprice_);
   }
 
-  /// @inheritdoc AbstractKandel
+  /// @inheritdoc ICoreKandel
   function setGasreq(uint gasreq) public override onlyAdmin {
     uint24 gasreq_ = uint24(gasreq);
     require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
@@ -125,7 +124,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     populateChunkInternal(distribution, parameters.gasreq, parameters.gasprice);
   }
 
-  ///@inheritdoc AbstractKandel
+  ///@inheritdoc ICoreKandel
   function reserveBalance(OfferType ba) public view virtual override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
     return token.balanceOf(address(this));
