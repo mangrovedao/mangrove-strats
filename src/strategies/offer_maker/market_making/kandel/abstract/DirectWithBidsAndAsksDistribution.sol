@@ -148,19 +148,23 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@dev use in conjunction of `withdrawFromMangrove` if the user wishes to redeem the available WEIs.
   function retractOffers(uint from, uint to) public onlyAdmin {
     emit RetractStart();
-    OLKey memory olKeyAsk = offerListOfOfferType(OfferType.Ask);
-    OLKey memory olKeyBid = olKeyAsk.flipped();
+    retractOffersOnOfferList(from, to, OfferType.Ask);
+    retractOffersOnOfferList(from, to, OfferType.Bid);
+    emit RetractEnd();
+  }
+
+  ///@notice retracts and deprovisions offers of the distribution interval `[from, to[` for the given offer type.
+  ///@param from the start index.
+  ///@param to the end index.
+  ///@param ba the offer type.
+  function retractOffersOnOfferList(uint from, uint to, OfferType ba) internal {
+    OLKey memory olKey = offerListOfOfferType(ba);
     for (uint index = from; index < to; ++index) {
       // These offerIds could be recycled in a new populate
-      uint offerId = offerIdOfIndex(OfferType.Ask, index);
+      uint offerId = offerIdOfIndex(ba, index);
       if (offerId != 0) {
-        _retractOffer(olKeyAsk, offerId, true);
-      }
-      offerId = offerIdOfIndex(OfferType.Bid, index);
-      if (offerId != 0) {
-        _retractOffer(olKeyBid, offerId, true);
+        _retractOffer(olKey, offerId, true);
       }
     }
-    emit RetractEnd();
   }
 }
