@@ -11,10 +11,20 @@ import {IERC20} from "mgv_src/IERC20.sol";
 /// @dev No tokens should be directly sent to this contract
 /// @dev This contract is to be used by the `Dispatcher` contract.
 contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
-  constructor(uint routerGasreq_, address addressesProvider, uint interestRateMode)
+  bytes32 internal immutable STORAGE_KEY;
+
+  uint internal immutable DEFAULT_BUFFER_SIZE = 100;
+
+  struct AaveDispatcherStorage {
+    mapping(address => mapping(IERC20 => uint)) buffer_size;
+  }
+
+  constructor(uint routerGasreq_, address addressesProvider, uint interestRateMode, string memory storage_key)
     MonoRouter(routerGasreq_)
     AaveMemoizer(addressesProvider, interestRateMode)
-  {}
+  {
+    STORAGE_KEY = keccak256(abi.encodePacked(storage_key));
+  }
 
   function __checkList__(IERC20 token, address reserveId) internal view override {
     require(token.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
