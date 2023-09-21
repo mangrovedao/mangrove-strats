@@ -26,7 +26,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
-  ///@param permit2 The permit2 contract
+  ///@param permit2 The Permit2 contract
   ///@param deployer The address of the admin of `this` at the end of deployment
   ///@param gasreq The gas required for `this` to execute `makerExecute` and `makerPosthook` when called by mangrove for a resting order.
   constructor(IMangrove mgv, IPermit2 permit2, address deployer, uint gasreq)
@@ -125,7 +125,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
-  ///@notice pull inbound_tkn from the msg.sender with permit and then the forward market order to MGV
+  ///@notice pull inbound_tkn from the msg.sender with permit and then forward market order to MGV
   ///@param outbound_tkn outbound_tkn
   ///@param inbound_tkn inbound_tkn
   ///@param takerWants Amount of outbound_tkn taker wants
