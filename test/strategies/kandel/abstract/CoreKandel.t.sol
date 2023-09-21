@@ -1304,7 +1304,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.router();
     kdl.baseQuoteLogPriceOffset();
     kdl.createDistribution(0, 0, 0, 0, 0, 0, 0, 0, 0);
-    kdl.createDistribution(0, 0, 0, 0, 0, 0);
 
     CoreKandel.Distribution memory dist;
     GeometricKandel.Params memory params = getParams(kdl);

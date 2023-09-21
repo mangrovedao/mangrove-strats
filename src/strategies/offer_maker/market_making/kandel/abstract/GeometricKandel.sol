@@ -38,37 +38,6 @@ abstract contract GeometricKandel is CoreKandel {
     }
   }
 
-  ///@notice Creates a distribution of bids and asks given by the parameters, while reading additional parameters from the Kandel instance. Dual offers are included with gives=0.
-  ///@param from populate offers starting from this index (inclusive).
-  ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
-  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  ///@return distribution the distribution of bids and asks to populate
-  ///@dev See `createDistribution` overload for further details.
-  function createDistribution(
-    uint from,
-    uint to,
-    int baseQuoteLogPriceIndex0,
-    uint firstAskIndex,
-    uint bidGives,
-    uint askGives
-  ) external view returns (Distribution memory distribution) {
-    Params memory parameters = params;
-    return createDistribution(
-      from,
-      to,
-      baseQuoteLogPriceIndex0,
-      baseQuoteLogPriceOffset,
-      firstAskIndex,
-      bidGives,
-      askGives,
-      parameters.pricePoints,
-      parameters.stepSize
-    );
-  }
-
   ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
   ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
