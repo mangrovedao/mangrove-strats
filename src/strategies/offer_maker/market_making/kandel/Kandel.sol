@@ -2,11 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {GeometricKandel, AbstractKandel} from "./abstract/GeometricKandel.sol";
-import {AbstractKandel} from "./abstract/AbstractKandel.sol";
-import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
+import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 
 ///@title The Kandel strat with geometric price progression.

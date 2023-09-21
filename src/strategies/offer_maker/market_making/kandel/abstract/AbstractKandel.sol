@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 
 ///@title Core external functions and events for Kandel strats.

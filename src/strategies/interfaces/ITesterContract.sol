@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.0;
 
-import {ILiquidityProvider, IERC20} from "./ILiquidityProvider.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
+import {ILiquidityProvider} from "./ILiquidityProvider.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 ///@title Interface for testing Forwarder and Direct maker contracts with reserve setters.
 interface ITesterContract is ILiquidityProvider {

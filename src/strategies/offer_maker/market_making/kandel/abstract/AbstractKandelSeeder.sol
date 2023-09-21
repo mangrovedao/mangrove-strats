@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {GeometricKandel} from "./GeometricKandel.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 

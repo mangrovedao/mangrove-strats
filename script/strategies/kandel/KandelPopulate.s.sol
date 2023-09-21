@@ -2,13 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2 as console} from "forge-std/Script.sol";
-import {
-  Kandel, IERC20, IMangrove, OfferType
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {AbstractKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {toFixed} from "mgv_lib/Test2.sol";

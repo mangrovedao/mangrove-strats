@@ -1,15 +1,12 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
-import {AbstractKandel} from "./AbstractKandel.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
