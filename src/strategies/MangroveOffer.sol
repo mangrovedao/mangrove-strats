@@ -274,12 +274,12 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   {
     // now trying to repost residual
     (uint newGives, int newLogPrice) = __residualValues__(order);
-    //FIXME: this should be the same check as near mgv/writeOffer/wants/tooLow in MgvOfferMaking, verify when that is done.
-    uint newWants = LogPriceLib.inboundFromOutbound(newLogPrice, newGives);
     // Density check at each repost would be too gas costly.
     // We only treat the special case of `gives==0` or `wants==0` (total fill).
+    // Note: wants (given by `inboundFromOutbound`) can be 0 due to rounding given the price. We could repost to get rid of the last gives at 0 wants,
+    // but the maker does not need to give away these tokens for free, so we skip it.
     // Offer below the density will cause Mangrove to throw so we encapsulate the call to `updateOffer` in order not to revert posthook for posting at dust level.
-    if (newGives == 0 || newWants == 0) {
+    if (newGives == 0 || LogPriceLib.inboundFromOutbound(newLogPrice, newGives) == 0) {
       return COMPLETE_FILL;
     }
     data = _updateOffer(
