@@ -479,7 +479,6 @@ contract MangroveOrder_Test is StratTest {
     MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
-    //FIXME: offer.wants becomes slightly less, thus limit-order-taker is not exactly getting what she asked for.
     assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
     assertEq(offer.logPrice(), -buyOrder.logPrice, "Incorrect offer price");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
@@ -571,7 +570,6 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrderHalfVolume();
     sellOrder.restingOrder = true;
     address fresh_taker = freshTaker(1 ether, 0);
-    // FIXME: +1 due to rounding ok?
     vm.mockCall(
       $(quote),
       abi.encodeWithSelector(

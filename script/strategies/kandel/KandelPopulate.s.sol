@@ -82,8 +82,7 @@ contract KandelPopulate is Deployer {
   }
 
   struct HeapVars {
-    CoreKandel.Distribution bidDistribution;
-    CoreKandel.Distribution askDistribution;
+    CoreKandel.Distribution distribution;
     uint baseAmountRequired;
     uint quoteAmountRequired;
     bool bidding;
@@ -121,7 +120,7 @@ contract KandelPopulate is Deployer {
     }
 
     prettyLog("Calculating base and quote...");
-    (vars.bidDistribution, vars.askDistribution) = calculateBaseQuote(args);
+    vars.distribution = calculateBaseQuote(args);
 
     prettyLog("Evaluating required collateral...");
     evaluateAmountsRequired(vars);
@@ -172,19 +171,13 @@ contract KandelPopulate is Deployer {
 
     broadcast();
 
-    args.kdl.populate{value: funds}(
-      vars.bidDistribution, vars.askDistribution, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
-    );
+    args.kdl.populate{value: funds}(vars.distribution, args.params, vars.baseAmountRequired, vars.quoteAmountRequired);
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args)
-    public
-    pure
-    returns (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution)
-  {
+  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
     int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(args.initQuote, args.volume);
-    (bidDistribution, askDistribution) = args.kdl.createDistribution(
+    distribution = args.kdl.createDistribution(
       args.from,
       args.to,
       baseQuoteLogPriceIndex0,
@@ -200,11 +193,11 @@ contract KandelPopulate is Deployer {
   ///@notice evaluates required amounts that need to be published on Mangrove
   ///@dev we use foundry cheats to revert all changes to the local node in order to prevent inconsistent tests.
   function evaluateAmountsRequired(HeapVars memory vars) public pure {
-    for (uint i = 0; i < vars.bidDistribution.givesDist.length; ++i) {
-      vars.quoteAmountRequired += vars.bidDistribution.givesDist[i];
+    for (uint i = 0; i < vars.distribution.bids.length; ++i) {
+      vars.quoteAmountRequired += vars.distribution.bids[i].gives;
     }
-    for (uint i = 0; i < vars.askDistribution.givesDist.length; ++i) {
-      vars.baseAmountRequired += vars.askDistribution.givesDist[i];
+    for (uint i = 0; i < vars.distribution.asks.length; ++i) {
+      vars.baseAmountRequired += vars.distribution.asks[i].gives;
     }
   }
 }
