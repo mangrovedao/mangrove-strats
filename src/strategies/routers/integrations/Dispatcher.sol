@@ -8,6 +8,44 @@ import {IViewDelegator} from "../../utils/ViewDelegator.sol";
 
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
 contract Dispatcher is MultiRouter {
+  mapping(bytes4 => address) public routerSpecificFunctions;
+
+  /// @notice Fired when a router specific function is added to the dispatcher
+  /// @dev This must be fired for the indexers to pick up the function
+  /// @param router The dispatched router contract
+  /// @param selector The function selector
+  event RouterSpecificFunctionAdded(address indexed router, bytes4 indexed selector);
+
+  /// @notice Fired when a router specific function is removed from the dispatcher
+  /// @param router The dispatched router contract
+  /// @param selector The function selector
+  event RouterSpecificFunctionRemoved(address indexed router, bytes4 indexed selector);
+
+  /// @notice Initializes a new router contract by setting the router specific functions
+  /// @dev Selectors must be unique across all routers
+  /// * if a selector is already set, it will revert
+  /// @param router The router contract to initialize
+  /// @param selectors The selectors to set
+  function initializeRouter(address router, bytes4[] calldata selectors) external onlyAdmin {
+    for (uint i = 0; i < selectors.length; i++) {
+      require(routerSpecificFunctions[selectors[i]] == address(0), "Dispatcher/SelectorAlreadySet");
+      routerSpecificFunctions[selectors[i]] = router;
+      emit RouterSpecificFunctionAdded(router, selectors[i]);
+    }
+  }
+
+  /// @notice Removes a router contract by removing the router specific functions
+  /// @dev if a selector is not set, it will revert
+  /// @param selectors The selectors to remove
+  function removeFunctions(bytes4[] calldata selectors) external onlyAdmin {
+    for (uint i = 0; i < selectors.length; i++) {
+      address router = routerSpecificFunctions[selectors[i]];
+      require(router != address(0), "Dispatcher/SelectorNotSet");
+      delete routerSpecificFunctions[selectors[i]];
+      emit RouterSpecificFunctionRemoved(router, selectors[i]);
+    }
+  }
+
   /// @notice Get the current router for the given token and reserveId
   /// @dev This will revert if the router contract does not exist
   /// @param token The token to get the router for
@@ -19,47 +57,30 @@ contract Dispatcher is MultiRouter {
     require(address(router) != address(0), "Dispatcher/UnkownRoute");
   }
 
-  /// @notice Safely calls a router contract
-  /// @dev This will revert if the router contract does not exist or if the call fails
-  /// @param router The MonoRouter contract to call
-  /// @param data The data to send to the router contract (encoded with abi.encodeWithSelector(...))
-  /// @return returndata The data returned by the router contract
-  function _safeRouterDelegateCall(MonoRouter router, bytes memory data) internal returns (bytes memory returndata) {
-    (bool success, bytes memory _returndata) = address(router).delegatecall(data);
-
-    if (success == false) {
-      if (_returndata.length > 0) {
-        assembly {
-          let returndata_size := mload(_returndata)
-          revert(add(32, _returndata), returndata_size)
-        }
-      } else {
-        revert("Dispatcher/DelegateCallFailed");
-      }
-    } else {
-      returndata = _returndata;
+  /// @inheritdoc	AbstractRouter
+  function __pull__(IERC20 token, address reserveId, uint, bool) internal virtual override returns (uint) {
+    address router = address(_getRouterSafely(token, reserveId));
+    assembly {
+      calldatacopy(0, 0, calldatasize())
+      let result := delegatecall(gas(), router, 0, calldatasize(), 0, 0)
+      returndatacopy(0, 0, returndatasize())
+      switch result
+      case 0 { revert(0, returndatasize()) }
+      default { return(0, returndatasize()) }
     }
   }
 
   /// @inheritdoc	AbstractRouter
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict)
-    internal
-    virtual
-    override
-    returns (uint pulled)
-  {
-    MonoRouter router = _getRouterSafely(token, reserveId);
-    bytes memory returnData =
-      _safeRouterDelegateCall(router, abi.encodeWithSelector(router.pull.selector, token, reserveId, amount, strict));
-    pulled = abi.decode(returnData, (uint));
-  }
-
-  /// @inheritdoc	AbstractRouter
-  function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint pushed) {
-    MonoRouter router = _getRouterSafely(token, reserveId);
-    bytes memory returnData =
-      _safeRouterDelegateCall(router, abi.encodeWithSelector(router.push.selector, token, reserveId, amount));
-    pushed = abi.decode(returnData, (uint));
+  function __push__(IERC20 token, address reserveId, uint) internal virtual override returns (uint pushed) {
+    address router = address(_getRouterSafely(token, reserveId));
+    assembly {
+      calldatacopy(0, 0, calldatasize())
+      let result := delegatecall(gas(), router, 0, calldatasize(), 0, 0)
+      returndatacopy(0, 0, returndatasize())
+      switch result
+      case 0 { revert(0, returndatasize()) }
+      default { return(0, returndatasize()) }
+    }
   }
 
   /// @inheritdoc	AbstractRouter
@@ -78,19 +99,24 @@ contract Dispatcher is MultiRouter {
   fallback() external {
     if (msg.sig == IViewDelegator.staticdelegatecall.selector) {
       (, address target, bytes memory data) = abi.decode(msg.data, (bytes4, address, bytes));
-      (bool success, bytes memory result) = target.delegatecall(data);
-      if (!success) {
-        if (result.length > 0) {
-          assembly {
-            let returndata_size := mload(result)
-            revert(add(32, result), returndata_size)
-          }
-        } else {
-          revert("ViewDelegator/DelegateCallFailed");
-        }
-      }
       assembly {
-        return(result, mload(result))
+        let result := delegatecall(gas(), target, add(data, 0x20), mload(data), 0, 0)
+        returndatacopy(0, 0, returndatasize())
+        switch result
+        case 0 { revert(0, returndatasize()) }
+        default { return(0, returndatasize()) }
+      }
+    } else {
+      address router = routerSpecificFunctions[msg.sig];
+      require(router != address(0), "Dispatcher/SelectorNotSet");
+
+      assembly {
+        calldatacopy(0, 0, calldatasize())
+        let result := delegatecall(gas(), router, 0, calldatasize(), 0, 0)
+        returndatacopy(0, 0, returndatasize())
+        switch result
+        case 0 { revert(0, returndatasize()) }
+        default { return(0, returndatasize()) }
       }
     }
   }
