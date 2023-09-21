@@ -116,11 +116,11 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     depositFunds(baseAmount, quoteAmount);
 
-    populateChunk(bidDistribution, askDistribution, params.gasreq, params.gasprice);
+    populateChunkInternal(bidDistribution, askDistribution, params.gasreq, params.gasprice);
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
-  ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
+  ///@notice This function is used externally after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
   ///@param bidDistribution the distribution of prices for gives of quote for indices.
   ///@param askDistribution the distribution of prices for gives of base for indices.
@@ -128,7 +128,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     external
     onlyAdmin
   {
-    populateChunk(bidDistribution, askDistribution, params.gasreq, params.gasprice);
+    Params memory parameters = params;
+    populateChunkInternal(bidDistribution, askDistribution, parameters.gasreq, parameters.gasprice);
   }
 
   ///@inheritdoc AbstractKandel

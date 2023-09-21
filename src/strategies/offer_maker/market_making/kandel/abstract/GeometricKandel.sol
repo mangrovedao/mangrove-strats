@@ -259,6 +259,6 @@ abstract contract GeometricKandel is CoreKandel {
       parameters.pricePoints,
       parameters.spread
     );
-    populateChunk(bidDistribution, askDistribution, parameters.gasreq, parameters.gasprice);
+    populateChunkInternal(bidDistribution, askDistribution, parameters.gasreq, parameters.gasprice);
   }
 }

@@ -48,7 +48,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
   ///@dev Gives of 0 means create/update and then retract offer (but update price, gasreq, gasprice of the offer)
-  function populateChunk(
+  function populateChunkInternal(
     Distribution memory bidDistribution,
     Distribution memory askDistribution,
     uint gasreq,
