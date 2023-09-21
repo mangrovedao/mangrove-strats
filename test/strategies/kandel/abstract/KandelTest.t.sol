@@ -39,7 +39,7 @@ abstract contract KandelTest is StratTest {
   event Mgv(IMangrove mgv);
   event OfferListKey(bytes32 olKeyHash);
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
-  event SetSpread(uint value);
+  event SetStepSize(uint value);
   event SetLength(uint value);
   event SetGasreq(uint value);
   event Credit(IERC20 indexed token, uint amount);
@@ -113,7 +113,7 @@ abstract contract KandelTest is StratTest {
     uint firstAskIndex = 5;
 
     GeometricKandel.Params memory params;
-    params.spread = STEP;
+    params.stepSize = STEP;
     params.pricePoints = 10;
     int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
 
@@ -183,11 +183,11 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint16 gasprice, uint24 gasreq, uint104 spread, uint112 pricePoints) = aKandel.params();
+    (uint16 gasprice, uint24 gasreq, uint104 stepSize, uint112 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
-    params.spread = spread;
+    params.stepSize = stepSize;
     params.pricePoints = pricePoints;
   }
 
@@ -364,7 +364,7 @@ abstract contract KandelTest is StratTest {
     bytes memory expectRevert
   ) internal {
     GeometricKandel.Params memory params = getParams(kdl);
-    populateSingle(kandel, index, base, quote, firstAskIndex, params.pricePoints, params.spread, expectRevert);
+    populateSingle(kandel, index, base, quote, firstAskIndex, params.pricePoints, params.stepSize, expectRevert);
   }
 
   function populateSingle(
@@ -374,7 +374,7 @@ abstract contract KandelTest is StratTest {
     uint quote,
     uint firstAskIndex,
     uint pricePoints,
-    uint spread,
+    uint stepSize,
     bytes memory expectRevert
   ) internal {
     CoreKandel.Distribution memory distribution;
@@ -400,7 +400,7 @@ abstract contract KandelTest is StratTest {
     }
     GeometricKandel.Params memory params;
     params.pricePoints = uint112(pricePoints);
-    params.spread = uint104(spread);
+    params.stepSize = uint104(stepSize);
 
     kandel.populate{value: 0.1 ether}(
       index < firstAskIndex ? distribution : emptyDist(),
@@ -424,7 +424,7 @@ abstract contract KandelTest is StratTest {
       1500 * 10 ** 6,
       1 ether,
       size,
-      params.spread
+      params.stepSize
     );
 
     vm.prank(maker);
@@ -483,12 +483,12 @@ abstract contract KandelTest is StratTest {
       if (!offer.isLive()) {
         bool unexpectedDead = false;
         if (i < firstAskIndex) {
-          if (i < firstAskIndex - params.spread / 2 - params.spread % 2) {
+          if (i < firstAskIndex - params.stepSize / 2 - params.stepSize % 2) {
             numBids++;
             unexpectedDead = true;
           }
         } else {
-          if (i >= firstAskIndex + params.spread / 2) {
+          if (i >= firstAskIndex + params.stepSize / 2) {
             unexpectedDead = true;
           }
         }
