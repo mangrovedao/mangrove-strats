@@ -336,7 +336,7 @@ contract AaveKandelTest is CoreKandelTest {
   function test_liquidity_borrow_marketOrder_attack() public {
     GeometricKandel.Params memory otherParams;
     otherParams.pricePoints = 137;
-    otherParams.spread = 1;
+    otherParams.stepSize = 1;
     /// adding as many offers as possible (adding more will stack overflow when failing offer will cascade)
     deployOtherKandel(0.1 ether, 100 * 10 ** 6, 100, otherParams);
     //printOrderBook($(quote), $(base));

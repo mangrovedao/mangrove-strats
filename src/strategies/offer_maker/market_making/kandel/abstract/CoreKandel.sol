@@ -16,26 +16,26 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Core Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
-  ///@param spread in amount of price points to jump for posting dual offer.
+  ///@param stepSize in amount of price points to jump for posting dual offer.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
     uint16 gasprice;
     uint24 gasreq;
-    uint104 spread;
+    uint104 stepSize;
     uint112 pricePoints;
   }
 
   ///@notice Storage of the parameters for the strat.
   Params public params;
 
-  ///@notice sets the spread
-  ///@param spread the spread.
-  function setSpread(uint spread) public onlyAdmin {
-    uint104 spread_ = uint104(spread);
-    require(spread > 0, "Kandel/spreadTooLow");
-    require(spread_ == spread && spread < params.pricePoints, "Kandel/spreadTooHigh");
-    params.spread = spread_;
-    emit SetSpread(spread);
+  ///@notice sets the step size
+  ///@param stepSize the step size.
+  function setStepSize(uint stepSize) public onlyAdmin {
+    uint104 stepSize_ = uint104(stepSize);
+    require(stepSize > 0, "Kandel/stepSizeTooLow");
+    require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
+    params.stepSize = stepSize_;
+    emit SetStepSize(stepSize);
   }
 
   /// @inheritdoc AbstractKandel
@@ -66,8 +66,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       params.pricePoints = pricePoints_;
     }
 
-    if (oldParams.spread != newParams.spread) {
-      setSpread(newParams.spread);
+    if (oldParams.stepSize != newParams.stepSize) {
+      setStepSize(newParams.stepSize);
     }
 
     if (newParams.gasprice != 0 && newParams.gasprice != oldParams.gasprice) {
@@ -100,7 +100,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param quoteAmount quote amount to deposit
   ///@dev This function is used at initialization and can fund with provision for the offers.
   ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
-  ///@dev If this function is invoked with different pricePoints or spread, then first retract all offers.
+  ///@dev If this function is invoked with different pricePoints or stepSize, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
   function populate(
     Distribution memory bidDistribution,
@@ -202,9 +202,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory memoryParams = params;
     OfferType baDual = dual(ba);
 
-    // because of boundaries, actual spread might be lower than the one loaded in memoryParams
-    // this would result populating a price index at a wrong price (too high for an Ask and too low for a Bid)
-    uint dualIndex = transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
+    uint dualIndex = transportDestination(baDual, index, memoryParams.stepSize, memoryParams.pricePoints);
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
     args.olKey = offerListOfOfferType(baDual);

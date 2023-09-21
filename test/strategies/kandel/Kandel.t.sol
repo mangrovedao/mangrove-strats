@@ -81,7 +81,7 @@ contract NoRouterKandelTest is CoreKandelTest {
     uint askGives;
     uint bidGives;
     uint pricePoints;
-    uint spread;
+    uint stepSize;
   }
 
   function test_createDistributionSimple_constantAskBidGives(uint firstAskIndex, uint bidGives, uint askGives) internal {
@@ -92,14 +92,14 @@ contract NoRouterKandelTest is CoreKandelTest {
     uint firstAskIndex,
     uint bidGives,
     uint askGives,
-    uint spread
+    uint stepSize
   ) internal {
     SimpleDistributionHeapArgs memory args;
     args.firstAskIndex = firstAskIndex;
     args.askGives = askGives;
     args.bidGives = bidGives;
     args.pricePoints = 5;
-    args.spread = spread;
+    args.stepSize = stepSize;
     args.baseQuoteLogPriceIndex0 = 500;
     args.baseQuoteLogPriceOffset = 1000;
     test_createDistributionSimple_constantAskBidGives(args, dynamic([uint(2), 4]));
@@ -113,9 +113,9 @@ contract NoRouterKandelTest is CoreKandelTest {
       args.pricePoints = 2;
     }
     args.firstAskIndex = uint(keccak256(abi.encodePacked(seed, ++r))) % (args.pricePoints + 1);
-    args.spread = uint(keccak256(abi.encodePacked(seed, ++r))) % args.pricePoints;
-    if (args.spread == 0) {
-      args.spread = 1;
+    args.stepSize = uint(keccak256(abi.encodePacked(seed, ++r))) % args.pricePoints;
+    if (args.stepSize == 0) {
+      args.stepSize = 1;
     }
     if (uint(keccak256(abi.encodePacked(seed, ++r))) % 2 == 0) {
       args.askGives = 1 ether;
@@ -160,7 +160,7 @@ contract NoRouterKandelTest is CoreKandelTest {
         askGives: args.askGives,
         bidGives: args.bidGives,
         pricePoints: args.pricePoints,
-        spread: args.spread
+        stepSize: args.stepSize
       });
     }
 
@@ -187,8 +187,8 @@ contract NoRouterKandelTest is CoreKandelTest {
     }
 
     for (uint i = 0; i < args.pricePoints; ++i) {
-      if (i < args.spread) {
-        if (i < args.pricePoints - args.spread) {
+      if (i < args.stepSize) {
+        if (i < args.pricePoints - args.stepSize) {
           assertTrue(seenOffers[Bid][i], string.concat("bid not seen at index ", vm.toString(i)));
         } else {
           assertFalse(
@@ -196,10 +196,12 @@ contract NoRouterKandelTest is CoreKandelTest {
             string.concat("bid seen too close to end for dual ask to be possible at index ", vm.toString(i))
           );
         }
-        assertFalse(seenOffers[Ask][i], string.concat("ask seen at index in spread hole at low index ", vm.toString(i)));
-      } else if (i >= args.pricePoints - args.spread) {
         assertFalse(
-          seenOffers[Bid][i], string.concat("bid seen at index in spread hole at high index ", vm.toString(i))
+          seenOffers[Ask][i], string.concat("ask seen at index in stepSize hole at low index ", vm.toString(i))
+        );
+      } else if (i >= args.pricePoints - args.stepSize) {
+        assertFalse(
+          seenOffers[Bid][i], string.concat("bid seen at index in stepSize hole at high index ", vm.toString(i))
         );
         assertTrue(seenOffers[Ask][i], string.concat("ask not seen at index ", vm.toString(i)));
       } else {
@@ -211,9 +213,9 @@ contract NoRouterKandelTest is CoreKandelTest {
       seenOffers[Ask][i] = false;
     }
 
-    assertEq(totalIndices, 2 * (args.pricePoints - args.spread), "an offer and its dual, except near end");
+    assertEq(totalIndices, 2 * (args.pricePoints - args.stepSize), "an offer and its dual, except near end");
     if (args.bidGives != 0 && args.askGives != 0) {
-      assertEq(totalZeros, args.pricePoints - args.spread);
+      assertEq(totalZeros, args.pricePoints - args.stepSize);
     }
   }
 
@@ -255,7 +257,7 @@ contract NoRouterKandelTest is CoreKandelTest {
       askGives: type(uint).max,
       bidGives: type(uint).max,
       pricePoints: 10,
-      spread: 1
+      stepSize: 1
     });
   }
 }
