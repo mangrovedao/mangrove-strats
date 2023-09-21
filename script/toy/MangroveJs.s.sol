@@ -39,13 +39,14 @@ contract MangroveJsDeploy is Deployer {
   IPermit2 public permit2;
 
   function run() public {
-    DeployPermit2 deployPermit2 = new DeployPermit2();
-    permit2 = IPermit2(deployPermit2.deployPermit2()); // deploy permit2 using the precompiled bytecode
     innerRun({gasprice: 1, gasmax: 2_000_000, gasbot: broadcaster()});
     outputDeployment();
   }
 
   function innerRun(uint gasprice, uint gasmax, address gasbot) public {
+    DeployPermit2 deployPermit2 = new DeployPermit2();
+    permit2 = IPermit2(deployPermit2.deployPermit2()); // deploy permit2 using the precompiled bytecode
+
     MangroveDeployer mgvDeployer = new MangroveDeployer();
 
     mgvDeployer.innerRun({chief: broadcaster(), gasprice: gasprice, gasmax: gasmax, gasbot: gasbot});
