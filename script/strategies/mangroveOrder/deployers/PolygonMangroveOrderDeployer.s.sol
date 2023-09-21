@@ -9,23 +9,18 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MangroveOrderDeployer} from "./MangroveOrderDeployer.s.sol";
 
 /**
- * Polygon specific deployment of MangroveOrder
+ * Polygon specific deployment of MangroveOrderWithPermit2
  */
 contract PolygonMangroveOrderDeployer is Deployer {
   MangroveOrderDeployer public mangroveOrderDeployer;
 
   function run() public {
-    fork.set("Permit2", envAddressOrName("PERMIT2", "Permit2"));
     runWithChainSpecificParams();
     outputDeployment();
   }
 
   function runWithChainSpecificParams() public {
     mangroveOrderDeployer = new MangroveOrderDeployer();
-    mangroveOrderDeployer.innerRun({
-      mgv: IMangrove(fork.get("Mangrove")),
-      permit2: IPermit2(fork.get("Permit2")),
-      admin: fork.get("MgvGovernance")
-    });
+    mangroveOrderDeployer.innerRun({mgv: IMangrove(fork.get("Mangrove")), admin: fork.get("MgvGovernance")});
   }
 }

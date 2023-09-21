@@ -4,11 +4,14 @@ pragma solidity ^0.8.10;
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
-import {MangroveOrder as MgvOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
+import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
+import {MangroveOrderWithPermit2 as MangroveOrderWithPermit2} from
+  "mgv_strat_src/strategies/MangroveOrderWithPermit2.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
+import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
@@ -57,7 +60,8 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
   );
 
   IPermit2 internal permit2;
-  MgvOrder internal mgo;
+  MangroveOrder internal mgo;
+  MangroveOrderWithPermit2 internal mgoWithPermit2;
   TestMaker internal ask_maker;
   TestMaker internal bid_maker;
 
@@ -93,24 +97,29 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
     EXPIRATION = uint48(block.timestamp + 1000);
     NONCE = 0;
-    // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), permit2, $(this), GASREQ);
+    // this contract is admin of MangroveOrder and its router
+    mgo = new MangroveOrder(IMangrove(payable(mgv)), $(this), GASREQ);
+    mgoWithPermit2 = new MangroveOrderWithPermit2(IMangrove(payable(mgv)), IPermit2(permit2), $(this), GASREQ);
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
     IERC20[] memory tokens = new IERC20[](2);
     tokens[0] = base;
     tokens[1] = quote;
     mgo.activate(tokens);
+    mgoWithPermit2.activate(tokens);
 
-    // `this` contract will act as `MgvOrder` user
+    // `this` contract will act as `MangroveOrder` user
     deal($(base), $(this), 10 ether);
     deal($(quote), $(this), 10_000 ether);
+
+    TransferLib.approveToken(base, address(mgo.router()), 10 ether);
+    TransferLib.approveToken(quote, address(mgo.router()), 10_000 ether);
 
     // user approves `mgo` to pull quote or base when doing a market order
     TransferLib.approveToken(base, address(permit2), 10 ether);
     TransferLib.approveToken(quote, address(permit2), 10_000 ether);
 
-    permit2.approve(address(base), address(mgo.router()), type(uint160).max, type(uint48).max);
-    permit2.approve(address(quote), address(mgo.router()), type(uint160).max, type(uint48).max);
+    permit2.approve(address(base), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
+    permit2.approve(address(quote), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker($(quote), $(base), "sell-taker");
@@ -195,12 +204,12 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
   }
 
   function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
-    fresh_taker = freshAddress("MgvOrderTester");
+    fresh_taker = freshAddress("MangroveOrderTester");
     __freshTaker__(balBase, balQuote, fresh_taker);
     // allow router to pull funds from permit2
     vm.startPrank(fresh_taker);
-    permit2.approve(address(base), address(mgo.router()), type(uint160).max, type(uint48).max);
-    permit2.approve(address(quote), address(mgo.router()), type(uint160).max, type(uint48).max);
+    TransferLib.approveToken(base, address(mgo.router()), type(uint160).max);
+    TransferLib.approveToken(quote, address(mgo.router()), type(uint160).max);
     vm.stopPrank();
   }
 
@@ -624,8 +633,8 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     sender.refuseNative();
 
     vm.startPrank($(sender));
-    TransferLib.approveToken(base, address(permit2), type(uint).max);
-    permit2.approve(address(base), address(mgo.router()), type(uint160).max, type(uint48).max);
+    TransferLib.approveToken(base, address(mgo.router()), type(uint).max);
+    // permit2.approve(address(base), address(mgo.router()), type(uint160).max, type(uint48).max);
     vm.stopPrank();
     // mocking MangroveOrder failure to post resting offer
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOffer.selector), abi.encode(uint(0)));
@@ -664,7 +673,7 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
   function test_resting_buy_offer_can_be_fully_consumed_at_minimum_approval() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.restingOrder = true;
-    TransferLib.approveToken(quote, address(permit2), takerGives(buyOrder) * 2);
+    TransferLib.approveToken(quote, address(mgo.router()), takerGives(buyOrder) * 2);
     IOrderLogic.TakerOrderResult memory buyResult = mgo.take{value: 0.1 ether}(buyOrder);
 
     assertTrue(buyResult.offerId > 0, "Resting order should succeed");
@@ -799,7 +808,10 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     mgo.makerPosthook(sellOrder, result);
     uint posthook_gas = gas_(true);
     console.log(
-      "MgvOrder's logic is %d (makerExecute: %d, makerPosthook:%d)", exec_gas + posthook_gas, exec_gas, posthook_gas
+      "MangroveOrder's logic is %d (makerExecute: %d, makerPosthook:%d)",
+      exec_gas + posthook_gas,
+      exec_gas,
+      posthook_gas
     );
   }
 
@@ -829,24 +841,26 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     uint privKey = 0x1234;
     address fresh_taker = freshTakerForPermit2(0, takerGives(buyOrder), privKey);
     // generate permit to just in time approval
-    IAllowanceTransfer.PermitSingle memory permit =
-      getPermit(address(buyOrder.inbound_tkn), uint160(buyOrder.takerGives), EXPIRATION, NONCE, address(mgo.router()));
+    IAllowanceTransfer.PermitSingle memory permit = getPermit(
+      address(buyOrder.inbound_tkn), uint160(buyOrder.takerGives), EXPIRATION, NONCE, address(mgoWithPermit2.router())
+    );
 
     bytes memory signature = getPermitSignature(permit, privKey, DOMAIN_SEPARATOR);
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom($(mgoWithPermit2));
     logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
 
     vm.prank(fresh_taker);
-    IOrderLogic.TakerOrderResult memory res = mgo.takeWithPermit{value: 0.1 ether}(buyOrder, permit, signature);
+    IOrderLogic.TakerOrderResult memory res =
+      mgoWithPermit2.takeWithPermit{value: 0.1 ether}(buyOrder, permit, signature);
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(mgoWithPermit2.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(mgoWithPermit2.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
     assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
     // checking price of offer
@@ -855,7 +869,7 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     assertEq(offer.gives(), takerGives(buyOrder), "Incorrect offer gives");
     assertEq(offer.wants(), takerWants(buyOrder), "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
-    assertEq(detail.maker(), address(mgo), "Incorrect maker");
+    assertEq(detail.maker(), address(mgoWithPermit2), "Incorrect maker");
   }
 
   function test_empty_market_order_with_permit2_approvals() public {
@@ -870,15 +884,17 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     ISignatureTransfer.PermitTransferFrom memory transferDetails =
       getPermitTransferFrom(address(quote), _takerGives, NONCE, EXPIRATION);
 
-    bytes memory signature =
-      getPermitTransferSignatureWithSpecifiedAddress(transferDetails, privKey, DOMAIN_SEPARATOR, address(mgo.router()));
+    bytes memory signature = getPermitTransferSignatureWithSpecifiedAddress(
+      transferDetails, privKey, DOMAIN_SEPARATOR, address(mgoWithPermit2.router())
+    );
 
     expectFrom(address(quote));
-    emit Transfer(fresh_taker, address(mgo), _takerGives);
+    emit Transfer(fresh_taker, address(mgoWithPermit2), _takerGives);
 
     vm.prank(fresh_taker);
-    (uint takerGot, uint takerGave, uint bounty, uint fee) =
-      mgo.marketOrderWithTransferApproval(base, quote, _takerWants, _takerGives, fillWants, transferDetails, signature);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgoWithPermit2.marketOrderWithTransferApproval(
+      base, quote, _takerWants, _takerGives, fillWants, transferDetails, signature
+    );
 
     assertEq(takerGot, 0 ether, "Incorrect taker got");
     assertEq(takerGave, 0, "Incorrect taker gave");

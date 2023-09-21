@@ -32,8 +32,7 @@ abstract contract BaseMangroveOrderDeployerTest is Deployer, Test2 {
   function test_normal_deploy() public {
     // MangroveOrder - verify mgv is used and admin is chief
     address mgv = fork.get("Mangrove");
-    IPermit2 permit2 = IPermit2(fork.get("Permit2"));
-    mgoDeployer.innerRun(IMangrove(payable(mgv)), IPermit2(permit2), chief);
+    mgoDeployer.innerRun(IMangrove(payable(mgv)), chief);
     MangroveOrder mgoe = MangroveOrder(fork.get("MangroveOrder"));
     address mgvOrderRouter = fork.get("MangroveOrder-Router");
 
