@@ -20,10 +20,9 @@ contract AaveKandel is GeometricKandel {
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
-  ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
-    GeometricKandel(mgv, olKeyBaseQuote, gasreq, gasprice, reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
+    GeometricKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
   {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router

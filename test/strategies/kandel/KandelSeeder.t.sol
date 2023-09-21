@@ -26,12 +26,11 @@ contract KandelSeederTest is StratTest {
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
 
   function sow(bool sharing) internal returns (GeometricKandel) {
-    return seeder.sow(AbstractKandelSeeder.KandelSeed({olKeyBaseQuote: olKey, gasprice: 0, liquiditySharing: sharing}));
+    return seeder.sow({olKeyBaseQuote: olKey, liquiditySharing: sharing});
   }
 
   function sowAave(bool sharing) internal returns (GeometricKandel) {
-    return
-      aaveSeeder.sow(AbstractKandelSeeder.KandelSeed({olKeyBaseQuote: olKey, gasprice: 0, liquiditySharing: sharing}));
+    return aaveSeeder.sow({olKeyBaseQuote: olKey, liquiditySharing: sharing});
   }
 
   function setEnvironment() internal {

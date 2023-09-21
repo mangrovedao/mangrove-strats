@@ -61,7 +61,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
       gasreq: kandel_gasreq,
-      gasprice: 0,
       reserveId: id
     });
 
@@ -379,7 +378,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
       gasreq: 100,
-      gasprice: 0,
       reserveId: address(0)
     });
   }
@@ -392,7 +390,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
       gasreq: 100,
-      gasprice: 0,
       reserveId: address(0)
     });
   }

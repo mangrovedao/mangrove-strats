@@ -5,6 +5,7 @@ import {Kandel} from "./Kandel.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 ///@title Kandel strat deployer.
 contract KandelSeeder is AbstractKandelSeeder {
@@ -21,8 +22,8 @@ contract KandelSeeder is AbstractKandelSeeder {
   constructor(IMangrove mgv, uint kandelGasreq) AbstractKandelSeeder(mgv, kandelGasreq) {}
 
   ///@inheritdoc AbstractKandelSeeder
-  function _deployKandel(KandelSeed calldata seed) internal override returns (GeometricKandel kandel) {
-    kandel = new Kandel(MGV, seed.olKeyBaseQuote, KANDEL_GASREQ, seed.gasprice, address(0));
-    emit NewKandel(msg.sender, seed.olKeyBaseQuote.hash(), address(kandel));
+  function _deployKandel(OLKey memory olKeyBaseQuote, bool) internal override returns (GeometricKandel kandel) {
+    kandel = new Kandel(MGV, olKeyBaseQuote, KANDEL_GASREQ, address(0));
+    emit NewKandel(msg.sender, olKeyBaseQuote.hash(), address(kandel));
   }
 }

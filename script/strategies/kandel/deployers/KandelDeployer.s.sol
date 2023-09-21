@@ -13,7 +13,7 @@ import {KandelSower} from "../KandelSower.s.sol";
 /**
  * @notice deploys a Kandel instance on a given market
  * @dev since the max number of price slot Kandel can use is an immutable, one should deploy Kandel on a large price range.
- * @dev Example: WRITE_DEPLOY=true BASE=WETH QUOTE=USDC GASPRICE_FACTOR=10 forge script --fork-url $LOCALHOST_URL KandelDeployer --broadcast --private-key $MUMBAI_PRIVATE_KEY
+ * @dev Example: WRITE_DEPLOY=true BASE=WETH QUOTE=USDC forge script --fork-url $LOCALHOST_URL KandelDeployer --broadcast --private-key $MUMBAI_PRIVATE_KEY
  */
 
 contract KandelDeployer is Deployer {
@@ -23,7 +23,6 @@ contract KandelDeployer is Deployer {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       olKeyBaseQuote: OLKey(envAddressOrName("BASE"), envAddressOrName("QUOTE"), vm.envUint("TICK_SCALE")),
-      gaspriceFactor: vm.envUint("GASPRICE_FACTOR"), // 10 means cover 10x the current gasprice of Mangrove
       gasreq: 200_000,
       name: envHas("NAME") ? vm.envString("NAME") : ""
     });
@@ -34,20 +33,14 @@ contract KandelDeployer is Deployer {
    * @param mgv The Mangrove deployment.
    * @param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
    * @param gasreq the gas required for the offer logic
-   * @param gaspriceFactor multiplier of Mangrove's gasprice used to compute Kandel's provision
    * @param name The name to register the deployed Kandel instance under. If empty, a name will be generated
    */
-  function innerRun(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gaspriceFactor, string memory name)
-    public
-  {
-    (MgvStructs.GlobalPacked global,) = mgv.config(OLKey(address(0), address(0), 0));
-
+  function innerRun(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, string memory name) public {
     broadcast();
     current = new Kandel(
       mgv,
       olKeyBaseQuote,
       gasreq,
-      global.gasprice() * gaspriceFactor,
       broadcaster()
     );
 
