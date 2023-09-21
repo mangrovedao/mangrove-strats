@@ -121,7 +121,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
     // Pulling funds from `msg.sender`'s reserve
-    // FIXME: is this the correct rounding? Should we pass in takerGives still?
+    // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? LogPriceLib.inboundFromOutboundUp(tko.logPrice, tko.fillVolume) : tko.fillVolume;
     uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true);
     require(pulled == takerGives, "mgvOrder/transferInFail");
