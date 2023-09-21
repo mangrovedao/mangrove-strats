@@ -19,10 +19,18 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// * 0 means we can't redeem or borrow anything
   uint internal immutable DEFAULT_BUFFER_SIZE = 100;
 
+  /// @notice Data for a reserve <=> token pair
+  /// @param deposit_on_push Whether to deposit on push
+  /// @param buffer_size_decrease The buffer size decrease for a given token and reserveId
+  struct TokenReserveData {
+    bool deposit_on_push;
+    uint8 buffer_size_decrease;
+  }
+
   /// @notice Storage Layout for `AaveDispatchedRouter`
+  /// @param token_reserve_data The data for a reserve <=> token pair
   struct AaveDispatcherStorage {
-    /// @notice The buffer size decrease for a given token and reserveId
-    mapping(address => mapping(IERC20 => uint)) buffer_size_decrease;
+    mapping(address => mapping(IERC20 => TokenReserveData)) token_reserve_data;
   }
 
   /// @param storage_key The storage key for this contract specific storage
@@ -42,16 +50,17 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     }
   }
 
-  /// @notice Sets the buffer size decrease for a given token and reserveId
-  /// @dev This is used to decrease the buffer size for a given token and reserveId
-  /// * This can only be called by the reserveId
-  /// @param token The token to set the buffer size decrease for
-  /// @param reserveId The reserveId to set the buffer size decrease for
-  /// @param amount The amount to decrease the buffer size by
-  function setBufferSizeDecrease(IERC20 token, address reserveId, uint amount) external onlyCaller(reserveId) {
-    require(amount <= 100, "AaveDispatchedRouter/InvalidAmount");
+  /// @notice Sets the data for a reserve <=> token pair
+  /// @dev This can only be called by the reserveId
+  /// @param reserveId The reserveId to set the data for
+  /// @param token The token to set the data for
+  /// @param data The data to set
+  function setTokenReserveData(address reserveId, IERC20 token, TokenReserveData calldata data)
+    external
+    onlyCaller(reserveId)
+  {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
-    s.buffer_size_decrease[reserveId][token] = amount;
+    s.token_reserve_data[reserveId][token] = data;
   }
 
   /// @notice Gets the buffer size for a given token and reserveId
@@ -62,10 +71,15 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   function getBufferSize(IERC20 token, address reserveId) internal view returns (uint buffer_size) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
     buffer_size = DEFAULT_BUFFER_SIZE;
-    uint decrease = s.buffer_size_decrease[reserveId][token];
+    uint decrease = s.token_reserve_data[reserveId][token].buffer_size_decrease;
     if (decrease > 0) {
       buffer_size -= decrease;
     }
+  }
+
+  ///@inheritdoc AbstractRouter
+  function __activate__(IERC20 token) internal virtual override {
+    _approveLender(token, type(uint).max);
   }
 
   /// @dev Checks if user gave allowance for token and overlying
@@ -90,11 +104,16 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     }
   }
 
-  /// @notice Deposit undeerlying tokens to the reserve
-  /// @dev No Aave supply with the underlying
+  /// @notice Deposit underlying tokens to the reserve
+  /// @dev Can supply the underlying on behalf (if opted in by the reserve)
   /// @inheritdoc	AbstractRouter
   function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint) {
-    require(TransferLib.transferTokenFrom(token, msg.sender, reserveId, amount), "AaveDispatchedRouter/pushFailed");
+    bool deposit = getAaveDispatcherStorage().token_reserve_data[reserveId][token].deposit_on_push;
+    if (deposit) {
+      _supply(token, amount, reserveId, false);
+    } else {
+      require(TransferLib.transferTokenFrom(token, msg.sender, reserveId, amount), "AaveDispatchedRouter/pushFailed");
+    }
     return amount;
   }
 
