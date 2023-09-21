@@ -23,21 +23,6 @@ abstract contract AbstractKandelSeeder {
     KANDEL_GASREQ = kandelGasreq;
   }
 
-  ///@notice a new Kandel with pooled AAVE router has been deployed.
-  ///@param owner the owner of the strat. This is indexed so that RPC calls can filter on it.
-  ///@param olKeyHash the hash of the offer list key. This is indexed so that RPC calls can filter on it.
-  ///@param aaveKandel the address of the deployed strat.
-  ///@param reserveId the reserve identifier used for the router.
-  ///@notice By emitting this data, an indexer will be able to keep track of what Kandel strats are deployed, what market its deployed on, who the owner is and what reserve they use.
-  event NewAaveKandel(address indexed owner, bytes32 indexed olKeyHash, address aaveKandel, address reserveId);
-
-  ///@notice a new Kandel has been deployed.
-  ///@param owner the owner of the strat. This is indexed so that RPC calls can filter on it.
-  ///@param olKeyHash the hash of the offer list key. This is indexed so that RPC calls can filter on it.
-  ///@param kandel the address of the deployed strat.
-  ///@notice By emitting this data, an indexer will be able to keep track of what Kandel strats are deployed, what market its deployed on and who the owner is.
-  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
-
   ///@notice Kandel deployment parameters
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasprice one wants to use for Kandel's provision
