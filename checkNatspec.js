@@ -35,6 +35,7 @@ includes = [
   "DirectWithBidsAndAsksDistribution",
   "HasIndexedBidsAndAsks",
   "ICoreKandel",
+  "KandelLib",
   "CoreKandel",
   "TradesBaseQuotePair",
   "GeometricKandel",

@@ -9,6 +9,7 @@ import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribu
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {ICoreKandel} from "./ICoreKandel.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {KandelLib} from "./KandelLib.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
@@ -156,30 +157,6 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     logUpdateOfferStatus(offerId, args, updateOfferStatus);
   }
 
-  ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
-  ///@param ba the offer type to transport to
-  ///@param index the price index one is willing to improve
-  ///@param step the number of price steps improvements
-  ///@param pricePoints the number of price points
-  ///@return better destination index
-  function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
-    internal
-    pure
-    returns (uint better)
-  {
-    if (ba == OfferType.Ask) {
-      better = index + step;
-      if (better >= pricePoints) {
-        better = pricePoints - 1;
-      }
-    } else {
-      if (index >= step) {
-        better = index - step;
-      }
-      // else better = 0
-    }
-  }
-
   ///@notice transport logic followed by Kandel
   ///@param ba whether the offer that was executed is a bid or an ask
   ///@param order a recap of the taker order (order.offer is the executed offer)
@@ -194,7 +171,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory memoryParams = params;
     OfferType baDual = dual(ba);
 
-    uint dualIndex = transportDestination(baDual, index, memoryParams.stepSize, memoryParams.pricePoints);
+    uint dualIndex = KandelLib.transportDestination(baDual, index, memoryParams.stepSize, memoryParams.pricePoints);
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
     args.olKey = offerListOfOfferType(baDual);

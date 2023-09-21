@@ -81,7 +81,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_aaveKandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(aaveSeeder));
-    emit NewAaveKandel(maker, olKey.hash(), 0xf5Ba21691a8bC011B7b430854B41d5be0B78b938, maker);
+    emit NewAaveKandel(maker, olKey.hash(), 0x9f92659F6b974ce0c1C144F57dbE5981bCdFa515, maker);
     vm.prank(maker);
     sowAave(true);
   }
@@ -89,7 +89,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_kandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(seeder));
-    emit NewKandel(maker, olKey.hash(), 0xa38D17ef017A314cCD72b8F199C0e108EF7Ca04c);
+    emit NewKandel(maker, olKey.hash(), 0x42add52666C78960A219b157a1F4DbF806CbF703);
     vm.prank(maker);
     sow(true);
   }
