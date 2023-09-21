@@ -18,7 +18,7 @@ import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 /**
  * KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
- *    [RATIO=10100] [LOG_PRICE_OFFSET=769] SPREAD=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
+ *    [RATIO=10100] [LOG_PRICE_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
  *    forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
  */
 
@@ -40,8 +40,8 @@ contract KandelPopulate is Deployer {
     }
     params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.spread = uint104(vm.envUint("SPREAD"));
-    require(params.spread == vm.envUint("SPREAD"), "Invalid SPREAD");
+    params.stepSize = uint104(vm.envUint("STEP_SIZE"));
+    require(params.stepSize == vm.envUint("STEP_SIZE"), "Invalid STEP_SIZE");
 
     innerRun(
       HeapArgs({
@@ -186,7 +186,7 @@ contract KandelPopulate is Deployer {
       type(uint).max,
       args.volume,
       args.params.pricePoints,
-      args.params.spread
+      args.params.stepSize
     );
   }
 
