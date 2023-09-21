@@ -28,15 +28,20 @@ contract AaveKandel is GeometricKandel {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router
     // and trading on USDC.
-    // The code below verifies that neither base nor quote are official AAVE overlyings.
-    bool isOverlying;
-    try IATokenIsh(address(olKeyBaseQuote.outbound)).UNDERLYING_ASSET_ADDRESS() returns (address) {
-      isOverlying = true;
+    // The code in isOverlying verifies that neither base nor quote are official AAVE overlyings.
+    require(
+      !isOverlying(olKeyBaseQuote.outbound) && !isOverlying(olKeyBaseQuote.inbound), "AaveKandel/cannotTradeAToken"
+    );
+  }
+
+  /// @notice Verifies that token is not an official AAVE overlying.
+  /// @param token the token to verify.
+  /// @return true if overlying; otherwise, false.
+  function isOverlying(address token) internal view returns (bool) {
+    try IATokenIsh(token).UNDERLYING_ASSET_ADDRESS() returns (address) {
+      return true;
     } catch {}
-    try IATokenIsh(address(olKeyBaseQuote.inbound)).UNDERLYING_ASSET_ADDRESS() returns (address) {
-      isOverlying = true;
-    } catch {}
-    require(!isOverlying, "AaveKandel/cannotTradeAToken");
+    return false;
   }
 
   ///@notice Sets the AaveRouter as router and activates router for base and quote
