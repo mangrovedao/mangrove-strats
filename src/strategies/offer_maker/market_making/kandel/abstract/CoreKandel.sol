@@ -163,24 +163,6 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     logUpdateOfferStatus(offerId, args, updateOfferStatus);
   }
 
-  ///@notice calculates the gives for the dual offer.
-  ///@param dualOfferGives the dual offer's current gives (can be 0)
-  ///@param order a recap of the taker order (order.offer is the executed offer)
-  ///@return gives the new gives for the dual offer
-  function dualGivesOfOffer(uint dualOfferGives, MgvLib.SingleOrder calldata order) internal pure returns (uint gives) {
-    // gives from order.takerGives:96
-    gives = order.takerGives;
-
-    // adding to gives what the offer was already giving so gives could be greater than 2**96
-    // gives:97
-    gives += dualOfferGives;
-    if (uint96(gives) != gives) {
-      // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
-      // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
-      gives = type(uint96).max;
-    }
-  }
-
   ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
   ///@param ba the offer type to transport to
   ///@param index the price index one is willing to improve
@@ -227,7 +209,14 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     args.olKey = offerListOfOfferType(baDual);
     MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    args.gives = dualGivesOfOffer(dualOffer.gives(), order);
+    // gives from order.takerGives:96 dualOffer.gives():96, so args.gives:97
+    args.gives = order.takerGives + dualOffer.gives();
+    if (uint96(args.gives) != args.gives) {
+      // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
+      // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
+      args.gives = type(uint96).max;
+    }
+
     args.logPrice = dualOffer.logPrice();
 
     // args.fund = 0; the offers are already provisioned
