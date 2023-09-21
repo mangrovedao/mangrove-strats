@@ -39,14 +39,6 @@ contract AaveKandel is GeometricKandel {
     require(!isOverlying, "AaveKandel/cannotTradeAToken");
   }
 
-  ///@notice returns the router as an Aave router
-  ///@return The aave router.
-  function pooledRouter() private view returns (AavePooledRouter) {
-    AbstractRouter router_ = router();
-    require(router_ != NO_ROUTER, "AaveKandel/uninitialized");
-    return AavePooledRouter(address(router_));
-  }
-
   ///@notice Sets the AaveRouter as router and activates router for base and quote
   ///@param router_ the Aave router to use.
   function initialize(AavePooledRouter router_) external onlyAdmin {
@@ -62,16 +54,16 @@ contract AaveKandel is GeometricKandel {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
     // push funds on the router (and supply on AAVE)
-    pooledRouter().pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, RESERVE_ID);
+    AavePooledRouter(address(router())).pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, RESERVE_ID);
   }
 
   ///@inheritdoc AbstractKandel
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public override onlyAdmin {
     if (baseAmount != 0) {
-      pooledRouter().withdraw(BASE, RESERVE_ID, baseAmount);
+      AavePooledRouter(address(router())).withdraw(BASE, RESERVE_ID, baseAmount);
     }
     if (quoteAmount != 0) {
-      pooledRouter().withdraw(QUOTE, RESERVE_ID, quoteAmount);
+      AavePooledRouter(address(router())).withdraw(QUOTE, RESERVE_ID, quoteAmount);
     }
     super.withdrawFunds(baseAmount, quoteAmount, recipient);
   }
@@ -80,7 +72,7 @@ contract AaveKandel is GeometricKandel {
   ///@inheritdoc AbstractKandel
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
-    return pooledRouter().balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
+    return AavePooledRouter(address(router())).balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds on AAVE
@@ -103,7 +95,7 @@ contract AaveKandel is GeometricKandel {
     // handles pushing back liquidity to the router
     if (makerData == IS_FIRST_PULLER) {
       // if first puller, then router should deposit liquidity on AAVE
-      pooledRouter().pushAndSupply(
+      AavePooledRouter(address(router())).pushAndSupply(
         BASE, BASE.balanceOf(address(this)), QUOTE, QUOTE.balanceOf(address(this)), RESERVE_ID
       );
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
