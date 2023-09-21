@@ -28,10 +28,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param mgv The Mangrove deployment.
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, uint gasreq, address reserveId)
-    Direct(mgv, NO_ROUTER, gasreq, reserveId)
-    HasIndexedBidsAndAsks(mgv)
-  {}
+  constructor(IMangrove mgv, uint gasreq, address reserveId) Direct(mgv, NO_ROUTER, gasreq, reserveId) {}
 
   ///@param index the index of the offer
   ///@param logPrice the log price for the index (the log price of base per quote for bids and quote per base for asks)
@@ -165,6 +162,27 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       if (offerId != 0) {
         _retractOffer(olKey, offerId, true);
       }
+    }
+  }
+
+  ///@notice gets the Mangrove offer at the given index for the offer type.
+  ///@param ba the offer type.
+  ///@param index the index.
+  ///@return offer the Mangrove offer.
+  function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
+    uint offerId = offerIdOfIndex(ba, index);
+    OLKey memory olKey = offerListOfOfferType(ba);
+    offer = MGV.offers(olKey, offerId);
+  }
+
+  /// @notice gets the total gives of all offers of the offer type.
+  /// @param ba offer type.
+  /// @return volume the total gives of all offers of the offer type.
+  /// @dev function is very gas costly, for external calls only.
+  function offeredVolume(OfferType ba) public view returns (uint volume) {
+    for (uint index = 0; index < length; ++index) {
+      MgvStructs.OfferPacked offer = getOffer(ba, index);
+      volume += offer.gives();
     }
   }
 }

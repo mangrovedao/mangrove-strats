@@ -8,9 +8,6 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 ///@title Adds a [0..length] index <--> offerId map to a strat.
 ///@dev utilizes the `IHasOfferListOfOfferType` contract.
 abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
-  ///@notice The Mangrove deployment.
-  IMangrove private immutable MGV;
-
   ///@notice the length of the index has been set.
   ///@param value the length.
   ///@notice By emitting this data, an indexer will be able to keep track of what length is used.
@@ -23,12 +20,6 @@ abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
   ///@notice By emitting this data, an indexer will be able to keep track of what offer has what index.
   event SetIndexMapping(OfferType indexed ba, uint index, uint offerId);
 
-  ///@notice Constructor
-  ///@param mgv The Mangrove deployment.
-  constructor(IMangrove mgv) {
-    MGV = mgv;
-  }
-
   ///@notice the length of the map.
   uint internal length;
 
@@ -39,7 +30,6 @@ abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
 
   ///@notice An inverse mapping of askOfferIdOfIndex. E.g., indexOfAskOfferId[42] is the index in askOfferIdOfIndex at which ask of id #42 on Mangrove is stored.
   mapping(uint => uint) private indexOfAskOfferId;
-
   ///@notice An inverse mapping of bidOfferIdOfIndex. E.g., indexOfBidOfferId[42] is the index in bidOfferIdOfIndex at which bid of id #42 on Mangrove is stored.
   mapping(uint => uint) private indexOfBidOfferId;
 
@@ -79,26 +69,5 @@ abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
   function setLength(uint length_) internal {
     length = length_;
     emit SetLength(length_);
-  }
-
-  ///@notice gets the Mangrove offer at the given index for the offer type.
-  ///@param ba the offer type.
-  ///@param index the index.
-  ///@return offer the Mangrove offer.
-  function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
-    uint offerId = offerIdOfIndex(ba, index);
-    OLKey memory olKey = offerListOfOfferType(ba);
-    offer = MGV.offers(olKey, offerId);
-  }
-
-  /// @notice gets the total gives of all offers of the offer type.
-  /// @param ba offer type.
-  /// @return volume the total gives of all offers of the offer type.
-  /// @dev function is very gas costly, for external calls only.
-  function offeredVolume(OfferType ba) public view returns (uint volume) {
-    for (uint index = 0; index < length; ++index) {
-      MgvStructs.OfferPacked offer = getOffer(ba, index);
-      volume += offer.gives();
-    }
   }
 }
