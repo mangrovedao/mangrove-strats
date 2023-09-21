@@ -8,6 +8,8 @@ import {ReserveConfiguration, DataTypes} from "../../abstract/AbstractAaveMemoiz
 import {IERC20} from "mgv_src/IERC20.sol";
 
 /// @title `AaveDispatchedRouter` is a router contract for Aave used by the `Dispatcher` contract.
+/// @dev No tokens should be directly sent to this contract
+/// @dev This contract is to be used by the `Dispatcher` contract.
 contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   constructor(uint routerGasreq_, address addressesProvider, uint interestRateMode)
     MonoRouter(routerGasreq_)
@@ -23,13 +25,24 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
 
   function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal virtual override returns (uint) {
     Memoizer memory m;
-    IERC20 overlying = overlying(token, m);
-    require(overlying.balanceOf(reserveId) >= amount, "AaveDispatchedRouter/NotEnoughBalance");
-    require(overlying.allowance(reserveId, address(this)) >= amount, "AaveDispatchedRouter/NotApproved");
-    overlying.transferFrom(reserveId, address(this), amount);
+    setOwnerAddress(m, reserveId);
+
+    uint localBalance = balanceOf(token, m);
+    uint missing = amount > localBalance ? amount - localBalance : 0;
+    if (missing > 0) {
+      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, missing);
+
+      if (maxWithdraw > 0) {}
+    }
   }
 
-  function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint pushed) {}
+  /// @notice Deposit undeerlying tokens to the reserve
+  /// @dev No Aave supply with the underlying
+  /// @inheritdoc	AbstractRouter
+  function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint) {
+    require(TransferLib.transferTokenFrom(token, msg.sender, reserveId, amount), "AaveDispatchedRouter/pushFailed");
+    return amount;
+  }
 
   function balanceOfReserve(IERC20 token, address reserveId) public view virtual override returns (uint) {}
 }

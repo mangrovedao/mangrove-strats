@@ -19,6 +19,7 @@ contract AaveMemoizer is AbstractAaveMemoizer {
     assembly {
       owner := mload(add(data, 20))
     }
+    require(owner != address(0), "AaveMemoizer/OwnerNotSet");
   }
 
   /// @notice Sets the owner address in additional data

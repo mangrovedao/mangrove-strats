@@ -4,10 +4,10 @@ pragma solidity ^0.8.18;
 import {MultiRouter, MonoRouter, AbstractRouter} from "../abstract/MultiRouter.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {ViewDelegator, IViewDelegator} from "../../utils/ViewDelegator.sol";
+import {IViewDelegator} from "../../utils/ViewDelegator.sol";
 
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
-contract Dispatcher is MultiRouter, ViewDelegator {
+contract Dispatcher is MultiRouter {
   /// @notice Get the current router for the given token and reserveId
   /// @dev This will revert if the router contract does not exist
   /// @param token The token to get the router for
@@ -73,5 +73,25 @@ contract Dispatcher is MultiRouter, ViewDelegator {
   /// @inheritdoc	AbstractRouter
   function balanceOfReserve(IERC20 token, address reserveId) public view virtual override returns (uint) {
     return token.balanceOf(reserveId);
+  }
+
+  fallback() external {
+    if (msg.sig == IViewDelegator.staticdelegatecall.selector) {
+      (, address target, bytes memory data) = abi.decode(msg.data, (bytes4, address, bytes));
+      (bool success, bytes memory result) = target.delegatecall(data);
+      if (!success) {
+        if (result.length > 0) {
+          assembly {
+            let returndata_size := mload(result)
+            revert(add(32, result), returndata_size)
+          }
+        } else {
+          revert("ViewDelegator/DelegateCallFailed");
+        }
+      }
+      assembly {
+        return(result, mload(result))
+      }
+    }
   }
 }

@@ -19,6 +19,14 @@ abstract contract AbstractAaveMemoizer is AaveV3Borrower {
     uint health;
   }
 
+  // structs to avoid stack too deep in maxGettableUnderlying
+  struct Underlying {
+    uint ltv;
+    uint liquidationThreshold;
+    uint decimals;
+    uint price;
+  }
+
   ///@param balanceOf the owner's balance of the token
   ///@param balanceOfMemoized whether the `balanceOf` has been memoized.
   ///@param overlyingBalanceOf the balance of the overlying.
@@ -160,5 +168,63 @@ abstract contract AbstractAaveMemoizer is AaveV3Borrower {
       m.assetPrice = ORACLE.getAssetPrice(address(token));
     }
     return m.assetPrice;
+  }
+
+  ///@notice returns line of credit of `this` contract in the form of a pair (maxRedeem, maxBorrow) corresponding respectively
+  ///to the max amount of `token` this contract can withdraw from the pool, and the max amount of `token` it can borrow in addition (after withdrawing `maxRedeem`)
+  ///@param token the asset one wishes to get from the pool
+  ///@param m the memoizer
+  ///@param target if `maxRedeem < target` will try also borrowing. Otherwise `maxBorrow = 0`
+  ///@return maxRedeemableUnderlying the max amount of `token` this contract can withdraw from the pool
+  ///@return maxBorrowAfterRedeemInUnderlying the max amount of `token` this contract can borrow from the pool after withdrawing `maxRedeemableUnderlying`
+  function maxGettableUnderlying(IERC20 token, Memoizer memory m, uint target)
+    internal
+    view
+    returns (uint maxRedeemableUnderlying, uint maxBorrowAfterRedeemInUnderlying)
+  {
+    Underlying memory underlying; // asset parameters
+    (
+      underlying.ltv, // collateral factor for lending
+      underlying.liquidationThreshold, // collateral factor for borrowing
+      /*liquidationBonus*/
+      ,
+      underlying.decimals,
+      /*reserveFactor*/
+      ,
+      /*emode_category*/
+    ) = ReserveConfiguration.getParams(reserveData(token, m).configuration);
+
+    // redeemPower = account.liquidationThreshold * account.collateral - account.debt
+    Account memory _userAccountData = userAccountData(m);
+    uint redeemPower =
+      (_userAccountData.liquidationThreshold * _userAccountData.collateral - _userAccountData.debt * 10 ** 4) / 10 ** 4;
+
+    // max redeem capacity = account.redeemPower/ underlying.liquidationThreshold * underlying.price
+    // unless account doesn't have enough collateral in asset token (hence the min())
+    maxRedeemableUnderlying = (
+      redeemPower // in 10**underlying.decimals
+        * 10 ** underlying.decimals * 10 ** 4
+    ) / (underlying.liquidationThreshold * assetPrice(token, m));
+
+    maxRedeemableUnderlying =
+      (maxRedeemableUnderlying < overlyingBalanceOf(token, m)) ? maxRedeemableUnderlying : overlyingBalanceOf(token, m);
+
+    if (target <= maxRedeemableUnderlying) {
+      return (maxRedeemableUnderlying, 0);
+    }
+    // computing max borrow capacity on the premisses that maxRedeemableUnderlying has been redeemed.
+    // max borrow capacity = (account.borrowPower - (ltv*redeemed)) / underlying.ltv * underlying.price
+
+    uint borrowPowerImpactOfRedeemInUnderlying = (maxRedeemableUnderlying * underlying.ltv) / 10 ** 4;
+
+    uint borrowPowerInUnderlying = (_userAccountData.borrowPower * 10 ** underlying.decimals) / assetPrice(token, m);
+
+    if (borrowPowerImpactOfRedeemInUnderlying > borrowPowerInUnderlying) {
+      // no more borrowPower left after max redeem operation
+      return (maxRedeemableUnderlying, 0);
+    }
+
+    // max borrow power in underlying after max redeem has been withdrawn
+    maxBorrowAfterRedeemInUnderlying = borrowPowerInUnderlying - borrowPowerImpactOfRedeemInUnderlying;
   }
 }
