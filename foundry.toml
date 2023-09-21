@@ -11,7 +11,7 @@ evm_version='paris'
 fs_permissions = [{ access = "read-write", path = "./addresses/"}, { access = "read-write", path = "./analytics/"}, { access = "read", path = "./out/" }, {access = "read", path = "./node_modules/@mangrovedao/mangrove-core/"}, { access = "read", path = "./mgvConfig.json" }]
 solc_version="0.8.20"
 ffi=true
-# optimizer=true
+optimizer=false
 # optimizer_runs=20000
 
 # Private keys are expected to be of the form <NETWORK>_PRIVATE_KEY

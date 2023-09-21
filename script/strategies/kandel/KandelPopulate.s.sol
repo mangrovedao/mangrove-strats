@@ -2,16 +2,12 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2 as console} from "forge-std/Script.sol";
-import {
-  Kandel, IERC20, IMangrove, OfferType
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {AbstractKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
@@ -30,20 +26,21 @@ contract KandelPopulate is Deployer {
   function run() public {
     GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
+    uint24 logPriceOffset;
     if (envHas("LOG_PRICE_OFFSET")) {
-      params.logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
-      require(params.logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
+      logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
+      require(logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
     }
     if (envHas("RATIO")) {
-      require(params.logPriceOffset == 0, "Cannot set both RATIO and LOG_PRICE_OFFSET");
-      int logPriceOffset =
+      require(logPriceOffset == 0, "Only RATIO or LOG_PRICE_OFFSET");
+      int _logPriceOffset =
         LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether);
-      params.logPriceOffset = uint24(uint(int(logPriceOffset)));
-      require(params.logPriceOffset == uint(logPriceOffset), "Invalid ratio");
+      logPriceOffset = uint24(uint(int(_logPriceOffset)));
+      require(logPriceOffset == uint(_logPriceOffset), "Invalid ratio");
     }
-    params.pricePoints = uint8(vm.envUint("PRICE_POINTS"));
+    params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.spread = uint8(vm.envUint("SPREAD"));
+    params.spread = uint104(vm.envUint("SPREAD"));
     require(params.spread == vm.envUint("SPREAD"), "Invalid SPREAD");
 
     innerRun(
@@ -51,6 +48,7 @@ contract KandelPopulate is Deployer {
         from: vm.envUint("FROM"),
         to: vm.envUint("TO"),
         firstAskIndex: vm.envUint("FIRST_ASK_INDEX"),
+        logPriceOffset: logPriceOffset,
         params: params,
         initQuote: vm.envUint("INIT_QUOTE"),
         volume: vm.envUint("VOLUME"),
@@ -75,6 +73,7 @@ contract KandelPopulate is Deployer {
     uint from;
     uint to;
     uint firstAskIndex;
+    uint24 logPriceOffset;
     Kandel.Params params;
     uint initQuote;
     uint volume;
@@ -83,7 +82,8 @@ contract KandelPopulate is Deployer {
   }
 
   struct HeapVars {
-    CoreKandel.Distribution distribution;
+    CoreKandel.Distribution bidDistribution;
+    CoreKandel.Distribution askDistribution;
     uint baseAmountRequired;
     uint quoteAmountRequired;
     bool bidding;
@@ -104,15 +104,7 @@ contract KandelPopulate is Deployer {
     vars.mgvReader = args.mgvReader;
     vars.BASE = args.kdl.BASE();
     vars.QUOTE = args.kdl.QUOTE();
-    (
-      vars.gasprice,
-      vars.gasreq,
-      /*uint24 ratio*/
-      ,
-      /*uint8 spread*/
-      ,
-      /*uint8 length*/
-    ) = args.kdl.params();
+    (vars.gasprice, vars.gasreq,,) = args.kdl.params();
 
     OLKey memory olKeyBaseQuote =
       OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickScale: args.kdl.TICK_SCALE()});
@@ -129,10 +121,10 @@ contract KandelPopulate is Deployer {
     }
 
     prettyLog("Calculating base and quote...");
-    vars.distribution = calculateBaseQuote(args);
+    (vars.bidDistribution, vars.askDistribution) = calculateBaseQuote(args);
 
     prettyLog("Evaluating required collateral...");
-    evaluateAmountsRequired(vars.distribution, args, vars, funds);
+    evaluateAmountsRequired(vars);
     // after the above call, `vars.base/quoteAmountRequired` are filled
     uint baseDecimals = vars.BASE.decimals();
     uint quoteDecimals = vars.QUOTE.decimals();
@@ -181,30 +173,38 @@ contract KandelPopulate is Deployer {
     broadcast();
 
     args.kdl.populate{value: funds}(
-      vars.distribution, args.firstAskIndex, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
+      vars.bidDistribution, vars.askDistribution, args.params, vars.baseAmountRequired, vars.quoteAmountRequired
     );
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
-    (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
-      args.from, args.to, args.volume, args.initQuote, args.params.logPriceOffset, args.firstAskIndex
+  function calculateBaseQuote(HeapArgs memory args)
+    public
+    pure
+    returns (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution)
+  {
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(args.initQuote, args.volume);
+    (bidDistribution, askDistribution) = args.kdl.createDistribution(
+      args.from,
+      args.to,
+      baseQuoteLogPriceIndex0,
+      args.logPriceOffset,
+      args.firstAskIndex,
+      type(uint).max,
+      args.volume,
+      args.params.pricePoints,
+      args.params.spread
     );
   }
 
   ///@notice evaluates required amounts that need to be published on Mangrove
   ///@dev we use foundry cheats to revert all changes to the local node in order to prevent inconsistent tests.
-  function evaluateAmountsRequired(
-    CoreKandel.Distribution memory distribution,
-    HeapArgs memory args,
-    HeapVars memory vars,
-    uint funds
-  ) public {
-    vars.snapshotId = vm.snapshot();
-    vm.startPrank(broadcaster());
-    (vars.baseAmountRequired, vars.quoteAmountRequired) =
-      KandelLib.estimateRequiredAmount(distribution, GeometricKandel(args.kdl), args.firstAskIndex, args.params, funds);
-    vm.stopPrank();
-    require(vm.revertTo(vars.snapshotId), "snapshot restore failed");
+  function evaluateAmountsRequired(HeapVars memory vars) public pure {
+    for (uint i = 0; i < vars.bidDistribution.givesDist.length; ++i) {
+      vars.quoteAmountRequired += vars.bidDistribution.givesDist[i];
+    }
+    for (uint i = 0; i < vars.askDistribution.givesDist.length; ++i) {
+      vars.baseAmountRequired += vars.askDistribution.givesDist[i];
+    }
   }
 }

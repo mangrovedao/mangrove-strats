@@ -1,9 +1,6 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
-
 ///@title IForwarder
 ///@notice Interface for contracts that manage liquidity on Mangrove on behalf of multiple offer makers
 interface IForwarder {

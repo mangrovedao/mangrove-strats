@@ -85,7 +85,7 @@ contract AaveKandelTest is CoreKandelTest {
     super.test_allExternalFunctions_differentCallers_correctAuth();
     CheckAuthArgs memory args;
     args.callee = $(kdl);
-    args.callers = dynamic([address($(mgv)), maker, $(this)]);
+    args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
     args.allowed = dynamic([address(maker)]);
     args.revertMessage = "AccessControlled/Invalid";
 
@@ -334,8 +334,11 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function test_liquidity_borrow_marketOrder_attack() public {
+    GeometricKandel.Params memory otherParams;
+    otherParams.pricePoints = 137;
+    otherParams.spread = 1;
     /// adding as many offers as possible (adding more will stack overflow when failing offer will cascade)
-    deployOtherKandel(0.1 ether, 100 * 10 ** 6, 100, 1, 137);
+    deployOtherKandel(0.1 ether, 100 * 10 ** 6, 100, otherParams);
     //printOrderBook($(quote), $(base));
     // base is weth and has a borrow cap, so trying the attack on quote
     address dai = fork.get("DAI");

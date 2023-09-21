@@ -1,8 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20, OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 
 ///@title Interface for resting orders functionality.
 interface IOrderLogic {

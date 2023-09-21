@@ -80,7 +80,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
-      //FIXME: what tickscale?
+      //FIXME: what tick scale?
       market: Market({tkn0: dai, tkn1: usdc, tickScale: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[0]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
@@ -90,13 +90,13 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      //FIXME: what tickscale?
+      //FIXME: what tick scale?
       market: Market({tkn0: weth, tkn1: dai, tickScale: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[0]),
       fee: 0
     });
-    //FIXME: what tickscale?
+    //FIXME: what tick scale?
     uint wethUsdcTickScale = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,

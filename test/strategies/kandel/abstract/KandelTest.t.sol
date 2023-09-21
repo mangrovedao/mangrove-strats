@@ -9,7 +9,6 @@ import {
   CoreKandel, TransferLib
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
@@ -28,6 +27,11 @@ abstract contract KandelTest is StratTest {
   uint initBase = 0.1 ether;
   uint globalGasprice;
   uint bufferedGasprice;
+  // A ratio of ~108% can be converted to a log price step of ~769 via
+  // uint logPriceOffset = LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
+  uint logPriceOffset = 769;
+  // and vice versa with
+  // ratio = uint24(LogPriceLib.inboundFromOutbound(logPriceOffset, 1 ether) * 100000 / LogPriceLib.inboundFromOutbound(0, 1 ether)
 
   OfferType constant Ask = OfferType.Ask;
   OfferType constant Bid = OfferType.Bid;
@@ -35,7 +39,7 @@ abstract contract KandelTest is StratTest {
   event Mgv(IMangrove mgv);
   event OfferListKey(bytes32 olKeyHash);
   event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
-  event SetGeometricParams(uint spread, uint logPriceOffset);
+  event SetSpread(uint value);
   event SetLength(uint value);
   event SetGasreq(uint value);
   event Credit(IERC20 indexed token, uint amount);
@@ -45,6 +49,7 @@ abstract contract KandelTest is StratTest {
   event RetractStart();
   event RetractEnd();
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+  event SetBaseQuoteLogPriceOffset(uint value);
 
   // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
@@ -105,29 +110,35 @@ abstract contract KandelTest is StratTest {
     vm.prank(maker);
     TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
-    // A ratio of ~108% can be converted to a log price step of ~769 via
-    //int logPriceOffset = LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
-    uint logPriceOffset = 769;
-    // and vice versa with
-    // ratio = uint24(LogPriceLib.inboundFromOutbound(logPriceOffset, 1 ether) * 100000 / LogPriceLib.inboundFromOutbound(0, 1 ether)
     uint firstAskIndex = 5;
-    (CoreKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, logPriceOffset, firstAskIndex);
-
-    (CoreKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, logPriceOffset, firstAskIndex);
 
     GeometricKandel.Params memory params;
-    params.logPriceOffset = uint24(logPriceOffset);
     params.spread = STEP;
     params.pricePoints = 10;
-    vm.prank(maker);
-    kdl.populate{value: (provAsk + provBid) * 10}(distribution1, firstAskIndex, params, 0, 0);
+    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
 
     vm.prank(maker);
-    kdl.populateChunk(distribution2, firstAskIndex);
-    printOB();
-
+    kdl.populateFromOffset{value: (provAsk + provBid) * 10}({
+      from: 0,
+      to: 5,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset: logPriceOffset,
+      firstAskIndex: firstAskIndex,
+      bidGives: type(uint).max,
+      askGives: initBase,
+      parameters: params,
+      baseAmount: 0,
+      quoteAmount: 0
+    });
+    vm.prank(maker);
+    kdl.populateChunkFromOffset({
+      from: 5,
+      to: 10,
+      baseQuoteLogPriceIndex0: baseQuoteLogPriceIndex0,
+      firstAskIndex: firstAskIndex,
+      bidGives: type(uint).max,
+      askGives: initBase
+    });
     uint pendingBase = uint(-kdl.pending(Ask));
     uint pendingQuote = uint(-kdl.pending(Bid));
     deal($(base), maker, pendingBase);
@@ -172,11 +183,10 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint16 gasprice, uint24 gasreq, uint24 logPriceOffset, uint8 spread, uint8 pricePoints) = aKandel.params();
+    (uint16 gasprice, uint24 gasreq, uint104 spread, uint112 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
-    params.logPriceOffset = logPriceOffset;
     params.spread = spread;
     params.pricePoints = pricePoints;
   }
@@ -260,15 +270,23 @@ abstract contract KandelTest is StratTest {
     uint q, // initial quote at first price point, type(uint).max to ignore in verification
     uint b // initial base at first price point, type(uint).max to ignore in verification
   ) internal {
+    assertStatus(offerStatuses, q, b, logPriceOffset);
+  }
+
+  function assertStatus(
+    uint[] memory offerStatuses, // 1:bid 2:ask 3:crossed 0:dead - see OfferStatus
+    uint q, // initial quote at first price point, type(uint).max to ignore in verification
+    uint b, // initial base at first price point, type(uint).max to ignore in verification
+    uint _logPriceOffset
+  ) internal {
     uint expectedBids = 0;
     uint expectedAsks = 0;
-    GeometricKandel.Params memory params = getParams(kdl);
     for (uint i = 0; i < offerStatuses.length; i++) {
       // `price = quote / initBase` used in assertApproxEqRel below
       OfferStatus offerStatus = OfferStatus(offerStatuses[i]);
       assertStatus(i, offerStatus, q, b);
       if (q != type(uint).max) {
-        q = (q * LogPriceLib.inboundFromOutbound(int(uint(params.logPriceOffset)), 1 ether)) / 1 ether;
+        q = (q * LogPriceLib.inboundFromOutbound(int(_logPriceOffset), 1 ether)) / 1 ether;
       }
       if (offerStatus == OfferStatus.Ask) {
         expectedAsks++;
@@ -302,6 +320,27 @@ abstract contract KandelTest is StratTest {
     }
   }
 
+  function printDistribution(CoreKandel.Distribution memory distribution) internal view {
+    for (uint i; i < distribution.indices.length; ++i) {
+      console.log(
+        "Index: %s LogPrice: %s Gives: %s",
+        distribution.indices[i],
+        vm.toString(distribution.logPriceDist[i]),
+        distribution.givesDist[i]
+      );
+    }
+  }
+
+  function printDistributions(
+    CoreKandel.Distribution memory bidDistribution,
+    CoreKandel.Distribution memory askDistribution
+  ) internal view {
+    console.log("Bids:");
+    printDistribution(bidDistribution);
+    console.log("Asks:");
+    printDistribution(askDistribution);
+  }
+
   function printOB() internal view {
     printOfferList(olKey);
     printOfferList(lo);
@@ -309,6 +348,11 @@ abstract contract KandelTest is StratTest {
     uint pendingQuote = uint(kdl.pending(Bid));
 
     console.log("-------", toFixed(pendingBase, 18), toFixed(pendingQuote, 6), "-------");
+  }
+
+  function emptyDist() internal pure returns (CoreKandel.Distribution memory) {
+    CoreKandel.Distribution memory emptyDist_;
+    return emptyDist_;
   }
 
   function populateSingle(
@@ -320,9 +364,7 @@ abstract contract KandelTest is StratTest {
     bytes memory expectRevert
   ) internal {
     GeometricKandel.Params memory params = getParams(kdl);
-    populateSingle(
-      kandel, index, base, quote, firstAskIndex, params.pricePoints, params.logPriceOffset, params.spread, expectRevert
-    );
+    populateSingle(kandel, index, base, quote, firstAskIndex, params.pricePoints, params.spread, expectRevert);
   }
 
   function populateSingle(
@@ -332,7 +374,6 @@ abstract contract KandelTest is StratTest {
     uint quote,
     uint firstAskIndex,
     uint pricePoints,
-    uint logPriceOffset,
     uint spread,
     bytes memory expectRevert
   ) internal {
@@ -344,6 +385,10 @@ abstract contract KandelTest is StratTest {
     int logPrice = index < firstAskIndex
       ? LogPriceConversionLib.logPriceFromVolumes(base, quote)
       : LogPriceConversionLib.logPriceFromVolumes(quote, base);
+    if (base == 0 || quote == 0) {
+      // logPrice API should set a meaningful log price, for now, just set price to 1.
+      logPrice = 0;
+    }
     uint gives = index < firstAskIndex ? quote : base;
 
     distribution.indices[0] = index;
@@ -354,38 +399,43 @@ abstract contract KandelTest is StratTest {
       vm.expectRevert(expectRevert);
     }
     GeometricKandel.Params memory params;
-    params.pricePoints = uint8(pricePoints);
-    params.logPriceOffset = uint24(logPriceOffset);
-    params.spread = uint8(spread);
+    params.pricePoints = uint112(pricePoints);
+    params.spread = uint104(spread);
 
-    kandel.populate{value: 0.1 ether}(distribution, firstAskIndex, params, 0, 0);
+    kandel.populate{value: 0.1 ether}(
+      index < firstAskIndex ? distribution : emptyDist(),
+      index < firstAskIndex ? emptyDist() : distribution,
+      params,
+      0,
+      0
+    );
   }
 
-  function populateFixedDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
-    CoreKandel.Distribution memory distribution;
-
-    uint firstAskIndex = size / 2;
-    distribution.indices = new uint[](size);
-    distribution.logPriceDist = new int[](size);
-    distribution.givesDist = new uint[](size);
-    uint base = 1 ether;
-    for (uint i; i < size; i++) {
-      uint quote = 1500 * 10 ** 6 + i;
-      distribution.indices[i] = i;
-      if (i < firstAskIndex) {
-        distribution.logPriceDist[i] = LogPriceConversionLib.logPriceFromVolumes(initBase, initQuote);
-        distribution.givesDist[i] = quote;
-        quoteAmount += quote;
-      } else {
-        distribution.logPriceDist[i] = LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase);
-        distribution.givesDist[i] = base;
-        baseAmount += base;
-      }
-    }
-
+  function populateConstantDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
     GeometricKandel.Params memory params = getParams(kdl);
+    uint firstAskIndex = size / 2;
+    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
+      .createDistribution(
+      0,
+      size,
+      LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase),
+      0,
+      firstAskIndex,
+      1500 * 10 ** 6,
+      1 ether,
+      size,
+      params.spread
+    );
+
     vm.prank(maker);
-    kdl.populate{value: maker.balance}(distribution, firstAskIndex, params, 0, 0);
+    kdl.populate{value: maker.balance}(bidDistribution, askDistribution, params, 0, 0);
+
+    for (uint i; i < bidDistribution.indices.length; i++) {
+      quoteAmount += bidDistribution.givesDist[i];
+    }
+    for (uint i; i < askDistribution.indices.length; i++) {
+      baseAmount += askDistribution.givesDist[i];
+    }
   }
 
   function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {
@@ -415,20 +465,38 @@ abstract contract KandelTest is StratTest {
 
     uint quote = initQuote;
 
+    uint firstAskIndex = type(uint).max;
+    for (uint i = 0; i < params.pricePoints; i++) {
+      // Decide on bid/ask via mid
+      OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
+      if (ba == Ask && firstAskIndex == type(uint).max) {
+        firstAskIndex = i;
+      }
+      quoteAtIndex[i] = quote;
+      quote = (quote * LogPriceLib.inboundFromOutbound(int(uint(logPriceOffset)), 1 ether)) / 1 ether;
+    }
+
     // find missing offers
     uint numDead = 0;
     for (uint i = 0; i < params.pricePoints; i++) {
-      OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
-      MgvStructs.OfferPacked offer = kdl.getOffer(ba, i);
+      MgvStructs.OfferPacked offer = kdl.getOffer(i < firstAskIndex ? Bid : Ask, i);
       if (!offer.isLive()) {
-        if (ba == Bid) {
-          numBids++;
+        bool unexpectedDead = false;
+        if (i < firstAskIndex) {
+          if (i < firstAskIndex - params.spread / 2 - params.spread % 2) {
+            numBids++;
+            unexpectedDead = true;
+          }
+        } else {
+          if (i >= firstAskIndex + params.spread / 2) {
+            unexpectedDead = true;
+          }
         }
-        indicesPre[numDead] = i;
-        numDead++;
+        if (unexpectedDead) {
+          indicesPre[numDead] = i;
+          numDead++;
+        }
       }
-      quoteAtIndex[i] = quote;
-      quote = (quote * LogPriceLib.inboundFromOutbound(int(uint(params.logPriceOffset)), 1 ether)) / 1 ether;
     }
 
     // truncate indices - cannot do push to memory array

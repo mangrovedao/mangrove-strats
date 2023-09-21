@@ -12,7 +12,7 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 469.5 * 1000;
+  uint internal constant GASREQ = 486310;
 
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
@@ -554,7 +554,7 @@ contract AavePooledRouterTest is OfferLogicTest {
 
     CheckAuthArgs memory args;
     args.callee = $(pooledRouter);
-    args.callers = dynamic([address($(mgv)), maker1, maker2, admin, manager, $(this)]);
+    args.callers = dynamic([address($(mgv)), maker1, maker2, admin, manager, $(this), $(pooledRouter)]);
     args.revertMessage = "AccessControlled/Invalid";
 
     // Maker or admin

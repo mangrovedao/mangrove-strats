@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 
 ///@title Core external functions and events for Kandel strats.
@@ -16,6 +15,10 @@ abstract contract AbstractKandel {
   ///@param value the gasreq (including router's gasreq) for offers
   ///@notice By emitting this data, an indexer will be able to keep track of what gasreq is used.
   event SetGasreq(uint value);
+
+  ///@notice the spread has been set.
+  ///@param value the spread in amount of price points to jump for posting dual offer
+  event SetSpread(uint value);
 
   ///@notice the Kandel instance is credited of `amount` by its owner.
   ///@param token the asset. This is indexed so that RPC calls can filter on it.
