@@ -3,10 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
 import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {MangroveOrderWithPermit2 as MangroveOrderWithPermit2} from
-  "mgv_strat_src/strategies/MangroveOrderWithPermit2.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
@@ -14,18 +11,11 @@ import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvStructs, MgvLib, IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
-import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
 
-contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
+contract MangroveOrder_Test is StratTest {
   uint constant GASREQ = 35_000;
-
-  bytes32 DOMAIN_SEPARATOR;
-  uint48 EXPIRATION;
-  uint48 NONCE;
 
   uint constant MID_PRICE = 2200e18;
   // to check ERC20 logging
@@ -59,9 +49,7 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     uint restingOrderId
   );
 
-  IPermit2 internal permit2;
   MangroveOrder internal mgo;
-  MangroveOrderWithPermit2 internal mgoWithPermit2;
   TestMaker internal ask_maker;
   TestMaker internal bid_maker;
 
@@ -93,19 +81,13 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     quote = TestToken(fork.get("DAI"));
     setupMarket(base, quote);
 
-    permit2 = IPermit2(deployPermit2());
-    DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
-    EXPIRATION = uint48(block.timestamp + 1000);
-    NONCE = 0;
     // this contract is admin of MangroveOrder and its router
     mgo = new MangroveOrder(IMangrove(payable(mgv)), $(this), GASREQ);
-    mgoWithPermit2 = new MangroveOrderWithPermit2(IMangrove(payable(mgv)), IPermit2(permit2), $(this), GASREQ);
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
     IERC20[] memory tokens = new IERC20[](2);
     tokens[0] = base;
     tokens[1] = quote;
     mgo.activate(tokens);
-    mgoWithPermit2.activate(tokens);
 
     // `this` contract will act as `MangroveOrder` user
     deal($(base), $(this), 10 ether);
@@ -113,13 +95,6 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
 
     TransferLib.approveToken(base, address(mgo.router()), 10 ether);
     TransferLib.approveToken(quote, address(mgo.router()), 10_000 ether);
-
-    // user approves `mgo` to pull quote or base when doing a market order
-    TransferLib.approveToken(base, address(permit2), 10 ether);
-    TransferLib.approveToken(quote, address(permit2), 10_000 ether);
-
-    permit2.approve(address(base), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
-    permit2.approve(address(quote), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker($(quote), $(base), "sell-taker");
@@ -195,12 +170,6 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     deal($(quote), fresh_taker, balQuote);
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
-
-    vm.startPrank(fresh_taker);
-    // always unlimitted approval permit2
-    quote.approve(address(permit2), type(uint).max);
-    base.approve(address(permit2), type(uint).max);
-    vm.stopPrank();
   }
 
   function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
@@ -211,11 +180,6 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     TransferLib.approveToken(base, address(mgo.router()), type(uint160).max);
     TransferLib.approveToken(quote, address(mgo.router()), type(uint160).max);
     vm.stopPrank();
-  }
-
-  function freshTakerForPermit2(uint balBase, uint balQuote, uint privKey) internal returns (address fresh_taker) {
-    fresh_taker = vm.addr(privKey);
-    __freshTaker__(balBase, balQuote, fresh_taker);
   }
 
   ////////////////////////
@@ -828,77 +792,5 @@ contract MangroveOrder_Test is StratTest, DeployPermit2, Permit2Helpers {
     gas_();
     assertTrue(successes == 1, "Snipe failed");
     assertTrue(mgv.offers($(quote), $(base), cold_buyResult.offerId).gives() > 0, "Update failed");
-  }
-
-  function test_empty_fill_buy_with_resting_order_is_correctly_posted_with_permit2_approvals() public {
-    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
-    buyOrder.restingOrder = true;
-
-    TransferLib.approveToken(quote, address(permit2), takerGives(buyOrder) * 2);
-    IOrderLogic.TakerOrderResult memory expectedResult =
-      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
-
-    uint privKey = 0x1234;
-    address fresh_taker = freshTakerForPermit2(0, takerGives(buyOrder), privKey);
-    // generate permit to just in time approval
-    IAllowanceTransfer.PermitSingle memory permit = getPermit(
-      address(buyOrder.inbound_tkn), uint160(buyOrder.takerGives), EXPIRATION, NONCE, address(mgoWithPermit2.router())
-    );
-
-    bytes memory signature = getPermitSignature(permit, privKey, DOMAIN_SEPARATOR);
-    uint nativeBalBefore = fresh_taker.balance;
-
-    // checking log emission
-    expectFrom($(mgoWithPermit2));
-    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
-
-    vm.prank(fresh_taker);
-    IOrderLogic.TakerOrderResult memory res =
-      mgoWithPermit2.takeWithPermit{value: 0.1 ether}(buyOrder, permit, signature);
-
-    assertTrue(res.offerId > 0, "Offer not posted");
-    assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgoWithPermit2.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
-    // checking mappings
-    assertEq(mgoWithPermit2.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
-    assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
-    assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
-    // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(quote), $(base), res.offerId);
-    assertEq(offer.gives(), takerGives(buyOrder), "Incorrect offer gives");
-    assertEq(offer.wants(), takerWants(buyOrder), "Incorrect offer wants");
-    assertEq(offer.prev(), 0, "Offer should be best of the book");
-    assertEq(detail.maker(), address(mgoWithPermit2), "Incorrect maker");
-  }
-
-  function test_empty_market_order_with_permit2_approvals() public {
-    uint _takerWants = 1 ether;
-    uint _takerGives = 1998 ether;
-    bool fillWants = true;
-
-    uint privKey = 0x1234;
-    address fresh_taker = freshTakerForPermit2(0, _takerGives, privKey);
-    // generate transfer permit for just in time approval
-
-    ISignatureTransfer.PermitTransferFrom memory transferDetails =
-      getPermitTransferFrom(address(quote), _takerGives, NONCE, EXPIRATION);
-
-    bytes memory signature = getPermitTransferSignatureWithSpecifiedAddress(
-      transferDetails, privKey, DOMAIN_SEPARATOR, address(mgoWithPermit2.router())
-    );
-
-    expectFrom(address(quote));
-    emit Transfer(fresh_taker, address(mgoWithPermit2), _takerGives);
-
-    vm.prank(fresh_taker);
-    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgoWithPermit2.marketOrderWithTransferApproval(
-      base, quote, _takerWants, _takerGives, fillWants, transferDetails, signature
-    );
-
-    assertEq(takerGot, 0 ether, "Incorrect taker got");
-    assertEq(takerGave, 0, "Incorrect taker gave");
-    assertEq(bounty, 0, "Offer bounty");
-    assertEq(fee, 0, "Offer fee");
   }
 }
