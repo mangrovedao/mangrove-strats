@@ -44,6 +44,12 @@ contract AaveKandel is GeometricKandel {
     return false;
   }
 
+  ///@notice returns the router as an Aave router
+  ///@return The aave router.
+  function pooledRouter() private view returns (AavePooledRouter) {
+    return AavePooledRouter(address(router()));
+  }
+
   ///@notice Sets the AaveRouter as router and activates router for base and quote
   ///@param router_ the Aave router to use.
   function initialize(AavePooledRouter router_) external onlyAdmin {
@@ -59,13 +65,13 @@ contract AaveKandel is GeometricKandel {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
     // push funds on the router (and supply on AAVE)
-    AavePooledRouter(address(router())).pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, RESERVE_ID);
+    pooledRouter().pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, RESERVE_ID);
   }
 
   ///@inheritdoc CoreKandel
   function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
     if (amount != 0) {
-      AavePooledRouter(address(router())).withdraw(token, RESERVE_ID, amount);
+      pooledRouter().withdraw(token, RESERVE_ID, amount);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
@@ -74,7 +80,7 @@ contract AaveKandel is GeometricKandel {
   ///@inheritdoc ICoreKandel
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
-    return AavePooledRouter(address(router())).balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
+    return pooledRouter().balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds on AAVE
@@ -97,7 +103,7 @@ contract AaveKandel is GeometricKandel {
     // handles pushing back liquidity to the router
     if (makerData == IS_FIRST_PULLER) {
       // if first puller, then router should deposit liquidity on AAVE
-      AavePooledRouter(address(router())).pushAndSupply(
+      pooledRouter().pushAndSupply(
         BASE, BASE.balanceOf(address(this)), QUOTE, QUOTE.balanceOf(address(this)), RESERVE_ID
       );
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
