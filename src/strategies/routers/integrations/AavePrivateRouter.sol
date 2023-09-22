@@ -10,7 +10,7 @@ import {IERC20} from "mgv_src/IERC20.sol";
 ///@dev router assumes all bound makers share the same liquidity
 ///@dev if the same maker has many smart offers that are succeptible to be consumed in the same market order, it can set `BUFFER_SIZE` to a non zero value to increase gas efficiency (see below)
 
-contract AavePrivateRouter is StaticAaveMemoizer, MonoRouter {
+contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@notice Logs unexpected throws from AAVE
   ///@param maker the address of the smart offer that called the router
   ///@param asset the type of asset involved in the interaction with the pool
@@ -31,7 +31,7 @@ contract AavePrivateRouter is StaticAaveMemoizer, MonoRouter {
   ///@param buffer_size portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow`.
   ///@dev `msg.sender` will be admin of this router
   constructor(address addressesProvider, uint interestRate, uint overhead, uint buffer_size)
-    StaticAaveMemoizer(addressesProvider, interestRate, address(this))
+    AaveMemoizer(addressesProvider, interestRate)
     MonoRouter(overhead)
   {
     require(buffer_size <= 100, "PrivateRouter/InvalidBufferSize");
