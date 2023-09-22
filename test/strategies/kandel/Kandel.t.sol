@@ -37,7 +37,7 @@ contract NoRouterKandelTest is CoreKandelTest {
   }
 
   function validateDistribution(
-    CoreKandel.Distribution memory distribution,
+    CoreKandel.DistributionOffer[] memory distributionOffers,
     uint baseQuoteLogPriceOffset,
     int baseQuoteLogPriceIndex0,
     OfferType ba,
@@ -45,25 +45,24 @@ contract NoRouterKandelTest is CoreKandelTest {
     uint dualGives
   ) internal returns (uint zeroes) {
     bool constantGives = gives != type(uint).max;
-    for (uint i = 0; i < distribution.indices.length; ++i) {
-      uint index = distribution.indices[i];
+    for (uint i = 0; i < distributionOffers.length; ++i) {
+      CoreKandel.DistributionOffer memory offer = distributionOffers[i];
+      uint index = offer.index;
       assertTrue(!seenOffers[ba][index], string.concat("index ", vm.toString(index), " seen twice"));
       seenOffers[ba][index] = true;
 
       int absoluteLogPriceAtIndex = baseQuoteLogPriceIndex0 + int(index) * int(baseQuoteLogPriceOffset);
       if (ba == Bid) {
-        // console.log("B %s %s %s", distribution.indices[i], vm.toString(distribution.logPriceDist[i]), distribution.givesDist[i]);
-        assertEq(distribution.logPriceDist[i], -absoluteLogPriceAtIndex);
+        assertEq(offer.logPrice, -absoluteLogPriceAtIndex);
       } else {
-        // console.log("A %s %s %s", distribution.indices[i], vm.toString(distribution.logPriceDist[i]), distribution.givesDist[i]);
-        assertEq(distribution.logPriceDist[i], absoluteLogPriceAtIndex);
+        assertEq(offer.logPrice, absoluteLogPriceAtIndex);
       }
       // can be a dual
-      if (distribution.givesDist[i] > 0) {
+      if (offer.gives > 0) {
         if (constantGives) {
-          assertEq(distribution.givesDist[i], gives, "givesDist should be constant");
+          assertEq(offer.gives, gives, "givesDist should be constant");
         } else {
-          uint wants = LogPriceLib.inboundFromOutbound(distribution.logPriceDist[i], distribution.givesDist[i]);
+          uint wants = LogPriceLib.inboundFromOutbound(offer.logPrice, offer.gives);
           assertApproxEqRel(wants, dualGives, 1e10, "wants should be approximately constant");
         }
       } else {
@@ -147,11 +146,10 @@ contract NoRouterKandelTest is CoreKandelTest {
   function test_createDistributionSimple_constantAskBidGives(SimpleDistributionHeapArgs memory args, uint[] memory cuts)
     internal
   {
-    CoreKandel.Distribution[] memory bidDistribution = new CoreKandel.Distribution[](cuts.length+1);
-    CoreKandel.Distribution[] memory askDistribution = new CoreKandel.Distribution[](cuts.length+1);
+    CoreKandel.Distribution[] memory distribution = new CoreKandel.Distribution[](cuts.length+1);
 
     for (uint i = 0; i < cuts.length; i++) {
-      (bidDistribution[i], askDistribution[i]) = kdl.createDistribution({
+      distribution[i] = kdl.createDistribution({
         from: i > 0 ? cuts[i - 1] : 0,
         to: i < cuts.length - 1 ? cuts[i] : args.pricePoints,
         baseQuoteLogPriceIndex0: args.baseQuoteLogPriceIndex0,
@@ -166,10 +164,10 @@ contract NoRouterKandelTest is CoreKandelTest {
 
     uint totalIndices = 0;
     uint totalZeros = 0;
-    for (uint i = 0; i < bidDistribution.length; i++) {
-      totalIndices += bidDistribution[i].indices.length + askDistribution[i].indices.length;
+    for (uint i = 0; i < distribution.length; i++) {
+      totalIndices += distribution[i].bids.length + distribution[i].asks.length;
       totalZeros += validateDistribution(
-        bidDistribution[i],
+        distribution[i].bids,
         args.baseQuoteLogPriceOffset,
         args.baseQuoteLogPriceIndex0,
         OfferType.Bid,
@@ -177,7 +175,7 @@ contract NoRouterKandelTest is CoreKandelTest {
         args.askGives
       );
       totalZeros += validateDistribution(
-        askDistribution[i],
+        distribution[i].asks,
         args.baseQuoteLogPriceOffset,
         args.baseQuoteLogPriceIndex0,
         OfferType.Ask,

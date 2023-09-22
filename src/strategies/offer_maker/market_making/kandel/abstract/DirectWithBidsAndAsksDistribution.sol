@@ -33,27 +33,28 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     HasIndexedBidsAndAsks(mgv)
   {}
 
-  ///@param indices the indices to populate, in ascending order
-  ///@param logPriceDist the log price distribution for the indices (the log price of base per quote for bids and quote per base for asks)
-  ///@param givesDist the distribution of gives for the indices (the `quote` for bids and the `base` for asks)
+  ///@param index the index of the offer
+  ///@param logPrice the log price for the index (the log price of base per quote for bids and quote per base for asks)
+  ///@param gives the gives for the index (the `quote` for bids and the `base` for asks)
+  struct DistributionOffer {
+    uint index;
+    int logPrice;
+    uint gives;
+  }
+
+  ///@param asks the asks to populate
+  ///@param bids the bids to populate
   struct Distribution {
-    uint[] indices;
-    int[] logPriceDist;
-    uint[] givesDist;
+    DistributionOffer[] asks;
+    DistributionOffer[] bids;
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For instance, for Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
-  ///@param bidDistribution the distribution of prices for gives of quote for indices.
-  ///@param askDistribution the distribution of prices for gives of base for indices.
+  ///@param distribution the distribution of bids and asks to populate
   ///@param gasreq the amount of gas units that are required to execute the trade.
   ///@param gasprice the gasprice used to compute offer's provision.
   ///@dev Gives of 0 means create/update and then retract offer (but update price, gasreq, gasprice of the offer)
-  function populateChunkInternal(
-    Distribution memory bidDistribution,
-    Distribution memory askDistribution,
-    uint gasreq,
-    uint gasprice
-  ) internal {
+  function populateChunkInternal(Distribution memory distribution, uint gasreq, uint gasprice) internal {
     emit PopulateStart();
     // Initialize static values of args
     OfferArgs memory args;
@@ -63,34 +64,32 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     args.gasprice = gasprice;
 
     // Populate bids
-    uint[] memory indices = bidDistribution.indices;
-    int[] memory logPriceDist = bidDistribution.logPriceDist;
-    uint[] memory givesDist = bidDistribution.givesDist;
+    DistributionOffer[] memory offers = distribution.bids;
     args.olKey = offerListOfOfferType(OfferType.Bid);
 
     // Minimum gives for offers (to post and retract)
     uint minGives;
     MgvStructs.LocalPacked local = MGV.local(args.olKey);
     minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
-    for (uint i; i < indices.length; ++i) {
-      uint index = indices[i];
-      args.logPrice = logPriceDist[i];
-      args.gives = givesDist[i];
+    for (uint i; i < offers.length; ++i) {
+      DistributionOffer memory offer = offers[i];
+      uint index = offer.index;
+      args.logPrice = offer.logPrice;
+      args.gives = offer.gives;
       populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGives);
     }
 
     // Populate asks
-    indices = askDistribution.indices;
-    logPriceDist = askDistribution.logPriceDist;
-    givesDist = askDistribution.givesDist;
+    offers = distribution.asks;
     args.olKey = args.olKey.flipped();
 
     local = MGV.local(args.olKey);
     minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
-    for (uint i; i < indices.length; ++i) {
-      uint index = indices[i];
-      args.logPrice = logPriceDist[i];
-      args.gives = givesDist[i];
+    for (uint i; i < offers.length; ++i) {
+      DistributionOffer memory offer = offers[i];
+      uint index = offer.index;
+      args.logPrice = offer.logPrice;
+      args.gives = offer.gives;
       populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGives);
     }
     emit PopulateEnd();

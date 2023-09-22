@@ -17,6 +17,8 @@ import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.so
 import {toFixed} from "mgv_lib/Test2.sol";
 import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {DirectWithBidsAndAsksDistribution} from
+  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 
 abstract contract KandelTest is StratTest {
   address payable maker;
@@ -320,25 +322,17 @@ abstract contract KandelTest is StratTest {
     }
   }
 
-  function printDistribution(CoreKandel.Distribution memory distribution) internal view {
-    for (uint i; i < distribution.indices.length; ++i) {
-      console.log(
-        "Index: %s LogPrice: %s Gives: %s",
-        distribution.indices[i],
-        vm.toString(distribution.logPriceDist[i]),
-        distribution.givesDist[i]
-      );
+  function printDistribution(CoreKandel.DistributionOffer[] memory offers) internal view {
+    for (uint i; i < offers.length; ++i) {
+      console.log("Index: %s LogPrice: %s Gives: %s", offers[i].index, vm.toString(offers[i].logPrice), offers[i].gives);
     }
   }
 
-  function printDistributions(
-    CoreKandel.Distribution memory bidDistribution,
-    CoreKandel.Distribution memory askDistribution
-  ) internal view {
+  function printDistributions(CoreKandel.Distribution memory distribution) internal view {
     console.log("Bids:");
-    printDistribution(bidDistribution);
+    printDistribution(distribution.bids);
     console.log("Asks:");
-    printDistribution(askDistribution);
+    printDistribution(distribution.asks);
   }
 
   function printOB() internal view {
@@ -378,22 +372,25 @@ abstract contract KandelTest is StratTest {
     bytes memory expectRevert
   ) internal {
     CoreKandel.Distribution memory distribution;
-    distribution.indices = new uint[](1);
-    distribution.logPriceDist = new int[](1);
-    distribution.givesDist = new uint[](1);
 
-    int logPrice = index < firstAskIndex
-      ? LogPriceConversionLib.logPriceFromVolumes(base, quote)
-      : LogPriceConversionLib.logPriceFromVolumes(quote, base);
-    if (base == 0 || quote == 0) {
+    if (index < firstAskIndex) {
+      distribution.bids = new CoreKandel.DistributionOffer[](1);
       // logPrice API should set a meaningful log price, for now, just set price to 1.
-      logPrice = 0;
+      distribution.bids[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
+        index: index,
+        logPrice: base == 0 || quote == 0 ? int(0) : LogPriceConversionLib.logPriceFromVolumes(base, quote),
+        gives: quote
+      });
+    } else {
+      distribution.asks = new CoreKandel.DistributionOffer[](1);
+      // logPrice API should set a meaningful log price, for now, just set price to 1.
+      distribution.asks[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
+        index: index,
+        logPrice: base == 0 || quote == 0 ? int(0) : LogPriceConversionLib.logPriceFromVolumes(quote, base),
+        gives: base
+      });
     }
-    uint gives = index < firstAskIndex ? quote : base;
 
-    distribution.indices[0] = index;
-    distribution.logPriceDist[0] = logPrice;
-    distribution.givesDist[0] = gives;
     vm.prank(maker);
     if (expectRevert.length > 0) {
       vm.expectRevert(expectRevert);
@@ -402,20 +399,13 @@ abstract contract KandelTest is StratTest {
     params.pricePoints = uint112(pricePoints);
     params.stepSize = uint104(stepSize);
 
-    kandel.populate{value: 0.1 ether}(
-      index < firstAskIndex ? distribution : emptyDist(),
-      index < firstAskIndex ? emptyDist() : distribution,
-      params,
-      0,
-      0
-    );
+    kandel.populate{value: 0.1 ether}(distribution, params, 0, 0);
   }
 
   function populateConstantDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
     GeometricKandel.Params memory params = getParams(kdl);
     uint firstAskIndex = size / 2;
-    (CoreKandel.Distribution memory bidDistribution, CoreKandel.Distribution memory askDistribution) = kdl
-      .createDistribution(
+    CoreKandel.Distribution memory distribution = kdl.createDistribution(
       0,
       size,
       LogPriceConversionLib.logPriceFromVolumes(initQuote, initBase),
@@ -428,13 +418,13 @@ abstract contract KandelTest is StratTest {
     );
 
     vm.prank(maker);
-    kdl.populate{value: maker.balance}(bidDistribution, askDistribution, params, 0, 0);
+    kdl.populate{value: maker.balance}(distribution, params, 0, 0);
 
-    for (uint i; i < bidDistribution.indices.length; i++) {
-      quoteAmount += bidDistribution.givesDist[i];
+    for (uint i; i < distribution.bids.length; i++) {
+      quoteAmount += distribution.bids[i].gives;
     }
-    for (uint i; i < askDistribution.indices.length; i++) {
-      baseAmount += askDistribution.givesDist[i];
+    for (uint i; i < distribution.asks.length; i++) {
+      baseAmount += distribution.asks[i].gives;
     }
   }
 

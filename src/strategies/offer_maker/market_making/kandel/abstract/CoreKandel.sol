@@ -93,8 +93,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   }
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
-  ///@param bidDistribution the distribution of prices for gives of quote for indices.
-  ///@param askDistribution the distribution of prices for gives of base for indices.
+  ///@param distribution the distribution of bids and asks to populate
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
   ///@param baseAmount base amount to deposit
   ///@param quoteAmount quote amount to deposit
@@ -102,13 +101,11 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
   ///@dev If this function is invoked with different pricePoints or stepSize, then first retract all offers.
   ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
-  function populate(
-    Distribution memory bidDistribution,
-    Distribution memory askDistribution,
-    Params calldata parameters,
-    uint baseAmount,
-    uint quoteAmount
-  ) public payable onlyAdmin {
+  function populate(Distribution memory distribution, Params calldata parameters, uint baseAmount, uint quoteAmount)
+    public
+    payable
+    onlyAdmin
+  {
     if (msg.value > 0) {
       MGV.fund{value: msg.value}();
     }
@@ -116,20 +113,16 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     depositFunds(baseAmount, quoteAmount);
 
-    populateChunkInternal(bidDistribution, askDistribution, params.gasreq, params.gasprice);
+    populateChunkInternal(distribution, params.gasreq, params.gasprice);
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
   ///@notice This function is used externally after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
   ///@notice This function is not payable, use `populate` to fund along with populate.
-  ///@param bidDistribution the distribution of prices for gives of quote for indices.
-  ///@param askDistribution the distribution of prices for gives of base for indices.
-  function populateChunk(Distribution calldata bidDistribution, Distribution calldata askDistribution)
-    external
-    onlyAdmin
-  {
+  ///@param distribution the distribution of bids and asks to populate
+  function populateChunk(Distribution calldata distribution) external onlyAdmin {
     Params memory parameters = params;
-    populateChunkInternal(bidDistribution, askDistribution, parameters.gasreq, parameters.gasprice);
+    populateChunkInternal(distribution, parameters.gasreq, parameters.gasprice);
   }
 
   ///@inheritdoc AbstractKandel
