@@ -216,16 +216,20 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param quoteAmount the amount of quote tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
   ///@param recipient the address to which the withdrawn funds should be sent to.
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual override onlyAdmin {
-    if (baseAmount == type(uint).max) {
-      baseAmount = BASE.balanceOf(address(this));
+    withdrawFundsForToken(BASE, baseAmount, recipient);
+    withdrawFundsForToken(QUOTE, quoteAmount, recipient);
+  }
+
+  ///@notice withdraws funds from the contract's reserve for the given token
+  ///@param token the token to withdraw.
+  ///@param amount the amount of tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
+  ///@param recipient the address to which the withdrawn funds should be sent to.
+  function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal virtual {
+    if (amount == type(uint).max) {
+      amount = token.balanceOf(address(this));
     }
-    if (quoteAmount == type(uint).max) {
-      quoteAmount = QUOTE.balanceOf(address(this));
-    }
-    require(TransferLib.transferToken(BASE, recipient, baseAmount), "Kandel/baseTransferFail");
-    emit Debit(BASE, baseAmount);
-    require(TransferLib.transferToken(QUOTE, recipient, quoteAmount), "Kandel/quoteTransferFail");
-    emit Debit(QUOTE, quoteAmount);
+    require(TransferLib.transferToken(token, recipient, amount), "Kandel/transferFail");
+    emit Debit(token, amount);
   }
 
   ///@notice Retracts offers, withdraws funds, and withdraws free wei from Mangrove.
