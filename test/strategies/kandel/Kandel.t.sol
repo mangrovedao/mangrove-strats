@@ -23,15 +23,12 @@ contract NoRouterKandelTest is CoreKandelTest {
     vm.expectEmit(true, true, true, true);
     emit OfferListKey(olKey.hash());
     vm.expectEmit(true, true, true, true);
-    emit SetGasprice(bufferedGasprice);
-    vm.expectEmit(true, true, true, true);
     emit SetGasreq(GASREQ);
     vm.prank(deployer);
     kdl_ = new Kandel({
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
       gasreq: GASREQ,
-      gasprice: bufferedGasprice,
       reserveId: reserveId
     });
   }

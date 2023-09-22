@@ -120,10 +120,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
     new KandelSower().innerRun({
-      mgv: IMangrove(payable(mgv)),
       kandelSeeder: seeder,
       olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
-      gaspriceFactor: 1,
       sharing: false,
       onAave: false,
       registerNameOnFork: false,
@@ -132,10 +130,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
     new KandelSower().innerRun({
-      mgv: IMangrove(payable(mgv)),
       kandelSeeder: aaveSeeder,
       olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
-      gaspriceFactor: 1,
       sharing: false,
       onAave: true,
       registerNameOnFork: false,

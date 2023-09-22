@@ -28,10 +28,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param mgv The Mangrove deployment.
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, uint gasreq, address reserveId)
-    Direct(mgv, NO_ROUTER, gasreq, reserveId)
-    HasIndexedBidsAndAsks(mgv)
-  {}
+  constructor(IMangrove mgv, uint gasreq, address reserveId) Direct(mgv, NO_ROUTER, gasreq, reserveId) {}
 
   ///@param index the index of the offer
   ///@param logPrice the log price for the index (the log price of base per quote for bids and quote per base for asks)
@@ -64,35 +61,33 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     args.gasprice = gasprice;
 
     // Populate bids
-    DistributionOffer[] memory offers = distribution.bids;
     args.olKey = offerListOfOfferType(OfferType.Bid);
-
-    // Minimum gives for offers (to post and retract)
-    uint minGives;
-    MgvStructs.LocalPacked local = MGV.local(args.olKey);
-    minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
-    for (uint i; i < offers.length; ++i) {
-      DistributionOffer memory offer = offers[i];
-      uint index = offer.index;
-      args.logPrice = offer.logPrice;
-      args.gives = offer.gives;
-      populateIndex(OfferType.Bid, offerIdOfIndex(OfferType.Bid, index), index, args, minGives);
-    }
+    populateOfferListChunkInternal(distribution.bids, OfferType.Bid, args);
 
     // Populate asks
-    offers = distribution.asks;
     args.olKey = args.olKey.flipped();
+    populateOfferListChunkInternal(distribution.asks, OfferType.Ask, args);
 
-    local = MGV.local(args.olKey);
-    minGives = local.density().multiplyUp(gasreq + local.offer_gasbase());
+    emit PopulateEnd();
+  }
+
+  ///@notice populates one of the offer lists with the given offers
+  ///@param offers the offers to populate
+  ///@param ba whether to populate bids or asks
+  ///@param args a reused offer creation args structure with defaults passed from caller.
+  function populateOfferListChunkInternal(DistributionOffer[] memory offers, OfferType ba, OfferArgs memory args)
+    internal
+  {
+    MgvStructs.LocalPacked local = MGV.local(args.olKey);
+    // Minimum gives for offers (to post and retract)
+    uint minGives = local.density().multiplyUp(args.gasreq + local.offer_gasbase());
     for (uint i; i < offers.length; ++i) {
       DistributionOffer memory offer = offers[i];
       uint index = offer.index;
       args.logPrice = offer.logPrice;
       args.gives = offer.gives;
-      populateIndex(OfferType.Ask, offerIdOfIndex(OfferType.Ask, index), index, args, minGives);
+      populateIndex(ba, offerIdOfIndex(ba, index), index, args, minGives);
     }
-    emit PopulateEnd();
   }
 
   ///@notice publishes (by either creating or updating) a bid/ask at a given price index.
@@ -148,19 +143,44 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@dev use in conjunction of `withdrawFromMangrove` if the user wishes to redeem the available WEIs.
   function retractOffers(uint from, uint to) public onlyAdmin {
     emit RetractStart();
-    OLKey memory olKeyAsk = offerListOfOfferType(OfferType.Ask);
-    OLKey memory olKeyBid = olKeyAsk.flipped();
+    retractOffersOnOfferList(from, to, OfferType.Ask);
+    retractOffersOnOfferList(from, to, OfferType.Bid);
+    emit RetractEnd();
+  }
+
+  ///@notice retracts and deprovisions offers of the distribution interval `[from, to[` for the given offer type.
+  ///@param from the start index.
+  ///@param to the end index.
+  ///@param ba the offer type.
+  function retractOffersOnOfferList(uint from, uint to, OfferType ba) internal {
+    OLKey memory olKey = offerListOfOfferType(ba);
     for (uint index = from; index < to; ++index) {
       // These offerIds could be recycled in a new populate
-      uint offerId = offerIdOfIndex(OfferType.Ask, index);
+      uint offerId = offerIdOfIndex(ba, index);
       if (offerId != 0) {
-        _retractOffer(olKeyAsk, offerId, true);
-      }
-      offerId = offerIdOfIndex(OfferType.Bid, index);
-      if (offerId != 0) {
-        _retractOffer(olKeyBid, offerId, true);
+        _retractOffer(olKey, offerId, true);
       }
     }
-    emit RetractEnd();
+  }
+
+  ///@notice gets the Mangrove offer at the given index for the offer type.
+  ///@param ba the offer type.
+  ///@param index the index.
+  ///@return offer the Mangrove offer.
+  function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
+    uint offerId = offerIdOfIndex(ba, index);
+    OLKey memory olKey = offerListOfOfferType(ba);
+    offer = MGV.offers(olKey, offerId);
+  }
+
+  /// @notice gets the total gives of all offers of the offer type.
+  /// @param ba offer type.
+  /// @return volume the total gives of all offers of the offer type.
+  /// @dev function is very gas costly, for external calls only.
+  function offeredVolume(OfferType ba) public view returns (uint volume) {
+    for (uint index = 0; index < length; ++index) {
+      MgvStructs.OfferPacked offer = getOffer(ba, index);
+      volume += offer.gives();
+    }
   }
 }

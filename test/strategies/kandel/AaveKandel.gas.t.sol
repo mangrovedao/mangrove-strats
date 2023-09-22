@@ -16,7 +16,6 @@ contract AaveKandelGasTest is CoreKandelGasTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
       gasreq: GASREQ,
-      gasprice: bufferedGasprice,
       reserveId: reserveId
     });
     AavePooledRouter router = new AavePooledRouter(fork.get("Aave"), ROUTER_GASREQ);

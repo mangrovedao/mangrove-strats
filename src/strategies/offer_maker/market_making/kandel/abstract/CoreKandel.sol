@@ -7,12 +7,13 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
-import {AbstractKandel} from "./AbstractKandel.sol";
+import {ICoreKandel} from "./ICoreKandel.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {KandelLib} from "./KandelLib.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
-abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, AbstractKandel {
+abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, ICoreKandel {
   ///@notice Core Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
@@ -28,9 +29,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Storage of the parameters for the strat.
   Params public params;
 
-  ///@notice sets the step size
-  ///@param stepSize the step size.
-  function setStepSize(uint stepSize) public onlyAdmin {
+  /// @inheritdoc ICoreKandel
+  function setStepSize(uint stepSize) public override onlyAdmin {
     uint104 stepSize_ = uint104(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
@@ -38,7 +38,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     emit SetStepSize(stepSize);
   }
 
-  /// @inheritdoc AbstractKandel
+  /// @inheritdoc ICoreKandel
   function setGasprice(uint gasprice) public override onlyAdmin {
     uint16 gasprice_ = uint16(gasprice);
     require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
@@ -46,7 +46,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     emit SetGasprice(gasprice_);
   }
 
-  /// @inheritdoc AbstractKandel
+  /// @inheritdoc ICoreKandel
   function setGasreq(uint gasreq) public override onlyAdmin {
     uint24 gasreq_ = uint24(gasreq);
     require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
@@ -83,14 +83,11 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
-  ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
     TradesBaseQuotePair(olKeyBaseQuote)
     DirectWithBidsAndAsksDistribution(mgv, gasreq, reserveId)
-  {
-    setGasprice(gasprice);
-  }
+  {}
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
   ///@param distribution the distribution of bids and asks to populate
@@ -125,7 +122,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     populateChunkInternal(distribution, parameters.gasreq, parameters.gasprice);
   }
 
-  ///@inheritdoc AbstractKandel
+  ///@inheritdoc ICoreKandel
   function reserveBalance(OfferType ba) public view virtual override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
     return token.balanceOf(address(this));
@@ -157,30 +154,6 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     logUpdateOfferStatus(offerId, args, updateOfferStatus);
   }
 
-  ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
-  ///@param ba the offer type to transport to
-  ///@param index the price index one is willing to improve
-  ///@param step the number of price steps improvements
-  ///@param pricePoints the number of price points
-  ///@return better destination index
-  function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
-    internal
-    pure
-    returns (uint better)
-  {
-    if (ba == OfferType.Ask) {
-      better = index + step;
-      if (better >= pricePoints) {
-        better = pricePoints - 1;
-      }
-    } else {
-      if (index >= step) {
-        better = index - step;
-      }
-      // else better = 0
-    }
-  }
-
   ///@notice transport logic followed by Kandel
   ///@param ba whether the offer that was executed is a bid or an ask
   ///@param order a recap of the taker order (order.offer is the executed offer)
@@ -195,7 +168,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory memoryParams = params;
     OfferType baDual = dual(ba);
 
-    uint dualIndex = transportDestination(baDual, index, memoryParams.stepSize, memoryParams.pricePoints);
+    uint dualIndex = KandelLib.transportDestination(baDual, index, memoryParams.stepSize, memoryParams.pricePoints);
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
     args.olKey = offerListOfOfferType(baDual);
@@ -209,11 +182,13 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
       args.gives = type(uint96).max;
     }
 
+    // keep existing price of offer
     args.logPrice = dualOffer.logPrice();
 
     // args.fund = 0; the offers are already provisioned
     // posthook should not fail if unable to post offers, we capture the error as incidents
     args.noRevert = true;
+    // use newest gasreq and gasprice
     args.gasprice = memoryParams.gasprice;
     args.gasreq = memoryParams.gasreq;
   }
@@ -241,16 +216,20 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param quoteAmount the amount of quote tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
   ///@param recipient the address to which the withdrawn funds should be sent to.
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual override onlyAdmin {
-    if (baseAmount == type(uint).max) {
-      baseAmount = BASE.balanceOf(address(this));
+    withdrawFundsForToken(BASE, baseAmount, recipient);
+    withdrawFundsForToken(QUOTE, quoteAmount, recipient);
+  }
+
+  ///@notice withdraws funds from the contract's reserve for the given token
+  ///@param token the token to withdraw.
+  ///@param amount the amount of tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
+  ///@param recipient the address to which the withdrawn funds should be sent to.
+  function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal virtual {
+    if (amount == type(uint).max) {
+      amount = token.balanceOf(address(this));
     }
-    if (quoteAmount == type(uint).max) {
-      quoteAmount = QUOTE.balanceOf(address(this));
-    }
-    require(TransferLib.transferToken(BASE, recipient, baseAmount), "Kandel/baseTransferFail");
-    emit Debit(BASE, baseAmount);
-    require(TransferLib.transferToken(QUOTE, recipient, quoteAmount), "Kandel/quoteTransferFail");
-    emit Debit(QUOTE, quoteAmount);
+    require(TransferLib.transferToken(token, recipient, amount), "Kandel/transferFail");
+    emit Debit(token, amount);
   }
 
   ///@notice Retracts offers, withdraws funds, and withdraws free wei from Mangrove.

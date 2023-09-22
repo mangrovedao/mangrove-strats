@@ -66,11 +66,11 @@ contract KandelSeederDeployer is Deployer {
 
     prettyLog("Deploying Kandel instance...");
     broadcast();
-    new Kandel(mgv, olKeyBaseQuote, 1, 1, address(0));
+    new Kandel(mgv, olKeyBaseQuote, 1, address(0));
 
     prettyLog("Deploying AaveKandel instance...");
     broadcast();
-    new AaveKandel(mgv, olKeyBaseQuote, 1, 1, address(0));
+    new AaveKandel(mgv, olKeyBaseQuote, 1, address(0));
 
     smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
@@ -90,9 +90,7 @@ contract KandelSeederDeployer is Deployer {
     mgv.activate(olKeyBaseQuote.flipped(), 0, 1, 1);
     vm.stopPrank();
 
-    AbstractKandelSeeder.KandelSeed memory seed =
-      AbstractKandelSeeder.KandelSeed({olKeyBaseQuote: olKeyBaseQuote, gasprice: 0, liquiditySharing: true});
-    CoreKandel kandel = kandelSeeder.sow(seed);
+    CoreKandel kandel = kandelSeeder.sow({olKeyBaseQuote: olKeyBaseQuote, liquiditySharing: true});
 
     require(kandel.router() == expectedRouter, "Incorrect router address");
     require(kandel.admin() == address(this), "Incorrect admin");

@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
 import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
+import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
+import {KandelLib} from "./KandelLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
@@ -22,10 +22,9 @@ abstract contract GeometricKandel is CoreKandel {
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
-  ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, uint gasprice, address reserveId)
-    CoreKandel(mgv, olKeyBaseQuote, gasreq, gasprice, reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
+    CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
   {}
 
   ///@notice sets the log price offset if different from existing.
@@ -36,37 +35,6 @@ abstract contract GeometricKandel is CoreKandel {
       baseQuoteLogPriceOffset = _baseQuoteLogPriceOffset;
       emit SetBaseQuoteLogPriceOffset(_baseQuoteLogPriceOffset);
     }
-  }
-
-  ///@notice Creates a distribution of bids and asks given by the parameters, while reading additional parameters from the Kandel instance. Dual offers are included with gives=0.
-  ///@param from populate offers starting from this index (inclusive).
-  ///@param to populate offers until this index (exclusive).
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
-  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
-  ///@return distribution the distribution of bids and asks to populate
-  ///@dev See `createDistribution` overload for further details.
-  function createDistribution(
-    uint from,
-    uint to,
-    int baseQuoteLogPriceIndex0,
-    uint firstAskIndex,
-    uint bidGives,
-    uint askGives
-  ) external view returns (Distribution memory distribution) {
-    Params memory parameters = params;
-    return createDistribution(
-      from,
-      to,
-      baseQuoteLogPriceIndex0,
-      baseQuoteLogPriceOffset,
-      firstAskIndex,
-      bidGives,
-      askGives,
-      parameters.pricePoints,
-      parameters.stepSize
-    );
   }
 
   ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
@@ -100,97 +68,17 @@ abstract contract GeometricKandel is CoreKandel {
     uint pricePoints,
     uint stepSize
   ) public pure returns (Distribution memory distribution) {
-    require(bidGives != type(uint).max || askGives != type(uint).max, "Kandel/bothGivesVariable");
-
-    // First we restrict boundaries of bids and asks.
-
-    // Create live bids up till first ask, except stop where live asks will have a dual bid.
-    uint bidBound;
-    {
-      // Rounding - we skip an extra live bid if stepSize is odd.
-      uint bidHoleSize = stepSize / 2 + stepSize % 2;
-      // If first ask is close to start, then there are no room for live bids.
-      bidBound = firstAskIndex > bidHoleSize ? firstAskIndex - bidHoleSize : 0;
-      // If stepSize is large there is not enough room for dual outside
-      uint lastBidWithPossibleDualAsk = pricePoints - stepSize;
-      if (bidBound > lastBidWithPossibleDualAsk) {
-        bidBound = lastBidWithPossibleDualAsk;
-      }
-    }
-    // Here firstAskIndex becomes the index of the first actual ask, and not just the boundary - we need to take `stepSize` and `from` into account.
-    firstAskIndex = firstAskIndex + stepSize / 2;
-    // We should not place live asks near the beginning, there needs to be room for the dual bid.
-    if (firstAskIndex < stepSize) {
-      firstAskIndex = stepSize;
-    }
-
-    // Finally, account for the from/to boundaries
-    if (to < bidBound) {
-      bidBound = to;
-    }
-    if (firstAskIndex < from) {
-      firstAskIndex = from;
-    }
-
-    // Allocate distributions - there should be room for live bids and asks, and their duals.
-    {
-      uint count = (from < bidBound ? bidBound - from : 0) + (firstAskIndex < to ? to - firstAskIndex : 0);
-      distribution.bids = new DistributionOffer[](count);
-      distribution.asks = new DistributionOffer[](count);
-    }
-
-    // Start bids at from
-    uint index = from;
-    // Calculate the taker relative log price of the first price point
-    int logPrice = -(baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
-    // A counter for insertion in the distribution structs
-    uint i = 0;
-    for (; index < bidBound; ++index) {
-      // Add live bid
-      // Use askGives unless it should be derived from bid at the price
-      distribution.bids[i] = DistributionOffer({
-        index: index,
-        logPrice: logPrice,
-        gives: bidGives == type(uint).max ? LogPriceLib.outboundFromInbound(logPrice, askGives) : bidGives
-      });
-
-      // Add dual (dead) ask
-      uint dualIndex = transportDestination(OfferType.Ask, index, stepSize, pricePoints);
-      distribution.asks[i] = DistributionOffer({
-        index: dualIndex,
-        logPrice: (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex)),
-        gives: 0
-      });
-
-      // Next log price
-      logPrice -= int(_baseQuoteLogPriceOffset);
-      ++i;
-    }
-
-    // Start asks from (adjusted) firstAskIndex
-    index = firstAskIndex;
-    // Calculate the taker relative log price of the first ask
-    logPrice = (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
-    for (; index < to; ++index) {
-      // Add live ask
-      // Use askGives unless it should be derived from bid at the price
-      distribution.asks[i] = DistributionOffer({
-        index: index,
-        logPrice: logPrice,
-        gives: askGives == type(uint).max ? LogPriceLib.outboundFromInbound(logPrice, bidGives) : askGives
-      });
-      // Add dual (dead) bid
-      uint dualIndex = transportDestination(OfferType.Bid, index, stepSize, pricePoints);
-      distribution.bids[i] = DistributionOffer({
-        index: dualIndex,
-        logPrice: -(baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex)),
-        gives: 0
-      });
-
-      // Next log price
-      logPrice += int(_baseQuoteLogPriceOffset);
-      ++i;
-    }
+    return KandelLib.createGeometricDistribution(
+      from,
+      to,
+      baseQuoteLogPriceIndex0,
+      _baseQuoteLogPriceOffset,
+      firstAskIndex,
+      bidGives,
+      askGives,
+      pricePoints,
+      stepSize
+    );
   }
 
   ///@notice publishes bids/asks according to a geometric distribution, and sets all parameters according to inputs.

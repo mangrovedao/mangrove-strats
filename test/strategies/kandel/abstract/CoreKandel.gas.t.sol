@@ -27,7 +27,6 @@ abstract contract CoreKandelGasTest is KandelTest {
       olKeyBaseQuote: olKey,
       //FIXME: measure
       gasreq: 260_000,
-      gasprice: 0,
       reserveId: address(0)
     });
   }
