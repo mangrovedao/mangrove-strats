@@ -3,8 +3,7 @@ pragma solidity ^0.8.10;
 
 import {MonoRouter, AbstractRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {StaticAaveMemoizer} from "./StaticAaveMemoizer.sol";
-import {ReserveConfiguration, DataTypes} from "../abstract/AbstractAaveMemoizer.sol";
+import {AaveMemoizer, ReserveConfiguration, DataTypes} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
 ///@title Router for smart offers that borrow promised assets on AAVE

@@ -120,4 +120,6 @@ contract Dispatcher is MultiRouter {
       }
     }
   }
+
+  function setMaxBudffer(address r, IERC20) external onlyCaller(r) {}
 }
