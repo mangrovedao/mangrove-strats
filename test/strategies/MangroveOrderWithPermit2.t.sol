@@ -187,7 +187,8 @@ contract MangroveWithPermit2Order_Test is StratTest, DeployPermit2, Permit2Helpe
     // 3 ┆ 1 WETH  /  1988 DAI 0xA4AD4f68d0b91CFD19687c881e50f3A00242828c
   }
 
-  function __freshTaker__(uint balBase, uint balQuote, address fresh_taker) internal {
+  function freshTakerForPermit2(uint balBase, uint balQuote, uint privKey) internal returns (address fresh_taker) {
+    fresh_taker = vm.addr(privKey);
     deal($(quote), fresh_taker, balQuote);
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
@@ -197,21 +198,6 @@ contract MangroveWithPermit2Order_Test is StratTest, DeployPermit2, Permit2Helpe
     quote.approve(address(permit2), type(uint).max);
     base.approve(address(permit2), type(uint).max);
     vm.stopPrank();
-  }
-
-  function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
-    fresh_taker = freshAddress("MangroveOrderTester");
-    __freshTaker__(balBase, balQuote, fresh_taker);
-    // allow router to pull funds from permit2
-    vm.startPrank(fresh_taker);
-    TransferLib.approveToken(base, address(mgo.router()), type(uint160).max);
-    TransferLib.approveToken(quote, address(mgo.router()), type(uint160).max);
-    vm.stopPrank();
-  }
-
-  function freshTakerForPermit2(uint balBase, uint balQuote, uint privKey) internal returns (address fresh_taker) {
-    fresh_taker = vm.addr(privKey);
-    __freshTaker__(balBase, balQuote, fresh_taker);
   }
 
   ////////////////////////

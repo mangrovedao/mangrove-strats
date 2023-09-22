@@ -166,15 +166,11 @@ contract MangroveOrder_Test is StratTest {
     assertEq(mgv.governance(), mgo.admin(), "Invalid admin address");
   }
 
-  function __freshTaker__(uint balBase, uint balQuote, address fresh_taker) internal {
+  function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
+    fresh_taker = freshAddress("MangroveOrderTester");
     deal($(quote), fresh_taker, balQuote);
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
-  }
-
-  function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
-    fresh_taker = freshAddress("MangroveOrderTester");
-    __freshTaker__(balBase, balQuote, fresh_taker);
     // allow router to pull funds from permit2
     vm.startPrank(fresh_taker);
     TransferLib.approveToken(base, address(mgo.router()), type(uint160).max);
