@@ -102,8 +102,8 @@ contract Dispatcher is MultiRouter {
   {
     address router = routerSpecificFunctions[selector];
     require(router != address(0), "Dispatcher/SelectorNotSet");
-    (bool success, bytes memory result) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
-    require(success, result);
+    (bool success,) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
+    require(success, "Dispatcher/RouterSpecificFunctionFailed");
   }
 
   fallback() external {
