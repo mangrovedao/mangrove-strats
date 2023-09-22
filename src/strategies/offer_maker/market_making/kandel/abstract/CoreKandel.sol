@@ -7,13 +7,38 @@ import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
-import {ICoreKandel} from "./ICoreKandel.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {KandelLib} from "./KandelLib.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
-abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair, ICoreKandel {
+abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuotePair {
+  ///@notice the gasprice has been set.
+  ///@param value the gasprice for offers.
+  ///@notice By emitting this data, an indexer will be able to keep track of what gasprice is used.
+  event SetGasprice(uint value);
+
+  ///@notice the gasreq has been set.
+  ///@param value the gasreq (including router's gasreq) for offers
+  ///@notice By emitting this data, an indexer will be able to keep track of what gasreq is used.
+  event SetGasreq(uint value);
+
+  ///@notice the step size has been set.
+  ///@param value the step size in amount of price points to jump for posting dual offer
+  event SetStepSize(uint value);
+
+  ///@notice the Kandel instance is credited of `amount` by its owner.
+  ///@param token the asset. This is indexed so that RPC calls can filter on it.
+  ///@param amount the amount.
+  ///@notice By emitting this data, an indexer will be able to keep track of what credits are made.
+  event Credit(IERC20 indexed token, uint amount);
+
+  ///@notice the Kandel instance is debited of `amount` by its owner.
+  ///@param token the asset. This is indexed so that RPC calls can filter on it.
+  ///@param amount the amount.
+  ///@notice By emitting this data, an indexer will be able to keep track of what debits are made.
+  event Debit(IERC20 indexed token, uint amount);
+
   ///@notice Core Kandel parameters
   ///@param gasprice the gasprice to use for offers
   ///@param gasreq the gasreq to use for offers
@@ -29,8 +54,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Storage of the parameters for the strat.
   Params public params;
 
-  /// @inheritdoc ICoreKandel
-  function setStepSize(uint stepSize) public override onlyAdmin {
+  ///@notice sets the step size
+  ///@param stepSize the step size.
+  function setStepSize(uint stepSize) public onlyAdmin {
     uint104 stepSize_ = uint104(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
@@ -38,16 +64,18 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     emit SetStepSize(stepSize);
   }
 
-  /// @inheritdoc ICoreKandel
-  function setGasprice(uint gasprice) public override onlyAdmin {
+  ///@notice sets the gasprice for offers
+  ///@param gasprice the gasprice.
+  function setGasprice(uint gasprice) public onlyAdmin {
     uint16 gasprice_ = uint16(gasprice);
     require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
     params.gasprice = gasprice_;
     emit SetGasprice(gasprice_);
   }
 
-  /// @inheritdoc ICoreKandel
-  function setGasreq(uint gasreq) public override onlyAdmin {
+  ///@notice sets the gasreq (including router's gasreq) for offers
+  ///@param gasreq the gasreq.
+  function setGasreq(uint gasreq) public onlyAdmin {
     uint24 gasreq_ = uint24(gasreq);
     require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
     params.gasreq = gasreq_;
@@ -122,8 +150,10 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     populateChunkInternal(distribution, parameters.gasreq, parameters.gasprice);
   }
 
-  ///@inheritdoc ICoreKandel
-  function reserveBalance(OfferType ba) public view virtual override returns (uint balance) {
+  ///@notice the total balance available for the strat of the offered token for the given offer type.
+  ///@param ba the offer type.
+  ///@return balance the balance of the token.
+  function reserveBalance(OfferType ba) public view virtual returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
     return token.balanceOf(address(this));
   }
@@ -197,14 +227,14 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   /// @param ba offer type.
   /// @return the pending amount
   /// @dev Gas costly function, better suited for off chain calls.
-  function pending(OfferType ba) external view override returns (int) {
+  function pending(OfferType ba) external view returns (int) {
     return int(reserveBalance(ba)) - int(offeredVolume(ba));
   }
 
   ///@notice Deposits funds to the contract's reserve
   ///@param baseAmount the amount of base tokens to deposit.
   ///@param quoteAmount the amount of quote tokens to deposit.
-  function depositFunds(uint baseAmount, uint quoteAmount) public virtual override {
+  function depositFunds(uint baseAmount, uint quoteAmount) public virtual {
     require(TransferLib.transferTokenFrom(BASE, msg.sender, address(this), baseAmount), "Kandel/baseTransferFail");
     emit Credit(BASE, baseAmount);
     require(TransferLib.transferTokenFrom(QUOTE, msg.sender, address(this), quoteAmount), "Kandel/quoteTransferFail");
@@ -215,7 +245,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param baseAmount the amount of base tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
   ///@param quoteAmount the amount of quote tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
   ///@param recipient the address to which the withdrawn funds should be sent to.
-  function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual override onlyAdmin {
+  ///@dev it is up to the caller to make sure there are still enough funds for live offers.
+  function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual onlyAdmin {
     withdrawFundsForToken(BASE, baseAmount, recipient);
     withdrawFundsForToken(QUOTE, quoteAmount, recipient);
   }

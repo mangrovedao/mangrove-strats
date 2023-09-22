@@ -7,7 +7,6 @@ import {AbstractRouter, AavePooledRouter} from "mgv_strat_src/strategies/routers
 import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
-import {ICoreKandel} from "./abstract/ICoreKandel.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
@@ -60,7 +59,9 @@ contract AaveKandel is GeometricKandel {
     setGasreq(offerGasreq());
   }
 
-  ///@inheritdoc ICoreKandel
+  ///@notice deposits funds to be available for being offered. Will increase `pending`.
+  ///@param baseAmount the amount of base tokens to deposit.
+  ///@param quoteAmount the amount of quote tokens to deposit.
   function depositFunds(uint baseAmount, uint quoteAmount) public override {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
@@ -77,7 +78,8 @@ contract AaveKandel is GeometricKandel {
   }
 
   ///@notice returns the amount of the router's balance that belong to this contract for the token offered for the offer type.
-  ///@inheritdoc ICoreKandel
+  ///@param ba the offer type.
+  ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
     return pooledRouter().balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
