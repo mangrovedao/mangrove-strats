@@ -26,16 +26,11 @@ library Permit2TransferLib {
       return token.balanceOf(spender) >= amount;
     }
 
-    (bool success,) = address(permit2).call(
-      abi.encodeWithSignature(
-        "transferFrom(address,address,uint160,address)",
-        address(spender),
-        address(recipient),
-        uint160(amount),
-        address(token)
-      )
-    );
-    return success;
+    try permit2.transferFrom(address(spender), address(recipient), uint160(amount), address(token)) {
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   ///@notice This transfer amount of token to recipient address from spender address
@@ -61,15 +56,12 @@ library Permit2TransferLib {
       return IERC20(permit.permitted.token).balanceOf(spender) >= amount;
     }
 
-    (bool success,) = address(permit2).call(
-      abi.encodeWithSignature(
-        "permitTransferFrom(((address,uint256),uint256,uint256),(address,uint256),address,bytes)",
-        permit,
-        ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount}),
-        spender,
-        signature
-      )
-    );
-    return success;
+    try permit2.permitTransferFrom(
+      permit, ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount}), spender, signature
+    ) {
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
