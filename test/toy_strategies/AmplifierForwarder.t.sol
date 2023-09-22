@@ -36,8 +36,8 @@ contract AmplifierForwarderTest is StratTest {
     dai = IERC20(fork.get("DAI"));
     weth = IERC20(fork.get("WETH"));
     usdc = IERC20(fork.get("USDC"));
-    olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickScale);
-    olKey = OLKey($(usdc), $(weth), options.defaultTickScale);
+    olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickSpacing);
+    olKey = OLKey($(usdc), $(weth), options.defaultTickSpacing);
     lo = olKey.flipped();
 
     setupMarket(olKeyWethDai);
@@ -65,8 +65,8 @@ contract AmplifierForwarderTest is StratTest {
       base: weth,
       stable1: usdc, 
       stable2: dai,
-      tickScale1: olKey.tickScale,
-      tickScale2: olKeyWethDai.tickScale,
+      tickScale1: olKey.tickSpacing,
+      tickScale2: olKeyWethDai.tickSpacing,
       deployer: $(this),
       gasreq: 450000
       });
@@ -117,12 +117,12 @@ contract AmplifierForwarderTest is StratTest {
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {
-    OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickScale);
-    int logPrice = mgv.offers(_olKey, offerId).logPrice();
+    OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickSpacing);
+    int tick = mgv.offers(_olKey, offerId).tick();
     // try to take one of the offers (using the separate taker account)
     vm.startPrank(taker);
     (takerGot, takerGave, bounty,) =
-      mgv.marketOrderByLogPrice({olKey: _olKey, maxLogPrice: logPrice, fillVolume: makerGivesAmount, fillWants: true});
+      mgv.marketOrderByTick({olKey: _olKey, maxTick: tick, fillVolume: makerGivesAmount, fillWants: true});
     vm.stopPrank();
   }
 
@@ -273,20 +273,16 @@ contract AmplifierForwarderTest is StratTest {
     //only take half of the tester offer
 
     // try to take one of the offers (using the separate taker account)
-    int logPrice = mgv.offers(olKeyWethDai, testOffer.daiOffer).logPrice();
+    int tick = mgv.offers(olKeyWethDai, testOffer.daiOffer).tick();
     vm.prank(taker);
     (uint successes, uint bounty) = mgv.cleanByImpersonation(
-      olKeyWethDai,
-      wrap_dynamic(MgvLib.CleanTarget(testOffer.daiOffer, logPrice, 1_000_000, makerWantsAmountDAI)),
-      taker
+      olKeyWethDai, wrap_dynamic(MgvLib.CleanTarget(testOffer.daiOffer, tick, 1_000_000, makerWantsAmountDAI)), taker
     );
 
-    logPrice = mgv.offers(olKeyWethDai, makerOffer.daiOffer).logPrice();
+    tick = mgv.offers(olKeyWethDai, makerOffer.daiOffer).tick();
     vm.prank(taker);
     (uint successes2, uint bounty2) = mgv.cleanByImpersonation(
-      olKeyWethDai,
-      wrap_dynamic(MgvLib.CleanTarget(makerOffer.daiOffer, logPrice, 1_000_000, makerWantsAmountDAI)),
-      taker
+      olKeyWethDai, wrap_dynamic(MgvLib.CleanTarget(makerOffer.daiOffer, tick, 1_000_000, makerWantsAmountDAI)), taker
     );
 
     assertEq(successes, 1, "did not clean testOffer.daiOffer");

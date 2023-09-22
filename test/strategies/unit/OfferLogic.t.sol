@@ -10,7 +10,7 @@ import {
   IERC20,
   AbstractRouter
 } from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
-import {LogPriceLib} from "mgv_src/MgvLib.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
@@ -38,7 +38,7 @@ contract OfferLogicTest is StratTest {
       reader = new MgvReader($(mgv));
       weth = TestToken(fork.get("WETH"));
       usdc = TestToken(fork.get("USDC"));
-      olKey = OLKey(address(weth), address(usdc), options.defaultTickScale);
+      olKey = OLKey(address(weth), address(usdc), options.defaultTickSpacing);
       lo = olKey.flipped();
       setupMarket(olKey);
       // otherwise, a generic local setup works
@@ -303,7 +303,7 @@ contract OfferLogicTest is StratTest {
     uint offerGives = reader.minVolume(olKey, makerContract.offerGasreq());
     uint offerId = makerContract.newOffer{value: 0.1 ether}({
       olKey: olKey,
-      logPrice: 1,
+      tick: 1,
       gives: offerGives,
       gasreq: makerContract.offerGasreq()
     });
@@ -317,7 +317,7 @@ contract OfferLogicTest is StratTest {
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
-    order.takerGives = LogPriceLib.outboundFromInbound(order.offer.logPrice(), offerGives / 2);
+    order.takerGives = TickLib.outboundFromInbound(order.offer.tick(), offerGives / 2);
     (order.global, order.local) = mgv.config(olKey);
 
     vm.expectRevert("mgv/writeOffer/density/tooLow");

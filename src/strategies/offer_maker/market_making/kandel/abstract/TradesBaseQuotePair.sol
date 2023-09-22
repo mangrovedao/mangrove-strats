@@ -12,7 +12,7 @@ enum OfferType {
 
 ///@title Interface contract for strats needing offer type to offer list mapping.
 abstract contract IHasOfferListOfOfferType {
-  ///@notice turns an offer type into an (outbound, inbound, tickScale) pair identifying an offer list.
+  ///@notice turns an offer type into an (outbound, inbound, tickSpacing) pair identifying an offer list.
   ///@param ba whether one wishes to access the offer lists where asks or bids are posted.
   ///@return olKey the olKey defining the token pair
   function offerListOfOfferType(OfferType ba) internal view virtual returns (OLKey memory olKey);
@@ -35,8 +35,8 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   IERC20 public immutable BASE;
   ///@notice quote of the market Kandel is making
   IERC20 public immutable QUOTE;
-  ///@notice tickScale of the market Kandel is making
-  uint public immutable TICK_SCALE;
+  ///@notice tickSpacing of the market Kandel is making
+  uint public immutable TICK_SPACING;
 
   ///@notice The traded offer list
   ///@param olKeyHash of the market Kandel is making
@@ -48,15 +48,15 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   constructor(OLKey memory olKeyBaseQuote) {
     BASE = IERC20(olKeyBaseQuote.outbound);
     QUOTE = IERC20(olKeyBaseQuote.inbound);
-    TICK_SCALE = olKeyBaseQuote.tickScale;
+    TICK_SPACING = olKeyBaseQuote.tickSpacing;
     emit OfferListKey(olKeyBaseQuote.hash());
   }
 
   ///@inheritdoc IHasOfferListOfOfferType
   function offerListOfOfferType(OfferType ba) internal view override returns (OLKey memory olKey) {
     return ba == OfferType.Bid
-      ? OLKey(address(QUOTE), address(BASE), TICK_SCALE)
-      : OLKey(address(BASE), address(QUOTE), TICK_SCALE);
+      ? OLKey(address(QUOTE), address(BASE), TICK_SPACING)
+      : OLKey(address(BASE), address(QUOTE), TICK_SPACING);
   }
 
   ///@inheritdoc IHasOfferListOfOfferType

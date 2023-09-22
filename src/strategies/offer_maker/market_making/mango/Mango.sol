@@ -45,7 +45,7 @@ contract Mango is Direct {
   uint public immutable NSLOTS;
   IERC20 public immutable BASE;
   IERC20 public immutable QUOTE;
-  uint public immutable TICK_SCALE;
+  uint public immutable TICK_SPACING;
 
   // Asks and bids offer Ids are stored in `ASKS` and `BIDS` arrays respectively.
 
@@ -53,7 +53,7 @@ contract Mango is Direct {
     IMangrove mgv,
     IERC20 base,
     IERC20 quote,
-    uint tickScale,
+    uint tickSpacing,
     uint base_0,
     uint quote_0,
     uint nslots,
@@ -85,7 +85,7 @@ contract Mango is Direct {
         mgv,
         base,
         quote,
-        tickScale,
+        tickSpacing,
         uint96(base_0),
         uint96(quote_0),
         nslots
@@ -93,7 +93,7 @@ contract Mango is Direct {
     );
     BASE = base;
     QUOTE = quote;
-    TICK_SCALE = tickScale;
+    TICK_SPACING = tickSpacing;
     // setting local storage
     mStr.asks = new uint[](nslots);
     mStr.bids = new uint[](nslots);
@@ -174,12 +174,12 @@ contract Mango is Direct {
       if (ba > 0) {
         // asks or bids+asks
         collected +=
-          mStr.asks[i] > 0 ? _retractOffer(OLKey(address(BASE), address(QUOTE), TICK_SCALE), mStr.asks[i], true) : 0;
+          mStr.asks[i] > 0 ? _retractOffer(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[i], true) : 0;
       }
       if (ba == 0 || ba > 1) {
         // bids or bids + asks
         collected +=
-          mStr.bids[i] > 0 ? _retractOffer(OLKey(address(QUOTE), address(BASE), TICK_SCALE), mStr.bids[i], true) : 0;
+          mStr.bids[i] > 0 ? _retractOffer(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[i], true) : 0;
       }
     }
   }
@@ -257,10 +257,10 @@ contract Mango is Direct {
     internal
     virtual
     override
-    returns (uint newGives, int newLogPrice)
+    returns (uint newGives, int newTick)
   {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
-    (newGives, newLogPrice) = super.__residualValues__(order);
+    (newGives, newTick) = super.__residualValues__(order);
     if (order.olKey.outbound == address(BASE)) {
       // Ask offer
       newGives += mStr.pending_base;

@@ -22,7 +22,7 @@ contract KandelDeployer is Deployer {
   function run() public {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      olKeyBaseQuote: OLKey(envAddressOrName("BASE"), envAddressOrName("QUOTE"), vm.envUint("TICK_SCALE")),
+      olKeyBaseQuote: OLKey(envAddressOrName("BASE"), envAddressOrName("QUOTE"), vm.envUint("TICK_SPACING")),
       gasreq: 200_000,
       name: envHas("NAME") ? vm.envString("NAME") : ""
     });

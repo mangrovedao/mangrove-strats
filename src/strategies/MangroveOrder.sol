@@ -7,7 +7,7 @@ import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -47,10 +47,10 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice updates an offer on Mangrove
   ///@dev this can be used to update price of the resting order
   ///@param olKey the offer list key.
-  ///@param logPrice the price
+  ///@param tick the tick
   ///@param gives new amount of `olKey.outbound` offer owner gives
   ///@param offerId the id of the offer to be updated
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId)
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId)
     external
     payable
     onlyOwner(olKey.hash(), offerId)
@@ -60,7 +60,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // funds to compute new gasprice is msg.value. Will use old gasprice if no funds are given
     args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
     args.olKey = olKey;
-    args.logPrice = logPrice;
+    args.tick = tick;
     args.gives = gives;
     args.gasreq = offerGasreq();
     args.noRevert = false; // will throw if Mangrove reverts
@@ -122,7 +122,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
-    uint takerGives = tko.fillWants ? LogPriceLib.inboundFromOutboundUp(tko.logPrice, tko.fillVolume) : tko.fillVolume;
+    uint takerGives = tko.fillWants ? TickLib.inboundFromOutboundUp(tko.tick, tko.fillVolume) : tko.fillVolume;
     uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true);
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
@@ -131,12 +131,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * (NAT_THIS+`msg.value`, OUT_THIS, IN_THIS+`takerGives`)
     logOrderData(tko);
 
-    (res.takerGot, res.takerGave, res.bounty, res.fee) = MGV.marketOrderByLogPrice({
-      olKey: tko.olKey,
-      maxLogPrice: tko.logPrice,
-      fillVolume: tko.fillVolume,
-      fillWants: tko.fillWants
-    });
+    (res.takerGot, res.takerGave, res.bounty, res.fee) =
+      MGV.marketOrderByTick({olKey: tko.olKey, maxTick: tko.tick, fillVolume: tko.fillVolume, fillWants: tko.fillWants});
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -219,7 +215,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       olKeyHash: tko.olKey.hash(),
       taker: msg.sender,
       fillOrKill: tko.fillOrKill,
-      logPrice: tko.logPrice,
+      tick: tko.tick,
       fillVolume: tko.fillVolume,
       fillWants: tko.fillWants,
       restingOrder: tko.restingOrder
@@ -232,28 +228,28 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param fund amount of WEIs used to cover for the offer bounty (covered gasprice is derived from `fund`).
   ///@param res the result of the taker order.
   ///@return refund the amount to refund to the taker of the fund.
-  ///@dev if relative limit price of taker order is `p` in the (outbound, inbound) offer list
-  ///@dev then entailed relative price for resting order must be `1/p` (relative price on the (inbound, outbound) offer list)
-  ///@dev with log prices that is `-log(p)`
+  ///@dev if relative limit price of taker order is `ratio` in the (outbound, inbound) offer list (represented by `tick=log_{1.0001}(ratio)` )
+  ///@dev then entailed relative price for resting order must be `1/ratio` (relative price on the (inbound, outbound) offer list)
+  ///@dev so with ticks that is `-log(ratio)`, or -tick.
   ///@dev the price of the resting order should be the same as for the max price for the market order.
   function postRestingOrder(TakerOrder calldata tko, OLKey memory olKey, TakerOrderResult memory res, uint fund)
     internal
     returns (uint refund)
   {
-    int residualLogPrice = -tko.logPrice;
+    int residualTick = -tko.tick;
     uint residualGives;
     if (tko.fillWants) {
       // partialFill => tko.fillVolume > res.takerGot + res.fee
       uint residualWants = tko.fillVolume - (res.takerGot + res.fee);
       // adapting residualGives to match relative limit price chosen by the taker
-      residualGives = LogPriceLib.outboundFromInbound(residualLogPrice, residualWants);
+      residualGives = TickLib.outboundFromInbound(residualTick, residualWants);
     } else {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
     OfferArgs memory args = OfferArgs({
       olKey: olKey,
-      logPrice: residualLogPrice,
+      tick: residualTick,
       gives: residualGives,
       gasreq: offerGasreq(), // using default gasreq of the strat
       gasprice: 0, // ignored

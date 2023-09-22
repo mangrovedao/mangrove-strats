@@ -10,7 +10,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove
@@ -18,7 +18,7 @@ import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
 
 /*
   KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
-     [RATIO=10100] [LOG_PRICE_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
+     [RATIO=10100] [TICK_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
      forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
  */
 
@@ -26,17 +26,16 @@ contract KandelPopulate is Deployer {
   function run() public {
     GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
-    uint24 logPriceOffset;
-    if (envHas("LOG_PRICE_OFFSET")) {
-      logPriceOffset = uint24(vm.envUint("LOG_PRICE_OFFSET"));
-      require(logPriceOffset == vm.envUint("LOG_PRICE_OFFSET"), "Invalid LOG_PRICE_OFFSET");
+    uint24 tickOffset;
+    if (envHas("TICK_OFFSET")) {
+      tickOffset = uint24(vm.envUint("TICK_OFFSET"));
+      require(tickOffset == vm.envUint("TICK_OFFSET"), "Invalid TICK_OFFSET");
     }
     if (envHas("RATIO")) {
-      require(logPriceOffset == 0, "Only RATIO or LOG_PRICE_OFFSET");
-      int _logPriceOffset =
-        LogPriceConversionLib.logPriceFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether);
-      logPriceOffset = uint24(uint(int(_logPriceOffset)));
-      require(logPriceOffset == uint(_logPriceOffset), "Invalid ratio");
+      require(tickOffset == 0, "Only RATIO or TICK_OFFSET");
+      int _tickOffset = TickConversionLib.tickFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether);
+      tickOffset = uint24(uint(int(_tickOffset)));
+      require(tickOffset == uint(_tickOffset), "Invalid ratio");
     }
     params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
@@ -48,7 +47,7 @@ contract KandelPopulate is Deployer {
         from: vm.envUint("FROM"),
         to: vm.envUint("TO"),
         firstAskIndex: vm.envUint("FIRST_ASK_INDEX"),
-        logPriceOffset: logPriceOffset,
+        tickOffset: tickOffset,
         params: params,
         initQuote: vm.envUint("INIT_QUOTE"),
         volume: vm.envUint("VOLUME"),
@@ -73,7 +72,7 @@ contract KandelPopulate is Deployer {
     uint from;
     uint to;
     uint firstAskIndex;
-    uint24 logPriceOffset;
+    uint24 tickOffset;
     Kandel.Params params;
     uint initQuote;
     uint volume;
@@ -106,7 +105,7 @@ contract KandelPopulate is Deployer {
     (vars.gasprice, vars.gasreq,,) = args.kdl.params();
 
     OLKey memory olKeyBaseQuote =
-      OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickScale: args.kdl.TICK_SCALE()});
+      OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickSpacing: args.kdl.TICK_SPACING()});
     vars.provAsk = vars.mgvReader.getProvision(olKeyBaseQuote, vars.gasreq, vars.gasprice);
     vars.provBid = vars.mgvReader.getProvision(olKeyBaseQuote.flipped(), vars.gasreq, vars.gasprice);
     uint funds = (vars.provAsk + vars.provBid) * (args.to - args.from);
@@ -176,12 +175,12 @@ contract KandelPopulate is Deployer {
   }
 
   function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
-    int baseQuoteLogPriceIndex0 = LogPriceConversionLib.logPriceFromVolumes(args.initQuote, args.volume);
+    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(args.initQuote, args.volume);
     distribution = args.kdl.createDistribution(
       args.from,
       args.to,
-      baseQuoteLogPriceIndex0,
-      args.logPriceOffset,
+      baseQuoteTickIndex0,
+      args.tickOffset,
       args.firstAskIndex,
       type(uint).max,
       args.volume,

@@ -80,8 +80,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
-      //FIXME: what tick scale?
-      market: Market({tkn0: dai, tkn1: usdc, tickScale: 1}),
+      //FIXME: what tick spacing?
+      market: Market({tkn0: dai, tkn1: usdc, tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[0]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -90,19 +90,19 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      //FIXME: what tick scale?
-      market: Market({tkn0: weth, tkn1: dai, tickScale: 1}),
+      //FIXME: what tick spacing?
+      market: Market({tkn0: weth, tkn1: dai, tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[0]),
       fee: 0
     });
-    //FIXME: what tick scale?
+    //FIXME: what tick spacing?
     uint wethUsdcTickScale = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      market: Market({tkn0: weth, tkn1: usdc, tickScale: wethUsdcTickScale}),
+      market: Market({tkn0: weth, tkn1: usdc, tickSpacing: wethUsdcTickScale}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0

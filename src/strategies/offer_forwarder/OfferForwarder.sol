@@ -17,7 +17,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -26,7 +26,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     (offerId,) = _newOffer(
       OfferArgs({
         olKey: olKey,
-        logPrice: logPrice,
+        tick: tick,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -37,13 +37,13 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(OLKey memory olKey, int logPrice, uint gives) public payable returns (uint offerId) {
-    return newOffer(olKey, logPrice, gives, offerGasreq());
+  function newOffer(OLKey memory olKey, int tick, uint gives) public payable returns (uint offerId) {
+    return newOffer(olKey, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
@@ -56,7 +56,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     // each time a offer is updated.
     args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
     args.olKey = olKey;
-    args.logPrice = logPrice;
+    args.tick = tick;
     args.gives = gives;
     args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
@@ -64,12 +64,12 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId)
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId)
     public
     payable
     onlyOwner(olKey.hash(), offerId)
   {
-    updateOffer(olKey, logPrice, gives, offerId, offerGasreq());
+    updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

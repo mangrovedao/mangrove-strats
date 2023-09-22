@@ -40,7 +40,7 @@ contract KandelSeederTest is StratTest {
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("USDC"));
-    olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+    olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
     lo = olKey.flipped();
     setupMarket(olKey);
   }

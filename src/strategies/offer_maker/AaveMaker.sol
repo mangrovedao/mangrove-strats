@@ -5,7 +5,7 @@ import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {AaveV3Borrower, ICreditDelegationToken} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;
@@ -67,15 +67,15 @@ contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
     payable
     returns (uint offerId)
   {
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
-    return newOffer(olKey, logPrice, gives, gasreq);
+    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
   }
 
   function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
     external
     payable
   {
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
-    updateOffer(olKey, logPrice, gives, offerId, gasreq);
+    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }
