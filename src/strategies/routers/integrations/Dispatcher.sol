@@ -96,6 +96,13 @@ contract Dispatcher is MultiRouter {
     return token.balanceOf(reserveId);
   }
 
+  /// @notice Calls a function of a specific router implementation
+  /// @dev the function that receive the call must have the data as follows (address, IERC20, bytes calldata)
+  /// * only the reserveId can call this function
+  /// @param selector The selector of the function to call
+  /// @param reserveId The reserveId to call the function on
+  /// @param token The token to call the function on
+  /// @param data The data to call the function with
   function callRouterSpecificFunction(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
     external
     onlyBound
