@@ -54,9 +54,10 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @param reserveId The reserveId to set the data for
   /// @param token The token to set the data for
   /// @param data The data to set
-  function setTokenReserveData(address reserveId, IERC20 token, TokenReserveData calldata data) external onlyBound {
+  function setTokenReserveData(address reserveId, IERC20 token, bytes calldata data) external onlyBound {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
-    s.token_reserve_data[reserveId][token] = data;
+    TokenReserveData memory tokenReserveData = abi.decode(data, (TokenReserveData));
+    s.token_reserve_data[reserveId][token] = tokenReserveData;
   }
 
   /// @notice Gets the max credit line for a given token and reserveId

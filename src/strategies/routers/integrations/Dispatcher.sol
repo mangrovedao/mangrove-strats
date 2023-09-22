@@ -96,23 +96,21 @@ contract Dispatcher is MultiRouter {
     return token.balanceOf(reserveId);
   }
 
+  function callRouterSpecificFunction(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
+    external
+    onlyBound
+  {
+    address router = routerSpecificFunctions[selector];
+    require(router != address(0), "Dispatcher/SelectorNotSet");
+    (bool success, bytes memory result) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
+    require(success, result);
+  }
+
   fallback() external {
     if (msg.sig == IViewDelegator.staticdelegatecall.selector) {
       (, address target, bytes memory data) = abi.decode(msg.data, (bytes4, address, bytes));
       assembly {
         let result := delegatecall(gas(), target, add(data, 0x20), mload(data), 0, 0)
-        returndatacopy(0, 0, returndatasize())
-        switch result
-        case 0 { revert(0, returndatasize()) }
-        default { return(0, returndatasize()) }
-      }
-    } else {
-      address router = routerSpecificFunctions[msg.sig];
-      require(router != address(0), "Dispatcher/SelectorNotSet");
-
-      assembly {
-        calldatacopy(0, 0, calldatasize())
-        let result := delegatecall(gas(), router, 0, calldatasize(), 0, 0)
         returndatacopy(0, 0, returndatasize())
         switch result
         case 0 { revert(0, returndatasize()) }
