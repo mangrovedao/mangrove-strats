@@ -16,10 +16,10 @@ import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
  * @notice Populates Kandel's distribution on Mangrove
  */
 
-/**
- * KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
- *    [RATIO=10100] [LOG_PRICE_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
- *    forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
+/*
+  KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
+     [RATIO=10100] [LOG_PRICE_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
+     forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
  */
 
 contract KandelPopulate is Deployer {

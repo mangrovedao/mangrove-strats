@@ -44,8 +44,6 @@ contract KandelDeployer is Deployer {
       broadcaster()
     );
 
-    broadcast();
-
     string memory kandelName = new KandelSower().getName(name, olKeyBaseQuote, false);
     fork.set(kandelName, address(current));
   }

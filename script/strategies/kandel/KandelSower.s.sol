@@ -11,7 +11,7 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
 /**
  * @notice deploys a Kandel instance on a given market
  * @dev since the max number of price slot Kandel can use is an immutable, one should deploy Kandel on a large price range.
- * @dev Example: WRITE_DEPLOY=true BASE=WETH QUOTE=USDC TICK_SCALE=1 forge script --fork-url $LOCALHOST_URL KandelDeployer --broadcast --private-key $MUMBAI_PRIVATE_KEY
+ * @dev Example: WRITE_DEPLOY=true ON_AAVE=false SHARING=false BASE=WETH QUOTE=USDC TICK_SCALE=1 forge script --fork-url $LOCALHOST_URL KandelSower --broadcast --private-key $MUMBAI_PRIVATE_KEY
  */
 
 contract KandelSower is Deployer {
