@@ -9,7 +9,7 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MangroveOrderDeployer} from "./MangroveOrderDeployer.s.sol";
 
 /**
- * Polygon specific deployment of MangroveOrderWithPermit2
+ * Polygon specific deployment of MangroveOrder
  */
 contract PolygonMangroveOrderDeployer is Deployer {
   MangroveOrderDeployer public mangroveOrderDeployer;
