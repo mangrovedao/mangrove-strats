@@ -111,15 +111,15 @@ contract MangroveWithPermit2Order_Test is StratTest, DeployPermit2, Permit2Helpe
     deal($(base), $(this), 10 ether);
     deal($(quote), $(this), 10_000 ether);
 
-    TransferLib.approveToken(base, address(mgo.router()), 10 ether);
-    TransferLib.approveToken(quote, address(mgo.router()), 10_000 ether);
+    TransferLib.approveToken(base, $(mgo.router()), 10 ether);
+    TransferLib.approveToken(quote, $(mgo.router()), 10_000 ether);
 
     // user approves `mgo` to pull quote or base when doing a market order
     TransferLib.approveToken(base, address(permit2), 10 ether);
     TransferLib.approveToken(quote, address(permit2), 10_000 ether);
 
-    permit2.approve(address(base), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
-    permit2.approve(address(quote), address(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
+    permit2.approve($(base), $(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
+    permit2.approve($(quote), $(mgoWithPermit2.router()), type(uint160).max, type(uint48).max);
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker($(quote), $(base), "sell-taker");

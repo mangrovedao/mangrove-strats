@@ -120,10 +120,17 @@ contract BaseMangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
+  ///@inheritdoc IOrderLogic
+  ///@param tko TakerOrder struct
+  ///@return TakerOrderResult Result of the take call
+  function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory) {
+    return __take(tko);
+  }
+
   ///@notice take implementation
   ///@param tko TakerOrder struct
   ///@return res TakerOrderResult Order result
-  function __take__(TakerOrder calldata tko) internal returns (TakerOrderResult memory res) {
+  function __take(TakerOrder calldata tko) internal returns (TakerOrderResult memory res) {
     // Checking whether order is expired
     require(tko.expiryDate == 0 || block.timestamp <= tko.expiryDate, "mgvOrder/expired");
 
@@ -223,13 +230,6 @@ contract BaseMangroveOrder is Forwarder, IOrderLogic {
     // * (NAT_THIS, OUT_THIS, IN_THIS)
     logOrderData(tko, res);
     return res;
-  }
-
-  ///@inheritdoc IOrderLogic
-  ///@param tko TakerOrder struct
-  ///@return TakerOrderResult Result of the take call
-  function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory) {
-    return __take__(tko);
   }
 
   ///@notice logs `OrderSummary`
