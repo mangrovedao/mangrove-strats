@@ -193,7 +193,7 @@ contract MangroveWithPermit2Order_Test is StratTest, DeployPermit2, Permit2Helpe
     deal(fresh_taker, 1 ether);
 
     vm.startPrank(fresh_taker);
-    // always unlimitted approval permit2
+    // always unlimited approval of Permit2.
     quote.approve(address(permit2), type(uint).max);
     base.approve(address(permit2), type(uint).max);
     vm.stopPrank();

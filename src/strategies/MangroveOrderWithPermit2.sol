@@ -40,7 +40,8 @@ contract MangroveOrderWithPermit2 is BaseMangroveOrder {
     ISignatureTransfer.PermitTransferFrom calldata permit,
     bytes calldata signature
   ) external returns (uint totalGot, uint totalGave, uint totalPenalty, uint feePaid) {
-    uint pulled = Permit2Router(address(router())).pull(inbound_tkn, msg.sender, takerGives, true, permit, signature);
+    uint pulled =
+      Permit2Router(address(router())).pullWithPermit2(inbound_tkn, msg.sender, takerGives, true, permit, signature);
     require(pulled == takerGives, "mgvOrder/transferInFail");
     (totalGot, totalGave, totalPenalty, feePaid) =
       MGV.marketOrder(address(outbound_tkn), address(inbound_tkn), takerWants, takerGives, fillWants);

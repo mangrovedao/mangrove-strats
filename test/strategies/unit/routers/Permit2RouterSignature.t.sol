@@ -60,7 +60,7 @@ contract Permit2RouterSignatureTest is StratTest, DeployPermit2, Permit2Helpers 
     uint startBalanceFrom = weth.balanceOf(owner);
     uint startBalanceTo = weth.balanceOf(address(this));
 
-    router.pull(weth, owner, AMOUNT, true, transferDetails, sig);
+    router.pullWithPermit2(weth, owner, AMOUNT, true, transferDetails, sig);
 
     assertEq(weth.balanceOf(owner), startBalanceFrom - AMOUNT);
     assertEq(weth.balanceOf(address(this)), startBalanceTo + AMOUNT);

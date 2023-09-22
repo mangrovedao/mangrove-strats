@@ -8,8 +8,8 @@ import {Permit2TransferLib} from "mgv_strat_src/strategies/utils/Permit2Transfer
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {MonoRouter} from "./abstract/MonoRouter.sol";
 
-//@title `Permit2Router` instances pull (push) liquidity directly from (to) the an offer owner's account using permit2 contract
-//@dev Maker contracts using this router must make sure that the reserve approves the permit2 for all asset that will be pulled (outbound tokens), and then the user needs either approve router inside permit2 or he can use just in time signature to authorize transfer
+//@title `Permit2Router` instances pull (push) liquidity directly from (to) an offer owner's account using the Permit2 contract
+//@dev Maker contracts using this router must make sure that the reserve approves Permit2 for all assets that will be pulled (outbound tokens), and then the user needs to either approve the router in Permit2 or use a just-in-time signature to authorize the transfer.
 contract Permit2Router is MonoRouter {
   IPermit2 public permit2;
 
@@ -18,10 +18,10 @@ contract Permit2Router is MonoRouter {
   }
 
   /// @notice transfers an amount of tokens from the reserve to the maker.
-  /// @param token Token to be transferred
-  /// @param owner The account from which the tokens will be transferred.
-  /// @param amount The amount of tokens to be transferred
-  /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
+  /// @param token This parameter represents the token to be transferred.
+  /// @param owner This parameter determines the reserve's location, but it's specific to the router's implementation.
+  /// @param amount Indicates the amount of tokens to be transferred.
+  /// @param strict This parameter signifies whether the calling maker contract intends to pull a maximum of amount tokens from the owner.
   /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
   /// @dev requires approval from `owner` for `this` to transfer `token`.
   function __pull__(IERC20 token, address owner, uint amount, bool strict)
@@ -32,34 +32,6 @@ contract Permit2Router is MonoRouter {
   {
     amount = strict ? amount : token.balanceOf(owner);
     if (Permit2TransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
-      return amount;
-    } else {
-      return 0;
-    }
-  }
-
-  ///@notice router-dependent implementation of the `pull` function
-  ///@param token Token to be transferred
-  ///@param owner determines the location of the reserve (router implementation dependent).
-  ///@param amount The amount of tokens to be transferred
-  ///@param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
-  ///@param transferDetails The spender's requested transfer details for the permitted token
-  ///@param signature The signature to verify
-  ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(
-    IERC20 token,
-    address owner,
-    uint amount,
-    bool strict,
-    ISignatureTransfer.PermitTransferFrom calldata transferDetails,
-    bytes calldata signature
-  ) internal returns (uint pulled) {
-    amount = strict ? amount : token.balanceOf(owner);
-    if (
-      Permit2TransferLib.transferTokenFromWithPermit2Signature(
-        permit2, owner, msg.sender, amount, transferDetails, signature
-      )
-    ) {
       return amount;
     } else {
       return 0;
@@ -77,14 +49,14 @@ contract Permit2Router is MonoRouter {
   }
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
-  ///@param token is the ERC20 managing the pulled asset
+  ///@param token This parameter represents the token to be transferred.
   ///@param reserveId identifies the fund owner (router implementation dependent).
   ///@param amount of `token` the maker contract wishes to pull from its reserve
-  ///@param strict when the calling maker contract accepts to receive more funds from reserve than required (this may happen for gas optimization)
-  ///@param permit The permit data signed over by the owner
-  ///@param signature The signature to verify
+  ///@param strict This parameter signifies whether the calling maker contract intends to pull a maximum of amount tokens from the owner.
+  ///@param permit Permit data signed over by the owner.
+  ///@param signature The signature to verify.
   ///@return pulled the amount that was successfully pulled.
-  function pull(
+  function pullWithPermit2(
     IERC20 token,
     address reserveId,
     uint amount,
@@ -95,7 +67,16 @@ contract Permit2Router is MonoRouter {
     if (strict && amount == 0) {
       return 0;
     }
-    pulled = __pull__(token, reserveId, amount, strict, permit, signature);
+    amount = strict ? amount : token.balanceOf(reserveId);
+    if (
+      Permit2TransferLib.transferTokenFromWithPermit2Signature(
+        permit2, reserveId, msg.sender, amount, permit, signature
+      )
+    ) {
+      return amount;
+    } else {
+      return 0;
+    }
   }
 
   ///@notice router-dependent implementation of the `checkList` function

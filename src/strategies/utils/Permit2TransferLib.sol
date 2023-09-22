@@ -6,7 +6,6 @@ import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 
 ///@title This library helps with safely interacting with Permit2 contract
-///@notice Transferring 0 or to self will be skipped.
 ///@notice ERC20 tokens returning bool instead of reverting are handled.
 library Permit2TransferLib {
   ///@notice This transfer amount of token to recipient address from spender address
