@@ -13,17 +13,17 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @notice Holds the storage key for this contract specific storage
   bytes32 internal immutable STORAGE_KEY;
 
-  /// @notice The default buffer size for Aave credit line
+  /// @notice The maximum credit line to be redeemed
   /// * 100 means we can redeem or borrow 100% of the credit line
   /// * 0 means we can't redeem or borrow anything
-  uint internal immutable MAX_BUFFER_SIZE = 100;
+  uint internal immutable MAX_CREDIT_LINE = 100;
 
   /// @notice Data for a reserve <=> token pair
   /// @param deposit_on_push Whether to deposit on push
-  /// @param buffer_size_decrease The buffer size decrease for a given token and reserveId
+  /// @param credit_line_decrease The Credit line decrease for a given token and reserveId
   struct TokenReserveData {
     bool deposit_on_push;
-    uint8 buffer_size_decrease;
+    uint8 credit_line_decrease;
   }
 
   /// @notice Storage Layout for `AaveDispatchedRouter`
@@ -62,17 +62,17 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     s.token_reserve_data[reserveId][token] = data;
   }
 
-  /// @notice Gets the buffer size for a given token and reserveId
+  /// @notice Gets the max credit line for a given token and reserveId
   /// @dev This has to be called in order to get the maximum credit line that can be used by this contract
   /// @param token The token to get the buffer size for
   /// @param reserveId The reserveId to get the buffer size for
-  /// @return buffer_size The buffer size (or max credit line usage)
-  function getBufferSize(IERC20 token, address reserveId) internal view returns (uint buffer_size) {
+  /// @return credit_line max credit line that can be used by this contract
+  function getBufferSize(IERC20 token, address reserveId) internal view returns (uint credit_line) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
-    buffer_size = MAX_BUFFER_SIZE;
-    uint decrease = s.token_reserve_data[reserveId][token].buffer_size_decrease;
+    credit_line = MAX_CREDIT_LINE;
+    uint decrease = s.token_reserve_data[reserveId][token].credit_line_decrease;
     if (decrease > 0) {
-      buffer_size -= decrease;
+      credit_line -= decrease;
     }
   }
 
@@ -90,6 +90,8 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     require(overlying.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
   }
 
+  /// @notice pulls amount of underlying that can be redeemed
+  /// @inheritdoc	AbstractRouter
   function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal virtual override returns (uint) {
     Memoizer memory m;
     setOwnerAddress(m, reserveId);
@@ -97,14 +99,18 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     uint localBalance = balanceOf(token, m);
     uint missing = amount > localBalance ? amount - localBalance : 0;
     if (missing > 0) {
-      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, missing);
-      uint buffer_size = getBufferSize(token, reserveId);
-      require(maxWithdraw >= missing, "AaveDispatchedRouter/NotEnoughCreditLine");
-      uint withdrawBuffer = maxWithdraw * buffer_size / MAX_BUFFER_SIZE;
-      // Why should we withdraw buffer if it's more than what's missing ?
-      require(withdrawBuffer >= missing, "AaveDispatchedRouter/BufferTooSmall");
-      require(TransferLib.transferTokenFrom(overlying(token, m), spender, recipient, amount));
-      (uint withdrawn, bytes32 reason) = _redeem(token, toWithdraw, address(this), true);
+      (uint maxWithdraw,) = maxGettableUnderlying(token, m, missing);
+      uint creditLine = getBufferSize(token, reserveId);
+      uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
+      uint toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
+      require(
+        TransferLib.transferTokenFrom(overlying(token, m), reserveId, address(this), toWithdraw),
+        "AaveDispatchedRouter/pullFailed"
+      );
+      _redeem(token, toWithdraw, address(this), false);
+      require(
+        TransferLib.transferTokenFrom(token, address(this), msg.sender, amount), "AaveDispatchedRouter/pullFailed"
+      );
     }
   }
 
