@@ -90,7 +90,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
 
   /// @notice pulls amount of underlying that can be redeemed
   /// @inheritdoc	AbstractRouter
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal virtual override returns (uint) {
+  function __pull__(IERC20 token, address reserveId, uint amount, bool) internal virtual override returns (uint) {
     Memoizer memory m;
     setOwnerAddress(m, reserveId);
 
@@ -110,6 +110,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
         TransferLib.transferTokenFrom(token, address(this), msg.sender, amount), "AaveDispatchedRouter/pullFailed"
       );
     }
+    return amount;
   }
 
   /// @notice Deposit underlying tokens to the reserve
