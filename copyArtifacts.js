@@ -112,7 +112,7 @@ for (const { name, match, basename, data } of export_queue) {
   written.push(basename);
   const export_file = `${distAbiDir}/${basename}`;
   if (!argv.noop) {
-    // since our git posthook seems to add trailing newlines (probably throuhg prettier),
+    // since our git posthook seems to add trailing newlines (probably through prettier),
     // not having one here means repeatedly seeing stripped newlines in git changes
     fs.writeFileSync(export_file, JSON.stringify(data, null, 2) + "\n");
   } else {

@@ -19,7 +19,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -27,45 +27,29 @@ contract OfferMaker is ILiquidityProvider, Direct {
     returns (uint offerId)
   {
     (offerId,) = _newOffer(
-      OfferArgs({
-        olKey: olKey,
-        logPrice: logPrice,
-        gives: gives,
-        gasreq: gasreq,
-        gasprice: 0,
-        fund: msg.value,
-        noRevert: false
-      })
+      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false})
     );
   }
 
-  function newOffer(OLKey memory olKey, int logPrice, uint gives) external payable onlyAdmin returns (uint offerId) {
-    return newOffer(olKey, logPrice, gives, offerGasreq());
+  function newOffer(OLKey memory olKey, int tick, uint gives) external payable onlyAdmin returns (uint offerId) {
+    return newOffer(olKey, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
     onlyAdmin
   {
     _updateOffer(
-      OfferArgs({
-        olKey: olKey,
-        logPrice: logPrice,
-        gives: gives,
-        gasreq: gasreq,
-        gasprice: 0,
-        fund: msg.value,
-        noRevert: false
-      }),
+      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false}),
       offerId
     );
   }
 
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId) external payable onlyAdmin {
-    updateOffer(olKey, logPrice, gives, offerId, offerGasreq());
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId) external payable onlyAdmin {
+    updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

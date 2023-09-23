@@ -31,11 +31,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   constructor(IMangrove mgv, uint gasreq, address reserveId) Direct(mgv, NO_ROUTER, gasreq, reserveId) {}
 
   ///@param index the index of the offer
-  ///@param logPrice the log price for the index (the log price of base per quote for bids and quote per base for asks)
+  ///@param tick the tick for the index (the tick price of base per quote for bids and quote per base for asks)
   ///@param gives the gives for the index (the `quote` for bids and the `base` for asks)
   struct DistributionOffer {
     uint index;
-    int logPrice;
+    int tick;
     uint gives;
   }
 
@@ -84,7 +84,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     for (uint i; i < offers.length; ++i) {
       DistributionOffer memory offer = offers[i];
       uint index = offer.index;
-      args.logPrice = offer.logPrice;
+      args.tick = offer.tick;
       args.gives = offer.gives;
       populateIndex(ba, offerIdOfIndex(ba, index), index, args, minGives);
     }

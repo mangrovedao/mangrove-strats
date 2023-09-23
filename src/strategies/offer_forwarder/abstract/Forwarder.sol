@@ -149,7 +149,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // the call below cannot revert for lack of provision (by design)
     // it may still revert if `args.fund` yields a gasprice that is too high (mangrove's gasprice is uint16)
     // or if `args.gives` is below density (dust)
-    try MGV.newOfferByLogPrice{value: args.fund}(args.olKey, args.logPrice, args.gives, args.gasreq, gasprice) returns (
+    try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, gasprice) returns (
       uint offerId_
     ) {
       // assign `offerId_` to caller
@@ -202,8 +202,8 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       // if `args.fund` is too low, offer gasprice might be below mangrove's gasprice
       // Mangrove will then take its own gasprice for the offer and would possibly tap into `this` contract's balance to cover for the missing provision
       require(args.gasprice >= vars.global.gasprice(), "mgv/insufficientProvision");
-      try MGV.updateOfferByLogPrice{value: args.fund}(
-        args.olKey, args.logPrice, args.gives, args.gasreq, args.gasprice, offerId
+      try MGV.updateOfferByTick{value: args.fund}(
+        args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId
       ) {
         return REPOST_SUCCESS;
       } catch Error(string memory reason) {

@@ -10,13 +10,13 @@ import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
 import {console} from "mgv_lib/Debug.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
 
 ///@title Tests for Kandel without a router, and router agnostic functions.
 contract NoRouterKandelTest is CoreKandelTest {
   function __deployKandel__(address deployer, address reserveId) internal override returns (GeometricKandel kdl_) {
     uint GASREQ = 250_000;
-    OLKey memory olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+    OLKey memory olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
 
     vm.expectEmit(true, true, true, true);
     emit Mgv(IMangrove($(mgv)));
@@ -35,8 +35,8 @@ contract NoRouterKandelTest is CoreKandelTest {
 
   function validateDistribution(
     CoreKandel.DistributionOffer[] memory distributionOffers,
-    uint baseQuoteLogPriceOffset,
-    int baseQuoteLogPriceIndex0,
+    uint baseQuoteTickOffset,
+    int baseQuoteTickIndex0,
     OfferType ba,
     uint gives,
     uint dualGives
@@ -48,18 +48,18 @@ contract NoRouterKandelTest is CoreKandelTest {
       assertTrue(!seenOffers[ba][index], string.concat("index ", vm.toString(index), " seen twice"));
       seenOffers[ba][index] = true;
 
-      int absoluteLogPriceAtIndex = baseQuoteLogPriceIndex0 + int(index) * int(baseQuoteLogPriceOffset);
+      int absoluteTickAtIndex = baseQuoteTickIndex0 + int(index) * int(baseQuoteTickOffset);
       if (ba == Bid) {
-        assertEq(offer.logPrice, -absoluteLogPriceAtIndex);
+        assertEq(offer.tick, -absoluteTickAtIndex);
       } else {
-        assertEq(offer.logPrice, absoluteLogPriceAtIndex);
+        assertEq(offer.tick, absoluteTickAtIndex);
       }
       // can be a dual
       if (offer.gives > 0) {
         if (constantGives) {
           assertEq(offer.gives, gives, "givesDist should be constant");
         } else {
-          uint wants = LogPriceLib.inboundFromOutbound(offer.logPrice, offer.gives);
+          uint wants = TickLib.inboundFromOutbound(offer.tick, offer.gives);
           assertApproxEqRel(wants, dualGives, 1e10, "wants should be approximately constant");
         }
       } else {
@@ -71,8 +71,8 @@ contract NoRouterKandelTest is CoreKandelTest {
   mapping(OfferType ba => mapping(uint index => bool seen)) internal seenOffers;
 
   struct SimpleDistributionHeapArgs {
-    int baseQuoteLogPriceIndex0;
-    uint baseQuoteLogPriceOffset;
+    int baseQuoteTickIndex0;
+    uint baseQuoteTickOffset;
     uint firstAskIndex;
     uint askGives;
     uint bidGives;
@@ -96,8 +96,8 @@ contract NoRouterKandelTest is CoreKandelTest {
     args.bidGives = bidGives;
     args.pricePoints = 5;
     args.stepSize = stepSize;
-    args.baseQuoteLogPriceIndex0 = 500;
-    args.baseQuoteLogPriceOffset = 1000;
+    args.baseQuoteTickIndex0 = 500;
+    args.baseQuoteTickOffset = 1000;
     test_createDistributionSimple_constantAskBidGives(args, dynamic([uint(2), 4]));
   }
 
@@ -124,8 +124,8 @@ contract NoRouterKandelTest is CoreKandelTest {
       args.askGives = type(uint).max;
       args.bidGives = 2 ether;
     }
-    args.baseQuoteLogPriceIndex0 = 500;
-    args.baseQuoteLogPriceOffset = 1000;
+    args.baseQuoteTickIndex0 = 500;
+    args.baseQuoteTickOffset = 1000;
     uint[] memory cuts = new uint[](uint(keccak256(abi.encodePacked(seed, ++r))) % args.pricePoints);
     if (cuts.length == 0) {
       cuts = new uint[](1);
@@ -149,8 +149,8 @@ contract NoRouterKandelTest is CoreKandelTest {
       distribution[i] = kdl.createDistribution({
         from: i > 0 ? cuts[i - 1] : 0,
         to: i < cuts.length - 1 ? cuts[i] : args.pricePoints,
-        baseQuoteLogPriceIndex0: args.baseQuoteLogPriceIndex0,
-        _baseQuoteLogPriceOffset: args.baseQuoteLogPriceOffset,
+        baseQuoteTickIndex0: args.baseQuoteTickIndex0,
+        _baseQuoteTickOffset: args.baseQuoteTickOffset,
         firstAskIndex: args.firstAskIndex,
         askGives: args.askGives,
         bidGives: args.bidGives,
@@ -165,16 +165,16 @@ contract NoRouterKandelTest is CoreKandelTest {
       totalIndices += distribution[i].bids.length + distribution[i].asks.length;
       totalZeros += validateDistribution(
         distribution[i].bids,
-        args.baseQuoteLogPriceOffset,
-        args.baseQuoteLogPriceIndex0,
+        args.baseQuoteTickOffset,
+        args.baseQuoteTickIndex0,
         OfferType.Bid,
         args.bidGives,
         args.askGives
       );
       totalZeros += validateDistribution(
         distribution[i].asks,
-        args.baseQuoteLogPriceOffset,
-        args.baseQuoteLogPriceIndex0,
+        args.baseQuoteTickOffset,
+        args.baseQuoteTickIndex0,
         OfferType.Ask,
         args.askGives,
         args.bidGives
@@ -246,8 +246,8 @@ contract NoRouterKandelTest is CoreKandelTest {
     kdl.createDistribution({
       from: 0,
       to: 2,
-      baseQuoteLogPriceIndex0: 0,
-      _baseQuoteLogPriceOffset: 0,
+      baseQuoteTickIndex0: 0,
+      _baseQuoteTickOffset: 0,
       firstAskIndex: 1,
       askGives: type(uint).max,
       bidGives: type(uint).max,

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract DirectTester is ITesterContract, OfferMaker {
   mapping(address => address) public reserves;
@@ -44,15 +44,15 @@ contract DirectTester is ITesterContract, OfferMaker {
     payable
     returns (uint offerId)
   {
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
-    return newOffer(olKey, logPrice, gives, gasreq);
+    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
   }
 
   function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
     external
     payable
   {
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants, gives);
-    updateOffer(olKey, logPrice, gives, offerId, gasreq);
+    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }

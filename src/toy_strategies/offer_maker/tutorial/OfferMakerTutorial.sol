@@ -29,7 +29,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int logPrice, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -38,7 +38,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
     (offerId,) = _newOffer(
       OfferArgs({
         olKey: olKey,
-        logPrice: logPrice,
+        tick: tick,
         gives: gives,
         gasreq: gasreq,
         gasprice: 0,
@@ -49,22 +49,14 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, int logPrice, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
     adminOrCaller(address(MGV))
   {
     _updateOffer(
-      OfferArgs({
-        olKey: olKey,
-        logPrice: logPrice,
-        gives: gives,
-        gasreq: gasreq,
-        gasprice: 0,
-        fund: msg.value,
-        noRevert: false
-      }),
+      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false}),
       offerId
     );
   }

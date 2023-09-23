@@ -30,8 +30,8 @@ contract AmplifierDeployer is Deployer {
    * @param base address of the base on Amplifier after deployment
    * @param stable1 address of the first stable coin on Amplifier after deployment
    * @param stable2 address of the second stable coin on Amplifier after deployment
-   * @param tickScale1 tick scale for the first stable coin's market
-   * @param tickScale2 tick scale for the second stable coin's market
+   * @param tickScale1 tick spacing for the first stable coin's market
+   * @param tickScale2 tick spacing for the second stable coin's market
    */
   function innerRun(
     IMangrove mgv,

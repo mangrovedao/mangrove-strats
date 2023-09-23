@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract AmplifierForwarder is Forwarder {
   IERC20 public immutable BASE;
@@ -82,12 +82,12 @@ contract AmplifierForwarder is Forwarder {
     );
 
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(args.wants1, args.gives);
+    int tick = TickConversionLib.tickFromVolumes(args.wants1, args.gives);
 
     (uint _offerId1, bytes32 status1) = _newOffer(
       OfferArgs({
         olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
-        logPrice: logPrice,
+        tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -97,7 +97,7 @@ contract AmplifierForwarder is Forwarder {
       msg.sender
     );
 
-    logPrice = LogPriceConversionLib.logPriceFromVolumes(args.wants2, args.gives);
+    tick = TickConversionLib.tickFromVolumes(args.wants2, args.gives);
 
     offers[msg.sender].id1 = _offerId1;
     // no need to fund this second call for provision
@@ -105,7 +105,7 @@ contract AmplifierForwarder is Forwarder {
     (uint _offerId2, bytes32 status2) = _newOffer(
       OfferArgs({
         olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
-        logPrice: logPrice,
+        tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
@@ -146,7 +146,7 @@ contract AmplifierForwarder is Forwarder {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
 
       uint gasreq;
-      int logPrice;
+      int tick;
       {
         MgvStructs.OfferPacked alt_offer = MGV.offers(altOlKey, alt_offerId);
         uint new_alt_wants;
@@ -155,8 +155,8 @@ contract AmplifierForwarder is Forwarder {
         unchecked {
           new_alt_wants = (alt_offer.wants() * new_alt_gives) / order.offer.gives();
         }
-        //FIXME: amplifiers should probably re-use logPrice instead of calculating.
-        logPrice = LogPriceConversionLib.logPriceFromVolumes(new_alt_wants, new_alt_gives);
+        //FIXME: amplifiers should probably re-use tick instead of calculating.
+        tick = TickConversionLib.tickFromVolumes(new_alt_wants, new_alt_gives);
       }
 
       //uint prov = getMissingProvision(IERC20(order.outbound_tkn), IERC20(alt_stable), type(uint).max, 0, 0);
@@ -164,7 +164,7 @@ contract AmplifierForwarder is Forwarder {
       bytes32 reason = _updateOffer(
         OfferArgs({
           olKey: altOlKey,
-          logPrice: logPrice,
+          tick: tick,
           gives: new_alt_gives,
           gasreq: gasreq,
           gasprice: 0, // ignored
@@ -220,11 +220,11 @@ contract AmplifierForwarder is Forwarder {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
     // if we reach this code, trade has failed for lack of base token
     OfferPair memory offerPair = offers[owner];
-    (IERC20 alt_stable, uint tickScale, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
+    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
       ? (STABLE2, TICK_SCALE1, offerPair.id2)
       : (STABLE1, TICK_SCALE2, offerPair.id1);
     retractOffer({
-      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickScale),
+      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
       offerId: alt_offerId,
       deprovision: false
     });

@@ -54,17 +54,17 @@ contract MangoImplementation {
   // Market on which Mango will be acting
   IERC20 immutable BASE;
   IERC20 immutable QUOTE;
-  uint immutable TICK_SCALE;
+  uint immutable TICK_SPACING;
 
   address immutable PROXY;
   IMangrove immutable MGV;
 
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint tickScale, uint96 base_0, uint96 quote_0, uint nslots) {
+  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint tickSpacing, uint96 base_0, uint96 quote_0, uint nslots) {
     // setting immutable fields to match those of `Mango`
     MGV = mgv;
     BASE = base;
     QUOTE = quote;
-    TICK_SCALE = tickScale;
+    TICK_SPACING = tickSpacing;
     NSLOTS = nslots;
     BASE_0 = base_0;
     QUOTE_0 = quote_0;
@@ -109,14 +109,14 @@ contract MangoImplementation {
         if (mStr.asks[i] > 0) {
           // if an ASK is also positioned, remove it to prevent spread crossing
           // (should not happen if this is the first initialization of the strat)
-          MGV.retractOffer(OLKey(address(BASE), address(QUOTE), TICK_SCALE), mStr.asks[i], false);
+          MGV.retractOffer(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[i], false);
         }
       } else {
         updateAsk({index: i, reset: reset, amount: tokenAmounts[pos], gasreq: gasreq});
         if (mStr.bids[i] > 0) {
           // if a BID is also positioned, remove it to prevent spread crossing
           // (should not happen if this is the first initialization of the strat)
-          MGV.retractOffer(OLKey(address(QUOTE), address(BASE), TICK_SCALE), mStr.bids[i], false);
+          MGV.retractOffer(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[i], false);
         }
       }
     }
@@ -149,10 +149,10 @@ contract MangoImplementation {
       uint askId = mStr.asks[index_of_position(i)];
       uint bidId = mStr.bids[index_of_position(i)];
 
-      offers[0][i] = (MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SCALE), bidId).gives() > 0 || !liveOnly)
+      offers[0][i] = (MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SPACING), bidId).gives() > 0 || !liveOnly)
         ? mStr.bids[index_of_position(i)]
         : 0;
-      offers[1][i] = (MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SCALE), askId).gives() > 0 || !liveOnly)
+      offers[1][i] = (MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SPACING), askId).gives() > 0 || !liveOnly)
         ? mStr.asks[index_of_position(i)]
         : 0;
     }
@@ -173,7 +173,7 @@ contract MangoImplementation {
     if (mStr.asks[wd.index] == 0) {
       // offer slot not initialized yet
       try MGV.newOfferByVolume({
-        olKey: OLKey(address(BASE), address(QUOTE), TICK_SCALE),
+        olKey: OLKey(address(BASE), address(QUOTE), TICK_SPACING),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
@@ -188,7 +188,7 @@ contract MangoImplementation {
       }
     } else {
       try MGV.updateOfferByVolume({
-        olKey: OLKey(address(BASE), address(QUOTE), TICK_SCALE),
+        olKey: OLKey(address(BASE), address(QUOTE), TICK_SPACING),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
@@ -201,7 +201,7 @@ contract MangoImplementation {
         // update offer might fail because residual is below density (this is OK)
         // it may also fail because there is not enough provision on Mangrove (this is Not OK so we log)
         // updateOffer failed but `offer` might still be live (i.e with `offer.gives>0`)
-        uint oldGives = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SCALE), mStr.asks[wd.index]).gives();
+        uint oldGives = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[wd.index]).gives();
         // if not during initialize we necessarily have gives > oldGives
         // otherwise we are trying to reset the offer and oldGives is irrelevant
         return (wd.gives > oldGives) ? wd.gives - oldGives : wd.gives;
@@ -213,7 +213,7 @@ contract MangoImplementation {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     if (mStr.bids[wd.index] == 0) {
       try MGV.newOfferByVolume({
-        olKey: OLKey(address(QUOTE), address(BASE), TICK_SCALE),
+        olKey: OLKey(address(QUOTE), address(BASE), TICK_SPACING),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
@@ -227,7 +227,7 @@ contract MangoImplementation {
       }
     } else {
       try MGV.updateOfferByVolume({
-        olKey: OLKey(address(QUOTE), address(BASE), TICK_SCALE),
+        olKey: OLKey(address(QUOTE), address(BASE), TICK_SPACING),
         wants: wd.wants,
         gives: wd.gives,
         gasreq: wd.ofr_gr,
@@ -237,7 +237,7 @@ contract MangoImplementation {
         return 0;
       } catch {
         // updateOffer failed but `offer` might still be live (i.e with `offer.gives>0`)
-        uint oldGives = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SCALE), mStr.bids[wd.index]).gives();
+        uint oldGives = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[wd.index]).gives();
         // if not during initialize we necessarily have gives > oldGives
         // otherwise we are trying to reset the offer and oldGives is irrelevant
         return (wd.gives > oldGives) ? wd.gives - oldGives : wd.gives;
@@ -377,7 +377,7 @@ contract MangoImplementation {
       // slots occupied by [Bids[index],..,Bids[index+`s` % N]] are retracted
       if (mStr.bids[index] != 0) {
         MGV.retractOffer({
-          olKey: OLKey(address(QUOTE), address(BASE), TICK_SCALE),
+          olKey: OLKey(address(QUOTE), address(BASE), TICK_SPACING),
           offerId: mStr.bids[index],
           deprovision: false
         });
@@ -431,7 +431,7 @@ contract MangoImplementation {
       // slots occupied by [Asks[index-`s` % N],..,Asks[index]] are retracted
       if (mStr.asks[index] != 0) {
         MGV.retractOffer({
-          olKey: OLKey(address(BASE), address(QUOTE), TICK_SCALE),
+          olKey: OLKey(address(BASE), address(QUOTE), TICK_SPACING),
           offerId: mStr.asks[index],
           deprovision: false
         });
@@ -540,7 +540,7 @@ contract MangoImplementation {
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     // outbound : QUOTE, inbound: BASE
-    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SCALE), mStr.bids[index]);
+    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[index]);
 
     uint position = position_of_index(index);
 
@@ -565,7 +565,7 @@ contract MangoImplementation {
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     // outbound : BASE, inbound: QUOTE
-    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SCALE), mStr.asks[index]);
+    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[index]);
     uint position = position_of_index(index);
 
     uint new_gives = reset ? amount : (amount + offer.gives() + mStr.pending_base); // in BASE

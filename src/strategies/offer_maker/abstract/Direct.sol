@@ -37,8 +37,9 @@ abstract contract Direct is MangroveOffer {
   /// @return offerId Identifier of the newly created offer. Returns 0 if offer creation was rejected by Mangrove and `args.noRevert` is set to `true`.
   /// @return status NEW_OFFER_SUCCESS if the offer was successfully posted on Mangrove. Returns Mangrove's revert reason otherwise.
   function _newOffer(OfferArgs memory args) internal returns (uint offerId, bytes32 status) {
-    try MGV.newOfferByLogPrice{value: args.fund}(args.olKey, args.logPrice, args.gives, args.gasreq, args.gasprice)
-    returns (uint offerId_) {
+    try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice) returns (
+      uint offerId_
+    ) {
       offerId = offerId_;
       status = NEW_OFFER_SUCCESS;
     } catch Error(string memory reason) {
@@ -49,9 +50,8 @@ abstract contract Direct is MangroveOffer {
 
   ///@inheritdoc MangroveOffer
   function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 status) {
-    try MGV.updateOfferByLogPrice{value: args.fund}(
-      args.olKey, args.logPrice, args.gives, args.gasreq, args.gasprice, offerId
-    ) {
+    try MGV.updateOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId)
+    {
       status = REPOST_SUCCESS;
     } catch Error(string memory reason) {
       require(args.noRevert, reason);

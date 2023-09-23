@@ -60,9 +60,9 @@ contract KandelSeederDeployer is Deployer {
     console.log("Deploying Kandel instances for code verification...");
     address weth = fork.get("WETH");
     address dai = fork.get("DAI");
-    //FIXME: what tick scale? Why do we assume an open market?
-    uint tickScale = 1;
-    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickScale);
+    //FIXME: what tick spacing? Why do we assume an open market?
+    uint tickSpacing = 1;
+    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickSpacing);
 
     prettyLog("Deploying Kandel instance...");
     broadcast();

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import {DirectTester, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract MangroveOfferTest is StratTest {
   TestToken weth;
@@ -188,7 +188,7 @@ contract MangroveOfferTest is StratTest {
   function test_failed_to_repost_is_logged() public {
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: 1 ether,
-      logPrice: LogPriceConversionLib.logPriceFromVolumes(1500 * 10 ** 6, 1 ether),
+      tick: TickConversionLib.tickFromVolumes(1500 * 10 ** 6, 1 ether),
       partialFill: 2, // half of offer is consumed
       _olBaseQuote: olKey,
       makerData: "whatever"

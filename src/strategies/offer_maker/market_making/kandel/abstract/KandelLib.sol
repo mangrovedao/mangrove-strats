@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {OfferType} from "./TradesBaseQuotePair.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
-import {MAX_LOG_PRICE, MIN_LOG_PRICE} from "mgv_lib/Constants.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
+import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 
 ///@title Library of helper functions for Kandel, mainly to reduce deployed size.
@@ -35,8 +35,8 @@ library KandelLib {
   ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
   ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
-  ///@param baseQuoteLogPriceIndex0 the log price of base per quote for the price point at index 0. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
-  ///@param _baseQuoteLogPriceOffset the log price offset used for the geometric progression deployment. Must be at least 1. It is recommended that this is a multiple of tickScale for the offer lists to avoid rounding.
+  ///@param baseQuoteTickIndex0 the tick of base per quote for the price point at index 0. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param _baseQuoteTickOffset the tick offset used for the geometric progression deployment. Must be at least 1. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask. Must be at most `pricePoints`.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
   ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
@@ -44,19 +44,19 @@ library KandelLib {
   ///@param pricePoints the number of price points for the Kandel instance. Must be at least 2.
   ///@return distribution the distribution of bids and asks to populate
   ///@dev the absolute price of an offer is the ratio of quote/base volumes of tokens it trades
-  ///@dev the log price of offers on Mangrove are in relative taker price of maker's inbound/outbound volumes of tokens it trades
+  ///@dev the tick of offers on Mangrove are in relative taker price of maker's inbound/outbound volumes of tokens it trades
   ///@dev for Bids, outbound=quote, inbound=base so relative taker price of a a bid is the inverse of the absolute price.
   ///@dev for Asks, outbound=base, inbound=quote so relative taker price of an ask coincides with absolute price.
   ///@dev Index0 will contain the ask with the lowest relative price and the bid with the highest relative price. Absolute price is geometrically increasing over indexes.
-  ///@dev logPriceOffset moves an offer relative price s.t. `AskLogPrice_{i+1} = AskLogPrice_i + logPriceOffset` and `BidLogPrice_{i+1} = BidLogPrice_i - logPriceOffset`
+  ///@dev tickOffset moves an offer relative price s.t. `AskTick_{i+1} = AskTick_i + tickOffset` and `BidTick_{i+1} = BidTick_i - tickOffset`
   ///@dev A hole is left in the middle at the size of stepSize - either an offer or its dual is posted, not both.
-  ///@dev The caller should make sure the minimum and maximum log price does not exceed the MIN_LOG_PRICE and MAX_LOG_PRICE from respectively; otherwise, populate will fail for those offers.
+  ///@dev The caller should make sure the minimum and maximum tick does not exceed the MIN_TICK and MAX_TICK from respectively; otherwise, populate will fail for those offers.
   ///@dev If type(uint).max is used for `bidGives` or `askGives` then very high or low prices can yield gives=0 (which results in both offer an dual being dead) or gives>=type(uin96).max which is not supported by Mangrove.
   function createGeometricDistribution(
     uint from,
     uint to,
-    int baseQuoteLogPriceIndex0,
-    uint _baseQuoteLogPriceOffset,
+    int baseQuoteTickIndex0,
+    uint _baseQuoteTickOffset,
     uint firstAskIndex,
     uint bidGives,
     uint askGives,
@@ -104,8 +104,8 @@ library KandelLib {
 
     // Start bids at from
     uint index = from;
-    // Calculate the taker relative log price of the first price point
-    int logPrice = -(baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
+    // Calculate the taker relative tick of the first price point
+    int tick = -(baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(index));
     // A counter for insertion in the distribution structs
     uint i = 0;
     for (; index < bidBound; ++index) {
@@ -113,45 +113,45 @@ library KandelLib {
       // Use askGives unless it should be derived from bid at the price
       distribution.bids[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        logPrice: logPrice,
-        gives: bidGives == type(uint).max ? LogPriceLib.outboundFromInbound(logPrice, askGives) : bidGives
+        tick: tick,
+        gives: bidGives == type(uint).max ? TickLib.outboundFromInbound(tick, askGives) : bidGives
       });
 
       // Add dual (dead) ask
       uint dualIndex = transportDestination(OfferType.Ask, index, stepSize, pricePoints);
       distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: dualIndex,
-        logPrice: (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex)),
+        tick: (baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(dualIndex)),
         gives: 0
       });
 
-      // Next log price
-      logPrice -= int(_baseQuoteLogPriceOffset);
+      // Next tick
+      tick -= int(_baseQuoteTickOffset);
       ++i;
     }
 
     // Start asks from (adjusted) firstAskIndex
     index = firstAskIndex;
-    // Calculate the taker relative log price of the first ask
-    logPrice = (baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(index));
+    // Calculate the taker relative tick of the first ask
+    tick = (baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(index));
     for (; index < to; ++index) {
       // Add live ask
       // Use askGives unless it should be derived from bid at the price
       distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        logPrice: logPrice,
-        gives: askGives == type(uint).max ? LogPriceLib.outboundFromInbound(logPrice, bidGives) : askGives
+        tick: tick,
+        gives: askGives == type(uint).max ? TickLib.outboundFromInbound(tick, bidGives) : askGives
       });
       // Add dual (dead) bid
       uint dualIndex = transportDestination(OfferType.Bid, index, stepSize, pricePoints);
       distribution.bids[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: dualIndex,
-        logPrice: -(baseQuoteLogPriceIndex0 + int(_baseQuoteLogPriceOffset) * int(dualIndex)),
+        tick: -(baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(dualIndex)),
         gives: 0
       });
 
-      // Next log price
-      logPrice += int(_baseQuoteLogPriceOffset);
+      // Next tick
+      tick += int(_baseQuoteTickOffset);
       ++i;
     }
   }

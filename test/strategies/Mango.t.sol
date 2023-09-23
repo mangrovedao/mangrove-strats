@@ -35,7 +35,7 @@ contract MangoTest is StratTest {
     // rename for convenience
     weth = base;
     usdc = quote;
-    olKey = OLKey($(base), $(quote), options.defaultTickScale);
+    olKey = OLKey($(base), $(quote), options.defaultTickSpacing);
     lo = olKey.flipped();
 
     maker = freshAddress("maker");
@@ -56,7 +56,7 @@ contract MangoTest is StratTest {
       mgv: IMangrove($(mgv)),
       base: weth,
       quote: usdc,
-      tickScale: olKey.tickScale,
+      tickSpacing: olKey.tickSpacing,
       base_0: cash(weth, 34, 2),
       quote_0: cash(usdc, 1000),
       nslots: NSLOTS,
