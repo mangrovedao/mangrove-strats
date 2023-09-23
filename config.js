@@ -6,7 +6,7 @@ exports.abi_exports = [
   "ILiquidityProvider",
   "IOfferLogic",
   "AccessControlled",
-  "AbstractKandel",
+  "ICoreKandel",
   "GeometricKandel",
   "Kandel",
   "AaveKandel",

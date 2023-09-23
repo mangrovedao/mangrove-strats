@@ -60,17 +60,17 @@ contract KandelSeederDeployer is Deployer {
     console.log("Deploying Kandel instances for code verification...");
     address weth = fork.get("WETH");
     address dai = fork.get("DAI");
-    //FIXME: what tick scale? Why do we assume an open market?
-    uint tickScale = 1;
-    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickScale);
+    //FIXME: what tick spacing? Why do we assume an open market?
+    uint tickSpacing = 1;
+    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickSpacing);
 
     prettyLog("Deploying Kandel instance...");
     broadcast();
-    new Kandel(mgv, olKeyBaseQuote, 1, 1, address(0));
+    new Kandel(mgv, olKeyBaseQuote, 1, address(0));
 
     prettyLog("Deploying AaveKandel instance...");
     broadcast();
-    new AaveKandel(mgv, olKeyBaseQuote, 1, 1, address(0));
+    new AaveKandel(mgv, olKeyBaseQuote, 1, address(0));
 
     smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
@@ -90,9 +90,7 @@ contract KandelSeederDeployer is Deployer {
     mgv.activate(olKeyBaseQuote.flipped(), 0, 1, 1);
     vm.stopPrank();
 
-    AbstractKandelSeeder.KandelSeed memory seed =
-      AbstractKandelSeeder.KandelSeed({olKeyBaseQuote: olKeyBaseQuote, gasprice: 0, liquiditySharing: true});
-    CoreKandel kandel = kandelSeeder.sow(seed);
+    CoreKandel kandel = kandelSeeder.sow({olKeyBaseQuote: olKeyBaseQuote, liquiditySharing: true});
 
     require(kandel.router() == expectedRouter, "Incorrect router address");
     require(kandel.admin() == address(this), "Incorrect admin");

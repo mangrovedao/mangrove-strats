@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract Amplifier is Direct {
   IERC20 public immutable BASE;
@@ -80,12 +80,12 @@ contract Amplifier is Direct {
     );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
 
-    int logPrice = LogPriceConversionLib.logPriceFromVolumes(wants1, gives);
+    int tick = TickConversionLib.tickFromVolumes(wants1, gives);
 
     (offerId1,) = _newOffer(
       OfferArgs({
         olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
-        logPrice: logPrice,
+        tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
@@ -95,12 +95,12 @@ contract Amplifier is Direct {
     );
     // no need to fund this second call for provision
     // since the above call should be enough
-    logPrice = LogPriceConversionLib.logPriceFromVolumes(wants2, gives);
+    tick = TickConversionLib.tickFromVolumes(wants2, gives);
 
     (offerId2,) = _newOffer(
       OfferArgs({
         olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
-        logPrice: logPrice,
+        tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
         gasprice: 0,
@@ -150,7 +150,7 @@ contract Amplifier is Direct {
         OfferArgs({
           olKey: altOlKey,
           gives: new_alt_gives,
-          logPrice: LogPriceConversionLib.logPriceFromVolumes(new_alt_wants, new_alt_gives),
+          tick: TickConversionLib.tickFromVolumes(new_alt_wants, new_alt_gives),
           gasreq: alt_detail.gasreq(),
           gasprice: 0,
           fund: 0,
@@ -204,10 +204,10 @@ contract Amplifier is Direct {
     returns (bytes32)
   {
     // if we reach this code, trade has failed for lack of base token
-    (IERC20 alt_stable, uint tickScale, uint alt_offerId) =
+    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) =
       IERC20(order.olKey.inbound) == STABLE1 ? (STABLE2, TICK_SCALE2, offerId2) : (STABLE1, TICK_SCALE1, offerId1);
     retractOffer({
-      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickScale),
+      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
       offerId: alt_offerId,
       deprovision: false
     });

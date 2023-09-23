@@ -8,7 +8,7 @@ interface IOrderLogic {
   ///@notice Information for creating a market order with a GTC or FOK semantics.
   ///@param olKey the offer list key.
   ///@param fillOrKill true to revert if market order cannot be filled and resting order failed or is not enabled; otherwise, false
-  ///@param logPrice the price
+  ///@param tick the tick
   ///@param fillVolume the volume to fill
   ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
@@ -17,7 +17,7 @@ interface IOrderLogic {
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
-    int logPrice;
+    int tick;
     uint fillVolume;
     bool fillWants;
     bool restingOrder;
@@ -43,7 +43,7 @@ interface IOrderLogic {
   ///@param olKeyHash the hash of the offer list key. This could be found by the OrderStart event, but is needed for RPC call. This is indexed so that RPC calls can filter on it.
   ///@param taker The address of the taker. This could be found by the OrderStart event, but is needed for RPC call. This is indexed so that RPC calls can filter on it.
   ///@param fillOrKill The fillOrKill that take was called with
-  ///@param logPrice The logPrice of the order. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
+  ///@param tick The tick of the order. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillVolume the volume to fill. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with
@@ -52,7 +52,7 @@ interface IOrderLogic {
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
-    int logPrice,
+    int tick,
     uint fillVolume,
     bool fillWants,
     bool restingOrder

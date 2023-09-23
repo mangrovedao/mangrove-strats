@@ -7,7 +7,7 @@ import {MgvLib, IERC20, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
@@ -243,15 +243,11 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound` the offer gives after it is reposted, while also allowing adjustment to the price.
   ///@param order is a recall of the taker order that is being treated.
   ///@return newGives the new volume of `outbound` the offer will give if fully taken.
-  ///@return newLogPrice the new log price of the reposted offer.
+  ///@return newTick the new tick of the reposted offer.
   ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the price.
-  function __residualValues__(MgvLib.SingleOrder calldata order)
-    internal
-    virtual
-    returns (uint newGives, int newLogPrice)
-  {
+  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, int newTick) {
     newGives = order.offer.gives() - order.takerWants;
-    newLogPrice = order.offer.logPrice();
+    newTick = order.offer.tick();
   }
 
   ///@notice Hook that defines what needs to be done to the part of an offer provision that was added to the balance of `this` on Mangrove after an offer has failed.
@@ -273,19 +269,19 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     returns (bytes32 data)
   {
     // now trying to repost residual
-    (uint newGives, int newLogPrice) = __residualValues__(order);
+    (uint newGives, int newTick) = __residualValues__(order);
     // Density check at each repost would be too gas costly.
     // We only treat the special case of `gives==0` or `wants==0` (total fill).
     // Note: wants (given by `inboundFromOutbound`) can be 0 due to rounding given the price. We could repost to get rid of the last gives at 0 wants,
     // but the maker does not need to give away these tokens for free, so we skip it.
     // Offer below the density will cause Mangrove to throw so we encapsulate the call to `updateOffer` in order not to revert posthook for posting at dust level.
-    if (newGives == 0 || LogPriceLib.inboundFromOutbound(newLogPrice, newGives) == 0) {
+    if (newGives == 0 || TickLib.inboundFromOutbound(newTick, newGives) == 0) {
       return COMPLETE_FILL;
     }
     data = _updateOffer(
       OfferArgs({
         olKey: order.olKey,
-        logPrice: newLogPrice,
+        tick: newTick,
         gives: newGives,
         gasreq: order.offerDetail.gasreq(),
         gasprice: order.offerDetail.gasprice(),

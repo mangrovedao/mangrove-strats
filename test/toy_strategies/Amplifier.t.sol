@@ -35,8 +35,8 @@ contract AmplifierTest is StratTest {
     dai = IERC20(fork.get("DAI"));
     weth = IERC20(fork.get("WETH"));
     usdc = IERC20(fork.get("USDC"));
-    olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickScale);
-    olKey = OLKey($(usdc), $(weth), options.defaultTickScale);
+    olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickSpacing);
+    olKey = OLKey($(usdc), $(weth), options.defaultTickSpacing);
     lo = olKey.flipped();
 
     setupMarket(olKeyWethDai);
@@ -92,8 +92,8 @@ contract AmplifierTest is StratTest {
       base: weth,
       stable1: usdc, 
       stable2: dai,
-      tickScale1: olKey.tickScale,
-      tickScale2: olKeyWethDai.tickScale,
+      tickScale1: olKey.tickSpacing,
+      tickScale2: olKeyWethDai.tickSpacing,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
       });
 
@@ -130,12 +130,12 @@ contract AmplifierTest is StratTest {
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {
-    OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickScale);
-    int logPrice = mgv.offers(_olKey, offerId).logPrice();
+    OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickSpacing);
+    int tick = mgv.offers(_olKey, offerId).tick();
     // try to take one of the offers (using the separate taker account)
     vm.prank(taker);
     (takerGot, takerGave, bounty,) =
-      mgv.marketOrderByLogPrice({olKey: _olKey, maxLogPrice: logPrice, fillVolume: makerWantsAmount, fillWants: false});
+      mgv.marketOrderByTick({olKey: _olKey, maxTick: tick, fillVolume: makerWantsAmount, fillWants: false});
   }
 
   function execTraderStratWithPartialFillSuccess() public {

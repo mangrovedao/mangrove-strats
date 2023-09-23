@@ -14,7 +14,7 @@ interface IOfferLogic is IMaker {
   ///@param offerId the Mangrove offer id. This is indexed so that RPC calls can filter on it.
   ///@param makerData from the maker.
   ///@param mgvData from Mangrove.
-  ///@notice By emitting this data, an indexer can keep track of what indcidents that has happended.
+  ///@notice By emitting this data, an indexer can keep track of what incidents has happened.
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   ///@notice Logging change of router address
@@ -62,7 +62,7 @@ interface IOfferLogic is IMaker {
 
   ///@notice Memory allocation for `_new/updateOffer`'s arguments.
   ///@param olKey the offer list key.
-  ///@param logPrice the price.
+  ///@param tick the tick.
   ///@param gives the amount of outbound tokens the maker gives for a complete fill.
   ///@param gasreq the amount of gas units that are required to execute the trade
   ///@param gasprice the gasprice used to compute offer's provision (use 0 to use Mangrove's gasprice)
@@ -72,7 +72,7 @@ interface IOfferLogic is IMaker {
   ///@dev `owner` is required in `Forwarder` logics, when `_newOffer` or `_updateOffer` in called in a hook (`msg.sender==MGV`).
   struct OfferArgs {
     OLKey olKey;
-    int logPrice;
+    int tick;
     uint gives;
     uint gasreq;
     uint gasprice;

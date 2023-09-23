@@ -15,8 +15,8 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.so
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {LogPriceLib} from "mgv_lib/LogPriceLib.sol";
-import {LogPriceConversionLib} from "mgv_lib/LogPriceConversionLib.sol";
+import {TickLib} from "mgv_lib/TickLib.sol";
+import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -38,7 +38,7 @@ contract AaveKandelTest is CoreKandelTest {
       reader = new MgvReader($(mgv));
       base = TestToken(fork.get("WETH"));
       quote = TestToken(fork.get("USDC"));
-      olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+      olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
       lo = olKey.flipped();
       setupMarket(olKey);
       aave = fork.get("Aave");
@@ -61,7 +61,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
       gasreq: kandel_gasreq,
-      gasprice: 0,
       reserveId: id
     });
 
@@ -149,7 +148,7 @@ contract AaveKandelTest is CoreKandelTest {
   function test_first_puller_posthook_calls_pushAndSupply() public {
     MgvLib.SingleOrder memory order = mockCompleteFillBuyOrder({
       takerWants: 0.1 ether,
-      logPrice: LogPriceConversionLib.logPriceFromVolumes(120 * 10 ** 6, 0.1 ether)
+      tick: TickConversionLib.tickFromVolumes(120 * 10 ** 6, 0.1 ether)
     });
     MgvLib.OrderResult memory result = MgvLib.OrderResult({makerData: "IS_FIRST_PULLER", mgvData: "mgv/tradeSuccess"});
 
@@ -242,7 +241,7 @@ contract AaveKandelTest is CoreKandelTest {
     deal($(base), $(router), donationMultiplier * bestAsk.gives());
 
     vm.prank(taker);
-    (uint takerGot,,, uint fee) = mgv.marketOrderByLogPrice(olKey, bestAsk.logPrice(), bestAsk.gives() * 2, true);
+    (uint takerGot,,, uint fee) = mgv.marketOrderByTick(olKey, bestAsk.tick(), bestAsk.gives() * 2, true);
 
     assertEq(takerGot + fee, bestAsk.gives() * 2, "both asks should be taken");
 
@@ -379,7 +378,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
       gasreq: 100,
-      gasprice: 0,
       reserveId: address(0)
     });
   }
@@ -392,7 +390,6 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
       gasreq: 100,
-      gasprice: 0,
       reserveId: address(0)
     });
   }

@@ -5,7 +5,7 @@ import "./KandelTest.t.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {LogPriceLib, MAX_LOG_PRICE} from "mgv_lib/LogPriceLib.sol";
+import {MAX_TICK} from "mgv_lib/Constants.sol";
 
 abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;
@@ -27,7 +27,6 @@ abstract contract CoreKandelGasTest is KandelTest {
       olKeyBaseQuote: olKey,
       //FIXME: measure
       gasreq: 260_000,
-      gasprice: 0,
       reserveId: address(0)
     });
   }
@@ -42,7 +41,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("USDC"));
-    olKey = OLKey(address(base), address(quote), options.defaultTickScale);
+    olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
     lo = olKey.flipped();
     setupMarket(olKey);
   }
@@ -51,10 +50,10 @@ abstract contract CoreKandelGasTest is KandelTest {
     IndexStatus memory idx = getStatus(index);
     if (idx.status == OfferStatus.Bid) {
       // densify Ask position
-      densify(olKey, idx.bid.logPrice(), idx.bid.gives(), 0, fold, address(this));
+      densify(olKey, idx.bid.tick(), idx.bid.gives(), 0, fold, address(this));
     } else {
       if (idx.status == OfferStatus.Ask) {
-        densify(lo, idx.ask.logPrice(), idx.ask.gives(), 0, fold, address(this));
+        densify(lo, idx.ask.tick(), idx.ask.gives(), 0, fold, address(this));
       }
     }
   }
@@ -71,7 +70,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting
-    (uint takerGot,,,) = mgv.marketOrderByLogPrice(_olKey, MAX_LOG_PRICE, completeFill, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, MAX_TICK, completeFill, true);
     gas_();
     require(takerGot > 0);
   }
@@ -84,7 +83,7 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrderByLogPrice(_olKey, MAX_LOG_PRICE, volume, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, MAX_TICK, volume, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(n, ",", g);
@@ -121,7 +120,7 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: ask.gives() / 2,
-      logPrice: ask.logPrice(),
+      tick: ask.tick(),
       partialFill: 1,
       _olBaseQuote: olKey,
       makerData: ""

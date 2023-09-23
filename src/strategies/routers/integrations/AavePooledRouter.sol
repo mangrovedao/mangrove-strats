@@ -33,7 +33,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@param maker the maker contract that was calling `pushAndSupply`. This is indexed so that RPC calls can filter on it.
   ///@param reserveId the reserve identifier that was calling `pushAndSupply`. This is indexed so that RPC calls can filter on it.
   ///@param aaveReason the reason from AAVE.
-  ///@notice By emitting this data, an indexer will be able to keep track of what incidents that has happended.
+  ///@notice By emitting this data, an indexer will be able to keep track of what incidents that has happened.
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
 
   ///@notice the total shares for each token, i.e. the total shares one would need to possess in order to claim the entire pool of tokens.

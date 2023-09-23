@@ -42,10 +42,10 @@ contract MumbaiActivateMarket is Deployer {
     maticPrice = vm.envUint("MATIC_IN_USD");
     address token0 = envAddressOrName("TOKEN0");
     address token1 = envAddressOrName("TOKEN1");
-    uint tickScale = vm.envUint("TICK_SCALE");
+    uint tickSpacing = vm.envUint("TICK_SPACING");
     uint price0 = vm.envUint("TOKEN0_IN_USD");
     uint price1 = vm.envUint("TOKEN1_IN_USD");
-    Market memory market = Market({tkn0: token0, tkn1: token1, tickScale: tickScale});
+    Market memory market = Market({tkn0: token0, tkn1: token1, tickSpacing: tickSpacing});
     activateMarket(market, price0, price1);
     outputDeployment();
     smokeTest(market);
