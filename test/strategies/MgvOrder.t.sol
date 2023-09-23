@@ -54,7 +54,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function makerGives(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
-    return order.fillWants ? TickLib.outboundFromInbound(-order.tick, order.fillVolume) : order.fillVolume;
+    return order.fillWants ? TickLib.outboundFromInboundUp(-order.tick, order.fillVolume) : order.fillVolume;
   }
 
   function takerWants(IOrderLogic.TakerOrder memory order) internal pure returns (uint) {
@@ -438,7 +438,7 @@ contract MangroveOrder_Test is StratTest {
     MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder) / 2, "Incorrect offer gives");
-    assertEq(offer.wants(), makerWants(buyOrder) / 2 - 1, "Incorrect offer wants");
+    assertEq(offer.wants(), makerWants(buyOrder) / 2, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
     assertEq(detail.maker(), address(mgo), "Incorrect maker");
   }
@@ -479,8 +479,8 @@ contract MangroveOrder_Test is StratTest {
     sellOrder.restingOrder = true;
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
-      takerGot: reader.minusFee(lo, takerWants(sellOrder) / 2) + 1,
-      takerGave: takerGives(sellOrder) / 2 - 1,
+      takerGot: reader.minusFee(lo, takerWants(sellOrder) / 2) + 2,
+      takerGave: takerGives(sellOrder) / 2,
       bounty: 0,
       fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
       offerId: 5
@@ -508,7 +508,7 @@ contract MangroveOrder_Test is StratTest {
     // checking price of offer
     MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
     MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
-    assertEq(offer.gives(), makerGives(sellOrder) / 2 + 1, "Incorrect offer gives");
+    assertEq(offer.gives(), makerGives(sellOrder) / 2, "Incorrect offer gives");
 
     assertApproxEqRel(offer.wants(), makerWants(sellOrder) / 2, 1e4, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");

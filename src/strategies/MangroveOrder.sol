@@ -242,7 +242,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGot + res.fee
       uint residualWants = tko.fillVolume - (res.takerGot + res.fee);
       // adapting residualGives to match relative limit price chosen by the taker
-      residualGives = TickLib.outboundFromInbound(residualTick, residualWants);
+      residualGives = TickLib.outboundFromInboundUp(residualTick, residualWants);
     } else {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
