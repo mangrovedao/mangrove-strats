@@ -64,11 +64,9 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId)
-    public
-    payable
-    onlyOwner(olKey.hash(), offerId)
-  {
+  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId) public payable {
+    address owner = ownerOf(olKey.hash(), offerId);
+    require(owner == msg.sender, "OfferForwarder/unauthorized");
     updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 

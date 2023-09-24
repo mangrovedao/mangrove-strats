@@ -12,7 +12,7 @@ import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_makin
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {TickLib} from "mgv_lib/TickLib.sol";

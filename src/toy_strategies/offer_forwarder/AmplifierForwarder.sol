@@ -89,7 +89,7 @@ contract AmplifierForwarder is Forwarder {
         olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
         tick: tick,
         gives: args.gives,
-        gasreq: offerGasreq(),
+        gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
         gasprice: 0, // ignored
         fund: args.fund1,
         noRevert: false

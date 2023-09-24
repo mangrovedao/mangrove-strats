@@ -11,7 +11,7 @@ import {Mangrove} from "mgv_src/Mangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {MgvOracle} from "mgv_src/periphery/MgvOracle.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/AbstractRouter.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {
   MangroveOrderDeployer,
   MangroveOrder
