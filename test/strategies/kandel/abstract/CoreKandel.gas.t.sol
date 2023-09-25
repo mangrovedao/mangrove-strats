@@ -78,7 +78,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     // taking partial fill to have gas cost of reposting
     (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), completeFill, true);
     gas_();
-    require(takerGot > 0);
+    require(takerGot > 0, "offer should succeed");
   }
 
   function bid_order_length_n(uint n) internal {
@@ -91,7 +91,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     _gas();
     (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), volume, true);
     uint g = gas_(true);
-    require(takerGot > 0);
+    require(takerGot > 0, "offer should succeed");
     console.log(n, ",", g);
     assertStatus(5 - n, OfferStatus.Bid);
   }

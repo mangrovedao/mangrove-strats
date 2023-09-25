@@ -136,10 +136,10 @@ contract OfferForwarderTest is OfferLogicTest {
 
     // taker has approved mangrove in the setUp
     vm.startPrank(taker);
-    (uint takergot,, uint bounty,) =
+    (uint takerGot,, uint bounty,) =
       mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
     vm.stopPrank();
-    assertTrue(bounty > 0 && takergot == 0, "trade should have failed");
+    assertTrue(bounty > 0 && takerGot == 0, "trade should have failed");
     uint provision_after_fail = makerContract.provisionOf(olKey, offerId);
     console.log("provision after fail:", provision_after_fail);
     console.log("bounty", bounty);
@@ -149,7 +149,7 @@ contract OfferForwarderTest is OfferLogicTest {
     assertTrue(provision_after_fail < mgv.balanceOf(address(makerContract)), "Incorrect approx");
   }
 
-  function test_makership() public {
+  function test_maker_ownership() public {
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -157,7 +157,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gives: 1 ether,
       gasreq: makerContract.offerGasreq()
     });
-    assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Invalid makership relation");
+    assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Invalid maker ownership relation");
   }
 
   function test_NewOwnedOffer_logging() public {

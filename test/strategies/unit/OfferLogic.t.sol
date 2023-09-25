@@ -61,7 +61,7 @@ contract OfferLogicTest is StratTest {
     usdc.approve(address(mgv), type(uint).max);
     vm.stopPrank();
 
-    // instanciates makerContract
+    // instantiates makerContract
     setupMakerContract();
     setupLiquidityRouting();
     vm.prank(deployer);
@@ -190,7 +190,7 @@ contract OfferLogicTest is StratTest {
     makerContract.retractOffer(olKey, offerId, true);
     uint received_wei = makerContract.retractOffer(olKey, offerId, true);
     vm.stopPrank();
-    assertEq(received_wei, 0, "Unexpected received weis");
+    assertEq(received_wei, 0, "Unexpected received WEIs");
   }
 
   function test_deprovisionOffer_throws_if_wei_transfer_fails() public {
@@ -270,7 +270,7 @@ contract OfferLogicTest is StratTest {
     });
   }
 
-  function performTrade(bool success) internal returns (uint takergot, uint takergave, uint bounty, uint fee) {
+  function performTrade(bool success) internal returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
     makerContract.newOfferFromVolume{value: 0.1 ether}({
@@ -283,21 +283,21 @@ contract OfferLogicTest is StratTest {
 
     // taker has approved mangrove in the setUp
     vm.startPrank(taker);
-    (takergot, takergave, bounty, fee) =
+    (takerGot, takerGave, bounty, fee) =
       mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
     vm.stopPrank();
-    assertTrue(!success || (bounty == 0 && takergot > 0), "unexpected trade result");
+    assertTrue(!success || (bounty == 0 && takerGot > 0), "unexpected trade result");
   }
 
   function test_owner_balance_is_updated_when_trade_succeeds() public {
     uint balOut = makerContract.tokenBalance(weth, owner);
     uint balIn = makerContract.tokenBalance(usdc, owner);
 
-    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
-    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takerGot > 0, "trade failed");
 
-    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takerGot + fee), "incorrect out balance");
+    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takerGave, "incorrect in balance");
   }
 
   function test_reposting_fails_with_expected_reason_when_below_density() public {
@@ -327,7 +327,7 @@ contract OfferLogicTest is StratTest {
     makerContract.makerPosthook(order, result);
   }
 
-  function test_reposting_fails_with_expected_reason_when_underprovisioned() public {
+  function test_reposting_fails_with_expected_reason_when_under_provisioned() public {
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -357,7 +357,7 @@ contract OfferLogicTest is StratTest {
     makerContract.makerPosthook(order, result);
   }
 
-  function test_reposting_fails_with_expected_reason_when_innactive() public {
+  function test_reposting_fails_with_expected_reason_when_inactive() public {
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
       olKey: olKey,

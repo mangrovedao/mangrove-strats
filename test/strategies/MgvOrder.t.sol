@@ -538,7 +538,7 @@ contract MangroveOrder_Test is StratTest {
   function test_partial_fill_sell_with_resting_order_is_below_density() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
     sellOrder.restingOrder = true;
-    sellOrder.fillVolume = 1 ether; // the amount that will be filled, used to calulate expected taker result
+    sellOrder.fillVolume = 1 ether; // the amount that will be filled, used to calculate expected taker result
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
       takerGot: reader.minusFee(lo, takerWants(sellOrder)) + 2,
@@ -563,7 +563,7 @@ contract MangroveOrder_Test is StratTest {
 
     assertTrue(res.offerId == 0, "Offer should not be posted");
     assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
-    assertEq(fresh_taker.balance, nativeBalBefore, "No provision should be transfered");
+    assertEq(fresh_taker.balance, nativeBalBefore, "No provision should be transferred");
     // checking mappings
     assertEq(
       base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
@@ -731,7 +731,7 @@ contract MangroveOrder_Test is StratTest {
     );
     assertTrue(mgo.provisionOf(lo, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
     assertTrue(bounty > g * mgv.global().gasprice(), "taker not compensated");
-    console.log("Taker gained %s matics", toFixed(bounty - g * mgv.global().gasprice(), 18));
+    console.log("Taker gained %s native", toFixed(bounty - g * mgv.global().gasprice(), 18));
   }
 
   function test_offer_succeeds_when_time_is_not_expired() public {
@@ -821,7 +821,7 @@ contract MangroveOrder_Test is StratTest {
       _olBaseQuote: olKey,
       makerData: ""
     });
-    // pranking a fresh taker to avoid heating test runner balance
+    // prank a fresh taker to avoid heating test runner balance
     vm.prank($(mgv));
     base.transferFrom(address(sell_taker), $(mgv), sellOrder.takerGives);
     vm.prank($(mgv));
