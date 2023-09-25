@@ -161,7 +161,7 @@ contract MangroveOfferTest is StratTest {
     makerContract.makerExecute(order);
     vm.prank(address(mgv));
     bytes32 ret = makerContract.makerExecute(order);
-    assertEq(ret, "lastlook/testdata", "Incorrect returned data");
+    assertEq(ret, "lastLook/testData", "Incorrect returned data");
   }
 
   function testCannot_call_makerPosthook_if_not_Mangrove() public {
@@ -206,7 +206,7 @@ contract MangroveOfferTest is StratTest {
     order.olKey = olKey;
     vm.prank(address(mgv));
     bytes32 data = makerContract.makerExecute(order);
-    assertEq(data, "lastlook/testdata");
+    assertEq(data, "lastLook/testData");
   }
 
   function test_admin_can_withdrawFromMangrove() public {
