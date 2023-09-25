@@ -71,7 +71,7 @@ contract Dispatcher is MultiRouter {
   }
 
   /// @inheritdoc	AbstractRouter
-  function __push__(IERC20 token, address reserveId, uint) internal virtual override returns (uint pushed) {
+  function __push__(IERC20 token, address reserveId, uint) internal virtual override returns (uint) {
     address router = address(_getRouterSafely(token, reserveId));
     assembly {
       calldatacopy(0, 0, calldatasize())
