@@ -14,7 +14,6 @@ import {AbstractRouter} from "./routers/abstract/AbstractRouter.sol";
 /// the resting order should be posted for an amount $a_later = a_goal - a_now$ at price $p$.
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
-
 contract BaseMangroveOrder is Forwarder, IOrderLogic {
   ///@notice `expiring[outbound_tkn][inbound_tkn][offerId]` gives timestamp beyond which `offerId` on the `(outbound_tkn, inbound_tkn)` offer list should renege on trade.
   ///@notice if the order tx is included after the expiry date, it reverts.
@@ -23,7 +22,7 @@ contract BaseMangroveOrder is Forwarder, IOrderLogic {
 
   ///@notice BaseMangroveOrder is a Forwarder logic with an abstract router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
-  ///@param router The contract router
+  ///@param router The contract router, any router can be used.
   ///@param deployer The address of the admin of `this` at the end of deployment
   ///@param gasreq The gas required for `this` to execute `makerExecute` and `makerPosthook` when called by mangrove for a resting order.
   constructor(IMangrove mgv, AbstractRouter router, address deployer, uint gasreq) Forwarder(mgv, router, gasreq) {
