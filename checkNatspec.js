@@ -27,45 +27,32 @@ const read_artifact = (file_path) => {
 // gather all artifact files
 const artifacts = all_files(path.join(cwd, "out"));
 
-includes = [
-  "AbstractKandelSeeder",
-  "AaveKandelSeeder",
-  "KandelSeeder",
-  "Direct",
-  "DirectWithBidsAndAsksDistribution",
-  "HasIndexedBidsAndAsks",
-  "ICoreKandel",
-  "KandelLib",
-  "CoreKandel",
-  "TradesBaseQuotePair",
-  "GeometricKandel",
-  "AaveKandel",
-  "Kandel",
-  "AaveV3Lender",
-  "HasAaveBalanceMemoizer",
-  "AbstractRouter",
-  "AavePooledRouter",
-  "MangroveOrder",
-  "IOrderLogic",
-  "Forwarder",
-  "AccessControlled",
-  "AbstractRouter",
-  "SimpleRouter",
-  "MangroveOffer",
-  "IOfferLogic",
-  "IForwarder",
-  "ILiquidityProvider",
-  "OfferMakerTutorial",
-  "OfferMakerTutorialResidual",
+excludes = [
+  "forge-std",
+  "node_modules",
+  "script",
+  "test",
+  "src/strategies/vendor/",
+  "/out/",
+  "toy_strategies",
+  "mango",
+  "Mango",
+  "CompoundModule",
+  "Tester",
+  "AaveMaker",
+  "AaveV2Module",
+  "AaveV3Borrower",
+  "OfferForwarder",
+  "OfferMaker",
 ];
 
 let anyFindings = false;
 artifacts.forEach((file) => {
-  if (!includes.some((x) => file.includes("/" + x + ".sol"))) {
-    return;
-  }
   const j = read_artifact(file);
   const fname = j.ast.absolutePath;
+  if (excludes.some((x) => fname.includes(x))) {
+    return;
+  }
   const relevant = j.ast.nodes
     .filter((x) => x.nodeType == "ContractDefinition")
     .map((x) => {
