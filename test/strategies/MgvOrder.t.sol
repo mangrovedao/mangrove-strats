@@ -535,7 +535,7 @@ contract MangroveOrder_Test is StratTest {
     assertEq(detail.maker(), address(mgo), "Incorrect maker");
   }
 
-  function test_partial_fill_sell_with_resting_order_is_below_density() public {
+  function test_partial_fill_sell_with_resting_order_below_density() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
     sellOrder.restingOrder = true;
     sellOrder.fillVolume = 1 ether; // the amount that will be filled, used to calculate expected taker result
