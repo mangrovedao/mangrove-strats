@@ -22,6 +22,8 @@ library Permit2TransferLib {
     if (amount == 0) {
       return true;
     }
+    require(uint160(amount) == amount, "Permit2TransferLib/amountIsNotUInt160");
+
     if (spender == recipient) {
       return token.balanceOf(spender) >= amount;
     }
@@ -52,6 +54,7 @@ library Permit2TransferLib {
     if (amount == 0) {
       return true;
     }
+    require(uint160(amount) == amount, "Permit2TransferLib/amountIsNotUInt160");
     if (spender == recipient) {
       return IERC20(permit.permitted.token).balanceOf(spender) >= amount;
     }
