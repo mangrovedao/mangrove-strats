@@ -9,9 +9,9 @@ import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 contract AmplifierForwarder is Forwarder {
   IERC20 public immutable BASE;
   IERC20 public immutable STABLE1;
-  uint public immutable TICK_SCALE1;
+  uint public immutable TICK_SPACING1;
   IERC20 public immutable STABLE2;
-  uint public immutable TICK_SCALE2;
+  uint public immutable TICK_SPACING2;
 
   struct OfferPair {
     uint id1;
@@ -32,8 +32,8 @@ contract AmplifierForwarder is Forwarder {
   ) Forwarder(mgv, new SimpleRouter(), gasreq) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
-    TICK_SCALE1 = tickSpacing1;
-    TICK_SCALE2 = tickSpacing2;
+    TICK_SPACING1 = tickSpacing1;
+    TICK_SPACING2 = tickSpacing2;
     STABLE2 = stable2;
     BASE = base;
 
@@ -73,11 +73,11 @@ contract AmplifierForwarder is Forwarder {
     OfferPair memory offerPair = offers[msg.sender];
 
     require(
-      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SCALE1), offerPair.id1).isLive(),
+      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SPACING1), offerPair.id1).isLive(),
       "AmplifierForwarder/offer1AlreadyActive"
     );
     require(
-      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SCALE2), offerPair.id2).isLive(),
+      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SPACING2), offerPair.id2).isLive(),
       "AmplifierForwarder/offer2AlreadyActive"
     );
 
@@ -86,7 +86,7 @@ contract AmplifierForwarder is Forwarder {
 
     (uint _offerId1, bytes32 status1) = _newOffer(
       OfferArgs({
-        olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+        olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
         tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
@@ -104,7 +104,7 @@ contract AmplifierForwarder is Forwarder {
     // since the above call should be enough
     (uint _offerId2, bytes32 status2) = _newOffer(
       OfferArgs({
-        olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+        olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
         tick: tick,
         gives: args.gives,
         gasreq: offerGasreq(),
@@ -139,8 +139,8 @@ contract AmplifierForwarder is Forwarder {
     OfferPair memory offerPair = offers[owner];
 
     (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
-      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SCALE2), offerPair.id2)
-      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerPair.id1);
+      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SPACING2), offerPair.id2)
+      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SPACING1), offerPair.id1);
 
     if (repost_status == REPOST_SUCCESS) {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
@@ -200,12 +200,12 @@ contract AmplifierForwarder is Forwarder {
   function retractOffers(bool deprovision) external {
     OfferPair memory offerPair = offers[msg.sender];
     retractOffer({
-      olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+      olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
       offerId: offerPair.id1,
       deprovision: deprovision
     });
     retractOffer({
-      olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+      olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
       offerId: offerPair.id2,
       deprovision: deprovision
     });
@@ -221,8 +221,8 @@ contract AmplifierForwarder is Forwarder {
     // if we reach this code, trade has failed for lack of base token
     OfferPair memory offerPair = offers[owner];
     (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
-      ? (STABLE2, TICK_SCALE1, offerPair.id2)
-      : (STABLE1, TICK_SCALE2, offerPair.id1);
+      ? (STABLE2, TICK_SPACING1, offerPair.id2)
+      : (STABLE1, TICK_SPACING2, offerPair.id1);
     retractOffer({
       olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
       offerId: alt_offerId,

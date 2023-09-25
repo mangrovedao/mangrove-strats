@@ -10,8 +10,8 @@ contract Amplifier is Direct {
   IERC20 public immutable BASE;
   IERC20 public immutable STABLE1;
   IERC20 public immutable STABLE2;
-  uint public immutable TICK_SCALE1;
-  uint public immutable TICK_SCALE2;
+  uint public immutable TICK_SPACING1;
+  uint public immutable TICK_SPACING2;
 
   ///mapping(IERC20 => mapping(IERC20 => uint)) // base -> stable -> offerid
 
@@ -36,8 +36,8 @@ contract Amplifier is Direct {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
-    TICK_SCALE1 = tickSpacing1;
-    TICK_SCALE2 = tickSpacing2;
+    TICK_SPACING1 = tickSpacing1;
+    TICK_SPACING2 = tickSpacing2;
     BASE = base;
     AbstractRouter router_ = new SimpleRouter();
     setRouter(router_);
@@ -71,11 +71,11 @@ contract Amplifier is Direct {
     // deprovisioning an offer (via MGV.retractOffer) credits maker balance on Mangrove (no native token transfer)
     // if maker wishes to retrieve native tokens it should call MGV.withdraw (and have a positive balance)
     require(
-      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SCALE1), offerId1).isLive(),
+      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SPACING1), offerId1).isLive(),
       "Amplifier/offer1AlreadyActive"
     );
     require(
-      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SCALE2), offerId2).isLive(),
+      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SPACING2), offerId2).isLive(),
       "Amplifier/offer2AlreadyActive"
     );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
@@ -84,7 +84,7 @@ contract Amplifier is Direct {
 
     (offerId1,) = _newOffer(
       OfferArgs({
-        olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+        olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
         tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
@@ -99,7 +99,7 @@ contract Amplifier is Direct {
 
     (offerId2,) = _newOffer(
       OfferArgs({
-        olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+        olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
         tick: tick,
         gives: gives,
         gasreq: offerGasreq(),
@@ -128,8 +128,8 @@ contract Amplifier is Direct {
     // - not enough provision
     // - offer list is closed (governance call)
     (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
-      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SCALE2), offerId2)
-      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerId1);
+      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SPACING2), offerId2)
+      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SPACING1), offerId1);
     if (repost_status == REPOST_SUCCESS) {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
       Offer alt_offer = MGV.offers(altOlKey, alt_offerId);
@@ -180,12 +180,12 @@ contract Amplifier is Direct {
 
   function retractOffers(bool deprovision) external {
     uint freeWei = retractOffer({
-      olKey: OLKey(address(BASE), address(STABLE1), TICK_SCALE1),
+      olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
       offerId: offerId1,
       deprovision: deprovision
     });
     freeWei += retractOffer({
-      olKey: OLKey(address(BASE), address(STABLE2), TICK_SCALE2),
+      olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
       offerId: offerId2,
       deprovision: deprovision
     });
@@ -205,7 +205,7 @@ contract Amplifier is Direct {
   {
     // if we reach this code, trade has failed for lack of base token
     (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) =
-      IERC20(order.olKey.inbound) == STABLE1 ? (STABLE2, TICK_SCALE2, offerId2) : (STABLE1, TICK_SCALE1, offerId1);
+      IERC20(order.olKey.inbound) == STABLE1 ? (STABLE2, TICK_SPACING2, offerId2) : (STABLE1, TICK_SPACING1, offerId1);
     retractOffer({
       olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
       offerId: alt_offerId,

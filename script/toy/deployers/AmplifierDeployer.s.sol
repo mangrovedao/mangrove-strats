@@ -20,8 +20,8 @@ contract AmplifierDeployer is Deployer {
       base: IERC20(envAddressOrName("BASE", "WETH")),
       stable1: IERC20(envAddressOrName("STABLE1", "USDC")),
       stable2: IERC20(envAddressOrName("STABLE2", "DAI")),
-      tickSpacing1: vm.envUint("TICK_SCALE1"),
-      tickSpacing2: vm.envUint("TICK_SCALE2")
+      tickSpacing1: vm.envUint("TICK_SPACING1"),
+      tickSpacing2: vm.envUint("TICK_SPACING2")
     });
   }
 
