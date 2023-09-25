@@ -428,7 +428,8 @@ contract MangroveOrder_Test is StratTest {
       takerGave: takerGives(buyOrder) / 2 - 1,
       bounty: 0,
       fee: 1 ether - reader.minusFee(lo, 1 ether),
-      offerId: 5
+      offerId: 5,
+      offerWriteData: "offer/created"
     });
 
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
@@ -450,6 +451,7 @@ contract MangroveOrder_Test is StratTest {
       quote.balanceOf(fresh_taker), takerGives(buyOrder) - expectedResult.takerGave, "Incorrect remaining quote balance"
     );
     assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
+    assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     // checking price of offer
     Offer offer = mgv.offers(lo, res.offerId);
     OfferDetail detail = mgv.offerDetails(lo, res.offerId);
@@ -499,7 +501,8 @@ contract MangroveOrder_Test is StratTest {
       takerGave: takerGives(sellOrder) / 2,
       bounty: 0,
       fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
-      offerId: 5
+      offerId: 5,
+      offerWriteData: "offer/created"
     });
 
     address fresh_taker = freshTaker(takerGives(sellOrder), 0);
@@ -521,6 +524,7 @@ contract MangroveOrder_Test is StratTest {
       base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
     );
     assertEq(quote.balanceOf(fresh_taker), expectedResult.takerGot, "Incorrect obtained quote balance");
+    assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     // checking price of offer
     Offer offer = mgv.offers(olKey, res.offerId);
     OfferDetail detail = mgv.offerDetails(olKey, res.offerId);
@@ -529,6 +533,40 @@ contract MangroveOrder_Test is StratTest {
     assertApproxEqRel(offer.wants(), makerWants(sellOrder) / 2, 1e4, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
     assertEq(detail.maker(), address(mgo), "Incorrect maker");
+  }
+
+  function test_partial_fill_sell_with_resting_order_is_below_density() public {
+    IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
+    sellOrder.restingOrder = true;
+    sellOrder.fillVolume = 1 ether;
+
+    IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
+      takerGot: reader.minusFee(lo, takerWants(sellOrder)) + 1,
+      takerGave: 1 ether - 1,
+      bounty: 0,
+      fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
+      offerId: 5,
+      offerWriteData: "mgv/writeOffer/density/tooLow"
+    });
+
+    address fresh_taker = freshTaker(takerGives(sellOrder), 0);
+    uint nativeBalBefore = fresh_taker.balance;
+
+    // checking log emission
+    expectFrom($(mgo));
+    logOrderData(fresh_taker, sellOrder);
+
+    vm.prank(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
+
+    assertTrue(res.offerId == 0, "Offer should not be posted");
+    assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
+    assertEq(fresh_taker.balance, nativeBalBefore, "No provision should be transfered");
+    // checking mappings
+    assertEq(
+      base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
+    );
+    assertEq(quote.balanceOf(fresh_taker), expectedResult.takerGot, "Incorrect obtained quote balance");
   }
 
   function test_empty_fill_sell_with_resting_order_is_correctly_posted() public {

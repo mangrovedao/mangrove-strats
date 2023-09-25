@@ -38,6 +38,7 @@ interface IOrderLogic {
     uint bounty;
     uint fee;
     uint offerId;
+    bytes32 offerWriteData;
   }
 
   ///@notice Information about the order.
