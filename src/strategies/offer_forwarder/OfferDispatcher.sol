@@ -7,7 +7,7 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol"
 import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 
-contract OfferForwarder is ILiquidityProvider, Forwarder {
+contract OfferDispatcher is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new Dispatcher(), 30_000) {
     AbstractRouter router_ = router();
     router_.bind(address(this));
