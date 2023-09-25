@@ -9,12 +9,10 @@ import {IERC20} from "mgv_src/IERC20.sol";
 interface ITesterContract is ILiquidityProvider {
   function tokenBalance(IERC20 token, address reserveId) external view returns (uint);
 
-  function newOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
     external
     payable
     returns (uint offerId);
 
-  function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
-    external
-    payable;
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable;
 }

@@ -58,7 +58,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.assume(fund < 5 ether); // too high provision would yield a gasprice overflow
     uint contractOldBalance = mgv.balanceOf(address(makerContract));
     vm.prank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: fund}({
+    uint offerId = makerContract.newOfferByVolume{value: fund}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -76,7 +76,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_funds_updates_gasprice() public {
     vm.prank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -84,7 +84,7 @@ contract OfferForwarderTest is OfferLogicTest {
     });
     uint old_gasprice = mgv.offerDetails(olKey, offerId).gasprice();
     vm.prank(owner);
-    makerContract.updateOfferFromVolume{value: 0.2 ether}({
+    makerContract.updateOfferByVolume{value: 0.2 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -98,7 +98,7 @@ contract OfferForwarderTest is OfferLogicTest {
     MgvLib.SingleOrder memory order;
     MgvLib.OrderResult memory result;
     vm.prank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -122,7 +122,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.assume(fund >= reader.getProvision(olKey, makerContract.offerGasreq(), 0));
     vm.assume(fund < 5 ether);
     vm.prank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: fund}({
+    uint offerId = makerContract.newOfferByVolume{value: fund}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -151,7 +151,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_maker_ownership() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -167,7 +167,7 @@ contract OfferForwarderTest is OfferLogicTest {
     emit NewOwnedOffer(olKey.hash(), next_id, owner);
 
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -181,7 +181,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.deal(owner, 20 ether);
     vm.expectRevert("Forwarder/provisionTooHigh");
     vm.prank(owner);
-    makerContract.newOfferFromVolume{value: 20 ether}({
+    makerContract.newOfferByVolume{value: 20 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -191,7 +191,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_no_funds_preserves_gasprice() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -202,7 +202,7 @@ contract OfferForwarderTest is OfferLogicTest {
     uint old_gasprice = detail.gasprice();
 
     vm.startPrank(owner);
-    makerContract.updateOfferFromVolume({
+    makerContract.updateOfferByVolume({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
@@ -216,7 +216,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_updateOffer_with_funds_increases_gasprice() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -226,7 +226,7 @@ contract OfferForwarderTest is OfferLogicTest {
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
     uint old_gasprice = detail.gasprice();
     vm.startPrank(owner);
-    makerContract.updateOfferFromVolume{value: 0.1 ether}({
+    makerContract.updateOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
@@ -240,7 +240,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
   function test_different_maker_can_post_offers() public {
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -250,7 +250,7 @@ contract OfferForwarderTest is OfferLogicTest {
     address new_maker = freshAddress("New maker");
     vm.deal(new_maker, 1 ether);
     vm.startPrank(new_maker);
-    uint offerId_ = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId_ = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
@@ -264,7 +264,7 @@ contract OfferForwarderTest is OfferLogicTest {
   function test_put_fail_reverts_with_expected_reason() public {
     MgvLib.SingleOrder memory order;
     vm.startPrank(owner);
-    uint offerId = makerContract.newOfferFromVolume{value: 0.1 ether}({
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,

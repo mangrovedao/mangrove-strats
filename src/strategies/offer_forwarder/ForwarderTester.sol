@@ -34,7 +34,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
     return __posthookFallback__(order, result);
   }
 
-  function newOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
     external
     payable
     returns (uint offerId)
@@ -43,10 +43,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
     return newOffer(olKey, tick, gives, gasreq);
   }
 
-  function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
-    external
-    payable
-  {
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
