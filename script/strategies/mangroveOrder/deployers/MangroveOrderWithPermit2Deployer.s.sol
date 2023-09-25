@@ -11,7 +11,7 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
  forge script --fork-url mumbai MangroveOrderWithPermit2Deployer -vvv 
     Then broadcast and verify:
  WRITE_DEPLOY=true forge script --fork-url mumbai MangroveOrderWithPermit2Deployer -vvv --broadcast --verify
-    Remember to activate it using ActivateMangroveOrder
+    Remember to activate it using ActivateBaseMangroveOrder
 
   You can specify a mangrove address with the MGV env var.*/
 contract MangroveOrderWithPermit2Deployer is Deployer {
