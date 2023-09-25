@@ -68,6 +68,6 @@ contract MangroveOrderWithPermit2 is BaseMangroveOrder {
     bytes calldata signature
   ) external payable returns (TakerOrderResult memory) {
     Permit2Router(address(router())).permit2().permit(msg.sender, permit, signature);
-    return __take(tko);
+    return takeInternal(tko);
   }
 }

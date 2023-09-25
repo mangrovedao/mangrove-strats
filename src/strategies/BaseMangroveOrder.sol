@@ -124,13 +124,13 @@ contract BaseMangroveOrder is Forwarder, IOrderLogic {
   ///@param tko TakerOrder struct
   ///@return TakerOrderResult Result of the take call
   function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory) {
-    return __take(tko);
+    return takeInternal(tko);
   }
 
   ///@notice take implementation
   ///@param tko TakerOrder struct
   ///@return res TakerOrderResult Order result
-  function __take(TakerOrder calldata tko) internal returns (TakerOrderResult memory res) {
+  function takeInternal(TakerOrder calldata tko) internal returns (TakerOrderResult memory res) {
     // Checking whether order is expired
     require(tko.expiryDate == 0 || block.timestamp <= tko.expiryDate, "mgvOrder/expired");
 
