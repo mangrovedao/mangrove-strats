@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
 
-import {DirectTester} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
+import {DirectTester} from "mgv_strat_src/toy_strategies/offer_maker/DirectTester.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";

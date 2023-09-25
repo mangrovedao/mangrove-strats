@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {ILiquidityProvider} from "./ILiquidityProvider.sol";
+import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
