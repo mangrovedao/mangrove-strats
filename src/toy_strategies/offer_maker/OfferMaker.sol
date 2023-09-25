@@ -7,7 +7,7 @@ import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 
 contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {

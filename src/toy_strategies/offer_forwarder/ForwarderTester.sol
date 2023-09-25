@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {OfferForwarder, IMangrove, AbstractRouter} from "./OfferForwarder.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
-import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
 import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 
 contract ForwarderTester is OfferForwarder, ITesterContract {

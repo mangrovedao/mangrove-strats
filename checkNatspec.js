@@ -35,15 +35,9 @@ excludes = [
   "src/strategies/vendor/",
   "/out/",
   "toy_strategies",
-  "mango",
-  "Mango",
   "CompoundModule",
-  "Tester",
-  "AaveMaker",
   "AaveV2Module",
   "AaveV3Borrower",
-  "OfferForwarder",
-  "OfferMaker",
 ];
 
 let anyFindings = false;

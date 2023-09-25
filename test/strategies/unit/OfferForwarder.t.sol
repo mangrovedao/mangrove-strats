@@ -5,7 +5,7 @@ import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {OfferLogicTest} from "mgv_strat_test/strategies/unit/OfferLogic.t.sol";
 import {
   ForwarderTester, ITesterContract as ITester
-} from "mgv_strat_src/strategies/offer_forwarder/ForwarderTester.sol";
+} from "mgv_strat_src/toy_strategies/offer_forwarder/ForwarderTester.sol";
 import {IForwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
