@@ -111,7 +111,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     iercs[0] = IERC20(weth);
     iercs[1] = IERC20(dai);
     iercs[2] = IERC20(usdc);
-    new m().innerRun({
+    new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
       iercs: iercs
     });
