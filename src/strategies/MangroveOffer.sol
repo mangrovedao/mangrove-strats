@@ -245,11 +245,11 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     data = bytes32(0);
   }
 
-  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound` the offer gives after it is reposted, while also allowing adjustment to the price.
+  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound` the offer gives after it is reposted, while also allowing adjustment to the tick.
   ///@param order is a recall of the taker order that is being treated.
   ///@return newGives the new volume of `outbound` the offer will give if fully taken.
   ///@return newTick the new tick of the reposted offer.
-  ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the price.
+  ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the tick.
   function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {
     newGives = order.offer.gives() - order.takerWants;
     newTick = order.offer.tick();
