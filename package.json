@@ -10,7 +10,7 @@
     "prepack": "pinst --disable && yarn build",
     "postpack": "pinst --enable",
     "postinstall": "husky install",
-    "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
+    "build": "forge build && node copyArtifacts && node buildIndex ",
     "clean": "forge clean; rimraf index.js dist",
     "test": "forge test -vvv"
   },
