@@ -9,8 +9,10 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Permit2Router} from "mgv_strat_src/strategies/routers/Permit2Router.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 
+///@title MangroveOrderWithPermit2 is a new contract name for a periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders, but that uses permit2 for transfer.
+///@notice reference of permit2 here: https://github.com/Uniswap/permit2
 contract MangroveOrderWithPermit2 is BaseMangroveOrder {
-  ///@notice MangroveOrderWithPermit2 is a Forwarder logic with a simple router.
+  ///@notice MangroveOrderWithPermit2 is a Forwarder logic with a permit2 router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param permit2 The Permit2 contract
   ///@param deployer The address of the admin of `this` at the end of deployment
