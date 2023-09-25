@@ -40,11 +40,22 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
     uint gives;
   }
 
+  ///@param index the index of the offer
+  ///@param tick the tick for the index (the tick price of base per quote for bids and quote per base for asks)
+  struct DistributionReservedOffer {
+    uint index;
+    Tick tick;
+  }
+
   ///@param asks the asks to populate
+  ///@param reservedAsks the reserved asks to create, but leave dead.
   ///@param bids the bids to populate
+  ///@param reservedBids the reserved bids to create, but leave dead.
   struct Distribution {
     DistributionOffer[] asks;
+    DistributionReservedOffer[] reservedAsks;
     DistributionOffer[] bids;
+    DistributionReservedOffer[] reservedBids;
   }
 
   ///@notice Publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For instance, for Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).
@@ -63,11 +74,11 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
 
     // Populate bids
     args.olKey = offerListOfOfferType(OfferType.Bid);
-    populateOfferListChunkInternal(distribution.bids, OfferType.Bid, args);
+    populateOfferListChunkInternal(distribution.bids, distribution.reservedBids, OfferType.Bid, args);
 
     // Populate asks
     args.olKey = args.olKey.flipped();
-    populateOfferListChunkInternal(distribution.asks, OfferType.Ask, args);
+    populateOfferListChunkInternal(distribution.asks, distribution.reservedAsks, OfferType.Ask, args);
 
     emit PopulateEnd();
   }
@@ -76,9 +87,12 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param offers the offers to populate
   ///@param ba whether to populate bids or asks
   ///@param args a reused offer creation args structure with defaults passed from caller.
-  function populateOfferListChunkInternal(DistributionOffer[] memory offers, OfferType ba, OfferArgs memory args)
-    internal
-  {
+  function populateOfferListChunkInternal(
+    DistributionOffer[] memory offers,
+    DistributionReservedOffer[] memory reservedOffers,
+    OfferType ba,
+    OfferArgs memory args
+  ) internal {
     Local local = MGV.local(args.olKey);
     // Minimum gives for offers (to post and retract)
     uint minGives = local.density().multiplyUp(args.gasreq + local.offer_gasbase());
@@ -87,7 +101,22 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
       uint index = offer.index;
       args.tick = offer.tick;
       args.gives = offer.gives;
-      populateIndex(ba, offerIdOfIndex(ba, index), index, args, minGives);
+      if (args.gives > 0) {
+        populateIndex(ba, offerIdOfIndex(ba, index), index, args);
+      } else {
+        // * `gives == 0` may happen from populate in case of re-population where some offers are then retracted by setting gives to 0.
+        // set args.gives to minGives to be above density requirement - reserveIndex will make sure to retract it after update/create.
+        args.gives = minGives;
+        reserveIndex(ba, offerIdOfIndex(ba, index), index, args);
+      }
+    }
+    // set args.gives to minGives to be above density requirement - reserveIndex will make sure to retract it after update/create.
+    args.gives = minGives;
+    for (uint i; i < reservedOffers.length; ++i) {
+      DistributionReservedOffer memory offer = reservedOffers[i];
+      uint index = offer.index;
+      args.tick = offer.tick;
+      reserveIndex(ba, offerIdOfIndex(ba, index), index, args);
     }
   }
 
@@ -95,46 +124,42 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param ba whether the offer is a bid or an ask.
   ///@param offerId the Mangrove offer id (0 for a new offer).
   ///@param index the price index.
-  ///@param args the argument of the offer. `args.gives=0` means offer will be created/updated and then retracted.
-  ///@param minGives the minimum gives to satisfy density requirement - used for creating/updating offers when args.gives=0.
-  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args, uint minGives) internal {
+  ///@param args the argument of the offer. `args.gives` must be greater than 0.
+  function populateIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args) internal {
     // if offer does not exist on mangrove yet
     if (offerId == 0) {
-      // and offer should be live
-      if (args.gives > 0) {
-        // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
-        (offerId,) = _newOffer(args);
-        setIndexMapping(ba, index, offerId);
-      } else {
-        // else offerId && gives are 0 and the offer is posted and retracted to reserve the offerId and set the price
-        // set args.gives to minGives to be above density requirement, we do it here since we use the args.gives=0 to signal a dead offer.
-        args.gives = minGives;
-        // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
-        (offerId,) = _newOffer(args);
-        // reset args.gives since args is reused
-        args.gives = 0;
-        // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
-        _retractOffer(args.olKey, offerId, false);
-        setIndexMapping(ba, index, offerId);
-      }
+      // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
+      (offerId,) = _newOffer(args);
+      setIndexMapping(ba, index, offerId);
     }
     // else offer exists
     else {
-      // but the offer should be dead since gives is 0
-      if (args.gives == 0) {
-        // * `gives == 0` may happen from populate in case of re-population where some offers are then retracted by setting gives to 0.
-        // set args.gives to minGives to be above density requirement, we do it here since we use the args.gives=0 to signal a dead offer.
-        args.gives = minGives;
-        // Update offer to set correct price, gasreq, gasprice, then retract
-        _updateOffer(args, offerId);
-        // reset args.gives since args is reused
-        args.gives = 0;
-        // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
-        _retractOffer(args.olKey, offerId, false);
-      } else {
-        // so the offer exists and it should, we simply update it with potentially new volume and price
-        _updateOffer(args, offerId);
-      }
+      // so the offer exists and it should, we simply update it with potentially new volume and price
+      _updateOffer(args, offerId);
+    }
+  }
+
+  ///@notice reserves (by either creating or updating, and then retracting) a bid/ask at a given price index.
+  ///@param ba whether the offer is a bid or an ask.
+  ///@param offerId the Mangrove offer id (0 for a new offer).
+  ///@param index the price index.
+  ///@param args the argument of the offer. `args.gives` must be set to at least minimum volume for success, retract will make it 0 afterwards.
+  function reserveIndex(OfferType ba, uint offerId, uint index, OfferArgs memory args) internal {
+    // if offer does not exist on mangrove yet
+    if (offerId == 0) {
+      // the offer is posted and retracted to reserve the offerId and set the price
+      // create it - we revert in case of failure (see populateChunk), so offerId is always > 0
+      (offerId,) = _newOffer(args);
+      // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
+      _retractOffer(args.olKey, offerId, false);
+      setIndexMapping(ba, index, offerId);
+    }
+    // else offer exists - but the offer should be dead since gives is 0
+    else {
+      // Update offer to set correct price, gasreq, gasprice, then retract
+      _updateOffer(args, offerId);
+      // retract, keeping provision, thus the offer is reserved and ready for use in posthook.
+      _retractOffer(args.olKey, offerId, false);
     }
   }
 

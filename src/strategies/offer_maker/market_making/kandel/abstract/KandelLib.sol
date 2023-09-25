@@ -97,16 +97,19 @@ library KandelLib {
 
     // Allocate distributions - there should be room for live bids and asks, and their duals.
     {
-      uint count = (from < bidBound ? bidBound - from : 0) + (firstAskIndex < to ? to - firstAskIndex : 0);
-      distribution.bids = new DirectWithBidsAndAsksDistribution.DistributionOffer[](count);
-      distribution.asks = new DirectWithBidsAndAsksDistribution.DistributionOffer[](count);
+      uint bids = (from < bidBound ? bidBound - from : 0);
+      uint asks = (firstAskIndex < to ? to - firstAskIndex : 0);
+      distribution.bids = new DirectWithBidsAndAsksDistribution.DistributionOffer[](bids);
+      distribution.reservedBids = new DirectWithBidsAndAsksDistribution.DistributionReservedOffer[](asks);
+      distribution.asks = new DirectWithBidsAndAsksDistribution.DistributionOffer[](asks);
+      distribution.reservedAsks = new DirectWithBidsAndAsksDistribution.DistributionReservedOffer[](bids);
     }
 
     // Start bids at from
     uint index = from;
     // Calculate the taker relative tick of the first price point
     int tick = -(Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(index));
-    // A counter for insertion in the distribution structs
+    // A counter for insertion in the distribution struct
     uint i = 0;
     for (; index < bidBound; ++index) {
       // Add live bid
@@ -119,10 +122,9 @@ library KandelLib {
 
       // Add dual (dead) ask
       uint dualIndex = transportDestination(OfferType.Ask, index, stepSize, pricePoints);
-      distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
+      distribution.reservedAsks[i] = DirectWithBidsAndAsksDistribution.DistributionReservedOffer({
         index: dualIndex,
-        tick: Tick.wrap((Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex))),
-        gives: 0
+        tick: Tick.wrap((Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex)))
       });
 
       // Next tick
@@ -130,6 +132,8 @@ library KandelLib {
       ++i;
     }
 
+    // Reset counter for insertion into the distribution struct
+    i = 0;
     // Start asks from (adjusted) firstAskIndex
     index = firstAskIndex;
     // Calculate the taker relative tick of the first ask
@@ -144,10 +148,9 @@ library KandelLib {
       });
       // Add dual (dead) bid
       uint dualIndex = transportDestination(OfferType.Bid, index, stepSize, pricePoints);
-      distribution.bids[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
+      distribution.reservedBids[i] = DirectWithBidsAndAsksDistribution.DistributionReservedOffer({
         index: dualIndex,
-        tick: Tick.wrap(-(Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex))),
-        gives: 0
+        tick: Tick.wrap(-(Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex)))
       });
 
       // Next tick

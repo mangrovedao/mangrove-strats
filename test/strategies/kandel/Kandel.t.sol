@@ -9,8 +9,10 @@ import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {Tick} from "mgv_lib/TickLib.sol";
-
+import {DirectWithBidsAndAsksDistribution} from
+  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 ///@title Tests for Kandel without a router, and router agnostic functions.
+
 contract NoRouterKandelTest is CoreKandelTest {
   function __deployKandel__(address deployer, address reserveId) internal override returns (GeometricKandel kdl_) {
     uint GASREQ = 250_000;
@@ -31,6 +33,36 @@ contract NoRouterKandelTest is CoreKandelTest {
     });
   }
 
+  function validateOffer(
+    CoreKandel.DistributionOffer memory offer,
+    uint baseQuoteTickOffset,
+    Tick baseQuoteTickIndex0,
+    OfferType ba,
+    uint gives,
+    uint dualGives
+  ) internal {
+    bool constantGives = gives != type(uint).max;
+    uint index = offer.index;
+    assertTrue(!seenOffers[ba][index], string.concat("index ", vm.toString(index), " seen twice"));
+    seenOffers[ba][index] = true;
+
+    int absoluteTickAtIndex = Tick.unwrap(baseQuoteTickIndex0) + int(index) * int(baseQuoteTickOffset);
+    if (ba == Bid) {
+      assertEq(Tick.unwrap(offer.tick), -absoluteTickAtIndex);
+    } else {
+      assertEq(Tick.unwrap(offer.tick), absoluteTickAtIndex);
+    }
+    // can be a dual
+    if (offer.gives > 0) {
+      if (constantGives) {
+        assertEq(offer.gives, gives, "givesDist should be constant");
+      } else {
+        uint wants = offer.tick.inboundFromOutbound(offer.gives);
+        assertApproxEqRel(wants, dualGives, 1e10, "wants should be approximately constant");
+      }
+    }
+  }
+
   function validateDistribution(
     CoreKandel.DistributionOffer[] memory distributionOffers,
     uint baseQuoteTickOffset,
@@ -38,31 +70,31 @@ contract NoRouterKandelTest is CoreKandelTest {
     OfferType ba,
     uint gives,
     uint dualGives
-  ) internal returns (uint zeroes) {
-    bool constantGives = gives != type(uint).max;
+  ) internal {
     for (uint i = 0; i < distributionOffers.length; ++i) {
       CoreKandel.DistributionOffer memory offer = distributionOffers[i];
-      uint index = offer.index;
-      assertTrue(!seenOffers[ba][index], string.concat("index ", vm.toString(index), " seen twice"));
-      seenOffers[ba][index] = true;
 
-      int absoluteTickAtIndex = Tick.unwrap(baseQuoteTickIndex0) + int(index) * int(baseQuoteTickOffset);
-      if (ba == Bid) {
-        assertEq(Tick.unwrap(offer.tick), -absoluteTickAtIndex);
-      } else {
-        assertEq(Tick.unwrap(offer.tick), absoluteTickAtIndex);
-      }
-      // can be a dual
-      if (offer.gives > 0) {
-        if (constantGives) {
-          assertEq(offer.gives, gives, "givesDist should be constant");
-        } else {
-          uint wants = offer.tick.inboundFromOutbound(offer.gives);
-          assertApproxEqRel(wants, dualGives, 1e10, "wants should be approximately constant");
-        }
-      } else {
-        zeroes++;
-      }
+      validateOffer(offer, baseQuoteTickOffset, baseQuoteTickIndex0, ba, gives, dualGives);
+    }
+  }
+
+  function validateReservedDistribution(
+    CoreKandel.DistributionReservedOffer[] memory distributionOffers,
+    uint baseQuoteTickOffset,
+    Tick baseQuoteTickIndex0,
+    OfferType ba,
+    uint gives,
+    uint dualGives
+  ) internal {
+    for (uint i = 0; i < distributionOffers.length; ++i) {
+      CoreKandel.DistributionReservedOffer memory reservedOffer = distributionOffers[i];
+      CoreKandel.DistributionOffer memory offer = DirectWithBidsAndAsksDistribution.DistributionOffer({
+        index: reservedOffer.index,
+        tick: reservedOffer.tick,
+        gives: 0
+      });
+
+      validateOffer(offer, baseQuoteTickOffset, baseQuoteTickIndex0, ba, gives, dualGives);
     }
   }
 
@@ -158,10 +190,12 @@ contract NoRouterKandelTest is CoreKandelTest {
     }
 
     uint totalIndices = 0;
-    uint totalZeros = 0;
+    uint totalReserved = 0;
     for (uint i = 0; i < distribution.length; i++) {
-      totalIndices += distribution[i].bids.length + distribution[i].asks.length;
-      totalZeros += validateDistribution(
+      totalIndices += distribution[i].bids.length + distribution[i].asks.length + distribution[i].reservedBids.length
+        + distribution[i].reservedAsks.length;
+      totalReserved += distribution[i].reservedBids.length + distribution[i].reservedAsks.length;
+      validateDistribution(
         distribution[i].bids,
         args.baseQuoteTickOffset,
         args.baseQuoteTickIndex0,
@@ -169,8 +203,24 @@ contract NoRouterKandelTest is CoreKandelTest {
         args.bidGives,
         args.askGives
       );
-      totalZeros += validateDistribution(
+      validateReservedDistribution(
+        distribution[i].reservedBids,
+        args.baseQuoteTickOffset,
+        args.baseQuoteTickIndex0,
+        OfferType.Bid,
+        args.bidGives,
+        args.askGives
+      );
+      validateDistribution(
         distribution[i].asks,
+        args.baseQuoteTickOffset,
+        args.baseQuoteTickIndex0,
+        OfferType.Ask,
+        args.askGives,
+        args.bidGives
+      );
+      validateReservedDistribution(
+        distribution[i].reservedAsks,
         args.baseQuoteTickOffset,
         args.baseQuoteTickIndex0,
         OfferType.Ask,
@@ -208,7 +258,7 @@ contract NoRouterKandelTest is CoreKandelTest {
 
     assertEq(totalIndices, 2 * (args.pricePoints - args.stepSize), "an offer and its dual, except near end");
     if (args.bidGives != 0 && args.askGives != 0) {
-      assertEq(totalZeros, args.pricePoints - args.stepSize);
+      assertEq(totalReserved, args.pricePoints - args.stepSize);
     }
   }
 
