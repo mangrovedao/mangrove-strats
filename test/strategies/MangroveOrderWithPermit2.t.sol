@@ -365,7 +365,60 @@ contract MangroveWithPermit2Order_Test is StratTest, DeployPermit2, Permit2Helpe
     assertEq(detail.maker(), address(mgoWithPermit2), "Incorrect maker");
   }
 
-  function test_empty_market_order_with_permit2_approvals() public {
+  function test_empty_market_order_with_permit2_unlimitted() public {
+    uint _takerWants = 1 ether;
+    uint _takerGives = 1998 ether;
+    bool fillWants = true;
+
+    uint privKey = 0x1234;
+    address fresh_taker = freshTakerForPermit2(0, _takerGives, privKey);
+    // generate transfer permit for just in time approval
+
+    IAllowanceTransfer.PermitSingle memory permit =
+      getPermit(address(quote), uint160(_takerGives), EXPIRATION, NONCE, address(mgoWithPermit2.router()));
+
+    bytes memory signature = getPermitSignature(permit, privKey, DOMAIN_SEPARATOR);
+
+    expectFrom(address(quote));
+    emit Transfer(fresh_taker, address(mgoWithPermit2), _takerGives);
+
+    vm.prank(fresh_taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgoWithPermit2.marketOrderWithPermit(base, quote, _takerWants, _takerGives, fillWants, permit, signature);
+
+    assertEq(takerGot, 0 ether, "Incorrect taker got");
+    assertEq(takerGave, 0, "Incorrect taker gave");
+    assertEq(bounty, 0, "Offer bounty");
+    assertEq(fee, 0, "Offer fee");
+  }
+
+  function test_empty_market_order_with_permit2_already_permitted() public {
+    uint _takerWants = 1 ether;
+    uint _takerGives = 1998 ether;
+    bool fillWants = true;
+
+    uint privKey = 0x1234;
+    address fresh_taker = freshTakerForPermit2(0, _takerGives, privKey);
+    // generate transfer permit for just in time approval
+
+    address router = address(mgoWithPermit2.router());
+    vm.prank(fresh_taker);
+    permit2.approve(address(quote), router, type(uint160).max, type(uint48).max);
+
+    expectFrom(address(quote));
+    emit Transfer(fresh_taker, address(mgoWithPermit2), _takerGives);
+
+    vm.prank(fresh_taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgoWithPermit2.marketOrder(base, quote, _takerWants, _takerGives, fillWants);
+
+    assertEq(takerGot, 0 ether, "Incorrect taker got");
+    assertEq(takerGave, 0, "Incorrect taker gave");
+    assertEq(bounty, 0, "Offer bounty");
+    assertEq(fee, 0, "Offer fee");
+  }
+
+  function test_empty_market_order_with_permit2_one_time_approval() public {
     uint _takerWants = 1 ether;
     uint _takerGives = 1998 ether;
     bool fillWants = true;
