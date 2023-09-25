@@ -56,7 +56,7 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
     if (amount == 0) {
       return bytes32(0);
     }
-    if (debtBalanceOf(token, m) > 0) {
+    if (debtBalanceOf(token, m, address(this)) > 0) {
       uint repaid;
       (repaid, reason) = _repay(token, amount, address(this), noRevert);
       if (reason != bytes32(0)) {
@@ -71,7 +71,7 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@param token the address of the asset
   function flushBuffer(IERC20 token) external onlyBound {
     Memoizer memory m;
-    _toPool(token, balanceOf(token, m), m, false);
+    _toPool(token, balanceOf(token, m, address(this)), m, false);
   }
 
   ///@notice pushes each given token from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
@@ -91,13 +91,13 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
 
     bytes32 reason;
     if (address(token0) != address(0)) {
-      reason = _toPool(token0, balanceOf(token0, m0), m0, true);
+      reason = _toPool(token0, balanceOf(token0, m0, address(this)), m0, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token0), reason);
       }
     }
     if (address(token1) != address(0)) {
-      reason = _toPool(token1, balanceOf(token1, m1), m1, true);
+      reason = _toPool(token1, balanceOf(token1, m1, address(this)), m1, true);
       if (reason != bytes32(0)) {
         emit LogAaveIncident(msg.sender, address(token1), reason);
       }
@@ -123,12 +123,12 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
     Memoizer memory m;
     // invariant `localBalance === token.balanceOf(this)`
     // `missing === max(0,localBalance - amount)`
-    uint localBalance = balanceOf(token, m);
+    uint localBalance = balanceOf(token, m, address(this));
     uint missing = amount > localBalance ? amount - localBalance : 0;
     if (missing > 0) {
       // there is not enough on the router's balance to pay the taker
       // one needs to withdraw and/or borrow on the pool
-      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, missing);
+      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, address(this), missing);
       // trying to withdraw if asset is available on pool
       if (maxWithdraw > 0) {
         uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
@@ -226,10 +226,10 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   /// .creditLine is the amount of asset that can be borrowed from the pool when all `liquid` asset have been withdrawn.
   function assetBalances(IERC20 token) public view returns (AssetBalances memory bal) {
     Memoizer memory m;
-    bal.debt = debtBalanceOf(token, m);
-    bal.local = balanceOf(token, m);
-    bal.onPool = overlyingBalanceOf(token, m);
-    (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, type(uint).max);
+    bal.debt = debtBalanceOf(token, m, address(this));
+    bal.local = balanceOf(token, m, address(this));
+    bal.onPool = overlyingBalanceOf(token, m, address(this));
+    (bal.liquid, bal.creditLine) = maxGettableUnderlying(token, m, address(this), type(uint).max);
   }
 
   ///@notice view of user account data
@@ -237,14 +237,14 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@dev account liquidation is possible when `data.health < 10**18`
   function accountData() public view returns (Account memory data) {
     Memoizer memory m;
-    return userAccountData(m);
+    return userAccountData(m, address(this));
   }
 
   ///@notice returns the amount of asset that this contract has, either locally or on pool
   ///@inheritdoc AbstractRouter
   function balanceOfReserve(IERC20 token, address) public view override returns (uint) {
     Memoizer memory m;
-    return overlyingBalanceOf(token, m) + balanceOf(token, m);
+    return overlyingBalanceOf(token, m, address(this)) + balanceOf(token, m, address(this));
   }
 
   ///@notice sets user Emode

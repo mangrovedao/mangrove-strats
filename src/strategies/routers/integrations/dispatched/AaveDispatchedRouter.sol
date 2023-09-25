@@ -92,12 +92,11 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @inheritdoc	AbstractRouter
   function __pull__(IERC20 token, address reserveId, uint amount, bool) internal virtual override returns (uint) {
     Memoizer memory m;
-    setOwnerAddress(m, reserveId);
 
-    uint localBalance = balanceOf(token, m);
+    uint localBalance = balanceOf(token, m, reserveId);
     uint missing = amount > localBalance ? amount - localBalance : 0;
     if (missing > 0) {
-      (uint maxWithdraw,) = maxGettableUnderlying(token, m, missing);
+      (uint maxWithdraw,) = maxGettableUnderlying(token, m, reserveId, missing);
       uint creditLine = getBufferSize(token, reserveId);
       uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
       uint toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
@@ -130,7 +129,6 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   ///@inheritdoc AbstractRouter
   function balanceOfReserve(IERC20 token, address reserveId) public view virtual override returns (uint) {
     Memoizer memory m;
-    setOwnerAddress(m, reserveId);
-    return overlyingBalanceOf(token, m) + balanceOf(token, m);
+    return overlyingBalanceOf(token, m, reserveId) + balanceOf(token, m, reserveId);
   }
 }
