@@ -78,7 +78,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
-      //FIXME: what tick spacing?
+      //Stable/stable ticks should be as small as possible, so using tick spacing 1
       market: Market({tkn0: dai, tkn1: usdc, tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[0]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
@@ -88,19 +88,19 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      //FIXME: what tick spacing?
+    // Using 1 bps tick size like popular CEX.
       market: Market({tkn0: weth, tkn1: dai, tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[0]),
       fee: 0
     });
-    //FIXME: what tick spacing?
-    uint wethUsdcTickScale = 1;
+    // Using 1 bps tick size like popular CEX.
+    uint wethUsdcTickSpacing = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      market: Market({tkn0: weth, tkn1: usdc, tickSpacing: wethUsdcTickScale}),
+      market: Market({tkn0: weth, tkn1: usdc, tickSpacing: wethUsdcTickSpacing}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -111,7 +111,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     iercs[0] = IERC20(weth);
     iercs[1] = IERC20(dai);
     iercs[2] = IERC20(usdc);
-    new ActivateMangroveOrder().innerRun({
+    new m().innerRun({
       mgvOrder: mangroveOrder,
       iercs: iercs
     });
@@ -119,7 +119,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
     new KandelSower().innerRun({
       kandelSeeder: seeder,
-      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
+      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickSpacing),
       sharing: false,
       onAave: false,
       registerNameOnFork: false,
@@ -129,7 +129,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
     new KandelSower().innerRun({
       kandelSeeder: aaveSeeder,
-      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickScale),
+      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickSpacing),
       sharing: false,
       onAave: true,
       registerNameOnFork: false,

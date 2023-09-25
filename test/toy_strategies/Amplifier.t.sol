@@ -92,8 +92,8 @@ contract AmplifierTest is StratTest {
       base: weth,
       stable1: usdc, 
       stable2: dai,
-      tickScale1: olKey.tickSpacing,
-      tickScale2: olKeyWethDai.tickSpacing,
+      tickSpacing1: olKey.tickSpacing,
+      tickSpacing2: olKeyWethDai.tickSpacing,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
       });
 

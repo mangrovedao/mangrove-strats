@@ -29,15 +29,15 @@ contract Amplifier is Direct {
     IERC20 base,
     IERC20 stable1,
     IERC20 stable2,
-    uint tickScale1,
-    uint tickScale2,
+    uint tickSpacing1,
+    uint tickSpacing2,
     address admin
   ) Direct(mgv, NO_ROUTER, 200_000, admin) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
-    TICK_SCALE1 = tickScale1;
-    TICK_SCALE2 = tickScale2;
+    TICK_SCALE1 = tickSpacing1;
+    TICK_SCALE2 = tickSpacing2;
     BASE = base;
     AbstractRouter router_ = new SimpleRouter();
     setRouter(router_);

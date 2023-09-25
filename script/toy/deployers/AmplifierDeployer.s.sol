@@ -20,8 +20,8 @@ contract AmplifierDeployer is Deployer {
       base: IERC20(envAddressOrName("BASE", "WETH")),
       stable1: IERC20(envAddressOrName("STABLE1", "USDC")),
       stable2: IERC20(envAddressOrName("STABLE2", "DAI")),
-      tickScale1: vm.envUint("TICK_SCALE1"),
-      tickScale2: vm.envUint("TICK_SCALE2")
+      tickSpacing1: vm.envUint("TICK_SCALE1"),
+      tickSpacing2: vm.envUint("TICK_SCALE2")
     });
   }
 
@@ -30,8 +30,8 @@ contract AmplifierDeployer is Deployer {
    * @param base address of the base on Amplifier after deployment
    * @param stable1 address of the first stable coin on Amplifier after deployment
    * @param stable2 address of the second stable coin on Amplifier after deployment
-   * @param tickScale1 tick spacing for the first stable coin's market
-   * @param tickScale2 tick spacing for the second stable coin's market
+   * @param tickSpacing1 tick spacing for the first stable coin's market
+   * @param tickSpacing2 tick spacing for the second stable coin's market
    */
   function innerRun(
     IMangrove mgv,
@@ -39,8 +39,8 @@ contract AmplifierDeployer is Deployer {
     IERC20 base,
     IERC20 stable1,
     IERC20 stable2,
-    uint tickScale1,
-    uint tickScale2
+    uint tickSpacing1,
+    uint tickSpacing2
   ) public {
     try fork.get("Amplifier") returns (address payable old_amplifier_address) {
       Amplifier old_amplifier = Amplifier(old_amplifier_address);
@@ -59,7 +59,7 @@ contract AmplifierDeployer is Deployer {
     }
     console.log("Deploying Amplifier...");
     broadcast();
-    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, tickScale1, tickScale2, admin );
+    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, tickSpacing1, tickSpacing2, admin );
     fork.set("Amplifier", address(amplifier));
     require(amplifier.MGV() == mgv, "Smoke test failed.");
     outputDeployment();

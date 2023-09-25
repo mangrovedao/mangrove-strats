@@ -1022,16 +1022,16 @@ abstract contract CoreKandelTest is KandelTest {
     assertStatus(dynamic([uint(1), 1, 1, 1, 0, 2, 2, 2, 2, 2]), initBase, initQuote);
   }
 
-  function test_tickScale100_misaligned_offset_price0() public {
+  function test_tickSpacing100_misaligned_offset_price0() public {
     // A low misalignment gets rounded away so test is simple, larger offsets from tick spacing would yield different results.
-    test_tickScale100_aligned_offset_price0(1);
+    test_tickSpacing100_aligned_offset_price0(1);
   }
 
-  function test_tickScale100_aligned_offset_price0() public {
-    test_tickScale100_aligned_offset_price0(0);
+  function test_tickSpacing100_aligned_offset_price0() public {
+    test_tickSpacing100_aligned_offset_price0(0);
   }
 
-  function test_tickScale100_aligned_offset_price0(uint offset) internal {
+  function test_tickSpacing100_aligned_offset_price0(uint offset) internal {
     options.defaultTickSpacing = 100;
     tickOffset = 700 + offset;
     initBase = Tick.wrap(1000 + int(offset)).outboundFromInbound(initQuote);

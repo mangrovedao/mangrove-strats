@@ -25,15 +25,15 @@ contract AmplifierForwarder is Forwarder {
     IERC20 base,
     IERC20 stable1,
     IERC20 stable2,
-    uint tickScale1,
-    uint tickScale2,
+    uint tickSpacing1,
+    uint tickSpacing2,
     address deployer,
     uint gasreq
   ) Forwarder(mgv, new SimpleRouter(), gasreq) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
-    TICK_SCALE1 = tickScale1;
-    TICK_SCALE2 = tickScale2;
+    TICK_SCALE1 = tickSpacing1;
+    TICK_SCALE2 = tickSpacing2;
     STABLE2 = stable2;
     BASE = base;
 
