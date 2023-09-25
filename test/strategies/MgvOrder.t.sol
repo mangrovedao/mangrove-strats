@@ -538,16 +538,18 @@ contract MangroveOrder_Test is StratTest {
   function test_partial_fill_sell_with_resting_order_is_below_density() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
     sellOrder.restingOrder = true;
-    sellOrder.fillVolume = 1 ether;
+    sellOrder.fillVolume = 1 ether; // the amount that will be filled, used to calulate expected taker result
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
-      takerGot: reader.minusFee(lo, takerWants(sellOrder)) + 1,
-      takerGave: 1 ether - 1,
+      takerGot: reader.minusFee(lo, takerWants(sellOrder)) + 2,
+      takerGave: 1 ether,
       bounty: 0,
       fee: takerWants(sellOrder) / 2 - reader.minusFee(lo, takerWants(sellOrder) / 2) - 1,
       offerId: 5,
       offerWriteData: "mgv/writeOffer/density/tooLow"
     });
+
+    sellOrder.fillVolume = 1 ether + 1; // ask for 1 more, so the density is too low to repost
 
     address fresh_taker = freshTaker(takerGives(sellOrder), 0);
     uint nativeBalBefore = fresh_taker.balance;
