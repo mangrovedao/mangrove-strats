@@ -14,8 +14,12 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   bytes32 internal immutable STORAGE_KEY;
 
   /// @notice The maximum credit line to be redeemed
+  /// * Credit line is the maximum amount that can be borrowed to stay above the liquidation threshold (health factor > 1)
+  /// * If the protocol can redeem a maximum of 100 tokens and the credit line is 50, then the protocol can redeem 50 tokens
+  /// to keep a 50 tokens buffer above the liquidation threshold
   /// * 100 means we can redeem or borrow 100% of the credit line
   /// * 0 means we can't redeem or borrow anything
+  /// * If the user has no debt, this number will be ignored
   uint internal immutable MAX_CREDIT_LINE = 100;
 
   /// @notice Data for a reserve <=> token pair
@@ -65,7 +69,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @param token The token to get the buffer size for
   /// @param reserveId The reserveId to get the buffer size for
   /// @return credit_line max credit line that can be used by this contract
-  function getBufferSize(IERC20 token, address reserveId) internal view returns (uint credit_line) {
+  function creditLineOf(IERC20 token, address reserveId) internal view returns (uint credit_line) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
     credit_line = MAX_CREDIT_LINE;
     uint decrease = s.token_reserve_data[reserveId][token].credit_line_decrease;
@@ -89,6 +93,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   }
 
   /// @notice pulls amount of underlying that can be redeemed
+  /// @dev if the user has no debt, the max credit line will be ignored
   /// @inheritdoc	AbstractRouter
   function __pull__(IERC20 token, address reserveId, uint amount, bool) internal virtual override returns (uint) {
     Memoizer memory m;
@@ -97,9 +102,15 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     uint missing = amount > localBalance ? amount - localBalance : 0;
     if (missing > 0) {
       (uint maxWithdraw,) = maxGettableUnderlying(token, m, reserveId, missing);
-      uint creditLine = getBufferSize(token, reserveId);
-      uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
-      uint toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
+      Account memory account = userAccountData(m, reserveId);
+      uint toWithdraw;
+      if (account.debt > 0) {
+        uint creditLine = creditLineOf(token, reserveId);
+        uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
+        toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
+      } else {
+        toWithdraw = amount;
+      }
       require(
         TransferLib.transferTokenFrom(overlying(token, m), reserveId, address(this), toWithdraw),
         "AaveDispatchedRouter/pullFailed"
