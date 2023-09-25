@@ -58,11 +58,11 @@ contract KandelSeederDeployer is Deployer {
     fork.set("AavePooledRouter", address(aaveSeeder.AAVE_ROUTER()));
 
     console.log("Deploying Kandel instances for code verification...");
-    address weth = fork.get("WETH");
-    address dai = fork.get("DAI");
+    IERC20 weth = IERC20(fork.get("WETH"));
+    IERC20 dai = IERC20(fork.get("DAI"));
     //FIXME: what tick spacing? Why do we assume an open market?
     uint tickSpacing = 1;
-    OLKey memory olKeyBaseQuote = OLKey(weth, dai, tickSpacing);
+    OLKey memory olKeyBaseQuote = OLKey(address(weth), address(dai), tickSpacing);
 
     prettyLog("Deploying Kandel instance...");
     broadcast();

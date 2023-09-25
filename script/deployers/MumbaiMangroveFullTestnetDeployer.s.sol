@@ -64,11 +64,11 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
 
     // Activate markets
-    address dai = fork.get("DAI");
-    address usdc = fork.get("USDC");
-    address weth = fork.get("WETH");
+    IERC20 dai = IERC20(fork.get("DAI"));
+    IERC20 usdc = IERC20(fork.get("USDC"));
+    IERC20 weth = IERC20(fork.get("WETH"));
 
-    uint[] memory prices = priceOracle.getAssetsPrices(dynamic([dai, usdc, weth]));
+    uint[] memory prices = priceOracle.getAssetsPrices(dynamic([address(dai), address(usdc), address(weth)]));
     maticPrice = priceOracle.getAssetPrice(fork.get("WMATIC"));
 
     // 1 token_i = (prices[i] / 10**8) USD
@@ -79,7 +79,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
       //Stable/stable ticks should be as small as possible, so using tick spacing 1
-      market: Market({tkn0: dai, tkn1: usdc, tickSpacing: 1}),
+      market: Market({tkn0: address(dai), tkn1: address(usdc), tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[0]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -89,7 +89,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       gaspriceOverride: 140,
       reader: reader,
     // Using 1 bps tick size like popular CEX.
-      market: Market({tkn0: weth, tkn1: dai, tickSpacing: 1}),
+      market: Market({tkn0: address(weth), tkn1: address(dai), tickSpacing: 1}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[0]),
       fee: 0
@@ -100,7 +100,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      market: Market({tkn0: weth, tkn1: usdc, tickSpacing: wethUsdcTickSpacing}),
+      market: Market({tkn0: address(weth), tkn1: address(usdc), tickSpacing: wethUsdcTickSpacing}),
       tkn1_in_gwei: toGweiOfMatic(prices[2]),
       tkn2_in_gwei: toGweiOfMatic(prices[1]),
       fee: 0
@@ -108,9 +108,9 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Activate MangroveOrder on markets
     IERC20[] memory iercs = new IERC20[](3);
-    iercs[0] = IERC20(weth);
-    iercs[1] = IERC20(dai);
-    iercs[2] = IERC20(usdc);
+    iercs[0] = weth;
+    iercs[1] = dai;
+    iercs[2] = usdc;
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
       iercs: iercs
@@ -119,7 +119,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
     new KandelSower().innerRun({
       kandelSeeder: seeder,
-      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickSpacing),
+      olKeyBaseQuote: OLKey(address(weth), address(usdc), wethUsdcTickSpacing),
       sharing: false,
       onAave: false,
       registerNameOnFork: false,
@@ -129,7 +129,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
     new KandelSower().innerRun({
       kandelSeeder: aaveSeeder,
-      olKeyBaseQuote: OLKey(weth, usdc, wethUsdcTickSpacing),
+      olKeyBaseQuote: OLKey(address(weth), address(usdc), wethUsdcTickSpacing),
       sharing: false,
       onAave: true,
       registerNameOnFork: false,
