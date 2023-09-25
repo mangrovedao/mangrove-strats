@@ -1,11 +1,17 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "./KandelTest.t.sol";
+import {KandelTest} from "./KandelTest.t.sol";
+import {Local, OLKey, Offer, MgvLib} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {MAX_TICK} from "mgv_lib/Constants.sol";
+import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
+import {console} from "forge-std/Test.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;
@@ -59,7 +65,7 @@ abstract contract CoreKandelGasTest is KandelTest {
   }
 
   function test_log_mgv_config() public view {
-    (, MgvStructs.LocalPacked local) = mgv.config(olKey);
+    (, Local local) = mgv.config(olKey);
     console.log("offer_gasbase", local.offer_gasbase());
     console.log("kandel gasreq", kdl.offerGasreq());
   }
@@ -113,7 +119,7 @@ abstract contract CoreKandelGasTest is KandelTest {
   function test_offerLogic_partialFill_cost() public {
     // take Ask #5
     uint gasreq = kdl.offerGasreq();
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 6);
+    Offer ask = kdl.getOffer(Ask, 6);
     // making quote hot
     vm.prank($(mgv));
     base.transferFrom(address(this), $(mgv), 1);

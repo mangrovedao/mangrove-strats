@@ -7,7 +7,7 @@ import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global, Local} from "mgv_src/MgvLib.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
@@ -224,7 +224,7 @@ contract AaveKandelTest is CoreKandelTest {
     GeometricKandel kdl_ = __deployKandel__(maker, maker);
     assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
 
-    (, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (, Offer bestAsk) = getBestOffers();
     populateSingle({
       kandel: kdl_,
       index: 4,
@@ -320,7 +320,7 @@ contract AaveKandelTest is CoreKandelTest {
         toFixed(address(this).balance - nativeBal, 18),
         gas
       );
-      (MgvStructs.GlobalPacked global,) = mgv.config(OLKey(address(0), address(0), 0));
+      (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
       uint attacker_cost = gas * global.gasprice() * 10 ** 9;
       console.log("Gas cost of the attack: %s native tokens", toFixed(attacker_cost, 18));
     } catch Error(string memory reason) {
@@ -354,7 +354,7 @@ contract AaveKandelTest is CoreKandelTest {
       require(takerGave == 0 && bounty > 0, "Attack failed");
       gas = gas - gasleft() + 400_000; // adding flashloan cost + repay of borrow
       console.log("Attack successful, %s collected for an overhead of %s gas units", toFixed(bounty, 18), gas);
-      (MgvStructs.GlobalPacked global, MgvStructs.LocalPacked local) = mgv.config(olKey);
+      (Global global, Local local) = mgv.config(olKey);
       console.log("Gasbase is ", local.offer_gasbase());
       uint attacker_cost = gas * global.gasprice() * 10 ** 9;
       console.log(

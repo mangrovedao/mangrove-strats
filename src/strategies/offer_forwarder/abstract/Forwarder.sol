@@ -5,7 +5,7 @@ import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {IForwarder} from "mgv_strat_src/strategies/interfaces/IForwarder.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 
 ///@title Class for maker contracts that forward offer makers instructions to Mangrove in a permissionless fashion.
@@ -115,7 +115,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// @return leftover the sub amount of `provision` that is not used to provision the offer.
   /// @dev the returned gasprice is slightly lower than the real gasprice that the provision can cover because of the rounding error due to division
   function deriveAndCheckGasprice(OfferArgs memory args) internal view returns (uint gasprice, uint leftover) {
-    (MgvStructs.GlobalPacked global, MgvStructs.LocalPacked local) = MGV.config(args.olKey);
+    (Global global, Local local) = MGV.config(args.olKey);
     // computing max `gasprice` such that `offData.fund` covers `offData.gasreq` at `gasprice`
     (gasprice, leftover) = deriveGasprice(args.gasreq, args.fund, local.offer_gasbase());
     // mangrove will take max(`mko.gasprice`, `global.gasprice`)
@@ -167,9 +167,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@return reason is either REPOST_SUCCESS or Mangrove's revert reason if update was rejected by Mangrove and `args.noRevert` is `true`.
   struct UpdateOfferVars {
     uint leftover;
-    MgvStructs.GlobalPacked global;
-    MgvStructs.LocalPacked local;
-    MgvStructs.OfferDetailPacked offerDetail;
+    Global global;
+    Local local;
+    OfferDetail offerDetail;
   }
 
   ///@inheritdoc MangroveOffer

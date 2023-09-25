@@ -6,7 +6,7 @@ import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Local, Offer} from "mgv_src/MgvLib.sol";
 import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
@@ -79,7 +79,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   function populateOfferListChunkInternal(DistributionOffer[] memory offers, OfferType ba, OfferArgs memory args)
     internal
   {
-    MgvStructs.LocalPacked local = MGV.local(args.olKey);
+    Local local = MGV.local(args.olKey);
     // Minimum gives for offers (to post and retract)
     uint minGives = local.density().multiplyUp(args.gasreq + local.offer_gasbase());
     for (uint i; i < offers.length; ++i) {
@@ -168,7 +168,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param ba the offer type.
   ///@param index the index.
   ///@return offer the Mangrove offer.
-  function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
+  function getOffer(OfferType ba, uint index) public view returns (Offer offer) {
     uint offerId = offerIdOfIndex(ba, index);
     OLKey memory olKey = offerListOfOfferType(ba);
     offer = MGV.offers(olKey, offerId);
@@ -180,7 +180,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   /// @dev function is very gas costly, for external calls only.
   function offeredVolume(OfferType ba) public view returns (uint volume) {
     for (uint index = 0; index < length; ++index) {
-      MgvStructs.OfferPacked offer = getOffer(ba, index);
+      Offer offer = getOffer(ba, index);
       volume += offer.gives();
     }
   }

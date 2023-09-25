@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs, MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global} from "mgv_src/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {
   CoreKandel, TransferLib
@@ -13,7 +13,6 @@ import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
 import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
@@ -93,7 +92,7 @@ abstract contract KandelTest is StratTest {
     TransferLib.approveToken(quote, $(mgv), type(uint).max);
 
     // deploy and activate
-    (MgvStructs.GlobalPacked global,) = mgv.config(OLKey(address(0), address(0), 0));
+    (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
     globalGasprice = global.gasprice();
     bufferedGasprice = globalGasprice * 10; // covering 10 times Mangrove's gasprice at deploy time
 
@@ -153,19 +152,19 @@ abstract contract KandelTest is StratTest {
   }
 
   function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint) {
-    (, MgvStructs.OfferPacked best) = getBestOffers();
+    (, Offer best) = getBestOffers();
     vm.prank(taker_);
     return mgv.marketOrderByTick(olKey, best.tick(), best.gives() >= amount ? amount : best.gives(), true);
   }
 
   function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
-    (MgvStructs.OfferPacked best,) = getBestOffers();
+    (Offer best,) = getBestOffers();
     vm.prank(taker_);
     return mgv.marketOrderByTick(lo, best.tick(), best.wants() >= amount ? amount : best.wants(), false);
   }
 
   function cleanBuyBestAs(address taker_, uint amount) public returns (uint, uint) {
-    (, MgvStructs.OfferPacked best) = getBestOffers();
+    (, Offer best) = getBestOffers();
     uint offerId = mgv.best(olKey);
     vm.prank(taker_);
     return
@@ -173,7 +172,7 @@ abstract contract KandelTest is StratTest {
   }
 
   function cleanSellBestAs(address taker_, uint amount) internal returns (uint, uint) {
-    (MgvStructs.OfferPacked best,) = getBestOffers();
+    (Offer best,) = getBestOffers();
     uint offerId = mgv.best(lo);
     vm.prank(taker_);
     return
@@ -197,8 +196,8 @@ abstract contract KandelTest is StratTest {
   }
 
   struct IndexStatus {
-    MgvStructs.OfferPacked bid;
-    MgvStructs.OfferPacked ask;
+    Offer bid;
+    Offer ask;
     OfferStatus status;
   }
 
@@ -227,8 +226,8 @@ abstract contract KandelTest is StratTest {
 
   ///@notice asserts status of index and verifies price based on geometric progressing quote.
   function assertStatus(uint index, OfferStatus status, uint q, uint b) internal {
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index);
+    Offer bid = kdl.getOffer(Bid, index);
+    Offer ask = kdl.getOffer(Ask, index);
     bool bidLive = bid.isLive();
     bool askLive = ask.isLive();
 
@@ -426,7 +425,7 @@ abstract contract KandelTest is StratTest {
     }
   }
 
-  function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {
+  function getBestOffers() internal view returns (Offer bestBid, Offer bestAsk) {
     uint bestAskId = mgv.best(olKey);
     uint bestBidId = mgv.best(lo);
     bestBid = mgv.offers(lo, bestBidId);
@@ -434,7 +433,7 @@ abstract contract KandelTest is StratTest {
   }
 
   function getMidPrice() internal view returns (uint midWants, uint midGives) {
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
 
     midWants = bestBid.wants() * bestAsk.wants() + bestBid.gives() * bestAsk.gives();
     midGives = bestAsk.gives() * bestBid.wants() * 2;
@@ -467,7 +466,7 @@ abstract contract KandelTest is StratTest {
     // find missing offers
     uint numDead = 0;
     for (uint i = 0; i < params.pricePoints; i++) {
-      MgvStructs.OfferPacked offer = kdl.getOffer(i < firstAskIndex ? Bid : Ask, i);
+      Offer offer = kdl.getOffer(i < firstAskIndex ? Bid : Ask, i);
       if (!offer.isLive()) {
         bool unexpectedDead = false;
         if (i < firstAskIndex) {

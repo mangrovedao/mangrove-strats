@@ -7,7 +7,7 @@ import {
   ForwarderTester, ITesterContract as ITester
 } from "mgv_strat_src/strategies/offer_forwarder/ForwarderTester.sol";
 import {IForwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/MgvLib.sol";
 import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
 import "mgv_lib/Debug.sol";
 
@@ -161,7 +161,7 @@ contract OfferForwarderTest is OfferLogicTest {
   }
 
   function test_NewOwnedOffer_logging() public {
-    (, MgvStructs.LocalPacked local) = mgv.config(olKey);
+    (, Local local) = mgv.config(olKey);
     uint next_id = local.last() + 1;
     vm.expectEmit(true, true, true, false, address(forwarder));
     emit NewOwnedOffer(olKey.hash(), next_id, owner);
@@ -198,7 +198,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, offerId);
+    OfferDetail detail = mgv.offerDetails(olKey, offerId);
     uint old_gasprice = detail.gasprice();
 
     vm.startPrank(owner);
@@ -223,7 +223,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, offerId);
+    OfferDetail detail = mgv.offerDetails(olKey, offerId);
     uint old_gasprice = detail.gasprice();
     vm.startPrank(owner);
     makerContract.updateOfferFromVolume{value: 0.1 ether}({

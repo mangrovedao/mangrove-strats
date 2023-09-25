@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "mgv_src/IMangrove.sol";
 import "./MangoStorage.sol";
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/MgvLib.sol";
 
 //import "../routers/AbstractRouter.sol";
 
@@ -539,7 +539,7 @@ contract MangoImplementation {
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     // outbound : QUOTE, inbound: BASE
-    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[index]);
+    Offer offer = MGV.offers(OLKey(address(QUOTE), address(BASE), TICK_SPACING), mStr.bids[index]);
 
     uint position = position_of_index(index);
 
@@ -564,7 +564,7 @@ contract MangoImplementation {
   ) internal {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     // outbound : BASE, inbound: QUOTE
-    MgvStructs.OfferPacked offer = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[index]);
+    Offer offer = MGV.offers(OLKey(address(BASE), address(QUOTE), TICK_SPACING), mStr.asks[index]);
     uint position = position_of_index(index);
 
     uint new_gives = reset ? amount : (amount + offer.gives() + mStr.pending_base); // in BASE

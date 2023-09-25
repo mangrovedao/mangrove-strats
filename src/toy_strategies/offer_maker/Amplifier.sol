@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {MgvLib, Offer, OfferDetail} from "mgv_src/MgvLib.sol";
 import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract Amplifier is Direct {
@@ -132,8 +132,8 @@ contract Amplifier is Direct {
       : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SCALE1), offerId1);
     if (repost_status == REPOST_SUCCESS) {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
-      MgvStructs.OfferPacked alt_offer = MGV.offers(altOlKey, alt_offerId);
-      MgvStructs.OfferDetailPacked alt_detail = MGV.offerDetails(altOlKey, alt_offerId);
+      Offer alt_offer = MGV.offers(altOlKey, alt_offerId);
+      OfferDetail alt_detail = MGV.offerDetails(altOlKey, alt_offerId);
 
       uint old_alt_wants = alt_offer.wants();
       // old_alt_gives is also old_gives

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
@@ -202,7 +202,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     dualOfferId = offerIdOfIndex(baDual, dualIndex);
     args.olKey = offerListOfOfferType(baDual);
-    MgvStructs.OfferPacked dualOffer = MGV.offers(args.olKey, dualOfferId);
+    Offer dualOffer = MGV.offers(args.olKey, dualOfferId);
 
     // gives from order.takerGives:96 dualOffer.gives():96, so args.gives:97
     args.gives = order.takerGives + dualOffer.gives();

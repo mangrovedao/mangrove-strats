@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {GeometricKandel} from "./GeometricKandel.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey, Local} from "mgv_src/MgvLib.sol";
 
 ///@title Abstract Kandel strat deployer.
 ///@notice This seeder deploys Kandel strats on demand and binds them to an AAVE router if needed.
@@ -32,8 +32,8 @@ abstract contract AbstractKandelSeeder {
     // owner MUST not be freely chosen (it is immutable in Kandel) otherwise one would allow the newly deployed strat to pull from another's strat reserve
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
 
-    (, MgvStructs.LocalPacked local) = MGV.config(olKeyBaseQuote);
-    (, MgvStructs.LocalPacked local_) = MGV.config(olKeyBaseQuote.flipped());
+    (, Local local) = MGV.config(olKeyBaseQuote);
+    (, Local local_) = MGV.config(olKeyBaseQuote.flipped());
 
     require(local.active() && local_.active(), "KandelSeeder/inactiveMarket");
 

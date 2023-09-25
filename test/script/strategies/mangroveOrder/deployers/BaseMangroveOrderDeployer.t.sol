@@ -6,7 +6,7 @@ import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol
 
 import {Test2, Test} from "mgv_lib/Test2.sol";
 
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Local} from "mgv_src/MgvLib.sol";
 import {Mangrove} from "mgv_src/Mangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {MgvOracle} from "mgv_src/periphery/MgvOracle.sol";

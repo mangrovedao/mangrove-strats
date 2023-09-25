@@ -9,7 +9,7 @@ import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/MgvLib.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import "mgv_lib/Debug.sol";
@@ -37,7 +37,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_bid_complete_fill(uint index) internal {
     vm.prank(maker);
 
-    MgvStructs.OfferPacked oldAsk = kdl.getOffer(Ask, index + STEP_SIZE);
+    Offer oldAsk = kdl.getOffer(Ask, index + STEP_SIZE);
     int oldPending = kdl.pending(Ask);
 
     (uint takerGot, uint takerGave,, uint fee) = sellToBestAs(taker, 1000 ether);
@@ -48,7 +48,7 @@ abstract contract CoreKandelTest is KandelTest {
       expectedStatus[i] = i < index ? 1 : i == index ? 0 : 2;
     }
     assertStatus(expectedStatus);
-    MgvStructs.OfferPacked newAsk = kdl.getOffer(Ask, index + STEP_SIZE);
+    Offer newAsk = kdl.getOffer(Ask, index + STEP_SIZE);
     assertTrue(newAsk.gives() <= takerGave + oldAsk.gives(), "Cannot give more than what was received");
     int pendingDelta = kdl.pending(Ask) - oldPending;
     // Allow a discrepancy of 1 for aave router shares
@@ -68,7 +68,7 @@ abstract contract CoreKandelTest is KandelTest {
   }
 
   function test_ask_complete_fill(uint index) internal {
-    MgvStructs.OfferPacked oldBid = kdl.getOffer(Bid, index - STEP_SIZE);
+    Offer oldBid = kdl.getOffer(Bid, index - STEP_SIZE);
     int oldPending = kdl.pending(Bid);
 
     (uint takerGot, uint takerGave,, uint fee) = buyFromBestAs(taker, 1000 ether);
@@ -79,7 +79,7 @@ abstract contract CoreKandelTest is KandelTest {
       expectedStatus[i] = i < index ? 1 : i == index ? 0 : 2;
     }
     assertStatus(expectedStatus);
-    MgvStructs.OfferPacked newBid = kdl.getOffer(Bid, index - STEP_SIZE);
+    Offer newBid = kdl.getOffer(Bid, index - STEP_SIZE);
     assertTrue(newBid.gives() <= takerGave + oldBid.gives(), "Cannot give more than what was received");
     int pendingDelta = kdl.pending(Bid) - oldPending;
     assertApproxEqAbs(
@@ -427,7 +427,7 @@ abstract contract CoreKandelTest is KandelTest {
   function test_heal_someFailedOffers_reposts(OfferType ba, uint failures, uint[] memory expectedMidStatus) internal {
     // Arrange
     (uint midWants, uint midGives) = getMidPrice();
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
     uint densityMidBid = bestBid.gives();
     uint densityMidAsk = bestAsk.gives();
     IERC20 outbound = ba == OfferType.Ask ? base : quote;
@@ -494,23 +494,23 @@ abstract contract CoreKandelTest is KandelTest {
     uint index = 3;
     assertStatus(index, OfferStatus.Bid);
     uint offerId = kdl.offerIdOfIndex(Bid, index);
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
+    Offer bid = kdl.getOffer(Bid, index);
 
     populateSingle(kdl, index, bid.wants() * 2, bid.gives() * 2, 5, "");
 
     uint offerIdPost = kdl.offerIdOfIndex(Bid, index);
     assertEq(offerIdPost, offerId, "offerId should be unchanged (offer updated)");
-    MgvStructs.OfferPacked bidPost = kdl.getOffer(Bid, index);
+    Offer bidPost = kdl.getOffer(Bid, index);
     assertEq(bidPost.gives(), bid.gives() * 2, "gives should be changed");
   }
 
   function test_step_higher_than_kandel_size_jumps_to_last() public {
     uint n = getParams(kdl).pricePoints;
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, n - 1);
+    Offer ask = kdl.getOffer(Ask, n - 1);
     // placing a bid on the last position
     // dual of this bid will try to place an ask at n+1 and should place it at n-1 instead of n
     populateSingle(kdl, n - 1, ask.gives(), ask.wants(), n, "");
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, n - 1);
+    Offer bid = kdl.getOffer(Bid, n - 1);
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: bid.gives(),
@@ -523,7 +523,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = bid;
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
-    MgvStructs.OfferPacked ask_ = kdl.getOffer(Ask, n - 1);
+    Offer ask_ = kdl.getOffer(Ask, n - 1);
 
     assertTrue(ask.gives() < ask_.gives(), "Ask was not updated");
     assertApproxEqRel(ask.gives() * ask_.wants(), ask.wants() * ask_.gives(), 1e14, "Incorrect price");
@@ -570,8 +570,8 @@ abstract contract CoreKandelTest is KandelTest {
     // dual of this ask will try to place a bid at -1 and should place it at 0
     populateSingle(kdl, 1, 0.1 ether, 100 * 10 ** 6, 0, "");
 
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 0);
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, 1);
+    Offer bid = kdl.getOffer(Bid, 0);
+    Offer ask = kdl.getOffer(Ask, 1);
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillBuyOrder({
       takerWants: ask.gives(),
@@ -584,7 +584,7 @@ abstract contract CoreKandelTest is KandelTest {
     order.offer = ask;
     vm.prank($(mgv));
     kdl.makerPosthook(order, result);
-    MgvStructs.OfferPacked bid_ = kdl.getOffer(Bid, 0);
+    Offer bid_ = kdl.getOffer(Bid, 0);
     assertTrue(bid.gives() < bid_.gives(), "Bid was not updated");
   }
 
@@ -596,7 +596,7 @@ abstract contract CoreKandelTest is KandelTest {
     uint offerId = kdl.offerIdOfIndex(Bid, 4);
     uint offerId_ = kdl.offerIdOfIndex(Ask, 5);
 
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, 4);
+    Offer bid = kdl.getOffer(Bid, 4);
 
     (MgvLib.SingleOrder memory order, MgvLib.OrderResult memory result) = mockPartialFillSellOrder({
       takerWants: bid.gives(),
@@ -618,8 +618,8 @@ abstract contract CoreKandelTest is KandelTest {
   function test_posthook_density_too_low_still_posts_to_dual() public {
     uint index = 3;
 
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP_SIZE);
+    Offer bid = kdl.getOffer(Bid, index);
+    Offer ask = kdl.getOffer(Ask, index + STEP_SIZE);
 
     // Take almost all - offer will not be reposted due to density too low
     uint amount = bid.wants() - 1;
@@ -627,7 +627,7 @@ abstract contract CoreKandelTest is KandelTest {
     mgv.marketOrderByVolume(lo, 0, amount, false);
 
     // verify dual is increased
-    MgvStructs.OfferPacked askPost = kdl.getOffer(Ask, index + STEP_SIZE);
+    Offer askPost = kdl.getOffer(Ask, index + STEP_SIZE);
     assertGt(askPost.gives(), ask.gives(), "Dual should offer more even though bid failed to post");
   }
 
@@ -637,8 +637,8 @@ abstract contract CoreKandelTest is KandelTest {
 
     uint index = 4;
 
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index + STEP_SIZE);
+    Offer bid = kdl.getOffer(Bid, index);
+    Offer ask = kdl.getOffer(Ask, index + STEP_SIZE);
 
     assertTrue(bid.isLive(), "bid should be live");
     assertTrue(!ask.isLive(), "ask should not be live");
@@ -939,7 +939,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.makerPosthook(order, result);
     uint posthookCost = gasTemp - gasleft();
     // Assert
-    (, MgvStructs.LocalPacked local) = mgv.config(olKey);
+    (, Local local) = mgv.config(olKey);
     console.log("makerExecute: %d, posthook: %d, deltaGasForNew", makerExecuteCost, posthookCost, deltaGasForNew);
     console.log(
       "Strat gasreq (%d), mockup (%d)",
@@ -1096,7 +1096,7 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(maker);
     kdl.populate(distribution, params, 0, 0);
 
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
 
     if (ba == Bid) {
       assertEq(Tick.unwrap(bestBid.tick()), min ? MAX_TICK : MIN_TICK, "wrong bid price");
@@ -1155,7 +1155,7 @@ abstract contract CoreKandelTest is KandelTest {
       mgv.marketOrderByTick(ba == Bid ? lo : olKey, Tick.wrap(MAX_TICK), MAX_SAFE_VOLUME, false);
     assertGt(takerGot + takerGave, 0, "offer should succeed");
 
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
 
     if (ba == Bid) {
       assertEq(Tick.unwrap(bestBid.tick()), 0, "wrong bid price");
@@ -1235,7 +1235,7 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(maker);
     kdl.populate(distribution, params, 0, 0);
 
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
 
     if (ba == Bid) {
       assertEq(Tick.unwrap(bestBid.tick()), MAX_TICK, "wrong bid price");

@@ -4,8 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import "mgv_test/lib/forks/Polygon.sol";
 import "mgv_strat_src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Local} from "mgv_src/MgvLib.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 
 //import {console} from "forge-std/console.sol";
@@ -186,10 +185,10 @@ contract AmplifierForwarderTest is StratTest {
     assertApproxEqRel(takerFromMaker.gave, makerWantsAmountDAI, 1e14, "taker gave wrong amount: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
     assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
     assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
     assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
@@ -244,10 +243,10 @@ contract AmplifierForwarderTest is StratTest {
     assertApproxEqRel(takerFromMaker.gave, makerWantsAmountDAI, 1e14, "taker gave wrong amount: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
     assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
     assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
     assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
@@ -292,10 +291,10 @@ contract AmplifierForwarderTest is StratTest {
     assertTrue(bounty2 > 0, "taker should get bounty for failing offer: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
     assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
     assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
     assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
@@ -356,10 +355,10 @@ contract AmplifierForwarderTest is StratTest {
     vm.stopPrank();
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
     assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
     assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
     assertTrue(offer_on_dai2.isLive(), "weth->dai offer should not have been retracted: makerOffer.daiOffer");

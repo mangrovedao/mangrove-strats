@@ -8,7 +8,7 @@ import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {MgvStructs, MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {TickLib} from "mgv_lib/TickLib.sol";
@@ -365,7 +365,7 @@ contract MangroveOrder_Test is StratTest {
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
 
     // Assert
-    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
+    Offer offer = mgv.offers(lo, res.offerId);
     assertEq(res.offerId, buyOrder.offerId, "OfferId should be reused");
     assertTrue(offer.isLive(), "Offer be live");
     assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
@@ -451,8 +451,8 @@ contract MangroveOrder_Test is StratTest {
     );
     assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
+    Offer offer = mgv.offers(lo, res.offerId);
+    OfferDetail detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder) / 2, "Incorrect offer gives");
     assertEq(offer.wants(), makerWants(buyOrder) / 2, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
@@ -481,8 +481,8 @@ contract MangroveOrder_Test is StratTest {
     assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
     assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers(lo, res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(lo, res.offerId);
+    Offer offer = mgv.offers(lo, res.offerId);
+    OfferDetail detail = mgv.offerDetails(lo, res.offerId);
     assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
     assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
     assertEq(offer.tick(), buyOrder.tick.negate(), "Incorrect offer price");
@@ -522,8 +522,8 @@ contract MangroveOrder_Test is StratTest {
     );
     assertEq(quote.balanceOf(fresh_taker), expectedResult.takerGot, "Incorrect obtained quote balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
+    Offer offer = mgv.offers(olKey, res.offerId);
+    OfferDetail detail = mgv.offerDetails(olKey, res.offerId);
     assertEq(offer.gives(), makerGives(sellOrder) / 2, "Incorrect offer gives");
 
     assertApproxEqRel(offer.wants(), makerWants(sellOrder) / 2, 1e4, "Incorrect offer wants");
@@ -553,8 +553,8 @@ contract MangroveOrder_Test is StratTest {
     assertEq(base.balanceOf(fresh_taker), takerGives(sellOrder), "Incorrect remaining base balance");
     assertEq(quote.balanceOf(fresh_taker), 0, "Incorrect obtained quote balance");
     // checking price of offer
-    MgvStructs.OfferPacked offer = mgv.offers(olKey, res.offerId);
-    MgvStructs.OfferDetailPacked detail = mgv.offerDetails(olKey, res.offerId);
+    Offer offer = mgv.offers(olKey, res.offerId);
+    OfferDetail detail = mgv.offerDetails(olKey, res.offerId);
     assertEq(offer.gives(), makerGives(sellOrder), "Incorrect offer gives");
     assertEq(offer.wants(), makerWants(sellOrder), "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
@@ -641,7 +641,7 @@ contract MangroveOrder_Test is StratTest {
     uint oldBaseBal = base.balanceOf($(this));
     uint oldQuoteBal = quote.balanceOf($(this)); // quote balance of test runner
 
-    MgvStructs.OfferPacked offer = mgv.offers(lo, cold_buyResult.offerId);
+    Offer offer = mgv.offers(lo, cold_buyResult.offerId);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
 
     vm.prank($(sell_taker));
@@ -655,7 +655,7 @@ contract MangroveOrder_Test is StratTest {
     // outbound taken from test runner
     assertEq(quote.balanceOf($(this)), oldQuoteBal - (takerGot + fee), "Incorrect quote balance");
     // checking residual
-    MgvStructs.OfferPacked offer_ = mgv.offers(lo, cold_buyResult.offerId);
+    Offer offer_ = mgv.offers(lo, cold_buyResult.offerId);
     assertEq(offer_.gives(), offer.gives() - (takerGot + fee), "Incorrect residual");
   }
 
@@ -737,7 +737,7 @@ contract MangroveOrder_Test is StratTest {
 
   function test_offer_owner_can_update_offer() public {
     mgo.updateOffer(lo, Tick.wrap(100), 2000 ether, cold_buyResult.offerId);
-    MgvStructs.OfferPacked offer = mgv.offers(lo, cold_buyResult.offerId);
+    Offer offer = mgv.offers(lo, cold_buyResult.offerId);
     assertEq(Tick.unwrap(offer.tick()), 100, "Incorrect updated price");
     assertEq(offer.gives(), 2000 ether, "Incorrect updated gives");
     assertEq(mgo.ownerOf(lo.hash(), cold_buyResult.offerId), $(this), "Owner should not have changed");

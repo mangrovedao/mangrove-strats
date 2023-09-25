@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
@@ -310,7 +310,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@param offerId the id of the offer
   ///@return provision the provision that can be redeemed
   function _provisionOf(OLKey memory olKey, uint offerId) internal view returns (uint provision) {
-    MgvStructs.OfferDetailPacked offerDetail = MGV.offerDetails(olKey, offerId);
+    OfferDetail offerDetail = MGV.offerDetails(olKey, offerId);
     unchecked {
       provision = offerDetail.gasprice() * 10 ** 9 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
     }

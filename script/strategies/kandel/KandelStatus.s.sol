@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {Script, console2 as console} from "forge-std/Script.sol";
+import {console2 as console} from "forge-std/Script.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Offer} from "mgv_src/MgvLib.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 
@@ -26,8 +26,8 @@ contract KandelStatus is Deployer {
     (,,, uint112 pricePoints) = kdl.params();
 
     for (uint i; i < pricePoints; ++i) {
-      MgvStructs.OfferPacked ask = kdl.getOffer(OfferType.Ask, i);
-      MgvStructs.OfferPacked bid = kdl.getOffer(OfferType.Bid, i);
+      Offer ask = kdl.getOffer(OfferType.Ask, i);
+      Offer bid = kdl.getOffer(OfferType.Bid, i);
 
       if (ask.gives() > 0) {
         uint p = ask.wants() /*quote*/ * 10 ** baseDecimals / ask.gives(); /*base */

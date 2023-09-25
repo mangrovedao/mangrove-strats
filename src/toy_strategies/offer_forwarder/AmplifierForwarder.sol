@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import {MgvLib, Offer} from "mgv_src/MgvLib.sol";
 import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 
 contract AmplifierForwarder is Forwarder {
@@ -148,7 +148,7 @@ contract AmplifierForwarder is Forwarder {
       uint gasreq;
       Tick tick;
       {
-        MgvStructs.OfferPacked alt_offer = MGV.offers(altOlKey, alt_offerId);
+        Offer alt_offer = MGV.offers(altOlKey, alt_offerId);
         uint new_alt_wants;
         gasreq = MGV.offerDetails(altOlKey, alt_offerId).gasreq(); // to use alt_offer's old gasreq
 

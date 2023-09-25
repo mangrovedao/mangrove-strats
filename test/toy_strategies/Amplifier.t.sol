@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
 import "mgv_test/lib/forks/Polygon.sol";
 import "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Local} from "mgv_src/MgvLib.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 
 import {console} from "forge-std/console.sol";
@@ -159,8 +159,8 @@ contract AmplifierTest is StratTest {
     assertEq(takerGave, makerWantsAmountDAI / 2, "taker gave wrong amount");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
-    MgvStructs.OfferPacked offer_on_usdc = mgv.offers(lo, offerId2);
+    Offer offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
+    Offer offer_on_usdc = mgv.offers(lo, offerId2);
     assertTrue(offer_on_dai.isLive(), "weth->dai offer should not have been retracted");
     assertTrue(offer_on_usdc.isLive(), "weth->usdc offer should not have been retracted");
   }
@@ -183,8 +183,8 @@ contract AmplifierTest is StratTest {
     assertTrue((makerWantsAmountDAI - takerGave) * 100000 / makerWantsAmountDAI < 10, "taker gave wrong amount");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
-    MgvStructs.OfferPacked offer_on_usdc = mgv.offers(olKey, offerId2);
+    Offer offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
+    Offer offer_on_usdc = mgv.offers(olKey, offerId2);
     assertTrue(!offer_on_dai.isLive(), "weth->dai offer should have been retracted");
     assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }
@@ -230,8 +230,8 @@ contract AmplifierTest is StratTest {
     postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
-    MgvStructs.OfferPacked offer_on_usdc = mgv.offers(lo, offerId2);
+    Offer offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
+    Offer offer_on_usdc = mgv.offers(lo, offerId2);
     assertTrue(offer_on_dai.isLive(), "weth->dai offer should not have been retracted");
     assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }
@@ -252,8 +252,8 @@ contract AmplifierTest is StratTest {
     assertTrue(bounty > 0, "taker did not get any bounty");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
-    MgvStructs.OfferPacked offer_on_usdc = mgv.offers(olKey, offerId2);
+    Offer offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
+    Offer offer_on_usdc = mgv.offers(olKey, offerId2);
     assertTrue(!offer_on_dai.isLive(), "weth->dai offer should have been retracted");
     assertTrue(!offer_on_usdc.isLive(), "weth->usdc offer should have been retracted");
   }

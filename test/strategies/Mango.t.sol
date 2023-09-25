@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import "mgv_strat_src/strategies/offer_maker/market_making/mango/Mango.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Local} from "mgv_src/MgvLib.sol";
 
 contract MangoTest is StratTest {
   struct Book {
@@ -163,7 +163,7 @@ contract MangoTest is StratTest {
     (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 1, 2), cash(weth, 1), true);
 
     uint best_id = mgv.best(olKey);
-    MgvStructs.OfferPacked best_offer = mgv.offers(olKey, best_id);
+    Offer best_offer = mgv.offers(olKey, best_id);
     uint old_gives = best_offer.gives();
 
     vm.prank(maker);
@@ -201,7 +201,7 @@ contract MangoTest is StratTest {
 
     // market order will take the following best offer
     uint best_id = mgv.best(lo);
-    MgvStructs.OfferPacked best_offer = mgv.offers(lo, best_id);
+    Offer best_offer = mgv.offers(lo, best_id);
 
     vm.prank(taker);
     (uint got, uint gave, uint bounty,) = mgv.marketOrderByVolume(lo, cash(usdc, 100), cash(weth, 1), true);
@@ -258,7 +258,7 @@ contract MangoTest is StratTest {
     // - the dual offer of offer 2 will be created with id 8 and will offer takerGave + the content of the WETH pending pool
     // - both pending pools should be empty
 
-    MgvStructs.OfferPacked old_offer2 = mgv.offers(lo, 2);
+    Offer old_offer2 = mgv.offers(lo, 2);
 
     vm.prank(taker);
     (, uint gave,,) = mgv.marketOrderByVolume(lo, cash(usdc, 100), cash(weth, 1), true);
@@ -276,12 +276,12 @@ contract MangoTest is StratTest {
     assertEq(pendingQuote__, 0, "Pending quote pool should be empty");
 
     uint best_id = mgv.best(olKey);
-    MgvStructs.OfferPacked offer8 = mgv.offers(olKey, best_id);
+    Offer offer8 = mgv.offers(olKey, best_id);
     assertEq(best_id, 8, "Best offer on WETH,USDC offer list should be #8");
 
     assertEq(offer8.gives(), gave + pendingBase_, "Incorrect offer gives");
 
-    MgvStructs.OfferPacked offer2 = mgv.offers(lo, 2);
+    Offer offer2 = mgv.offers(lo, 2);
 
     assertEq(offer2.gives(), pendingQuote_ + old_offer2.gives() - cash(usdc, 100), "Incorrect offer gives");
   }
