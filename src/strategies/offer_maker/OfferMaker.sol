@@ -3,12 +3,14 @@ pragma solidity ^0.8.10;
 
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
-contract OfferMaker is ILiquidityProvider, Direct {
+contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
   constructor(IMangrove mgv, AbstractRouter router_, address deployer, uint gasreq, address owner)
@@ -69,5 +71,27 @@ contract OfferMaker is ILiquidityProvider, Direct {
       (bool noRevert,) = admin().call{value: freeWei}("");
       require(noRevert, "mgvOffer/weiTransferFail");
     }
+  }
+
+  function newOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+    external
+    payable
+    returns (uint offerId)
+  {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
+  }
+
+  function updateOfferFromVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq)
+    external
+    payable
+  {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
+  }
+
+  function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
+    AbstractRouter router_ = router();
+    return router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, reserveId);
   }
 }
