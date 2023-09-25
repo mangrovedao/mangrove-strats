@@ -16,7 +16,6 @@ contract PolygonMangroveOrderWithPermit2Deployer is Deployer {
   MangroveOrderWithPermit2Deployer public mangroveOrderDeployer;
 
   function run() public {
-    fork.set("Permit2", envAddressOrName("PERMIT2", "Permit2"));
     runWithChainSpecificParams();
     outputDeployment();
   }
