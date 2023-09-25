@@ -21,7 +21,7 @@ contract BaseMangroveOrder is Forwarder, IOrderLogic {
   ///@dev 0 means no expiry.
   mapping(IERC20 => mapping(IERC20 => mapping(uint => uint))) public expiring;
 
-  ///@notice BaseMangroveOrder is a Forwarder logic with a simple router.
+  ///@notice BaseMangroveOrder is a Forwarder logic with an abstract router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param router The contract router
   ///@param deployer The address of the admin of `this` at the end of deployment
