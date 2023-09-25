@@ -1,16 +1,18 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_strat_test/lib/StratTest.sol";
+import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
 import {GenericFork} from "mgv_test/lib/forks/Generic.sol";
-import {
-  ITesterContract as ITester,
-  DirectTester,
-  IMangrove,
-  IERC20,
-  AbstractRouter
-} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
+import {ITesterContract as ITester, DirectTester} from "mgv_strat_src/strategies/offer_maker/DirectTester.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
+import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
+import {MgvLib} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
@@ -303,7 +305,7 @@ contract OfferLogicTest is StratTest {
     uint offerGives = reader.minVolume(olKey, makerContract.offerGasreq());
     uint offerId = makerContract.newOffer{value: 0.1 ether}({
       olKey: olKey,
-      tick: 1,
+      tick: Tick.wrap(1),
       gives: offerGives,
       gasreq: makerContract.offerGasreq()
     });
@@ -317,7 +319,7 @@ contract OfferLogicTest is StratTest {
     /* `offerDetail` is only populated when necessary. */
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
-    order.takerGives = TickLib.outboundFromInbound(order.offer.tick(), offerGives / 2);
+    order.takerGives = order.offer.tick().outboundFromInbound(offerGives / 2);
     (order.global, order.local) = mgv.config(olKey);
 
     vm.expectRevert("mgv/writeOffer/density/tooLow");

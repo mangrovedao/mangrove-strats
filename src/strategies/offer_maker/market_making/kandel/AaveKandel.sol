@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
-import {AbstractRouter, AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";

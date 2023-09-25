@@ -118,7 +118,7 @@ contract AmplifierForwarderTest is StratTest {
     returns (uint takerGot, uint takerGave, uint bounty)
   {
     OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickSpacing);
-    int tick = mgv.offers(_olKey, offerId).tick();
+    Tick tick = mgv.offers(_olKey, offerId).tick();
     // try to take one of the offers (using the separate taker account)
     vm.startPrank(taker);
     (takerGot, takerGave, bounty,) =
@@ -273,7 +273,7 @@ contract AmplifierForwarderTest is StratTest {
     //only take half of the tester offer
 
     // try to take one of the offers (using the separate taker account)
-    int tick = mgv.offers(olKeyWethDai, testOffer.daiOffer).tick();
+    Tick tick = mgv.offers(olKeyWethDai, testOffer.daiOffer).tick();
     vm.prank(taker);
     (uint successes, uint bounty) = mgv.cleanByImpersonation(
       olKeyWethDai, wrap_dynamic(MgvLib.CleanTarget(testOffer.daiOffer, tick, 1_000_000, makerWantsAmountDAI)), taker

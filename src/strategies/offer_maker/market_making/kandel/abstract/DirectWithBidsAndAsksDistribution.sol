@@ -7,6 +7,7 @@ import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title `Direct` strat with an indexed collection of bids and asks which can be populated according to a desired base and quote distribution for gives and wants.
 abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAndAsks {
@@ -35,7 +36,7 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
   ///@param gives the gives for the index (the `quote` for bids and the `base` for asks)
   struct DistributionOffer {
     uint index;
-    int tick;
+    Tick tick;
     uint gives;
   }
 

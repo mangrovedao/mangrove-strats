@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {AbstractRouter} from "./AbstractRouter.sol";
 
 ///@title `MonoRouter` instances have a sourcing strategy which is reserveId and caller independent.

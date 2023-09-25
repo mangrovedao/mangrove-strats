@@ -131,7 +131,7 @@ contract AmplifierTest is StratTest {
     returns (uint takerGot, uint takerGave, uint bounty)
   {
     OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickSpacing);
-    int tick = mgv.offers(_olKey, offerId).tick();
+    Tick tick = mgv.offers(_olKey, offerId).tick();
     // try to take one of the offers (using the separate taker account)
     vm.prank(taker);
     (takerGot, takerGave, bounty,) =

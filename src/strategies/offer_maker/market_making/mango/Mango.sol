@@ -257,7 +257,7 @@ contract Mango is Direct {
     internal
     virtual
     override
-    returns (uint newGives, int newTick)
+    returns (uint newGives, Tick newTick)
   {
     MangoStorage.Layout storage mStr = MangoStorage.getStorage();
     (newGives, newTick) = super.__residualValues__(order);

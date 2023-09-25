@@ -1,11 +1,14 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "./OfferLogic.t.sol";
+import {OfferLogicTest} from "./OfferLogic.t.sol";
 import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
+import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import "mgv_lib/Debug.sol";
 
 contract AavePooledRouterTest is OfferLogicTest {
   bool internal useForkAave = true;

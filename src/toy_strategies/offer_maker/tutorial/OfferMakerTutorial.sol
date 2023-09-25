@@ -5,7 +5,8 @@ pragma solidity ^0.8.10;
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20, MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 //----------------
 
@@ -29,7 +30,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -49,7 +50,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override

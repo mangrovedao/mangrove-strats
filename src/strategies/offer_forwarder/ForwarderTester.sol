@@ -5,7 +5,7 @@ import {OfferForwarder, IMangrove, AbstractRouter} from "./OfferForwarder.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 
 contract ForwarderTester is OfferForwarder, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
@@ -39,7 +39,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
     payable
     returns (uint offerId)
   {
-    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
     return newOffer(olKey, tick, gives, gasreq);
   }
 
@@ -47,7 +47,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
     external
     payable
   {
-    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }

@@ -6,6 +6,7 @@ import {CoreKandel} from "./CoreKandel.sol";
 import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 import {KandelLib} from "./KandelLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
@@ -59,7 +60,7 @@ abstract contract GeometricKandel is CoreKandel {
   function createDistribution(
     uint from,
     uint to,
-    int baseQuoteTickIndex0,
+    Tick baseQuoteTickIndex0,
     uint _baseQuoteTickOffset,
     uint firstAskIndex,
     uint bidGives,
@@ -87,7 +88,7 @@ abstract contract GeometricKandel is CoreKandel {
   function populateFromOffset(
     uint from,
     uint to,
-    int baseQuoteTickIndex0,
+    Tick baseQuoteTickIndex0,
     uint _baseQuoteTickOffset,
     uint firstAskIndex,
     uint bidGives,
@@ -118,7 +119,7 @@ abstract contract GeometricKandel is CoreKandel {
   function populateChunkFromOffset(
     uint from,
     uint to,
-    int baseQuoteTickIndex0,
+    Tick baseQuoteTickIndex0,
     uint firstAskIndex,
     uint bidGives,
     uint askGives

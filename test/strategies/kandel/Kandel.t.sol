@@ -1,16 +1,14 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
-import {console} from "mgv_lib/Debug.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Tests for Kandel without a router, and router agnostic functions.
 contract NoRouterKandelTest is CoreKandelTest {
@@ -36,7 +34,7 @@ contract NoRouterKandelTest is CoreKandelTest {
   function validateDistribution(
     CoreKandel.DistributionOffer[] memory distributionOffers,
     uint baseQuoteTickOffset,
-    int baseQuoteTickIndex0,
+    Tick baseQuoteTickIndex0,
     OfferType ba,
     uint gives,
     uint dualGives
@@ -48,18 +46,18 @@ contract NoRouterKandelTest is CoreKandelTest {
       assertTrue(!seenOffers[ba][index], string.concat("index ", vm.toString(index), " seen twice"));
       seenOffers[ba][index] = true;
 
-      int absoluteTickAtIndex = baseQuoteTickIndex0 + int(index) * int(baseQuoteTickOffset);
+      int absoluteTickAtIndex = Tick.unwrap(baseQuoteTickIndex0) + int(index) * int(baseQuoteTickOffset);
       if (ba == Bid) {
-        assertEq(offer.tick, -absoluteTickAtIndex);
+        assertEq(Tick.unwrap(offer.tick), -absoluteTickAtIndex);
       } else {
-        assertEq(offer.tick, absoluteTickAtIndex);
+        assertEq(Tick.unwrap(offer.tick), absoluteTickAtIndex);
       }
       // can be a dual
       if (offer.gives > 0) {
         if (constantGives) {
           assertEq(offer.gives, gives, "givesDist should be constant");
         } else {
-          uint wants = TickLib.inboundFromOutbound(offer.tick, offer.gives);
+          uint wants = offer.tick.inboundFromOutbound(offer.gives);
           assertApproxEqRel(wants, dualGives, 1e10, "wants should be approximately constant");
         }
       } else {
@@ -71,7 +69,7 @@ contract NoRouterKandelTest is CoreKandelTest {
   mapping(OfferType ba => mapping(uint index => bool seen)) internal seenOffers;
 
   struct SimpleDistributionHeapArgs {
-    int baseQuoteTickIndex0;
+    Tick baseQuoteTickIndex0;
     uint baseQuoteTickOffset;
     uint firstAskIndex;
     uint askGives;
@@ -96,7 +94,7 @@ contract NoRouterKandelTest is CoreKandelTest {
     args.bidGives = bidGives;
     args.pricePoints = 5;
     args.stepSize = stepSize;
-    args.baseQuoteTickIndex0 = 500;
+    args.baseQuoteTickIndex0 = Tick.wrap(500);
     args.baseQuoteTickOffset = 1000;
     test_createDistributionSimple_constantAskBidGives(args, dynamic([uint(2), 4]));
   }
@@ -124,7 +122,7 @@ contract NoRouterKandelTest is CoreKandelTest {
       args.askGives = type(uint).max;
       args.bidGives = 2 ether;
     }
-    args.baseQuoteTickIndex0 = 500;
+    args.baseQuoteTickIndex0 = Tick.wrap(500);
     args.baseQuoteTickOffset = 1000;
     uint[] memory cuts = new uint[](uint(keccak256(abi.encodePacked(seed, ++r))) % args.pricePoints);
     if (cuts.length == 0) {
@@ -246,7 +244,7 @@ contract NoRouterKandelTest is CoreKandelTest {
     kdl.createDistribution({
       from: 0,
       to: 2,
-      baseQuoteTickIndex0: 0,
+      baseQuoteTickIndex0: Tick.wrap(0),
       _baseQuoteTickOffset: 0,
       firstAskIndex: 1,
       askGives: type(uint).max,

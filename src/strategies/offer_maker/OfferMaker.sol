@@ -1,9 +1,12 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {Direct, AbstractRouter, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
+import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract OfferMaker is ILiquidityProvider, Direct {
   // router_ needs to bind to this contract
@@ -19,7 +22,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -31,12 +34,12 @@ contract OfferMaker is ILiquidityProvider, Direct {
     );
   }
 
-  function newOffer(OLKey memory olKey, int tick, uint gives) external payable onlyAdmin returns (uint offerId) {
+  function newOffer(OLKey memory olKey, Tick tick, uint gives) external payable onlyAdmin returns (uint offerId) {
     return newOffer(olKey, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
@@ -48,7 +51,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
     );
   }
 
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId) external payable onlyAdmin {
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) external payable onlyAdmin {
     updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 

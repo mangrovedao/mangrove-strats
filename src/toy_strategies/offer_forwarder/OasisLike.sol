@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import "mgv_strat_src/strategies/offer_forwarder/OfferForwarder.sol";
-import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
 contract OasisLike is OfferForwarder {
   bytes32 public constant NAME = "OasisLike";

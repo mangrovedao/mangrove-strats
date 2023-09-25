@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {OfferType} from "./TradesBaseQuotePair.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
 import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Library of helper functions for Kandel, mainly to reduce deployed size.
 library KandelLib {
@@ -55,7 +55,7 @@ library KandelLib {
   function createGeometricDistribution(
     uint from,
     uint to,
-    int baseQuoteTickIndex0,
+    Tick baseQuoteTickIndex0,
     uint _baseQuoteTickOffset,
     uint firstAskIndex,
     uint bidGives,
@@ -105,7 +105,7 @@ library KandelLib {
     // Start bids at from
     uint index = from;
     // Calculate the taker relative tick of the first price point
-    int tick = -(baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(index));
+    int tick = -(Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(index));
     // A counter for insertion in the distribution structs
     uint i = 0;
     for (; index < bidBound; ++index) {
@@ -113,15 +113,15 @@ library KandelLib {
       // Use askGives unless it should be derived from bid at the price
       distribution.bids[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        tick: tick,
-        gives: bidGives == type(uint).max ? TickLib.outboundFromInbound(tick, askGives) : bidGives
+        tick: Tick.wrap(tick),
+        gives: bidGives == type(uint).max ? Tick.wrap(tick).outboundFromInbound(askGives) : bidGives
       });
 
       // Add dual (dead) ask
       uint dualIndex = transportDestination(OfferType.Ask, index, stepSize, pricePoints);
       distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: dualIndex,
-        tick: (baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(dualIndex)),
+        tick: Tick.wrap((Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex))),
         gives: 0
       });
 
@@ -133,20 +133,20 @@ library KandelLib {
     // Start asks from (adjusted) firstAskIndex
     index = firstAskIndex;
     // Calculate the taker relative tick of the first ask
-    tick = (baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(index));
+    tick = (Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(index));
     for (; index < to; ++index) {
       // Add live ask
       // Use askGives unless it should be derived from bid at the price
       distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        tick: tick,
-        gives: askGives == type(uint).max ? TickLib.outboundFromInbound(tick, bidGives) : askGives
+        tick: Tick.wrap(tick),
+        gives: askGives == type(uint).max ? Tick.wrap(tick).outboundFromInbound(bidGives) : askGives
       });
       // Add dual (dead) bid
       uint dualIndex = transportDestination(OfferType.Bid, index, stepSize, pricePoints);
       distribution.bids[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: dualIndex,
-        tick: -(baseQuoteTickIndex0 + int(_baseQuoteTickOffset) * int(dualIndex)),
+        tick: Tick.wrap(-(Tick.unwrap(baseQuoteTickIndex0) + int(_baseQuoteTickOffset) * int(dualIndex))),
         gives: 0
       });
 

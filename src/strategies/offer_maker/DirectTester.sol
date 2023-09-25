@@ -1,10 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
+import {OfferMaker} from "./OfferMaker.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 contract DirectTester is ITesterContract, OfferMaker {
   mapping(address => address) public reserves;
@@ -44,7 +47,7 @@ contract DirectTester is ITesterContract, OfferMaker {
     payable
     returns (uint offerId)
   {
-    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
     return newOffer(olKey, tick, gives, gasreq);
   }
 
@@ -52,7 +55,7 @@ contract DirectTester is ITesterContract, OfferMaker {
     external
     payable
   {
-    int tick = TickConversionLib.tickFromVolumes(wants, gives);
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 contract Amplifier is Direct {
   IERC20 public immutable BASE;
@@ -80,7 +80,7 @@ contract Amplifier is Direct {
     );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
 
-    int tick = TickConversionLib.tickFromVolumes(wants1, gives);
+    Tick tick = TickLib.tickFromVolumes(wants1, gives);
 
     (offerId1,) = _newOffer(
       OfferArgs({
@@ -95,7 +95,7 @@ contract Amplifier is Direct {
     );
     // no need to fund this second call for provision
     // since the above call should be enough
-    tick = TickConversionLib.tickFromVolumes(wants2, gives);
+    tick = TickLib.tickFromVolumes(wants2, gives);
 
     (offerId2,) = _newOffer(
       OfferArgs({
@@ -150,7 +150,7 @@ contract Amplifier is Direct {
         OfferArgs({
           olKey: altOlKey,
           gives: new_alt_gives,
-          tick: TickConversionLib.tickFromVolumes(new_alt_wants, new_alt_gives),
+          tick: TickLib.tickFromVolumes(new_alt_wants, new_alt_gives),
           gasreq: alt_detail.gasreq(),
           gasprice: 0,
           fund: 0,

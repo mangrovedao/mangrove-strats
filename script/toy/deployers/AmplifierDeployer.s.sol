@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Amplifier, AbstractRouter, IERC20, IMangrove} from "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
+import {Amplifier, AbstractRouter, IMangrove} from "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 /*  Deploys a Amplifier instance
     First test:

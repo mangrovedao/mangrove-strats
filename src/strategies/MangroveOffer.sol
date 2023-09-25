@@ -7,7 +7,7 @@ import {MgvLib, IERC20, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
@@ -250,7 +250,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@return newGives the new volume of `outbound` the offer will give if fully taken.
   ///@return newTick the new tick of the reposted offer.
   ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the price.
-  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, int newTick) {
+  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {
     newGives = order.offer.gives() - order.takerWants;
     newTick = order.offer.tick();
   }
@@ -274,13 +274,13 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     returns (bytes32 data)
   {
     // now trying to repost residual
-    (uint newGives, int newTick) = __residualValues__(order);
+    (uint newGives, Tick newTick) = __residualValues__(order);
     // Density check at each repost would be too gas costly.
     // We only treat the special case of `gives==0` or `wants==0` (total fill).
     // Note: wants (given by `inboundFromOutbound`) can be 0 due to rounding given the price. We could repost to get rid of the last gives at 0 wants,
     // but the maker does not need to give away these tokens for free, so we skip it.
     // Offer below the density will cause Mangrove to throw so we encapsulate the call to `updateOffer` in order not to revert posthook for posting at dust level.
-    if (newGives == 0 || TickLib.inboundFromOutbound(newTick, newGives) == 0) {
+    if (newGives == 0 || newTick.inboundFromOutbound(newGives) == 0) {
       return COMPLETE_FILL;
     }
     data = _updateOffer(

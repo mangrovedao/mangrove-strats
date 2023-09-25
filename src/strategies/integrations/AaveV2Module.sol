@@ -5,7 +5,6 @@ import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPool.sol";
 import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPoolAddressesProvider.sol";
 import "mgv_strat_src/strategies/vendor/aave/v2/IPriceOracleGetter.sol";
 import "mgv_strat_src/strategies/vendor/compound/Exponential.sol";
-import "mgv_src/IMangrove.sol";
 import {IERC20, MgvLib} from "mgv_src/MgvLib.sol";
 
 contract AaveModule is Exponential {

@@ -26,8 +26,6 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 
-import {console} from "forge-std/console.sol";
-
 /**
  * Deploy and configure a complete Mangrove testnet deployment:
  * - Mangrove and periphery contracts

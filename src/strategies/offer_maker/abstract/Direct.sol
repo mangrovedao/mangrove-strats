@@ -1,8 +1,11 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer, IMangrove, AbstractRouter} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
+import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.

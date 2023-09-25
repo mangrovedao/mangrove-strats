@@ -4,6 +4,7 @@ pragma solidity >=0.8.10;
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20, IMaker, OLKey} from "mgv_src/MgvLib.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title IOfferLogic interface for offer management
 ///@notice It is an IMaker for Mangrove.
@@ -79,7 +80,7 @@ interface IOfferLogic is IMaker {
   ///@dev `owner` is required in `Forwarder` logics, when `_newOffer` or `_updateOffer` in called in a hook (`msg.sender==MGV`).
   struct OfferArgs {
     OLKey olKey;
-    int tick;
+    Tick tick;
     uint gives;
     uint gasreq;
     uint gasprice;

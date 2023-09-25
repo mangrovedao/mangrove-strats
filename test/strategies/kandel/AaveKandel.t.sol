@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {CoreKandelTest, IERC20} from "./abstract/CoreKandel.t.sol";
+import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
 import {console} from "forge-std/Test.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
@@ -9,14 +9,12 @@ import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvLib, MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {console2} from "forge-std/Test.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {TickLib} from "mgv_lib/TickLib.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -146,10 +144,8 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function test_first_puller_posthook_calls_pushAndSupply() public {
-    MgvLib.SingleOrder memory order = mockCompleteFillBuyOrder({
-      takerWants: 0.1 ether,
-      tick: TickConversionLib.tickFromVolumes(120 * 10 ** 6, 0.1 ether)
-    });
+    MgvLib.SingleOrder memory order =
+      mockCompleteFillBuyOrder({takerWants: 0.1 ether, tick: TickLib.tickFromVolumes(120 * 10 ** 6, 0.1 ether)});
     MgvLib.OrderResult memory result = MgvLib.OrderResult({makerData: "IS_FIRST_PULLER", mgvData: "mgv/tradeSuccess"});
 
     //1. faking accumulated outbound on the router

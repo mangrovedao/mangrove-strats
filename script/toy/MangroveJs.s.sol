@@ -3,8 +3,7 @@ pragma solidity ^0.8.13;
 
 import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol";
 
-import {AbstractMangrove} from "mgv_src/AbstractMangrove.sol";
-import {IERC20, OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {MangroveOrderDeployer} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 import {KandelSeederDeployer} from "mgv_strat_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
@@ -16,7 +15,6 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "mgv_script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
-import "forge-std/console.sol";
 
 /* 
 This script prepares a local server for testing by mangrove.js.

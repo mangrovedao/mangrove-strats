@@ -1,9 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvStructs, OLKey} from "mgv_src/MgvLib.sol";
 import {IHasOfferListOfOfferType, OfferType} from "./TradesBaseQuotePair.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
 
 ///@title Adds a [0..length] index <--> offerId map to a strat.
 ///@dev utilizes the `IHasOfferListOfOfferType` contract.

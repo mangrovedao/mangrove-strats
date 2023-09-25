@@ -10,7 +10,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove
@@ -33,7 +33,7 @@ contract KandelPopulate is Deployer {
     }
     if (envHas("RATIO")) {
       require(tickOffset == 0, "Only RATIO or TICK_OFFSET");
-      int _tickOffset = TickConversionLib.tickFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether);
+      int _tickOffset = Tick.unwrap(TickLib.tickFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether));
       tickOffset = uint24(uint(int(_tickOffset)));
       require(tickOffset == uint(_tickOffset), "Invalid ratio");
     }
@@ -175,7 +175,7 @@ contract KandelPopulate is Deployer {
   }
 
   function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
-    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(args.initQuote, args.volume);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(args.initQuote, args.volume);
     distribution = args.kdl.createDistribution(
       args.from,
       args.to,

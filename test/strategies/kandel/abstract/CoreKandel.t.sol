@@ -1,10 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "./KandelTest.t.sol";
+import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {KandelTest} from "./KandelTest.t.sol";
+import {TickLib, Tick} from "mgv_lib/TickLib.sol";
 import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
+import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
+import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
+import "mgv_lib/Debug.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {
@@ -338,7 +347,7 @@ abstract contract CoreKandelTest is KandelTest {
     CoreKandel.Distribution memory distribution;
     CoreKandel.DistributionOffer[] memory offers = new CoreKandel.DistributionOffer[](4);
     for (uint i; i < 4; i++) {
-      offers[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({index: i, gives: 1 ether, tick: 0});
+      offers[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({index: i, gives: 1 ether, tick: Tick.wrap(0)});
     }
     if (bids) {
       distribution.bids = offers;
@@ -389,7 +398,7 @@ abstract contract CoreKandelTest is KandelTest {
       distribution.bids[uint(i)] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: indices[uint(i)],
         gives: d,
-        tick: TickConversionLib.tickFromVolumes(initBase, quoteAtIndex[indices[uint(i)]])
+        tick: TickLib.tickFromVolumes(initBase, quoteAtIndex[indices[uint(i)]])
       });
     }
 
@@ -403,7 +412,7 @@ abstract contract CoreKandelTest is KandelTest {
       distribution.asks[i] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: indices[i + numBids],
         gives: d,
-        tick: TickConversionLib.tickFromVolumes(quoteAtIndex[indices[i + numBids]], initBase)
+        tick: TickLib.tickFromVolumes(quoteAtIndex[indices[i + numBids]], initBase)
       });
     }
 
@@ -528,7 +537,7 @@ abstract contract CoreKandelTest is KandelTest {
     GeometricKandel.Params memory params = getParams(kdl);
     params.stepSize = 4;
 
-    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(initQuote, initBase);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(initQuote, initBase);
     CoreKandel.Distribution memory distribution1 = kdl.createDistribution(
       0,
       5,
@@ -739,7 +748,7 @@ abstract contract CoreKandelTest is KandelTest {
     params.pricePoints = 5;
     params.stepSize = 2;
 
-    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(initQuote, initBase);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(initQuote, initBase);
 
     if (viaPopulateFromOFfset) {
       expectFrom(address(kdl));
@@ -911,10 +920,8 @@ abstract contract CoreKandelTest is KandelTest {
 
   function marketOrder_dualOffer_expectedGasreq(bool dualNew, uint deltaGasForNew) internal {
     // Arrange
-    MgvLib.SingleOrder memory order = mockCompleteFillBuyOrder({
-      takerWants: 0.1 ether,
-      tick: TickConversionLib.tickFromVolumes(0.1 ether, cash(quote, 100))
-    });
+    MgvLib.SingleOrder memory order =
+      mockCompleteFillBuyOrder({takerWants: 0.1 ether, tick: TickLib.tickFromVolumes(0.1 ether, cash(quote, 100))});
     order.offerId = kdl.offerIdOfIndex(Ask, dualNew ? 6 : 5);
 
     // Act
@@ -966,7 +973,7 @@ abstract contract CoreKandelTest is KandelTest {
       distribution = kdl.createDistribution(
         0,
         otherParams.pricePoints,
-        TickConversionLib.tickFromVolumes(quote0, base0),
+        TickLib.tickFromVolumes(quote0, base0),
         tickOffset,
         otherParams.pricePoints / 2,
         type(uint).max,
@@ -995,7 +1002,7 @@ abstract contract CoreKandelTest is KandelTest {
     GeometricKandel.Params memory params = getParams(kdl);
 
     // reversed price
-    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(initBase, initQuote);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(initBase, initQuote);
 
     vm.prank(maker);
     kdl.populateFromOffset({
@@ -1027,20 +1034,22 @@ abstract contract CoreKandelTest is KandelTest {
   function test_tickScale100_aligned_offset_price0(uint offset) internal {
     options.defaultTickSpacing = 100;
     tickOffset = 700 + offset;
-    initBase = TickLib.outboundFromInbound(1000 + int(offset), initQuote);
+    initBase = Tick.wrap(1000 + int(offset)).outboundFromInbound(initQuote);
     setUp();
 
     assertEq(kdl.TICK_SPACING(), 100);
     uint pricePoints = getParams(kdl).pricePoints;
     for (uint i; i < getParams(kdl).pricePoints; i++) {
       assertEq(
-        kdl.getOffer(Ask, i).tick(),
+        Tick.unwrap(kdl.getOffer(Ask, i).tick()),
         i < STEP_SIZE ? int(0) : (offset == 0 ? int(1000 + i * 700) : int(1000 + i * 700 + options.defaultTickSpacing)),
         "wrong ask price"
       );
       // bids are rounded up when misaligned
       assertEq(
-        kdl.getOffer(Bid, i).tick(), i >= pricePoints - STEP_SIZE ? int(0) : -int(1000 + i * 700), "wrong bid price"
+        Tick.unwrap(kdl.getOffer(Bid, i).tick()),
+        i >= pricePoints - STEP_SIZE ? int(0) : -int(1000 + i * 700),
+        "wrong bid price"
       );
     }
   }
@@ -1068,7 +1077,7 @@ abstract contract CoreKandelTest is KandelTest {
     GeometricKandel.Params memory params;
 
     // With price at MAX_TICK dual appears at MIN_TICK, so there can only be two offers, and no offset
-    int baseQuoteTickIndex0 = min ? MIN_TICK : MAX_TICK;
+    Tick baseQuoteTickIndex0 = Tick.wrap(min ? MIN_TICK : MAX_TICK);
     params.pricePoints = 2;
     params.stepSize = 1;
     tickOffset = 0;
@@ -1090,11 +1099,11 @@ abstract contract CoreKandelTest is KandelTest {
     (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
 
     if (ba == Bid) {
-      assertEq(bestBid.tick(), min ? MAX_TICK : MIN_TICK, "wrong bid price");
+      assertEq(Tick.unwrap(bestBid.tick()), min ? MAX_TICK : MIN_TICK, "wrong bid price");
       assertEq(bestBid.gives(), 2 ** 96 - 1, "wrong bid gives");
       assertEq(bestAsk.isLive(), false, "ask should not be live");
     } else {
-      assertEq(bestAsk.tick(), min ? MIN_TICK : MAX_TICK, "wrong ask price");
+      assertEq(Tick.unwrap(bestAsk.tick()), min ? MIN_TICK : MAX_TICK, "wrong ask price");
       assertEq(bestAsk.gives(), 2 ** 96 - 1, "wrong ask gives");
       assertEq(bestBid.isLive(), false, "bid should not be live");
     }
@@ -1114,7 +1123,7 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory params;
 
-    int baseQuoteTickIndex0 = 0;
+    Tick baseQuoteTickIndex0 = Tick.wrap(0);
     params.pricePoints = 2;
     params.stepSize = 1;
     tickOffset = uint(MAX_TICK);
@@ -1142,17 +1151,18 @@ abstract contract CoreKandelTest is KandelTest {
     }
     // Take order
     vm.prank(taker);
-    (uint takerGot, uint takerGave,,) = mgv.marketOrderByTick(ba == Bid ? lo : olKey, MAX_TICK, MAX_SAFE_VOLUME, false);
+    (uint takerGot, uint takerGave,,) =
+      mgv.marketOrderByTick(ba == Bid ? lo : olKey, Tick.wrap(MAX_TICK), MAX_SAFE_VOLUME, false);
     assertGt(takerGot + takerGave, 0, "offer should succeed");
 
     (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
 
     if (ba == Bid) {
-      assertEq(bestBid.tick(), 0, "wrong bid price");
-      assertEq(bestAsk.tick(), MAX_TICK, "wrong ask price");
+      assertEq(Tick.unwrap(bestBid.tick()), 0, "wrong bid price");
+      assertEq(Tick.unwrap(bestAsk.tick()), MAX_TICK, "wrong ask price");
     } else {
-      assertEq(bestBid.tick(), 0, "wrong bid price");
-      assertEq(bestAsk.tick(), MAX_TICK, "wrong ask price");
+      assertEq(Tick.unwrap(bestBid.tick()), 0, "wrong bid price");
+      assertEq(Tick.unwrap(bestAsk.tick()), MAX_TICK, "wrong ask price");
     }
   }
 
@@ -1170,7 +1180,7 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory params;
 
-    int baseQuoteTickIndex0 = MAX_TICK;
+    Tick baseQuoteTickIndex0 = Tick.wrap(MAX_TICK);
     params.pricePoints = 2;
     params.stepSize = 1;
     tickOffset = 1;
@@ -1206,7 +1216,7 @@ abstract contract CoreKandelTest is KandelTest {
     GeometricKandel.Params memory params;
 
     // With price at MAX_TICK dual appears at MIN_TICK, so there can only be two offers, and no offset
-    int baseQuoteTickIndex0 = MIN_TICK;
+    Tick baseQuoteTickIndex0 = Tick.wrap(MIN_TICK);
     params.pricePoints = 2;
     params.stepSize = 1;
     tickOffset = uint(MAX_TICK - MIN_TICK);
@@ -1228,11 +1238,11 @@ abstract contract CoreKandelTest is KandelTest {
     (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
 
     if (ba == Bid) {
-      assertEq(bestBid.tick(), MAX_TICK, "wrong bid price");
+      assertEq(Tick.unwrap(bestBid.tick()), MAX_TICK, "wrong bid price");
       assertEq(bestBid.gives(), 2 ** 96 - 1, "wrong bid gives");
       assertEq(bestAsk.isLive(), false, "ask should not be live");
     } else {
-      assertEq(bestAsk.tick(), MAX_TICK, "wrong ask price");
+      assertEq(Tick.unwrap(bestAsk.tick()), MAX_TICK, "wrong ask price");
       assertEq(bestAsk.gives(), 2 ** 96 - 1, "wrong ask gives");
       assertEq(bestBid.isLive(), false, "bid should not be live");
     }
@@ -1247,7 +1257,7 @@ abstract contract CoreKandelTest is KandelTest {
 
     GeometricKandel.Params memory params;
 
-    int baseQuoteTickIndex0 = 2;
+    Tick baseQuoteTickIndex0 = Tick.wrap(2);
     params.pricePoints = 1000;
     params.stepSize = 11;
     tickOffset = 77;
@@ -1303,7 +1313,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.provisionOf(olKey, 0);
     kdl.router();
     kdl.baseQuoteTickOffset();
-    kdl.createDistribution(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    kdl.createDistribution(0, 0, Tick.wrap(0), 0, 0, 0, 0, 0, 0);
 
     CoreKandel.Distribution memory dist;
     GeometricKandel.Params memory params = getParams(kdl);
@@ -1326,8 +1336,8 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteTickOffset, (1)));
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, params, 0, 0)));
-    checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, 0, 0, 0, 0, 0, params, 0, 0)));
-    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, 0, 0, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateFromOffset, (0, 0, Tick.wrap(0), 0, 0, 0, 0, params, 0, 0)));
+    checkAuth(args, abi.encodeCall(kdl.populateChunkFromOffset, (0, 0, Tick.wrap(0), 0, 0, 0)));
 
     checkAuth(args, abi.encodeCall(kdl.populateChunk, (dist)));
     checkAuth(args, abi.encodeCall(kdl.retractOffers, (0, 0)));
@@ -1337,7 +1347,7 @@ abstract contract CoreKandelTest is KandelTest {
     // Only Mgv
     MgvLib.OrderResult memory oResult = MgvLib.OrderResult({makerData: bytes32(0), mgvData: ""});
     args.allowed = dynamic([address($(mgv))]);
-    checkAuth(args, abi.encodeCall(kdl.makerExecute, mockCompleteFillBuyOrder(1, 1)));
-    checkAuth(args, abi.encodeCall(kdl.makerPosthook, (mockCompleteFillBuyOrder(1, 1), oResult)));
+    checkAuth(args, abi.encodeCall(kdl.makerExecute, mockCompleteFillBuyOrder(1, Tick.wrap(1))));
+    checkAuth(args, abi.encodeCall(kdl.makerPosthook, (mockCompleteFillBuyOrder(1, Tick.wrap(1)), oResult)));
   }
 }

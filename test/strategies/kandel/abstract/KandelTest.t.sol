@@ -12,11 +12,9 @@ import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_makin
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
 import {TickLib} from "mgv_lib/TickLib.sol";
-import {TickConversionLib} from "mgv_lib/TickConversionLib.sol";
+import {Tick, TickLib} from "mgv_lib/TickLib.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 
@@ -30,10 +28,10 @@ abstract contract KandelTest is StratTest {
   uint globalGasprice;
   uint bufferedGasprice;
   // A ratio of ~108% can be converted to a tick offset of ~769 via
-  // uint tickOffset = TickConversionLib.tickFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
+  // uint tickOffset = TickLib.tickFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
   uint tickOffset = 769;
   // and vice versa with
-  // ratio = uint24(TickLib.inboundFromOutbound(tickOffset, 1 ether) * 100000 / TickLib.inboundFromOutbound(0, 1 ether)
+  // ratio = uint24(Tick.wrap(tickOffset).inboundFromOutbound(1 ether) * 100000 / Tick.wrap(0).inboundFromOutbound(1 ether)
 
   OfferType constant Ask = OfferType.Ask;
   OfferType constant Bid = OfferType.Bid;
@@ -117,7 +115,7 @@ abstract contract KandelTest is StratTest {
     GeometricKandel.Params memory params;
     params.stepSize = STEP_SIZE;
     params.pricePoints = 10;
-    int baseQuoteTickIndex0 = TickConversionLib.tickFromVolumes(initQuote, initBase);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(initQuote, initBase);
 
     vm.prank(maker);
     kdl.populateFromOffset{value: (provAsk + provBid) * 10}({
@@ -286,7 +284,7 @@ abstract contract KandelTest is StratTest {
       OfferStatus offerStatus = OfferStatus(offerStatuses[i]);
       assertStatus(i, offerStatus, q, b);
       if (q != type(uint).max) {
-        q = (q * TickLib.inboundFromOutbound(int(_tickOffset), 1 ether)) / 1 ether;
+        q = (q * Tick.wrap(int(_tickOffset)).inboundFromOutbound(1 ether)) / 1 ether;
       }
       if (offerStatus == OfferStatus.Ask) {
         expectedAsks++;
@@ -322,7 +320,9 @@ abstract contract KandelTest is StratTest {
 
   function printDistribution(CoreKandel.DistributionOffer[] memory offers) internal view {
     for (uint i; i < offers.length; ++i) {
-      console.log("Index: %s tick: %s Gives: %s", offers[i].index, vm.toString(offers[i].tick), offers[i].gives);
+      console.log(
+        "Index: %s tick: %s Gives: %s", offers[i].index, vm.toString(Tick.unwrap(offers[i].tick)), offers[i].gives
+      );
     }
   }
 
@@ -376,7 +376,7 @@ abstract contract KandelTest is StratTest {
       // tick API should set a meaningful price, for now, just set price to 1.
       distribution.bids[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        tick: base == 0 || quote == 0 ? int(0) : TickConversionLib.tickFromVolumes(base, quote),
+        tick: base == 0 || quote == 0 ? Tick.wrap(0) : TickLib.tickFromVolumes(base, quote),
         gives: quote
       });
     } else {
@@ -384,7 +384,7 @@ abstract contract KandelTest is StratTest {
       // tick API should set a meaningful tick, for now, just set price to 1.
       distribution.asks[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        tick: base == 0 || quote == 0 ? int(0) : TickConversionLib.tickFromVolumes(quote, base),
+        tick: base == 0 || quote == 0 ? Tick.wrap(0) : TickLib.tickFromVolumes(quote, base),
         gives: base
       });
     }
@@ -406,7 +406,7 @@ abstract contract KandelTest is StratTest {
     CoreKandel.Distribution memory distribution = kdl.createDistribution(
       0,
       size,
-      TickConversionLib.tickFromVolumes(initQuote, initBase),
+      TickLib.tickFromVolumes(initQuote, initBase),
       0,
       firstAskIndex,
       1500 * 10 ** 6,
@@ -461,7 +461,7 @@ abstract contract KandelTest is StratTest {
         firstAskIndex = i;
       }
       quoteAtIndex[i] = quote;
-      quote = (quote * TickLib.inboundFromOutbound(int(uint(tickOffset)), 1 ether)) / 1 ether;
+      quote = (quote * Tick.wrap(int(uint(tickOffset))).inboundFromOutbound(1 ether)) / 1 ether;
     }
 
     // find missing offers

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {ToyENS} from "mgv_lib/ToyENS.sol";
-
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 
 import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
@@ -12,8 +10,6 @@ import {
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvReader, Market} from "mgv_src/periphery/MgvReader.sol";
-
-import {console} from "forge-std/console.sol";
 
 /**
  * This scripts:

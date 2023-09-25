@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {Script, console} from "forge-std/Script.sol";
+import {console} from "forge-std/Script.sol";
 import {
   IMangrove, KandelSeeder, Kandel
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
@@ -10,9 +10,9 @@ import {
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
-import {CoreKandel, IERC20} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {MangroveTest, Test} from "mgv_test/lib/MangroveTest.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {OLKey} from "mgv_src/MgvLib.sol";
 

@@ -5,9 +5,8 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -50,7 +49,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param tick the tick
   ///@param gives new amount of `olKey.outbound` offer owner gives
   ///@param offerId the id of the offer to be updated
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId)
     external
     payable
     onlyOwner(olKey.hash(), offerId)
@@ -122,7 +121,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
-    uint takerGives = tko.fillWants ? TickLib.inboundFromOutboundUp(tko.tick, tko.fillVolume) : tko.fillVolume;
+    uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
     uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true);
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
@@ -236,13 +235,13 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     internal
     returns (uint refund)
   {
-    int residualTick = -tko.tick;
+    Tick residualTick = Tick.wrap(-Tick.unwrap(tko.tick));
     uint residualGives;
     if (tko.fillWants) {
       // partialFill => tko.fillVolume > res.takerGot + res.fee
       uint residualWants = tko.fillVolume - (res.takerGot + res.fee);
       // adapting residualGives to match relative limit price chosen by the taker
-      residualGives = TickLib.outboundFromInboundUp(residualTick, residualWants);
+      residualGives = residualTick.outboundFromInboundUp(residualWants);
     } else {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;

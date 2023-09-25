@@ -70,7 +70,7 @@ abstract contract CoreKandelGasTest is KandelTest {
     vm.prank(taker);
     _gas();
     // taking partial fill to have gas cost of reposting
-    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, MAX_TICK, completeFill, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), completeFill, true);
     gas_();
     require(takerGot > 0);
   }
@@ -83,7 +83,7 @@ abstract contract CoreKandelGasTest is KandelTest {
 
     vm.prank(taker);
     _gas();
-    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, MAX_TICK, volume, true);
+    (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), volume, true);
     uint g = gas_(true);
     require(takerGot > 0);
     console.log(n, ",", g);

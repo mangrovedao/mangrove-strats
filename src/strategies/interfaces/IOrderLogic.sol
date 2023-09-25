@@ -2,6 +2,7 @@
 pragma solidity >=0.8.10;
 
 import {OLKey} from "mgv_src/MgvLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Interface for resting orders functionality.
 interface IOrderLogic {
@@ -17,7 +18,7 @@ interface IOrderLogic {
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
-    int tick;
+    Tick tick;
     uint fillVolume;
     bool fillWants;
     bool restingOrder;
@@ -52,7 +53,7 @@ interface IOrderLogic {
     bytes32 indexed olKeyHash,
     address indexed taker,
     bool fillOrKill,
-    int tick,
+    Tick tick,
     uint fillVolume,
     bool fillWants,
     bool restingOrder

@@ -5,6 +5,7 @@ import {Forwarder, IMangrove} from "mgv_strat_src/strategies/offer_forwarder/abs
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(), 30_000) {
@@ -17,7 +18,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, int tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
     public
     payable
     override
@@ -37,13 +38,13 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(OLKey memory olKey, int tick, uint gives) public payable returns (uint offerId) {
+  function newOffer(OLKey memory olKey, Tick tick, uint gives) public payable returns (uint offerId) {
     return newOffer(olKey, tick, gives, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
     public
     payable
     override
@@ -64,7 +65,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(OLKey memory olKey, int tick, uint gives, uint offerId) public payable {
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) public payable {
     address owner = ownerOf(olKey.hash(), offerId);
     require(owner == msg.sender, "OfferForwarder/unauthorized");
     updateOffer(olKey, tick, gives, offerId, offerGasreq());
