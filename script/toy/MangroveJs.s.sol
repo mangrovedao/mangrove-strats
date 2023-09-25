@@ -144,7 +144,5 @@ contract MangroveJsDeploy is Deployer {
       aaveKandelGasreq: 338_000,
       kandelGasreq: 128_000
     });
-
-    broadcast();
   }
 }
