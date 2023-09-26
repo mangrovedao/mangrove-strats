@@ -1,14 +1,19 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {Permit2TransferLib} from "mgv_strat_src/strategies/utils/Permit2TransferLib.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {AbstractRouter, TransferInfo, TransferType} from "./abstract/AbstractRouter.sol";
+import {MonoRouter} from "./abstract/MonoRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is MonoRouter(70_000) {
+contract SimpleRouter is MonoRouter {
+  constructor(IPermit2 _permit2) MonoRouter(_permit2, address(_permit2) == address(0) ? 70_000 : 74_000) {}
+
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @param token Token to be transferred
   /// @param owner The account from which the tokens will be transferred.
@@ -16,7 +21,7 @@ contract SimpleRouter is MonoRouter(70_000) {
   /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
   /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
   /// @dev requires approval from `owner` for `this` to transfer `token`.
-  function __pull__(IERC20 token, address owner, uint amount, bool strict)
+  function __pull__(IERC20 token, address owner, uint amount, bool strict, TransferInfo memory transferInfo)
     internal
     virtual
     override
@@ -24,10 +29,29 @@ contract SimpleRouter is MonoRouter(70_000) {
   {
     // if not strict, pulling all available tokens from reserve
     amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
-      return amount;
-    } else {
-      return 0;
+
+    if (transferInfo.transferType == TransferType.NormalTransfer) {
+      if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
+        return amount;
+      } else {
+        return 0;
+      }
+    } else if (transferInfo.transferType == TransferType.Permit2TransferOneTime) {
+      if (
+        Permit2TransferLib.transferTokenFromWithPermit2Signature(
+          permit2, owner, msg.sender, amount, transferInfo.permitTransferFrom, transferInfo.signature
+        )
+      ) {
+        return amount;
+      } else {
+        return 0;
+      }
+    } else if (transferInfo.transferType == TransferType.Permit2Transfer) {
+      if (Permit2TransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
+        return amount;
+      } else {
+        return 0;
+      }
     }
   }
 

@@ -58,6 +58,7 @@ contract AmplifierForwarderTest is StratTest {
 
   function deployStrat() public {
     strat = new AmplifierForwarder({
+      permit2: permit2,
       mgv: IMangrove($(mgv)),
       base: weth,
       stable1: usdc, 

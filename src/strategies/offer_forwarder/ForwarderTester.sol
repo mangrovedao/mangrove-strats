@@ -1,12 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {OfferForwarder, IMangrove, IERC20, AbstractRouter} from "./OfferForwarder.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
 
 contract ForwarderTester is OfferForwarder, ITesterContract {
-  constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
+  constructor(IPermit2 permit2, IMangrove mgv, address deployer) OfferForwarder(permit2, mgv, deployer) {}
 
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
     AbstractRouter router_ = router();

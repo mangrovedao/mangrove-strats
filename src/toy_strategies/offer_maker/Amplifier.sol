@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
@@ -21,14 +22,14 @@ contract Amplifier is Direct {
   //        Forwarder  Direct <-- offer management (our entry point)
   //    OfferForwarder  OfferMaker <-- new offer posting
 
-  constructor(IMangrove mgv, IERC20 base, IERC20 stable1, IERC20 stable2, address admin)
+  constructor(IPermit2 permit2, IMangrove mgv, IERC20 base, IERC20 stable1, IERC20 stable2, address admin)
     Direct(mgv, NO_ROUTER, 100_000, admin)
   {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
     BASE = base;
-    AbstractRouter router_ = new SimpleRouter();
+    AbstractRouter router_ = new SimpleRouter(permit2);
     setRouter(router_);
     // adding `this` to the allowed makers of `router_` to pull/push liquidity
     // Note: `admin` needs to approve `this.router()` for base token transfer

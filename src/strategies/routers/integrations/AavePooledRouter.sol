@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AbstractRouter, MonoRouter} from "../abstract/MonoRouter.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {AbstractRouter, TransferInfo, TransferType} from "../abstract/AbstractRouter.sol";
+import {MonoRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
@@ -62,7 +64,10 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param overhead is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  constructor(address addressesProvider, uint overhead) HasAaveBalanceMemoizer(addressesProvider) MonoRouter(overhead) {
+  constructor(address addressesProvider, uint overhead)
+    HasAaveBalanceMemoizer(addressesProvider)
+    MonoRouter(IPermit2(address(0)), overhead)
+  {
     setAaveManager(msg.sender);
   }
 
@@ -226,7 +231,13 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   ///@dev outside a market order (i.e if `__pull__` is not called during offer logic's execution) the `token` balance of this router should be empty.
   /// This may not be the case when a "donation" occurred to this contract or if the maker posthook failed to push funds back to AAVE
   /// If the donation is large enough to cover the pull request we use the donation funds
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal override returns (uint) {
+  function __pull__(IERC20 token, address reserveId, uint amount, bool strict, TransferInfo memory transferInfo)
+    internal
+    override
+    returns (uint)
+  {
+    require(transferInfo.transferType == TransferType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported");
+
     // The amount to redeem from AAVE
     uint toRedeem;
     // The amount to transfer to the calling maker contract

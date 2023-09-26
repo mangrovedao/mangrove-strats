@@ -7,11 +7,8 @@ import {AbstractMangrove} from "mgv_src/AbstractMangrove.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {MangroveOrderDeployer} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
-import {MangroveOrderWithPermit2Deployer} from
-  "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderWithPermit2Deployer.s.sol";
 import {KandelSeederDeployer} from "mgv_strat_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
 import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {MangroveOrderWithPermit2} from "mgv_strat_src/strategies/MangroveOrderWithPermit2.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "mgv_test/lib/agents/TestMaker.sol";
 import {Mangrove} from "mgv_src/Mangrove.sol";
@@ -126,10 +123,7 @@ contract MangroveJsDeploy is Deployer {
     activateMarket.innerRun(mgv, mgvReader, weth, usdc, 1e9, 1e9 / 1000, 0);
 
     MangroveOrderDeployer mgoeDeployer = new MangroveOrderDeployer();
-    mgoeDeployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv))});
-
-    MangroveOrderWithPermit2Deployer mgoeWithPermit2Deployer = new MangroveOrderWithPermit2Deployer();
-    mgoeWithPermit2Deployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv)), permit2: permit2});
+    mgoeDeployer.innerRun({permit2: permit2, admin: broadcaster(), mgv: IMangrove(payable(mgv))});
 
     address[] memory underlying =
       dynamic([address(tokenA), address(tokenB), address(dai), address(usdc), address(weth)]);

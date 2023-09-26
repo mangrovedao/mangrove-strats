@@ -8,8 +8,6 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MumbaiMangroveDeployer} from "mgv_script/core/deployers/MumbaiMangroveDeployer.s.sol";
 import {MumbaiMangroveOrderDeployer} from
   "mgv_strat_script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
-import {MumbaiMangroveOrderWithPermit2Deployer} from
-  "mgv_strat_script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderWithPermit2Deployer.s.sol";
 import {
   MumbaiKandelSeederDeployer,
   KandelSeeder,
@@ -18,9 +16,8 @@ import {
 
 import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
 import {
-  ActivateBaseMangroveOrder,
-  BaseMangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/ActivateBaseMangroveOrder.s.sol";
+  ActivateMangroveOrder, MangroveOrder
+} from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 import {KandelSower, IMangrove} from "mgv_strat_script/strategies/kandel/KandelSower.s.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
@@ -63,11 +60,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy MangroveOrder
     new MumbaiMangroveOrderDeployer().runWithChainSpecificParams();
-    BaseMangroveOrder mangroveOrder = BaseMangroveOrder(fork.get("MangroveOrder"));
-
-    // Deploy MangroveOrderWithPermit2
-    new MumbaiMangroveOrderWithPermit2Deployer().runWithChainSpecificParams();
-    BaseMangroveOrder mangroveOrderWithPermit2 = BaseMangroveOrder(fork.get("MangroveOrder"));
+    MangroveOrder mangroveOrder = MangroveOrder(fork.get("MangroveOrder"));
 
     // Deploy KandelSeeder & AaveKandelSeeder
     (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
@@ -119,13 +112,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     iercs[0] = weth;
     iercs[1] = dai;
     iercs[2] = usdc;
-    new ActivateBaseMangroveOrder().innerRun({
+    new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      iercs: iercs
-    });
-
-    new ActivateBaseMangroveOrder().innerRun({
-      mgvOrder: mangroveOrderWithPermit2,
       iercs: iercs
     });
 

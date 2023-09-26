@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {PolygonMangroveDeployer} from "mgv_script/core/deployers/PolygonMangroveDeployer.s.sol";
 
-import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
+import {MangroveOrderDeployerTest} from "./MangroveOrderDeployer.t.sol";
 
 import {Test2, Test} from "mgv_lib/Test2.sol";
 
@@ -21,7 +21,7 @@ import {
 } from "mgv_strat_script/strategies/mangroveOrder/deployers/PolygonMangroveOrderDeployer.s.sol";
 import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 
-contract PolygonMangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
+contract PolygonMangroveOrderDeployerTest is MangroveOrderDeployerTest {
   function setUp() public {
     DeployPermit2 deployPermit2 = new DeployPermit2();
     address permit2 = deployPermit2.deployPermit2();

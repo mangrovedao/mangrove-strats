@@ -48,8 +48,8 @@ library Permit2TransferLib {
     address spender,
     address recipient,
     uint amount,
-    ISignatureTransfer.PermitTransferFrom calldata permit,
-    bytes calldata signature
+    ISignatureTransfer.PermitTransferFrom memory permit,
+    bytes memory signature
   ) internal returns (bool) {
     if (amount == 0) {
       return true;

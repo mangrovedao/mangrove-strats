@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import "./MangoStorage.sol";
 import "./MangoImplementation.sol";
 import "../../abstract/Direct.sol";
@@ -60,7 +61,7 @@ contract Mango is Direct {
   )
     Direct(
       mgv,
-      new SimpleRouter(), // routes liqudity between admin's account and this contract,
+      new SimpleRouter(IPermit2(address(0))), // routes liqudity between admin's account and this contract,
       150_000,
       deployer
     )

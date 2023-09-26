@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
@@ -17,9 +18,15 @@ contract AmplifierForwarder is Forwarder {
 
   mapping(address => OfferPair) offers; // mapping from maker address to id of the offers
 
-  constructor(IMangrove mgv, IERC20 base, IERC20 stable1, IERC20 stable2, address deployer, uint gasreq)
-    Forwarder(mgv, new SimpleRouter(), gasreq)
-  {
+  constructor(
+    IPermit2 permit2,
+    IMangrove mgv,
+    IERC20 base,
+    IERC20 stable1,
+    IERC20 stable2,
+    address deployer,
+    uint gasreq
+  ) Forwarder(mgv, new SimpleRouter(permit2), gasreq) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;

@@ -60,7 +60,7 @@ contract MangroveOfferTest is StratTest {
 
   function test_a_checkList_with_router() public {
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     makerContract.setRouter(router);
     vm.stopPrank();
 
@@ -71,7 +71,7 @@ contract MangroveOfferTest is StratTest {
 
   function test_b_checkList_router_not_bound() public {
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     makerContract.setRouter(router);
     // passes a
     makerContract.approve(weth, $(mgv), type(uint).max);
@@ -84,7 +84,7 @@ contract MangroveOfferTest is StratTest {
 
   function test_c_checkList_router_not_approved() public {
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     makerContract.setRouter(router);
     // passes a
     makerContract.approve(weth, $(mgv), type(uint).max);
@@ -99,7 +99,7 @@ contract MangroveOfferTest is StratTest {
 
   function test_d_checkList_router_not_approved_by_reserve() public {
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     makerContract.setRouter(router);
     // passes a
     makerContract.approve(weth, $(mgv), type(uint).max);
@@ -116,7 +116,7 @@ contract MangroveOfferTest is StratTest {
 
   function test_e_checkList_completes() public {
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     makerContract.setRouter(router);
     // passes a
     makerContract.approve(weth, $(mgv), type(uint).max);
@@ -244,7 +244,7 @@ contract MangroveOfferTest is StratTest {
   function test_offerGasreq_takes_new_router_into_account() public {
     uint gasreq = makerContract.offerGasreq();
     vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
+    SimpleRouter router = new SimpleRouter(permit2);
     router.setAdmin(address(makerContract));
     makerContract.setRouter(router);
     assertEq(makerContract.offerGasreq(), gasreq + router.ROUTER_GASREQ(), "incorrect gasreq");

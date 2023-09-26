@@ -7,9 +7,8 @@ import {Deployer} from "mgv_script/lib/Deployer.sol";
 
 import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
 import {
-  ActivateBaseMangroveOrder,
-  BaseMangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/ActivateBaseMangroveOrder.s.sol";
+  ActivateMangroveOrder, MangroveOrder
+} from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 
 import {Mangrove} from "mgv_src/Mangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
@@ -20,7 +19,7 @@ import {console} from "forge-std/console.sol";
  * This scripts:
  * 1. activates the (TOKEN0, TOKEN1) market on matic(mum) using a gasprice of 140 gwei to compute density
  * 2. updates the reader to be aware of the opened market
- * 3. activates BaseMangroveOrder for both TOKEN0 and TOKEN1
+ * 3. activates MangroveOrder for both TOKEN0 and TOKEN1
  *
  * TOKEN0 the name of the first token
  * TOKEN1 the name of the second token
@@ -58,8 +57,8 @@ contract MumbaiActivateMarket is Deployer {
   function activateMarket(IERC20 token0, IERC20 token1, uint price0, uint price1) public {
     Mangrove mgv = Mangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
-    BaseMangroveOrder mangroveOrder = BaseMangroveOrder(fork.get("MangroveOrder"));
-    BaseMangroveOrder mangroveOrderWithPermit2 = BaseMangroveOrder(fork.get("MangroveOrder-WithPermit2"));
+    MangroveOrder mangroveOrder = MangroveOrder(fork.get("MangroveOrder"));
+    MangroveOrder mangroveOrderWithPermit2 = MangroveOrder(fork.get("MangroveOrder-WithPermit2"));
 
     // 1 token_i = (prices[i] / 10**8) USD
     // 1 USD = (10**8 / maticPrice) Matic
@@ -75,12 +74,12 @@ contract MumbaiActivateMarket is Deployer {
       fee: 0
     });
 
-    new ActivateBaseMangroveOrder().innerRun({
+    new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
       iercs: dynamic([IERC20(token0), token1])
     });
 
-    new ActivateBaseMangroveOrder().innerRun({
+    new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrderWithPermit2,
       iercs: dynamic([IERC20(token0), token1])
     });

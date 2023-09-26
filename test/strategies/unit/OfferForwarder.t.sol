@@ -28,6 +28,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
     vm.prank(deployer);
     forwarder = new ForwarderTester({
+      permit2: permit2,
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
@@ -209,7 +210,7 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
       pivotId: 0,
-      gasreq: gasreq
+      gasreq: gasreq - 4000 // bounded to SimpleRouter gasreq
     });
   }
 

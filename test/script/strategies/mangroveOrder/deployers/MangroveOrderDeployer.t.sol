@@ -3,14 +3,9 @@ pragma solidity ^0.8.10;
 
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol";
-import {
-  MangroveOrderDeployer,
-  MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
-
-import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
 
 import {Test2, Test} from "mgv_lib/Test2.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 
 import {MgvStructs} from "mgv_src/MgvLib.sol";
 import {Mangrove} from "mgv_src/Mangrove.sol";
@@ -18,22 +13,31 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {MgvCleaner} from "mgv_src/periphery/MgvCleaner.sol";
 import {MgvOracle} from "mgv_src/periphery/MgvOracle.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {
+  MangroveOrderDeployer,
+  MangroveOrder
+} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 
-contract MangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
-  function setUp() public {
-    DeployPermit2 deployPermit2 = new DeployPermit2();
-    address permit2 = deployPermit2.deployPermit2();
-    fork.set("Permit2", permit2);
+import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 
-    chief = freshAddress("admin");
+/**
+ * Base test suite for [Chain]MangroveOrderDeployer scripts
+ */
+abstract contract MangroveOrderDeployerTest is Deployer, Test2 {
+  MangroveOrderDeployer mgoDeployer;
+  address chief;
 
-    address gasbot = freshAddress("gasbot");
-    uint gasprice = 42;
-    uint gasmax = 8_000_000;
-    (new MangroveDeployer()).innerRun(chief, gasprice, gasmax, gasbot);
+  function test_normal_deploy() public {
+    // MangroveOrder - verify mgv is used and admin is chief
+    address mgv = fork.get("Mangrove");
+    IPermit2 permit2 = IPermit2(fork.get("Permit2"));
+    mgoDeployer.innerRun(permit2, IMangrove(payable(mgv)), chief);
+    MangroveOrder mgoe = MangroveOrder(fork.get("MangroveOrder"));
+    address mgvOrderRouter = fork.get("MangroveOrder-Router");
 
-    mgoDeployer = new MangroveOrderDeployer();
+    assertEq(mgoe.admin(), chief);
+    assertEq(address(mgoe.MGV()), mgv);
+    assertEq(address(mgoe.router()), mgvOrderRouter);
   }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
+import {TransferInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 
@@ -94,5 +95,8 @@ interface IOrderLogic {
   ///@notice Implements "Fill or kill" or "Good till cancelled" orders on a given offer list.
   ///@param tko the arguments in memory of the taker order
   ///@return res the result of the taker order. If `offerId==0`, no resting order was posted on `msg.sender`'s behalf.
-  function take(TakerOrder memory tko) external payable returns (TakerOrderResult memory res);
+  function take(TakerOrder memory tko, TransferInfo calldata transferInfo)
+    external
+    payable
+    returns (TakerOrderResult memory res);
 }
