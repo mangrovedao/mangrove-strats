@@ -23,10 +23,8 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   uint internal immutable MAX_CREDIT_LINE = 100;
 
   /// @notice Data for a reserve <=> token pair
-  /// @param deposit_on_push Whether to deposit on push
   /// @param credit_line_decrease The Credit line decrease for a given token and reserveId
   struct TokenReserveData {
-    bool deposit_on_push;
     uint8 credit_line_decrease;
   }
 
@@ -124,15 +122,10 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   }
 
   /// @notice Deposit underlying tokens to the reserve
-  /// @dev Can supply the underlying on behalf (if opted in by the reserve)
+  /// @dev Supply the underlying on behalf
   /// @inheritdoc	AbstractRouter
   function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint) {
-    bool deposit = getAaveDispatcherStorage().token_reserve_data[reserveId][token].deposit_on_push;
-    if (deposit) {
-      _supply(token, amount, reserveId, false);
-    } else {
-      require(TransferLib.transferTokenFrom(token, msg.sender, reserveId, amount), "AaveDispatchedRouter/pushFailed");
-    }
+    _supply(token, amount, reserveId, false);
     return amount;
   }
 
