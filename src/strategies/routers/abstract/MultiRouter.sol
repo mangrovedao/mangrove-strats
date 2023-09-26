@@ -5,8 +5,11 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {MonoRouter, AbstractRouter} from "./MonoRouter.sol";
 
-///@title `MultiRouter` instances have reserveId dependant sourcing strategies.
+///@title `MultiRouter` instances may have token and reserveId dependant sourcing strategies.
 abstract contract MultiRouter is AbstractRouter {
+  ///@notice logs new routes and routes updates.
+  event SetRoute(IERC20 indexed token, address indexed reserveId, MonoRouter indexed router);
+
   mapping(IERC20 token => mapping(address reserveId => MonoRouter)) public routes;
 
   ///@inheritdoc AbstractRouter
@@ -14,7 +17,11 @@ abstract contract MultiRouter is AbstractRouter {
     return routes[token][reserveId].ROUTER_GASREQ();
   }
 
+  ///@notice associates a router to a specific strategy for sourcing liquidity
+  ///@param token the asset that will be routed via this strategy
+  ///@param reserveId the reserve for which the asset is routed
   function setRoute(IERC20 token, address reserveId, MonoRouter router) external onlyBound {
     routes[token][reserveId] = router;
+    emit SetRoute(token, reserveId, router);
   }
 }
