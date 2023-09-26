@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {Forwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {AbstractRouter, MonoRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 
@@ -45,7 +45,7 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
     payable
     returns (uint offerId)
   {
-    return newOffer(outbound_tkn, inbound_tkn, wants, gives, pivotId, offerGasreq());
+    return newOffer(outbound_tkn, inbound_tkn, wants, gives, pivotId, offerGasreq(outbound_tkn, msg.sender));
   }
 
   ///@inheritdoc ILiquidityProvider
@@ -121,5 +121,10 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   {
     Dispatcher dispatcher = Dispatcher(address(router()));
     dispatcher.callRouterSpecificFunction(selector, reserveId, token, data);
+  }
+
+  function setRoute(IERC20 token, address reserveId, MonoRouter route) external onlyCaller(reserveId) {
+    Dispatcher dispatcher = Dispatcher(address(router()));
+    dispatcher.setRoute(token, reserveId, route);
   }
 }

@@ -6,6 +6,10 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {IViewDelegator} from "../../utils/ViewDelegator.sol";
 
+abstract contract IDelegatedRouter {
+  function delegatedCheckList(IERC20 token, address reserveId) external view virtual;
+}
+
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
 contract Dispatcher is MultiRouter {
   mapping(bytes4 => address) public routerSpecificFunctions;
@@ -26,7 +30,7 @@ contract Dispatcher is MultiRouter {
   /// * if a selector is already set, it will revert
   /// @param router The router contract to initialize
   /// @param selectors The selectors to set
-  function initializeRouter(address router, bytes4[] calldata selectors) external onlyAdmin {
+  function initializeRouter(address router, bytes4[] calldata selectors) external onlyBound {
     for (uint i = 0; i < selectors.length; i++) {
       require(routerSpecificFunctions[selectors[i]] == address(0), "Dispatcher/SelectorAlreadySet");
       routerSpecificFunctions[selectors[i]] = router;
@@ -37,7 +41,7 @@ contract Dispatcher is MultiRouter {
   /// @notice Removes a router contract by removing the router specific functions
   /// @dev if a selector is not set, it will revert
   /// @param selectors The selectors to remove
-  function removeFunctions(bytes4[] calldata selectors) external onlyAdmin {
+  function removeFunctions(bytes4[] calldata selectors) external onlyBound {
     for (uint i = 0; i < selectors.length; i++) {
       address router = routerSpecificFunctions[selectors[i]];
       require(router != address(0), "Dispatcher/SelectorNotSet");
@@ -85,10 +89,27 @@ contract Dispatcher is MultiRouter {
 
   /// @inheritdoc	AbstractRouter
   function __checkList__(IERC20 token, address reserveId) internal view virtual override {
+    // MonoRouter router = _getRouterSafely(token, reserveId);
+    // IViewDelegator(address(this)).staticdelegatecall(
+    //   address(router), abi.encodeWithSelector(router.checkList.selector, token, reserveId)
+    // );
+    IDelegatedRouter(address(this)).delegatedCheckList(token, reserveId);
+  }
+
+  function delegatedCheckList(IERC20 token, address reserveId) external virtual {
     MonoRouter router = _getRouterSafely(token, reserveId);
-    IViewDelegator(address(this)).staticdelegatecall(
-      address(router), abi.encodeWithSelector(router.checkList.selector, token, reserveId)
-    );
+    (bool success, bytes memory returndata) =
+      address(router).delegatecall(abi.encodeWithSelector(router.checkList.selector, token, reserveId));
+    if (success == false) {
+      if (returndata.length > 0) {
+        assembly {
+          let returndata_size := mload(returndata)
+          revert(add(0x20, returndata), returndata_size)
+        }
+      } else {
+        revert("Dispatcher/RouterCheckListFailed");
+      }
+    }
   }
 
   /// @inheritdoc	AbstractRouter
@@ -111,18 +132,5 @@ contract Dispatcher is MultiRouter {
     require(router != address(0), "Dispatcher/SelectorNotSet");
     (bool success,) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
     require(success, "Dispatcher/RouterSpecificFunctionFailed");
-  }
-
-  fallback() external {
-    if (msg.sig == IViewDelegator.staticdelegatecall.selector) {
-      (, address target, bytes memory data) = abi.decode(msg.data, (bytes4, address, bytes));
-      assembly {
-        let result := delegatecall(gas(), target, add(data, 0x20), mload(data), 0, 0)
-        returndatacopy(0, 0, returndatasize())
-        switch result
-        case 0 { revert(0, returndatasize()) }
-        default { return(0, returndatasize()) }
-      }
-    }
   }
 }
