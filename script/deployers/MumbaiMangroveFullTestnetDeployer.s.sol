@@ -31,7 +31,6 @@ import {console} from "forge-std/console.sol";
  * Deploy and configure a complete Mangrove testnet deployment:
  * - Mangrove and periphery contracts
  * - MangroveOrder
- * - MangroveOrderWithPermit2
  * - KandelSeeder and AaveKandelSeeder
  * - open markets: DAI/USDC, WETH/DAI, WETH/USDC
  * - prices given by the oracle are in USD with 8 decimals of precision.

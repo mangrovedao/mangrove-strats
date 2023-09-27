@@ -58,7 +58,6 @@ contract MumbaiActivateMarket is Deployer {
     Mangrove mgv = Mangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
     MangroveOrder mangroveOrder = MangroveOrder(fork.get("MangroveOrder"));
-    MangroveOrder mangroveOrderWithPermit2 = MangroveOrder(fork.get("MangroveOrder-WithPermit2"));
 
     // 1 token_i = (prices[i] / 10**8) USD
     // 1 USD = (10**8 / maticPrice) Matic
@@ -76,11 +75,6 @@ contract MumbaiActivateMarket is Deployer {
 
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      iercs: dynamic([IERC20(token0), token1])
-    });
-
-    new ActivateMangroveOrder().innerRun({
-      mgvOrder: mangroveOrderWithPermit2,
       iercs: dynamic([IERC20(token0), token1])
     });
   }
