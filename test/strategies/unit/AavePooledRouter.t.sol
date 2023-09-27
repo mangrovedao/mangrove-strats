@@ -226,6 +226,7 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   function test_mockup_marketOrder_gas_cost() public {
     deal($(dai), maker1, 10 ** 18);
+    TransferInfo memory memoized_transferInfo = transferInfo;
 
     vm.startPrank(maker1);
     uint gas = gasleft();
@@ -240,7 +241,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.startPrank(maker1);
     gas = gasleft();
     /// this emulates a `get` from the offer logic
-    pooledRouter.pull(dai, maker1, 0.5 ether, false, transferInfo);
+    pooledRouter.pull(dai, maker1, 0.5 ether, false, memoized_transferInfo);
     vm.stopPrank();
 
     uint deep_pull_cost = gas - gasleft();

@@ -79,7 +79,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount of `token` the maker contract wishes to pull from its reserve
   ///@param strict when the calling maker contract accepts to receive more funds from reserve than required (this may happen for gas optimization)
   ///@return pulled the amount that was successfully pulled.
-  function pull(IERC20 token, address reserveId, uint amount, bool strict, TransferInfo memory transferInfo)
+  function pull(IERC20 token, address reserveId, uint amount, bool strict, TransferInfo calldata transferInfo)
     external
     onlyBound
     returns (uint pulled)
@@ -96,7 +96,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount The amount of tokens to be transferred
   ///@param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
   ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict, TransferInfo memory transferInfo)
+  function __pull__(IERC20 token, address reserveId, uint amount, bool strict, TransferInfo calldata transferInfo)
     internal
     virtual
     returns (uint);
