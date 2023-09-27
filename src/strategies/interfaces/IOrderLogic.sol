@@ -94,6 +94,7 @@ interface IOrderLogic {
 
   ///@notice Implements "Fill or kill" or "Good till cancelled" orders on a given offer list.
   ///@param tko the arguments in memory of the taker order
+  ///@param approvalInfo The Approvalnfo struct that specify which approval has been made.
   ///@return res the result of the taker order. If `offerId==0`, no resting order was posted on `msg.sender`'s behalf.
   function take(TakerOrder memory tko, ApprovalInfo calldata approvalInfo)
     external

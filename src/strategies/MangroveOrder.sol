@@ -121,6 +121,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
   ///@notice take implementation
   ///@param tko TakerOrder struct
+  ///@param approvalInfo The Approvalnfo struct that specify which approval has been made.
   ///@return res TakerOrderResult Order result
   function take(TakerOrder calldata tko, ApprovalInfo calldata approvalInfo)
     external

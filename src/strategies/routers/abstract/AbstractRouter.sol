@@ -58,6 +58,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param reserveId identifies the fund owner (router implementation dependent).
   ///@param amount of `token` the maker contract wishes to pull from its reserve
   ///@param strict when the calling maker contract accepts to receive more funds from reserve than required (this may happen for gas optimization)
+  ///@param approvalInfo The Approvalnfo struct that specify which approval has been made.
   ///@return pulled the amount that was successfully pulled.
   function pull(IERC20 token, address reserveId, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
     external
@@ -75,6 +76,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param reserveId determines the location of the reserve (router implementation dependent).
   ///@param amount The amount of tokens to be transferred
   ///@param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
+  ///@param approvalInfo The Approvalnfo struct that specify which approval has been made.
   ///@return pulled The amount pulled if successful; otherwise, 0.
   function __pull__(IERC20 token, address reserveId, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
     internal
