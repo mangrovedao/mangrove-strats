@@ -30,7 +30,10 @@ contract SimpleRouter is MonoRouter {
   {
     // if not strict, pulling all available tokens from reserve
     amount = strict ? amount : token.balanceOf(owner);
-    return ApprovalTransferLib.transferWithApprovalInfo(token, owner, msg.sender, amount, approvalInfo);
+    if (ApprovalTransferLib.transferWithApprovalInfo(token, owner, msg.sender, amount, approvalInfo)) {
+      return amount;
+    }
+    return 0;
   }
 
   /// @notice transfers an amount of tokens from the maker to the reserve.

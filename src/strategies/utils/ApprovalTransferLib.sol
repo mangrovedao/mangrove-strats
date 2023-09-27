@@ -30,29 +30,18 @@ library ApprovalTransferLib {
     address to,
     uint amount,
     ApprovalInfo calldata approvalInfo
-  ) public returns (uint transferred) {
+  ) public returns (bool success) {
     if (approvalInfo.approvalType == ApprovalType.NormalTransfer) {
-      if (TransferLib.transferTokenFrom(token, from, to, amount)) {
-        return amount;
-      } else {
-        return 0;
-      }
+      return TransferLib.transferTokenFrom(token, from, to, amount);
     } else if (approvalInfo.approvalType == ApprovalType.Permit2TransferOneTime) {
-      if (
-        Permit2TransferLib.transferTokenFromWithPermit2Signature(
-          approvalInfo.permit2, from, to, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
-        )
-      ) {
-        return amount;
-      } else {
-        return 0;
-      }
+      return Permit2TransferLib.transferTokenFromWithPermit2Signature(
+        approvalInfo.permit2, from, to, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
+      );
     } else if (approvalInfo.approvalType == ApprovalType.Permit2Transfer) {
-      approvalInfo.permit2.permit(from, approvalInfo.permit, approvalInfo.signature);
-      if (Permit2TransferLib.transferTokenFromWithPermit2(approvalInfo.permit2, token, from, to, amount)) {
-        return amount;
-      } else {
-        return 0;
+      try approvalInfo.permit2.permit(from, approvalInfo.permit, approvalInfo.signature) {
+        return Permit2TransferLib.transferTokenFromWithPermit2(approvalInfo.permit2, token, from, to, amount);
+      } catch {
+        return false;
       }
     }
   }
