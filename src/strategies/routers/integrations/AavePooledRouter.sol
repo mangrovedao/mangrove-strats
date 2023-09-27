@@ -1,7 +1,6 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {AbstractRouter} from "../abstract/AbstractRouter.sol";
 import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {MonoRouter} from "../abstract/MonoRouter.sol";
@@ -65,10 +64,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param overhead is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  constructor(address addressesProvider, uint overhead)
-    HasAaveBalanceMemoizer(addressesProvider)
-    MonoRouter(IPermit2(address(0)), overhead)
-  {
+  constructor(address addressesProvider, uint overhead) HasAaveBalanceMemoizer(addressesProvider) MonoRouter(overhead) {
     setAaveManager(msg.sender);
   }
 

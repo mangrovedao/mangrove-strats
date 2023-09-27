@@ -11,7 +11,7 @@ import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 abstract contract MonoRouter is AbstractRouter {
   uint public immutable ROUTER_GASREQ;
 
-  constructor(IPermit2 permit2, uint routerGasreq_) AbstractRouter(permit2) {
+  constructor(uint routerGasreq_) AbstractRouter() {
     ROUTER_GASREQ = routerGasreq_;
   }
 

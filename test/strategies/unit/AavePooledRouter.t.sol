@@ -541,7 +541,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     // Act/assert - invoke all functions - if any are missing, add them.
 
     // No auth
-    pooledRouter.permit2();
     pooledRouter.ADDRESS_PROVIDER();
     pooledRouter.OFFSET();
     pooledRouter.POOL();

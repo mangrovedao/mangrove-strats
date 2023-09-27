@@ -10,12 +10,6 @@ import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.s
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
 abstract contract AbstractRouter is AccessControlled(msg.sender) {
-  IPermit2 public immutable permit2;
-
-  constructor(IPermit2 _permit2) {
-    permit2 = _permit2;
-  }
-
   ///@notice the bound maker contracts which are allowed to call this router.
   mapping(address => bool) internal boundMakerContracts;
 

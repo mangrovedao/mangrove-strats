@@ -30,7 +30,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param deployer The address of the admin of `this` at the end of deployment
   ///@param gasreq The gas required for `this` to execute `makerExecute` and `makerPosthook` when called by mangrove for a resting order.
   constructor(IPermit2 _permit2, IMangrove mgv, address deployer, uint gasreq)
-    Forwarder(mgv, new SimpleRouter(_permit2), gasreq)
+    Forwarder(mgv, new SimpleRouter(), gasreq)
   {
     // adding `this` contract to authorized makers of the router before setting admin rights of the router to deployer
     router().bind(address(this));

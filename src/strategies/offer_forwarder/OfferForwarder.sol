@@ -1,7 +1,6 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {Forwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
@@ -9,7 +8,7 @@ import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/Abstract
 import {MgvLib} from "mgv_src/MgvLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IPermit2 _permit2, IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(_permit2), 30_000) {
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(), 30_000) {
     AbstractRouter router_ = router();
     router_.bind(address(this));
     if (deployer != msg.sender) {

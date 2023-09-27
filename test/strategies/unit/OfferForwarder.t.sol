@@ -28,7 +28,6 @@ contract OfferForwarderTest is OfferLogicTest {
 
     vm.prank(deployer);
     forwarder = new ForwarderTester({
-      permit2: permit2,
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
