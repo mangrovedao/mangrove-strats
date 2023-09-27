@@ -1,15 +1,12 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {MgvLib, IERC20} from "mgv_src/MgvLib.sol";
-import {AbstractRouter, ApprovalInfo} from "./routers/abstract/AbstractRouter.sol";
+import {ApprovalInfo} from "./utils/ApprovalTransferLib.sol";
 import {SimpleRouter} from "./routers/SimpleRouter.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
@@ -24,14 +21,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@dev 0 means no expiry.
   mapping(IERC20 => mapping(IERC20 => mapping(uint => uint))) public expiring;
 
-  ///@notice MangroveOrder is a Forwarder logic with an abstract router.
-  ///@param _permit2 The Permit2 contract.
+  ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param deployer The address of the admin of `this` at the end of deployment
   ///@param gasreq The gas required for `this` to execute `makerExecute` and `makerPosthook` when called by mangrove for a resting order.
-  constructor(IPermit2 _permit2, IMangrove mgv, address deployer, uint gasreq)
-    Forwarder(mgv, new SimpleRouter(), gasreq)
-  {
+  constructor(IMangrove mgv, address deployer, uint gasreq) Forwarder(mgv, new SimpleRouter(), gasreq) {
     // adding `this` contract to authorized makers of the router before setting admin rights of the router to deployer
     router().bind(address(this));
     router().setAdmin(deployer);

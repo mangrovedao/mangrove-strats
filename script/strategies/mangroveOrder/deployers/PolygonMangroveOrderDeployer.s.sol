@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {MangroveOrder, IERC20, IMangrove} from "mgv_strat_src/strategies/MangroveOrder.sol";
 
 import {Deployer} from "mgv_script/lib/Deployer.sol";
@@ -21,10 +20,6 @@ contract PolygonMangroveOrderDeployer is Deployer {
 
   function runWithChainSpecificParams() public {
     mangroveOrderDeployer = new MangroveOrderDeployer();
-    mangroveOrderDeployer.innerRun({
-      permit2: IPermit2(fork.get("Permit2")),
-      mgv: IMangrove(fork.get("Mangrove")),
-      admin: fork.get("MgvGovernance")
-    });
+    mangroveOrderDeployer.innerRun({mgv: IMangrove(fork.get("Mangrove")), admin: fork.get("MgvGovernance")});
   }
 }

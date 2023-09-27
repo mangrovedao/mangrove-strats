@@ -34,8 +34,9 @@ contract MangroveJsDeploy is Deployer {
   IERC20 public dai;
   IERC20 public usdc;
   IERC20 public weth;
+
+  IPermit2 permit2;
   SimpleTestMaker public simpleTestMaker;
-  IPermit2 public permit2;
 
   function run() public {
     innerRun({gasprice: 1, gasmax: 2_000_000, gasbot: broadcaster()});
@@ -45,6 +46,8 @@ contract MangroveJsDeploy is Deployer {
   function innerRun(uint gasprice, uint gasmax, address gasbot) public {
     DeployPermit2 deployPermit2 = new DeployPermit2();
     permit2 = IPermit2(deployPermit2.deployPermit2()); // deploy permit2 using the precompiled bytecode
+
+    fork.set("Permit2", address(permit2));
 
     MangroveDeployer mgvDeployer = new MangroveDeployer();
 
@@ -123,7 +126,7 @@ contract MangroveJsDeploy is Deployer {
     activateMarket.innerRun(mgv, mgvReader, weth, usdc, 1e9, 1e9 / 1000, 0);
 
     MangroveOrderDeployer mgoeDeployer = new MangroveOrderDeployer();
-    mgoeDeployer.innerRun({permit2: permit2, admin: broadcaster(), mgv: IMangrove(payable(mgv))});
+    mgoeDeployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv))});
 
     address[] memory underlying =
       dynamic([address(tokenA), address(tokenB), address(dai), address(usdc), address(weth)]);

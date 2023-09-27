@@ -96,7 +96,7 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
     NONCE = 0;
 
     // this contract is admin of MangroveOrder and its router
-    mgo = new MangroveOrder(permit2, IMangrove(payable(mgv)), $(this), GASREQ);
+    mgo = new MangroveOrder(IMangrove(payable(mgv)), $(this), GASREQ);
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
     IERC20[] memory tokens = new IERC20[](2);
     tokens[0] = base;
