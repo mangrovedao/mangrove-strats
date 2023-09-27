@@ -83,7 +83,8 @@ contract AmplifierTest is StratTest {
   }
 
   function deployStrat() public {
-    strat = new Amplifier({ mgv: IMangrove($(mgv)),
+    strat = new Amplifier({
+      mgv: IMangrove($(mgv)),
       base: weth,
       stable1: usdc, 
       stable2: dai,
