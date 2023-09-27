@@ -67,7 +67,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy MangroveOrderWithPermit2
     new MumbaiMangroveOrderWithPermit2Deployer().runWithChainSpecificParams();
-    BaseMangroveOrder mangroveOrderWithPermit2 = BaseMangroveOrder(fork.get("MangroveOrder"));
+    BaseMangroveOrder mangroveOrderWithPermit2 = BaseMangroveOrder(fork.get("MangroveOrderWithPermit2"));
 
     // Deploy KandelSeeder & AaveKandelSeeder
     (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
