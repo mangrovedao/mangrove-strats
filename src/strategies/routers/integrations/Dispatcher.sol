@@ -128,6 +128,7 @@ contract Dispatcher is MultiRouter {
 
   /// @notice intermediate function to allow a call to be delagated to `target` while preserving the a `view` attribute
   /// @dev scheme is as follows: for some `view` function `f` of `target`, one does `staticcall(_staticdelegatecall(target, f))` which will retain for the `view` attribute
+  /// * this implementation does not preserve the `msg.sender` and `msg.data`
   /// @param target The address to delegate the call to
   /// @param data The data to call the function with
   function _staticdelegatecall(address target, bytes calldata data) external {
