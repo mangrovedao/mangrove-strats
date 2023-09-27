@@ -88,26 +88,18 @@ contract Dispatcher is MultiRouter {
   }
 
   /// @inheritdoc	AbstractRouter
-  function __checkList__(IERC20 token, address reserveId) internal view virtual override {
-    // MonoRouter router = _getRouterSafely(token, reserveId);
-    // IViewDelegator(address(this)).staticdelegatecall(
-    //   address(router), abi.encodeWithSelector(router.checkList.selector, token, reserveId)
-    // );
-    IDelegatedRouter(address(this)).delegatedCheckList(token, reserveId);
-  }
-
-  function delegatedCheckList(IERC20 token, address reserveId) external virtual {
+  function __checkList__(IERC20 token, address reserveId, address) internal view virtual override {
     MonoRouter router = _getRouterSafely(token, reserveId);
-    (bool success, bytes memory returndata) =
-      address(router).delegatecall(abi.encodeWithSelector(router.checkList.selector, token, reserveId));
-    if (success == false) {
-      if (returndata.length > 0) {
+    (bool success, bytes memory retdata) =
+      address(this).staticcall(abi.encodeWithSelector(this._staticdelegatecall.selector, address(router), msg.data));
+    if (!success) {
+      if (retdata.length > 0) {
         assembly {
-          let returndata_size := mload(returndata)
-          revert(add(0x20, returndata), returndata_size)
+          let returndata_size := mload(retdata)
+          revert(add(0x20, retdata), returndata_size)
         }
       } else {
-        revert("Dispatcher/RouterCheckListFailed");
+        revert("Dispatcher/StaticDelegateCallFailed");
       }
     }
   }
@@ -132,5 +124,27 @@ contract Dispatcher is MultiRouter {
     require(router != address(0), "Dispatcher/SelectorNotSet");
     (bool success,) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
     require(success, "Dispatcher/RouterSpecificFunctionFailed");
+  }
+
+  /// @notice intermediate function to allow a call to be delagated to `target` while preserving the a `view` attribute
+  /// @dev scheme is as follows: for some `view` function `f` of `target`, one does `staticcall(_staticdelegatecall(target, f))` which will retain for the `view` attribute
+  /// @param target The address to delegate the call to
+  /// @param data The data to call the function with
+  function _staticdelegatecall(address target, bytes calldata data) external {
+    require(msg.sender == address(this), "Dispatcher/internalOnly");
+    (bool success, bytes memory retdata) = target.delegatecall(data);
+    if (!success) {
+      if (retdata.length > 0) {
+        assembly {
+          let returndata_size := mload(retdata)
+          revert(add(0x20, retdata), returndata_size)
+        }
+      } else {
+        revert("Dispatcher/StaticDelegateCallFailed");
+      }
+    }
+    assembly {
+      return(add(retdata, 32), returndatasize())
+    }
   }
 }

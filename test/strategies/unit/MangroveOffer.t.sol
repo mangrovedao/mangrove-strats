@@ -77,7 +77,7 @@ contract MangroveOfferTest is StratTest {
     vm.stopPrank();
 
     IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("Router/callerIsNotBoundToRouter");
+    vm.expectRevert("Router/makerIsNotBoundToRouter");
     makerContract.checkList(tokens);
   }
 
