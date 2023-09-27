@@ -2,7 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {AbstractRouter, ApprovalInfo, TransferType} from "../abstract/AbstractRouter.sol";
+import {AbstractRouter} from "../abstract/AbstractRouter.sol";
+import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {MonoRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
@@ -236,7 +237,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
     override
     returns (uint)
   {
-    // require(approvalInfo.transferType == TransferType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported"); not required
+    // require(approvalInfo.approvalType == ApprovalType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported"); not required
 
     // The amount to redeem from AAVE
     uint toRedeem;

@@ -13,7 +13,7 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 469.5 * 1000;
+  uint internal constant GASREQ = 469.5 * 1000 + 1000; // + 1000 because of the new ApprovalType transfer
 
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);

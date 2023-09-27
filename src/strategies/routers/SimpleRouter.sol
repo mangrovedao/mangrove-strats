@@ -5,14 +5,15 @@ import {Permit2TransferLib} from "mgv_strat_src/strategies/utils/Permit2Transfer
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {AbstractRouter, ApprovalInfo, TransferType} from "./abstract/AbstractRouter.sol";
+import {AbstractRouter, ApprovalInfo} from "./abstract/AbstractRouter.sol";
 import {MonoRouter} from "./abstract/MonoRouter.sol";
+import {ApprovalTransferLib, ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is MonoRouter {
-  constructor(IPermit2 _permit2) MonoRouter(_permit2, address(_permit2) == address(0) ? 70_000 : 74_000) {}
+  constructor(IPermit2 _permit2) MonoRouter(_permit2, address(_permit2) == address(0) ? 73_000 : 74_000) {}
 
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @param token Token to be transferred
@@ -29,30 +30,7 @@ contract SimpleRouter is MonoRouter {
   {
     // if not strict, pulling all available tokens from reserve
     amount = strict ? amount : token.balanceOf(owner);
-
-    if (approvalInfo.transferType == TransferType.NormalTransfer) {
-      if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
-        return amount;
-      } else {
-        return 0;
-      }
-    } else if (approvalInfo.transferType == TransferType.Permit2TransferOneTime) {
-      if (
-        Permit2TransferLib.transferTokenFromWithPermit2Signature(
-          permit2, owner, msg.sender, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
-        )
-      ) {
-        return amount;
-      } else {
-        return 0;
-      }
-    } else if (approvalInfo.transferType == TransferType.Permit2Transfer) {
-      if (Permit2TransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
-        return amount;
-      } else {
-        return 0;
-      }
-    }
+    return ApprovalTransferLib.transferWithApprovalInfo(token, owner, msg.sender, amount, approvalInfo);
   }
 
   /// @notice transfers an amount of tokens from the maker to the reserve.

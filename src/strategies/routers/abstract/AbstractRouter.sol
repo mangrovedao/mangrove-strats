@@ -3,22 +3,9 @@ pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
-import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-
-enum TransferType {
-  NormalTransfer,
-  Permit2TransferOneTime,
-  Permit2Transfer
-}
-
-struct ApprovalInfo {
-  TransferType transferType;
-  ISignatureTransfer.PermitTransferFrom permitTransferFrom;
-  IAllowanceTransfer.PermitSingle permit;
-  bytes signature;
-}
+import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
