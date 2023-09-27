@@ -5,7 +5,7 @@ import {Permit2TransferLib} from "mgv_strat_src/strategies/utils/Permit2Transfer
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {AbstractRouter, TransferInfo, TransferType} from "./abstract/AbstractRouter.sol";
+import {AbstractRouter, ApprovalInfo, TransferType} from "./abstract/AbstractRouter.sol";
 import {MonoRouter} from "./abstract/MonoRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
@@ -21,7 +21,7 @@ contract SimpleRouter is MonoRouter {
   /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
   /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
   /// @dev requires approval from `owner` for `this` to transfer `token`.
-  function __pull__(IERC20 token, address owner, uint amount, bool strict, TransferInfo calldata transferInfo)
+  function __pull__(IERC20 token, address owner, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
     internal
     virtual
     override
@@ -30,23 +30,23 @@ contract SimpleRouter is MonoRouter {
     // if not strict, pulling all available tokens from reserve
     amount = strict ? amount : token.balanceOf(owner);
 
-    if (transferInfo.transferType == TransferType.NormalTransfer) {
+    if (approvalInfo.transferType == TransferType.NormalTransfer) {
       if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
         return amount;
       } else {
         return 0;
       }
-    } else if (transferInfo.transferType == TransferType.Permit2TransferOneTime) {
+    } else if (approvalInfo.transferType == TransferType.Permit2TransferOneTime) {
       if (
         Permit2TransferLib.transferTokenFromWithPermit2Signature(
-          permit2, owner, msg.sender, amount, transferInfo.permitTransferFrom, transferInfo.signature
+          permit2, owner, msg.sender, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
         )
       ) {
         return amount;
       } else {
         return 0;
       }
-    } else if (transferInfo.transferType == TransferType.Permit2Transfer) {
+    } else if (approvalInfo.transferType == TransferType.Permit2Transfer) {
       if (Permit2TransferLib.transferTokenFromWithPermit2(permit2, token, owner, msg.sender, amount)) {
         return amount;
       } else {

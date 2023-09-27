@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {TransferInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {IForwarder} from "mgv_strat_src/strategies/interfaces/IForwarder.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
@@ -293,8 +293,8 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
 
-    TransferInfo memory transferInfo;
-    uint pulled = router().pull(outTkn, owner, amount, true, transferInfo);
+    ApprovalInfo memory approvalInfo;
+    uint pulled = router().pull(outTkn, owner, amount, true, approvalInfo);
     return amount - pulled; // this will make trade fail if `amount != pulled`
   }
 

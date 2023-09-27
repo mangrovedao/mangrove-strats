@@ -9,7 +9,7 @@ import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {MgvLib, IERC20} from "mgv_src/MgvLib.sol";
-import {AbstractRouter, TransferInfo} from "./routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, ApprovalInfo} from "./routers/abstract/AbstractRouter.sol";
 import {SimpleRouter} from "./routers/SimpleRouter.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
@@ -52,15 +52,15 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@return totalGave Amount of inbound_tkn received.
   ///@return totalPenalty Penalty received.
   ///@return feePaid Fee paid.
-  function marketOrderWithTransferInfo(
+  function marketOrderWithApprovalInfo(
     IERC20 outbound_tkn,
     IERC20 inbound_tkn,
     uint takerWants,
     uint takerGives,
     bool fillWants,
-    TransferInfo calldata transferInfo
+    ApprovalInfo calldata approvalInfo
   ) external returns (uint totalGot, uint totalGave, uint totalPenalty, uint feePaid) {
-    uint pulled = router().pull(inbound_tkn, msg.sender, takerGives, true, transferInfo);
+    uint pulled = router().pull(inbound_tkn, msg.sender, takerGives, true, approvalInfo);
     require(pulled == takerGives, "mgvOrder/transferInFail");
     return marketOrderInternal(outbound_tkn, inbound_tkn, takerWants, takerGives, fillWants);
   }
@@ -170,7 +170,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice take implementation
   ///@param tko TakerOrder struct
   ///@return res TakerOrderResult Order result
-  function take(TakerOrder calldata tko, TransferInfo calldata transferInfo)
+  function take(TakerOrder calldata tko, ApprovalInfo calldata approvalInfo)
     external
     payable
     returns (TakerOrderResult memory res)
@@ -189,7 +189,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
     // Pulling funds from `msg.sender`'s reserve
-    uint pulled = router().pull(tko.inbound_tkn, msg.sender, tko.takerGives, true, transferInfo);
+    uint pulled = router().pull(tko.inbound_tkn, msg.sender, tko.takerGives, true, approvalInfo);
     require(pulled == tko.takerGives, "mgvOrder/transferInFail");
 
     // POST:
