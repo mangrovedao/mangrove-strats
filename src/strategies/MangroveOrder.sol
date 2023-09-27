@@ -42,48 +42,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
-  ///@notice pull inbound_tkn from the msg.sender with permit approval valid once and then forward market order to MGV.
-  ///@param outbound_tkn outbound_tkn.
-  ///@param inbound_tkn inbound_tkn.
-  ///@param takerWants Amount of outbound_tkn taker wants.
-  ///@param takerGives Amount of inbound_tkn taker gives.
-  ///@param fillWants isBid.
-  ///@return totalGot Amount of outbound_tkn received.
-  ///@return totalGave Amount of inbound_tkn received.
-  ///@return totalPenalty Penalty received.
-  ///@return feePaid Fee paid.
-  function marketOrderWithApprovalInfo(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    uint takerWants,
-    uint takerGives,
-    bool fillWants,
-    ApprovalInfo calldata approvalInfo
-  ) external returns (uint totalGot, uint totalGave, uint totalPenalty, uint feePaid) {
-    uint pulled = router().pull(inbound_tkn, msg.sender, takerGives, true, approvalInfo);
-    require(pulled == takerGives, "mgvOrder/transferInFail");
-    return marketOrderInternal(outbound_tkn, inbound_tkn, takerWants, takerGives, fillWants);
-  }
-
-  function marketOrderInternal(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
-    uint takerWants,
-    uint takerGives,
-    bool fillWants
-  ) internal returns (uint totalGot, uint totalGave, uint totalPenalty, uint feePaid) {
-    (totalGot, totalGave, totalPenalty, feePaid) =
-      MGV.marketOrder(address(outbound_tkn), address(inbound_tkn), takerWants, takerGives, fillWants);
-
-    uint fund = takerGives - totalGave;
-    if (fund > 0) {
-      // refund the sender
-      (bool noRevert,) =
-        address(router()).call(abi.encodeWithSelector(router().push.selector, inbound_tkn, msg.sender, fund));
-      require(noRevert, "mgvOrder/refundInboundTknFail");
-    }
-  }
-
   ///@notice The expiry of the offer has been set
   ///@param outbound_tkn the outbound token of the offer list.
   ///@param inbound_tkn the inbound token of the offer list.
