@@ -236,7 +236,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
     override
     returns (uint)
   {
-    require(transferInfo.transferType == TransferType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported");
+    // require(transferInfo.transferType == TransferType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported"); not required
 
     // The amount to redeem from AAVE
     uint toRedeem;
