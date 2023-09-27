@@ -19,6 +19,7 @@ contract MumbaiMangroveOrderDeployer is Deployer {
 
   function runWithChainSpecificParams() public {
     new MangroveOrderDeployer().innerRun({
+      permit2: IPermit2(envAddressOrName("PERMIT2", "Permit2")),
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       admin: envAddressOrName("MGV_GOVERNANCE", broadcaster())
     });

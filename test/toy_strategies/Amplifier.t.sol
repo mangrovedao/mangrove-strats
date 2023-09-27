@@ -83,13 +83,12 @@ contract AmplifierTest is StratTest {
   }
 
   function deployStrat() public {
-    strat = new Amplifier({
-      mgv: IMangrove($(mgv)),
+    strat = new Amplifier({ mgv: IMangrove($(mgv)),
       base: weth,
       stable1: usdc, 
       stable2: dai,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
-      });
+    });
 
     // NOTE:
     // For this test, we're locking base, ie WETH, in the vault of the contract

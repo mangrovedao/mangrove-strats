@@ -21,6 +21,10 @@ contract PolygonMangroveOrderDeployer is Deployer {
 
   function runWithChainSpecificParams() public {
     mangroveOrderDeployer = new MangroveOrderDeployer();
-    mangroveOrderDeployer.innerRun({mgv: IMangrove(fork.get("Mangrove")), admin: fork.get("MgvGovernance")});
+    mangroveOrderDeployer.innerRun({
+      permit2: IPermit2(fork.get("Permit2")),
+      mgv: IMangrove(fork.get("Mangrove")),
+      admin: fork.get("MgvGovernance")
+    });
   }
 }

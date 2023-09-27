@@ -4,9 +4,11 @@ pragma solidity ^0.8.10;
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
+
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
-
 abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice the bound maker contracts which are allowed to call this router.
   mapping(address => bool) internal boundMakerContracts;
@@ -58,11 +60,15 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount of `token` the maker contract wishes to pull from its reserve
   ///@param strict when the calling maker contract accepts to receive more funds from reserve than required (this may happen for gas optimization)
   ///@return pulled the amount that was successfully pulled.
-  function pull(IERC20 token, address reserveId, uint amount, bool strict) external onlyBound returns (uint pulled) {
+  function pull(IERC20 token, address reserveId, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
+    external
+    onlyBound
+    returns (uint pulled)
+  {
     if (strict && amount == 0) {
       return 0;
     }
-    pulled = __pull__({token: token, reserveId: reserveId, amount: amount, strict: strict});
+    pulled = __pull__({token: token, reserveId: reserveId, amount: amount, strict: strict, approvalInfo: approvalInfo});
   }
 
   ///@notice router-dependent implementation of the `pull` function
@@ -71,7 +77,10 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount The amount of tokens to be transferred
   ///@param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
   ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal virtual returns (uint);
+  function __pull__(IERC20 token, address reserveId, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
+    internal
+    virtual
+    returns (uint);
 
   ///@notice pushes assets from calling's maker contract to a reserve
   ///@param token is the asset the maker is pushing

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AbstractRouter, MonoRouter} from "../abstract/MonoRouter.sol";
+import {AbstractRouter} from "../abstract/AbstractRouter.sol";
+import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
+import {MonoRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "mgv_src/IERC20.sol";
@@ -226,7 +228,13 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   ///@dev outside a market order (i.e if `__pull__` is not called during offer logic's execution) the `token` balance of this router should be empty.
   /// This may not be the case when a "donation" occurred to this contract or if the maker posthook failed to push funds back to AAVE
   /// If the donation is large enough to cover the pull request we use the donation funds
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal override returns (uint) {
+  function __pull__(IERC20 token, address reserveId, uint amount, bool strict, ApprovalInfo calldata /*approvalInfo*/ )
+    internal
+    override
+    returns (uint)
+  {
+    // require(approvalInfo.approvalType == ApprovalType.NormalTransfer, "AavePooledRouter/transferMethodNotSupported"); not required
+
     // The amount to redeem from AAVE
     uint toRedeem;
     // The amount to transfer to the calling maker contract

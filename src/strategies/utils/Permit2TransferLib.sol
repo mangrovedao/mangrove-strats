@@ -36,7 +36,7 @@ library Permit2TransferLib {
   }
 
   ///@notice This transfer amount of token to recipient address from spender address
-  ///@param permit2 Permit2 contract
+  ///@param permit2 Permit2memory
   ///@param spender Address of the spender, where the tokens will be transferred from
   ///@param recipient Address of the recipient, where the tokens will be transferred to
   ///@param amount The amount of tokens to be transferred spender, where the tokens will be transferred from
