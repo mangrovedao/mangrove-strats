@@ -48,6 +48,7 @@ library ApprovalTransferLib {
         return 0;
       }
     } else if (approvalInfo.approvalType == ApprovalType.Permit2Transfer) {
+      approvalInfo.permit2.permit(from, approvalInfo.permit, approvalInfo.signature);
       if (Permit2TransferLib.transferTokenFromWithPermit2(approvalInfo.permit2, token, from, to, amount)) {
         return amount;
       } else {

@@ -14,8 +14,10 @@ import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
+import {ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
-contract MangroveOrder_Test is StratTest {
+contract MangroveOrder_Test is StratTest, Permit2Helpers {
   uint constant GASREQ = 35_000;
 
   uint constant MID_PRICE = 2200e18;
@@ -50,6 +52,10 @@ contract MangroveOrder_Test is StratTest {
     uint restingOrderId
   );
 
+  bytes32 DOMAIN_SEPARATOR;
+  uint48 EXPIRATION;
+  uint48 NONCE;
+
   ApprovalInfo internal approvalInfo;
   MangroveOrder internal mgo;
   TestMaker internal ask_maker;
@@ -72,6 +78,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function setUp() public override {
+    super.setUp();
     fork = new PinnedPolygonFork();
     fork.setUp();
     options.gasprice = 90;
@@ -82,6 +89,11 @@ contract MangroveOrder_Test is StratTest {
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("DAI"));
     setupMarket(base, quote);
+
+    approvalInfo.permit2 = permit2;
+    DOMAIN_SEPARATOR = permit2.DOMAIN_SEPARATOR();
+    EXPIRATION = uint48(block.timestamp + 1000);
+    NONCE = 0;
 
     // this contract is admin of MangroveOrder and its router
     mgo = new MangroveOrder(permit2, IMangrove(payable(mgv)), $(this), GASREQ);
@@ -790,5 +802,59 @@ contract MangroveOrder_Test is StratTest {
     gas_();
     assertTrue(successes == 1, "Snipe failed");
     assertTrue(mgv.offers($(quote), $(base), cold_buyResult.offerId).gives() > 0, "Update failed");
+  }
+
+  function freshTakerForPermit2(uint balBase, uint balQuote, uint privKey) internal returns (address fresh_taker) {
+    fresh_taker = vm.addr(privKey);
+    deal($(quote), fresh_taker, balQuote);
+    deal($(base), fresh_taker, balBase);
+    deal(fresh_taker, 1 ether);
+
+    vm.startPrank(fresh_taker);
+    // always unlimited approval of Permit2.
+    quote.approve(address(permit2), type(uint).max);
+    base.approve(address(permit2), type(uint).max);
+    vm.stopPrank();
+  }
+
+  function test_empty_fill_buy_with_resting_order_is_correctly_posted_with_permit2_approvals() public {
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
+    buyOrder.restingOrder = true;
+
+    TransferLib.approveToken(quote, address(permit2), takerGives(buyOrder) * 2);
+    IOrderLogic.TakerOrderResult memory expectedResult =
+      IOrderLogic.TakerOrderResult({takerGot: 0, takerGave: 0, bounty: 0, fee: 0, offerId: 5});
+
+    uint privKey = 0x1234;
+    address fresh_taker = freshTakerForPermit2(0, takerGives(buyOrder), privKey);
+    // generate permit to just in time approval
+    approvalInfo.permit =
+      getPermit(address(buyOrder.inbound_tkn), uint160(buyOrder.takerGives), EXPIRATION, NONCE, address(mgo.router()));
+
+    approvalInfo.approvalType = ApprovalType.Permit2Transfer;
+    approvalInfo.signature = getPermitSignature(approvalInfo.permit, privKey, DOMAIN_SEPARATOR);
+    uint nativeBalBefore = fresh_taker.balance;
+
+    // checking log emission
+    expectFrom($(mgo));
+    logOrderData(IMangrove(payable(mgv)), fresh_taker, buyOrder, expectedResult);
+
+    vm.prank(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder, approvalInfo);
+
+    assertTrue(res.offerId > 0, "Offer not posted");
+    assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
+    assertEq(mgo.provisionOf(quote, base, res.offerId), 0.1 ether, "Offer not provisioned");
+    // checking mappings
+    assertEq(mgo.ownerOf(quote, base, res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
+    assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
+    // checking price of offer
+    MgvStructs.OfferPacked offer = mgv.offers($(quote), $(base), res.offerId);
+    MgvStructs.OfferDetailPacked detail = mgv.offerDetails($(quote), $(base), res.offerId);
+    assertEq(offer.gives(), takerGives(buyOrder), "Incorrect offer gives");
+    assertEq(offer.wants(), takerWants(buyOrder), "Incorrect offer wants");
+    assertEq(offer.prev(), 0, "Offer should be best of the book");
+    assertEq(detail.maker(), address(mgo), "Incorrect maker");
   }
 }
