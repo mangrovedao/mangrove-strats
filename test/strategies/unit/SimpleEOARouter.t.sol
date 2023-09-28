@@ -113,7 +113,7 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
     approvalInfo.approvalType = ApprovalType.Permit2Transfer;
 
     approvalInfo.permit2 = permit2;
-    approvalInfo.permit = getPermit(address(weth), AMOUNT, EXPIRATION, NONCE, address(router));
+    approvalInfo.permit = getPermit(address(weth), AMOUNT * 3, EXPIRATION, NONCE, address(router));
 
     approvalInfo.signature = getPermitSignature(approvalInfo.permit, eoaPrivateKey, DOMAIN_SEPARATOR);
 
@@ -124,5 +124,18 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
 
     assertEq(weth.balanceOf(eoaAddress), startBalanceFrom - AMOUNT);
     assertEq(weth.balanceOf(address(this)), startBalanceTo + AMOUNT);
+
+    approvalInfo.permit.spender = address(0);
+    router.pull(weth, eoaAddress, AMOUNT, true, approvalInfo);
+
+    assertEq(weth.balanceOf(eoaAddress), startBalanceFrom - AMOUNT * 2);
+    assertEq(weth.balanceOf(address(this)), startBalanceTo + AMOUNT * 2);
+
+    vm.prank(eoaAddress);
+    permit2.approve(address(weth), address(router), 0, EXPIRATION);
+
+    uint amount = router.pull(weth, eoaAddress, AMOUNT, true, approvalInfo);
+
+    assertEq(amount, 0);
   }
 }
