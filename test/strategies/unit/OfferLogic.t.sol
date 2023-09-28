@@ -112,7 +112,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     assertTrue(offerId != 0);
@@ -133,7 +133,7 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_newOffer_fails_when_provision_is_zero() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
     makerContract.newOffer{value: 0}({
@@ -158,7 +158,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -179,7 +179,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -201,7 +201,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     makerContract.retractOffer(weth, usdc, offerId, true);
     uint received_wei = makerContract.retractOffer(weth, usdc, offerId, true);
@@ -218,7 +218,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.expectRevert("mgvOffer/weiTransferFail");
     makerContract.retractOffer(weth, usdc, offerId, true);
@@ -233,7 +233,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
 
@@ -245,13 +245,13 @@ contract OfferLogicTest is StratTest {
       gives: 1 * 10 ** 18,
       pivotId: offerId,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
   }
 
   function test_only_maker_can_updateOffer() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.prank(owner);
     uint offerId = makerContract.newOffer{value: 0.1 ether}({
       outbound_tkn: weth,
@@ -275,7 +275,7 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_updateOffer_fails_when_provision_is_too_low() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.prank(owner);
     uint offerId = makerContract.newOffer{value: 0.1 ether}({
       outbound_tkn: weth,
@@ -309,7 +309,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
 
@@ -347,7 +347,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     MgvLib.OrderResult memory result;
@@ -375,7 +375,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     mgv.setGasprice(1000);
@@ -408,7 +408,7 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       pivotId: 0,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     mgv.deactivate($(weth), $(usdc));

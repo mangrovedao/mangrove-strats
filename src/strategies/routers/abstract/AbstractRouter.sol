@@ -134,18 +134,20 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
   ///@param token is the asset (and possibly its overlyings) whose approval must be checked
   ///@param reserveId of the tokens that are being pulled
-  function checkList(IERC20 token, address reserveId) external view {
-    require(isBound(msg.sender), "Router/callerIsNotBoundToRouter");
+  ///@param makerContract the maker contract address
+  function checkList(IERC20 token, address reserveId, address makerContract) external view {
+    require(isBound(makerContract), "Router/makerIsNotBoundToRouter");
     // checking maker contract has approved this for token transfer (in order to push to reserve)
-    require(token.allowance(msg.sender, address(this)) > 0, "Router/NotApprovedByMakerContract");
+    require(token.allowance(makerContract, address(this)) > 0, "Router/NotApprovedByMakerContract");
     // pulling on behalf of `reserveId` might require a special approval (e.g if `reserveId` is some account on a protocol).
-    __checkList__(token, reserveId);
+    __checkList__(token, reserveId, makerContract);
   }
 
   ///@notice router-dependent additional checks
   ///@param token is the asset (and possibly its overlyings) whose approval must be checked
   ///@param reserveId of the tokens that are being pulled
-  function __checkList__(IERC20 token, address reserveId) internal view virtual;
+  ///@param makerContract the maker contract address
+  function __checkList__(IERC20 token, address reserveId, address makerContract) internal view virtual;
 
   ///@notice performs necessary approval to activate router function on a particular asset
   ///@param token the asset one wishes to use the router for

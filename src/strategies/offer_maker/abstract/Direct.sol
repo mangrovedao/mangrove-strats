@@ -150,7 +150,7 @@ abstract contract Direct is MangroveOffer {
   function __checkList__(IERC20 token) internal view virtual override {
     super.__checkList__(token);
     if (router() != NO_ROUTER) {
-      router().checkList(token, RESERVE_ID);
+      router().checkList(token, RESERVE_ID, address(this));
     }
   }
 }

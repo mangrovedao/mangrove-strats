@@ -206,7 +206,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
 
     vm.prank(address(makerContract));
     vm.expectRevert("AavePooledRouter/tokenNotLendableOnAave");
-    privateRouter.checkList(IERC20($(tkn)), address(makerContract));
+    privateRouter.checkList(IERC20($(tkn)), address(makerContract), address(makerContract));
   }
 
   function test_pulled_collateral_is_consistent_with_buffer(uint8 dice) public virtual {

@@ -420,7 +420,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
 
     vm.expectRevert("AavePooledRouter/tokenNotLendableOnAave");
     vm.prank(maker1);
-    pooledRouter.checkList(IERC20($(tkn)), maker1);
+    pooledRouter.checkList(IERC20($(tkn)), maker1, maker1);
   }
 
   function empty_pool(IERC20 token, address id) internal {
@@ -541,7 +541,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
     pooledRouter.overlying(dai);
     pooledRouter.checkAsset(dai);
     vm.prank(maker1);
-    pooledRouter.checkList(dai, maker1);
+    pooledRouter.checkList(dai, maker1, maker1);
 
     CheckAuthArgs memory args;
     args.callee = $(pooledRouter);
