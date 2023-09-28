@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
+import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 
 ///@title This library helps with safely interacting with Permit2 contract
 ///@notice ERC20 tokens returning bool instead of reverting are handled.
@@ -14,11 +15,18 @@ library Permit2TransferLib {
   ///@param spender Address of the spender, where the tokens will be transferred from
   ///@param recipient Address of the recipient, where the tokens will be transferred to
   ///@param amount The amount of tokens to be transferred
+  ///@param permit The permit data signed over by the owner
+  ///@param signature The signature to verify
   ///@return true if transfer was successful; otherwise, false.
-  function transferTokenFromWithPermit2(IPermit2 permit2, IERC20 token, address spender, address recipient, uint amount)
-    internal
-    returns (bool)
-  {
+  function transferTokenFromWithPermit2(
+    IPermit2 permit2,
+    IERC20 token,
+    address spender,
+    address recipient,
+    uint amount,
+    IAllowanceTransfer.PermitSingle calldata permit,
+    bytes calldata signature
+  ) internal returns (bool) {
     if (amount == 0) {
       return true;
     }
@@ -26,6 +34,14 @@ library Permit2TransferLib {
 
     if (spender == recipient) {
       return token.balanceOf(spender) >= amount;
+    }
+
+    // if spender is set to zero skip permit call
+    if (permit.spender != address(0)) {
+      try permit2.permit(spender, permit, signature) {}
+      catch {
+        return false;
+      }
     }
 
     try permit2.transferFrom(address(spender), address(recipient), uint160(amount), address(token)) {

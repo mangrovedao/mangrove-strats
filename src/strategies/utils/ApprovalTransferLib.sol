@@ -38,11 +38,9 @@ library ApprovalTransferLib {
         approvalInfo.permit2, from, to, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
       );
     } else if (approvalInfo.approvalType == ApprovalType.Permit2Transfer) {
-      try approvalInfo.permit2.permit(from, approvalInfo.permit, approvalInfo.signature) {
-        return Permit2TransferLib.transferTokenFromWithPermit2(approvalInfo.permit2, token, from, to, amount);
-      } catch {
-        return false;
-      }
+      return Permit2TransferLib.transferTokenFromWithPermit2(
+        approvalInfo.permit2, token, from, to, amount, approvalInfo.permit, approvalInfo.signature
+      );
     }
   }
 }
