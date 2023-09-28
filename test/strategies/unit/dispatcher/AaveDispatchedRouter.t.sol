@@ -90,7 +90,7 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
-    assertGe(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
   }
 
@@ -128,5 +128,30 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     assertEq(endAWethBalance, startAWethBalance, "Suppose to have same amount of aWETH");
+  }
+
+  function test_partial_balance_of_underlying() public {
+    deal($(weth), owner, 0.2 ether);
+
+    IERC20 aWETH = getOverlying(weth);
+    uint startAWethBalance = aWETH.balanceOf(owner);
+    uint startWethBalance = weth.balanceOf(owner);
+
+    assertLt(startWethBalance, 0.5 ether, "Should not be able to cover entire offer");
+
+    uint balOut = makerContract.tokenBalance(weth, owner);
+    uint balIn = makerContract.tokenBalance(usdc, owner);
+
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+
+    uint endAWethBalance = aWETH.balanceOf(owner);
+    uint endWethBalance = weth.balanceOf(owner);
+
+    assertEq(endWethBalance, 0, "Should have taken all WETH first");
+    assertApproxEqAbs(startAWethBalance - endAWethBalance, 0.5 ether - startWethBalance, 1, "incorrect trade output");
   }
 }
