@@ -15,6 +15,7 @@ import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 
 import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
 contract AaveDispatchedRouterTest is OfferDispatcherTest {
   bool internal useForkAave = true;
@@ -22,6 +23,9 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
 
   IPoolAddressesProvider internal ADDRESS_PROVIDER;
   IPool internal POOL;
+
+  AaveDispatchedRouter internal aaveRouter;
+  SimpleRouter internal simpleRouter;
 
   function setUp() public virtual override {
     // deploying mangrove and opening WETH/USDC market.
@@ -43,6 +47,10 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     vm.stopPrank();
   }
 
+  function getOverlying(IERC20 token) internal view returns (IERC20) {
+    return IERC20(POOL.getReserveData(address(token)).aTokenAddress);
+  }
+
   function setupLiquidityRouting() internal virtual override {
     dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
     address aave = useForkAave
@@ -53,21 +61,36 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     POOL = IPool(ADDRESS_PROVIDER.getPool());
 
     vm.prank(deployer);
-    AaveDispatchedRouter router = new AaveDispatchedRouter({
+    aaveRouter = new AaveDispatchedRouter({
       routerGasreq_: 1_000_000,
       addressesProvider: aave,
       interestRateMode: 2, // variable
       storage_key: "router.aave.1"
     });
 
-    IERC20 aWETH = IERC20(POOL.getReserveData(address(weth)).aTokenAddress);
-    IERC20 aUSDC = IERC20(POOL.getReserveData(address(usdc)).aTokenAddress);
+    vm.prank(deployer);
+    simpleRouter = new SimpleRouter();
+
+    IERC20 aWETH = getOverlying(weth);
 
     vm.startPrank(owner);
     aWETH.approve(address(makerContract.router()), type(uint).max);
-    aUSDC.approve(address(makerContract.router()), type(uint).max);
-    offerDispatcher.setRoute(weth, owner, router);
-    offerDispatcher.setRoute(usdc, owner, router);
+    // Setting aave routers only for outbound (weth) by default
+    // otherwise simple router will be used
+    offerDispatcher.setRoute(weth, owner, aaveRouter);
+    offerDispatcher.setRoute(usdc, owner, simpleRouter);
     vm.stopPrank();
+  }
+
+  // must be made in order to have aave rewards taken into account
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual override {
+    uint balOut = makerContract.tokenBalance(weth, owner);
+    uint balIn = makerContract.tokenBalance(usdc, owner);
+
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+
+    assertGe(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
+    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
   }
 }
