@@ -99,14 +99,30 @@ contract Dispatcher is MultiRouter {
           revert(add(0x20, retdata), returndata_size)
         }
       } else {
-        revert("Dispatcher/StaticDelegateCallFailed");
+        revert("Dispatcher/ChecklistFailed");
       }
     }
   }
 
   /// @inheritdoc	AbstractRouter
   function balanceOfReserve(IERC20 token, address reserveId) public view virtual override returns (uint) {
-    return token.balanceOf(reserveId);
+    // return token.balanceOf(reserveId);
+    MonoRouter router = _getRouterSafely(token, reserveId);
+    (bool success, bytes memory retdata) =
+      address(this).staticcall(abi.encodeWithSelector(this._staticdelegatecall.selector, address(router), msg.data));
+    if (!success) {
+      if (retdata.length > 0) {
+        assembly {
+          let returndata_size := mload(retdata)
+          revert(add(0x20, retdata), returndata_size)
+        }
+      } else {
+        revert("Dispatcher/BalanceOfReserveFailed");
+      }
+    }
+    assembly {
+      return(add(retdata, 32), returndatasize())
+    }
   }
 
   /// @notice Calls a function of a specific router implementation

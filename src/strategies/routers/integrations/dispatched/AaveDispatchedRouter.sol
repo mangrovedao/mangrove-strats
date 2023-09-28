@@ -87,7 +87,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     require(token.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
     Memoizer memory m;
     IERC20 overlying = overlying(token, m);
-    require(overlying.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
+    require(overlying.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/OverlyingNotApproved");
   }
 
   /// @notice pulls amount of underlying that can be redeemed
