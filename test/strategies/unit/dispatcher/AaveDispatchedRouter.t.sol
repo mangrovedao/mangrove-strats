@@ -32,12 +32,6 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
 
     vm.prank(deployer);
     makerContract.activate(dynamic([dai]));
-
-    // vm.startPrank(deployer);
-    // dai.approve({spender: $(privateRouter), amount: type(uint).max});
-    // weth.approve({spender: $(privateRouter), amount: type(uint).max});
-    // usdc.approve({spender: $(privateRouter), amount: type(uint).max});
-    // vm.stopPrank();
   }
 
   function fundStrat() internal virtual override {
