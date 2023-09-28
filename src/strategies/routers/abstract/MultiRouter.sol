@@ -4,8 +4,14 @@ pragma solidity ^0.8.18;
 import {IERC20} from "mgv_src/IERC20.sol";
 import {MonoRouter, AbstractRouter} from "./MonoRouter.sol";
 
-///@title `MultiRouter` instances have token and reserveId dependant sourcing strategies.
+///@title `MultiRouter` instances may have token and reserveId dependant sourcing strategies.
 abstract contract MultiRouter is AbstractRouter {
+  ///@notice logs new routes and route updates.
+  ///@param token the asset that will be routed via this strategy
+  ///@param reserveId the reserve for which the asset is routed
+  ///@param router the router.
+  event SetRoute(IERC20 indexed token, address indexed reserveId, MonoRouter indexed router);
+
   ///@notice the specific router to use for a given token and reserveId.
   mapping(IERC20 token => mapping(address reserveId => MonoRouter)) public routes;
 
@@ -14,11 +20,12 @@ abstract contract MultiRouter is AbstractRouter {
     return routes[token][reserveId].ROUTER_GASREQ();
   }
 
-  ///@notice sets the router to use for a given token and reserve id.
-  ///@param token the token to set the router for.
-  ///@param reserveId the reserveId to set the router for.
+  ///@notice associates a router to a specific strategy for sourcing liquidity
+  ///@param token the asset that will be routed via this strategy
+  ///@param reserveId the reserve for which the asset is routed
   ///@param router the router to set.
   function setRoute(IERC20 token, address reserveId, MonoRouter router) external onlyBound {
     routes[token][reserveId] = router;
+    emit SetRoute(token, reserveId, router);
   }
 }
