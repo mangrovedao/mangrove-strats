@@ -97,7 +97,15 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     Memoizer memory m;
 
     uint localBalance = balanceOf(token, m, reserveId);
-    uint missing = amount > localBalance ? amount - localBalance : 0;
+    uint fromLocal = amount > localBalance ? localBalance : amount;
+    uint missing = amount - fromLocal;
+
+    uint pulled;
+
+    if (fromLocal > 0) {
+      require(TransferLib.transferTokenFrom(token, reserveId, msg.sender, fromLocal), "AaveDispatchedRouter/pullFailed");
+      pulled += fromLocal;
+    }
     if (missing > 0) {
       (uint maxWithdraw,) = maxGettableUnderlying(token, m, reserveId, missing);
       Account memory account = userAccountData(m, reserveId);
@@ -105,20 +113,21 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
       if (account.debt > 0) {
         uint creditLine = creditLineOf(token, reserveId);
         uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
-        toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
+        toWithdraw = missing > maxCreditLine ? maxCreditLine : missing;
       } else {
-        toWithdraw = amount;
+        toWithdraw = missing;
       }
       require(
         TransferLib.transferTokenFrom(overlying(token, m), reserveId, address(this), toWithdraw),
         "AaveDispatchedRouter/pullFailed"
       );
-      _redeem(token, toWithdraw, address(this), false);
+      (uint redeemed,) = _redeem(token, toWithdraw, address(this), false);
       require(
-        TransferLib.transferTokenFrom(token, address(this), msg.sender, amount), "AaveDispatchedRouter/pullFailed"
+        TransferLib.transferTokenFrom(token, address(this), msg.sender, redeemed), "AaveDispatchedRouter/pullFailed"
       );
+      pulled += redeemed;
     }
-    return amount;
+    return pulled;
   }
 
   /// @notice Deposit underlying tokens to the reserve

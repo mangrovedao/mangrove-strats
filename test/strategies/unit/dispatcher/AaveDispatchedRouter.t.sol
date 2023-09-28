@@ -93,4 +93,40 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     assertGe(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
   }
+
+  function test_token_balance_of() public {
+    IERC20 aWETH = getOverlying(weth);
+    uint aWethBalance = aWETH.balanceOf(owner);
+    uint startTokenBalance = makerContract.tokenBalance(weth, owner);
+
+    // Here, owner is supposed to have only aWETH and no WETH
+    assertEq(aWethBalance, startTokenBalance, "incorrect token balance");
+
+    deal($(weth), owner, 1 ether);
+
+    uint wethBalance = weth.balanceOf(owner);
+    uint endTokenBalance = makerContract.tokenBalance(weth, owner);
+    assertEq(wethBalance + aWethBalance, endTokenBalance, "incorrect token balance");
+  }
+
+  function test_take_underlying_first() public {
+    deal($(weth), owner, 1 ether);
+
+    IERC20 aWETH = getOverlying(weth);
+    uint startAWethBalance = aWETH.balanceOf(owner);
+
+    uint balOut = makerContract.tokenBalance(weth, owner);
+    uint balIn = makerContract.tokenBalance(usdc, owner);
+
+    assertGe(balOut, startAWethBalance + 0.5 ether, "Must have at least 0.5 ether of WETH to cover order");
+
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+
+    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
+    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+
+    uint endAWethBalance = aWETH.balanceOf(owner);
+    assertEq(endAWethBalance, startAWethBalance, "Suppose to have same amount of aWETH");
+  }
 }
