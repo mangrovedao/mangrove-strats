@@ -136,9 +136,5 @@ contract MangroveJsDeploy is Deployer {
       aaveKandelGasreq: 338_000,
       kandelGasreq: 128_000
     });
-
-    broadcast();
-    mgo = new MangroveOrder({mgv: IMangrove(payable(mgv)), deployer: broadcaster(), gasreq:30_000});
-    fork.set("MangroveOrder", address(mgo));
   }
 }
