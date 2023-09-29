@@ -31,7 +31,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#commit=979ff5fccbc103d2f840baa59ddbdd414542f0b1"
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#commit=340d271058c88e00259965ab620b310adc242c66"
   },
   "devDependencies": {
     "@types/node": "^20.2.6",
