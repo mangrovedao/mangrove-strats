@@ -204,12 +204,13 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     args.olKey = offerListOfOfferType(baDual);
     Offer dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    // gives from order.takerGives:96 dualOffer.gives():96, so args.gives:97
+    // gives from order.takerGives:127 dualOffer.gives():127, so args.gives:128
     args.gives = order.takerGives + dualOffer.gives();
-    if (uint96(args.gives) != args.gives) {
+    if (args.gives >= 1 << 127) {
       // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
       // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
-      args.gives = type(uint96).max;
+      args.gives = 1 << 127 - 1;
+      // There is no similar limit to dualOffer.wants() for allowed ticks and gives.
     }
 
     // keep existing price of offer

@@ -67,7 +67,7 @@ contract OfferForwarderTest is OfferLogicTest {
     uint derived_gp = mgv.offerDetails(olKey, offerId).gasprice();
     uint gasbase = mgv.offerDetails(olKey, offerId).offer_gasbase();
     uint gasreq = makerContract.offerGasreq();
-    uint locked = derived_gp * (gasbase + gasreq) * 10 ** 9;
+    uint locked = derived_gp * (gasbase + gasreq) * 1e6;
     uint leftover = fund - locked;
     assertEq(mgv.balanceOf(address(makerContract)), contractOldBalance + leftover, "Invalid contract balance");
     console.log("counterexample:", locked, fund, (locked * 1000) / fund);

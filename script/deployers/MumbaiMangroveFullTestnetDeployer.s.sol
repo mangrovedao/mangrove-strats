@@ -43,8 +43,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     outputDeployment();
   }
 
-  function toGweiOfMatic(uint price) internal view returns (uint) {
-    return (price * 10 ** 9) / maticPrice;
+  function toMweiOfMatic(uint price) internal view returns (uint) {
+    return (price * 10 ** 12) / maticPrice;
   }
 
   function runWithChainSpecificParams() public {
@@ -73,36 +73,33 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // 1 token_i = (prices[i] / 10**8) USD
     // 1 USD = (10**8 / maticPrice) Matic
-    // 1 token_i = (prices[i] * 10**9 / maticPrice) gwei of Matic
+    // 1 token_i = (prices[i] * 10**12 / maticPrice) gwei of Matic
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
       //Stable/stable ticks should be as small as possible, so using tick spacing 1
       market: Market({tkn0: address(dai), tkn1: address(usdc), tickSpacing: 1}),
-      tkn1_in_gwei: toGweiOfMatic(prices[0]),
-      tkn2_in_gwei: toGweiOfMatic(prices[1]),
+      tkn1_in_mwei: toMweiOfMatic(prices[0]),
+      tkn2_in_mwei: toMweiOfMatic(prices[1]),
       fee: 0
     });
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140,
       reader: reader,
     // Using 1 bps tick size like popular CEX.
       market: Market({tkn0: address(weth), tkn1: address(dai), tickSpacing: 1}),
-      tkn1_in_gwei: toGweiOfMatic(prices[2]),
-      tkn2_in_gwei: toGweiOfMatic(prices[0]),
+      tkn1_in_mwei: toMweiOfMatic(prices[2]),
+      tkn2_in_mwei: toMweiOfMatic(prices[0]),
       fee: 0
     });
     // Using 1 bps tick size like popular CEX.
     uint wethUsdcTickSpacing = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140,
       reader: reader,
       market: Market({tkn0: address(weth), tkn1: address(usdc), tickSpacing: wethUsdcTickSpacing}),
-      tkn1_in_gwei: toGweiOfMatic(prices[2]),
-      tkn2_in_gwei: toGweiOfMatic(prices[1]),
+      tkn1_in_mwei: toMweiOfMatic(prices[2]),
+      tkn2_in_mwei: toMweiOfMatic(prices[1]),
       fee: 0
     });
 

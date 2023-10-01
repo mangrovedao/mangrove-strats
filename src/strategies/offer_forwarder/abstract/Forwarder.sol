@@ -89,17 +89,17 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     returns (uint gasprice, uint leftover)
   {
     unchecked {
-      uint num = (offerGasbase + gasreq) * 10 ** 9;
+      uint num = (offerGasbase + gasreq) * 1e6;
       // pre-check to avoid underflow since 0 is interpreted as "use Mangrove's gasprice"
       require(provision >= num, "mgv/insufficientProvision");
       // Gasprice is eventually a uint16, so too much provision would yield a gasprice overflow
       // Reverting here with a clearer reason
-      require(provision < type(uint16).max * num, "Forwarder/provisionTooHigh");
+      require(provision < (1 << 26) * num, "Forwarder/provisionTooHigh");
       gasprice = provision / num;
 
       // computing amount of native tokens that are not going to be locked on Mangrove
       // this amount should still be recoverable by offer maker when retracting the offer
-      leftover = provision - (gasprice * 10 ** 9 * (offerGasbase + gasreq));
+      leftover = provision - (gasprice * 1e6 * (offerGasbase + gasreq));
     }
   }
 
@@ -187,7 +187,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
           || vars.offerDetail.offer_gasbase() != vars.local.offer_gasbase() // governance has updated `offer_gasbase`
       ) {
         // adding current locked provision to funds (0 if offer is deprovisioned)
-        uint locked_funds = vars.offerDetail.gasprice() * 10 ** 9 * (old_gasreq + vars.offerDetail.offer_gasbase());
+        uint locked_funds = vars.offerDetail.gasprice() * 1e6 * (old_gasreq + vars.offerDetail.offer_gasbase());
         // note that if `args.gasreq < old_gasreq` then offer gasprice will increase (even if `args.fund == 0`) to match the incurred excess of locked provision
         (args.gasprice, vars.leftover) =
           deriveGasprice(args.gasreq, args.fund + locked_funds, vars.local.offer_gasbase());
@@ -286,10 +286,10 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
     // computing an under approximation of returned provision because of this offer's failure
     uint gasreq = order.offerDetail.gasreq();
-    uint provision = 10 ** 9 * order.offerDetail.gasprice() * (gasreq + order.offerDetail.offer_gasbase());
+    uint provision = 1e6 * order.offerDetail.gasprice() * (gasreq + order.offerDetail.offer_gasbase());
 
     // gasUsed estimate to complete posthook and penalize this offer is ~1750 (empirical estimate)
-    uint gasprice = order.global.gasprice() * 10 ** 9;
+    uint gasprice = order.global.gasprice() * 1e6;
     uint approxGasConsumption = gasreq + GAS_APPROX + order.local.offer_gasbase();
     uint approxBounty = (approxGasConsumption - gasleft()) * gasprice;
     uint approxReturnedProvision = approxBounty >= provision ? 0 : provision - approxBounty;

@@ -312,7 +312,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   function _provisionOf(OLKey memory olKey, uint offerId) internal view returns (uint provision) {
     OfferDetail offerDetail = MGV.offerDetails(olKey, offerId);
     unchecked {
-      provision = offerDetail.gasprice() * 10 ** 9 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
+      provision = offerDetail.gasprice() * 1e6 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
     }
   }
 }

@@ -254,7 +254,7 @@ contract OfferLogicTest is StratTest {
       gasreq: gasreq
     });
 
-    mgv.setGasprice(type(uint16).max);
+    mgv.setGasprice(1 << 26 - 1);
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
     makerContract.updateOfferByVolume({
@@ -332,7 +332,7 @@ contract OfferLogicTest is StratTest {
       gasreq: makerContract.offerGasreq()
     });
     vm.stopPrank();
-    mgv.setGasprice(1000);
+    mgv.setGasprice(1000000);
     vm.startPrank(deployer);
     makerContract.withdrawFromMangrove(mgv.balanceOf(address(makerContract)), payable(deployer));
     vm.stopPrank();
