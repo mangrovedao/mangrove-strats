@@ -47,8 +47,8 @@ contract MumbaiActivateMarket is Deployer {
     smokeTest(market);
   }
 
-  function toGweiOfMatic(uint price) internal view returns (uint) {
-    return (price * 10 ** 9) / maticPrice;
+  function toMweiOfMatic(uint price) internal view returns (uint) {
+    return (price * 10 ** 12) / maticPrice;
   }
 
   function activateMarket(Market memory market, uint price0, uint price1) public {
@@ -58,14 +58,14 @@ contract MumbaiActivateMarket is Deployer {
 
     // 1 token_i = (prices[i] / 10**8) USD
     // 1 USD = (10**8 / maticPrice) Matic
-    // 1 token_i = (prices[i] * 10**9 / maticPrice) gwei of Matic
+    // 1 token_i = (prices[i] * 10**12 / maticPrice) mwei of Matic
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
+      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density     
       reader: reader,
       market: market,
-      tkn1_in_gwei: toGweiOfMatic(price0),
-      tkn2_in_gwei: toGweiOfMatic(price1),
+      tkn1_in_Mwei: toMweiOfMatic(price0),
+      tkn2_in_Mwei: toMweiOfMatic(price1),
       fee: 0
     });
 

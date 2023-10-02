@@ -3,14 +3,14 @@ pragma solidity ^0.8.13;
 
 import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol";
 
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {MangroveOrderDeployer} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 import {KandelSeederDeployer} from "mgv_strat_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
 import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "mgv_test/lib/agents/TestMaker.sol";
-import {Mangrove} from "mgv_src/Mangrove.sol";
+import {Mangrove} from "mgv_src/core/Mangrove.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "mgv_script/core/ActivateMarket.s.sol";

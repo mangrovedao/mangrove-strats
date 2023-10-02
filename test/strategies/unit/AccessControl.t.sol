@@ -7,7 +7,7 @@ import {DirectTester} from "mgv_strat_src/toy_strategies/offer_maker/DirectTeste
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 
 contract AccessControlTest is StratTest {
   TestToken weth;

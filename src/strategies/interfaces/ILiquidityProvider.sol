@@ -2,8 +2,8 @@
 pragma solidity >=0.8.10;
 
 import {IOfferLogic} from "./IOfferLogic.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title Completes IOfferLogic to provide an ABI for LiquidityProvider class of Mangrove's SDK
 

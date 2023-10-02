@@ -6,8 +6,8 @@ import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
 import {ApprovalInfo} from "./utils/ApprovalTransferLib.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, IERC20, OLKey} from "mgv_src/MgvLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {MgvLib, IERC20, OLKey} from "mgv_src/core/MgvLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.

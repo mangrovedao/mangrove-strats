@@ -5,7 +5,7 @@ import {Kandel} from "./Kandel.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 
 ///@title Kandel strat deployer.
 contract KandelSeeder is AbstractKandelSeeder {

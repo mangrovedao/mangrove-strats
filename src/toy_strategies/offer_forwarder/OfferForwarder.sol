@@ -3,11 +3,9 @@ pragma solidity ^0.8.10;
 
 import {Forwarder, IMangrove} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
-import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
-import {MgvLib, OLKey} from "mgv_src/MgvLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(), 30_000) {

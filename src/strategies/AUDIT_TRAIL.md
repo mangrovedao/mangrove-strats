@@ -9,6 +9,7 @@ Changes since Audit March 2023:
   - `(gives, wants)` changed to `(gives, tick)` in maker perspective (MangroveOrder and Kandel)
   - Events changed to use `OLKey` and streamlined.
   - `pivotId` removed completely.
+  - `gasprice` is now 26 bits in Mwei.
 - Strat library
   - MangroveOffer: `residualGives` and `residualWants` removed. Replaced with `residualValues` which by default keeps price (`tick`) and calculates remaining `gives` like before.
   - TransferLib moved to core.

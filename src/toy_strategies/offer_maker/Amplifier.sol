@@ -3,8 +3,8 @@ pragma solidity ^0.8.10;
 
 import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, Offer, OfferDetail} from "mgv_src/MgvLib.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
+import {MgvLib, Offer, OfferDetail} from "mgv_src/core/MgvLib.sol";
+import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
 
 contract Amplifier is Direct {
   IERC20 public immutable BASE;

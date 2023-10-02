@@ -7,14 +7,14 @@ import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey, Offer, Global, Local} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global, Local} from "mgv_src/core/MgvLib.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -321,7 +321,7 @@ contract AaveKandelTest is CoreKandelTest {
         gas
       );
       (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
-      uint attacker_cost = gas * global.gasprice() * 10 ** 9;
+      uint attacker_cost = gas * global.gasprice() * 1e6;
       console.log("Gas cost of the attack: %s native tokens", toFixed(attacker_cost, 18));
     } catch Error(string memory reason) {
       console.log(reason);
@@ -356,7 +356,7 @@ contract AaveKandelTest is CoreKandelTest {
       console.log("Attack successful, %s collected for an overhead of %s gas units", toFixed(bounty, 18), gas);
       (Global global, Local local) = mgv.config(olKey);
       console.log("Gasbase is ", local.offer_gasbase());
-      uint attacker_cost = gas * global.gasprice() * 10 ** 9;
+      uint attacker_cost = gas * global.gasprice() * 1e6;
       console.log(
         "Gas cost of the attack (gasprice %s gwei): %s native tokens", global.gasprice(), toFixed(attacker_cost, 18)
       );

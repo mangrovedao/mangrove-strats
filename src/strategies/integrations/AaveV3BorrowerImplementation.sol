@@ -12,7 +12,7 @@ import {ReserveConfiguration as RC} from "../vendor/aave/v3/ReserveConfiguration
 
 import "mgv_src/IMangrove.sol";
 
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import "mgv_lib/TransferLib.sol";
 
 contract AaveV3BorrowerImplementation {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_src/strategies/vendor/compound/ICompound.sol";
 import "mgv_strat_src/strategies/vendor/compound/Exponential.sol";
 import "mgv_src/IMangrove.sol";
-import {IERC20, MgvLib} from "mgv_src/MgvLib.sol";
+import {IERC20, MgvLib} from "mgv_src/core/MgvLib.sol";
 
 interface WETH is IERC20 {
   function deposit() external payable;

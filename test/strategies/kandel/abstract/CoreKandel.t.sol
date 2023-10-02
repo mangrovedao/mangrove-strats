@@ -4,14 +4,14 @@ pragma solidity ^0.8.10;
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {KandelTest} from "./KandelTest.t.sol";
-import {TickLib, Tick} from "mgv_lib/TickLib.sol";
-import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
+import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
+import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "mgv_lib/core/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import "mgv_lib/Debug.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 
@@ -814,14 +814,14 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasprice(42);
     vm.prank(maker);
     kdl.setGasprice(42);
-    (uint16 gasprice,,,) = kdl.params();
-    assertEq(gasprice, uint16(42), "Incorrect gasprice in params");
+    (uint32 gasprice,,,) = kdl.params();
+    assertEq(gasprice, uint32(42), "Incorrect gasprice in params");
   }
 
   function test_setGasprice_invalid_reverts() public {
     vm.prank(maker);
     vm.expectRevert("Kandel/gaspriceTooHigh");
-    kdl.setGasprice(2 ** 16);
+    kdl.setGasprice(2 ** 26);
   }
 
   function test_setGasreq_valid_setsAndEmits() public {

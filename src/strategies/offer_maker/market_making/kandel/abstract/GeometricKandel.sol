@@ -3,10 +3,10 @@ pragma solidity ^0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {CoreKandel} from "./CoreKandel.sol";
-import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {MAX_TICK, MIN_TICK} from "mgv_lib/core/Constants.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 import {KandelLib} from "./KandelLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {

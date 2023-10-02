@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {IPool} from "../vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "../vendor/aave/v3/IPoolAddressesProvider.sol";
 import {IRewardsControllerIsh} from "../vendor/aave/v3/IRewardsControllerIsh.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 /// @title This contract provides a collection of lending capabilities with AAVE-v3 to whichever contract inherits it

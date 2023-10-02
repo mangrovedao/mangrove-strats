@@ -3,11 +3,11 @@ pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, OLKey, OfferDetail} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail} from "mgv_src/core/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
@@ -312,7 +312,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   function _provisionOf(OLKey memory olKey, uint offerId) internal view returns (uint provision) {
     OfferDetail offerDetail = MGV.offerDetails(olKey, offerId);
     unchecked {
-      provision = offerDetail.gasprice() * 10 ** 9 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
+      provision = offerDetail.gasprice() * 1e6 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
     }
   }
 }

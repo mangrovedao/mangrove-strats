@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey, Offer, Global} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global} from "mgv_src/core/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {
   CoreKandel, TransferLib
@@ -13,7 +13,7 @@ import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {Tick, TickLib} from "mgv_lib/TickLib.sol";
+import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 
@@ -180,7 +180,7 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint16 gasprice, uint24 gasreq, uint104 stepSize, uint112 pricePoints) = aKandel.params();
+    (uint32 gasprice, uint24 gasreq, uint88 stepSize, uint112 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
@@ -394,7 +394,7 @@ abstract contract KandelTest is StratTest {
     }
     GeometricKandel.Params memory params;
     params.pricePoints = uint112(pricePoints);
-    params.stepSize = uint104(stepSize);
+    params.stepSize = uint88(stepSize);
 
     kandel.populate{value: 0.1 ether}(distribution, params, 0, 0);
   }

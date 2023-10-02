@@ -6,7 +6,7 @@ import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {IForwarder} from "mgv_strat_src/strategies/interfaces/IForwarder.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "mgv_src/core/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 
 ///@title Class for maker contracts that forward offer makers instructions to Mangrove in a permissionless fashion.
@@ -90,17 +90,17 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     returns (uint gasprice, uint leftover)
   {
     unchecked {
-      uint num = (offerGasbase + gasreq) * 10 ** 9;
+      uint num = (offerGasbase + gasreq) * 1e6;
       // pre-check to avoid underflow since 0 is interpreted as "use Mangrove's gasprice"
       require(provision >= num, "mgv/insufficientProvision");
-      // Gasprice is eventually a uint16, so too much provision would yield a gasprice overflow
+      // Gasprice is eventually a uint26, so too much provision would yield a gasprice overflow
       // Reverting here with a clearer reason
-      require(provision < type(uint16).max * num, "Forwarder/provisionTooHigh");
+      require(provision < ((1 << 26) - 1) * num, "Forwarder/provisionTooHigh");
       gasprice = provision / num;
 
       // computing amount of native tokens that are not going to be locked on Mangrove
       // this amount should still be recoverable by offer maker when retracting the offer
-      leftover = provision - (gasprice * 10 ** 9 * (offerGasbase + gasreq));
+      leftover = provision - (gasprice * 1e6 * (offerGasbase + gasreq));
     }
   }
 
@@ -148,7 +148,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
 
     // the call below cannot revert for lack of provision (by design)
-    // it may still revert if `args.fund` yields a gasprice that is too high (mangrove's gasprice is uint16)
+    // it may still revert if `args.fund` yields a gasprice that is too high (Mangrove's gasprice must hold on 26 bits)
     // or if `args.gives` is below density (dust)
     try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, gasprice) returns (
       uint offerId_
@@ -188,7 +188,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
           || vars.offerDetail.offer_gasbase() != vars.local.offer_gasbase() // governance has updated `offer_gasbase`
       ) {
         // adding current locked provision to funds (0 if offer is deprovisioned)
-        uint locked_funds = vars.offerDetail.gasprice() * 10 ** 9 * (old_gasreq + vars.offerDetail.offer_gasbase());
+        uint locked_funds = vars.offerDetail.gasprice() * 1e6 * (old_gasreq + vars.offerDetail.offer_gasbase());
         // note that if `args.gasreq < old_gasreq` then offer gasprice will increase (even if `args.fund == 0`) to match the incurred excess of locked provision
         (args.gasprice, vars.leftover) =
           deriveGasprice(args.gasreq, args.fund + locked_funds, vars.local.offer_gasbase());
@@ -289,10 +289,10 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
     // computing an under approximation of returned provision because of this offer's failure
     uint gasreq = order.offerDetail.gasreq();
-    uint provision = 10 ** 9 * order.offerDetail.gasprice() * (gasreq + order.offerDetail.offer_gasbase());
+    uint provision = 1e6 * order.offerDetail.gasprice() * (gasreq + order.offerDetail.offer_gasbase());
 
     // gasUsed estimate to complete posthook and penalize this offer is ~1750 (empirical estimate)
-    uint gasprice = order.global.gasprice() * 10 ** 9;
+    uint gasprice = order.global.gasprice() * 1e6;
     uint approxGasConsumption = gasreq + GAS_APPROX + order.local.offer_gasbase();
     uint approxBounty = (approxGasConsumption - gasleft()) * gasprice;
     uint approxReturnedProvision = approxBounty >= provision ? 0 : provision - approxBounty;

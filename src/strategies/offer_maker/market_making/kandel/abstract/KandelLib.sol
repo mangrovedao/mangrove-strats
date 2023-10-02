@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {OfferType} from "./TradesBaseQuotePair.sol";
-import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
+import {MAX_TICK, MIN_TICK} from "mgv_lib/core/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title Library of helper functions for Kandel, mainly to reduce deployed size.
 library KandelLib {

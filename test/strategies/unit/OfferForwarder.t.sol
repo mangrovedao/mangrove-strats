@@ -7,7 +7,7 @@ import {
   ForwarderTester, ITesterContract as ITester
 } from "mgv_strat_src/toy_strategies/offer_forwarder/ForwarderTester.sol";
 import {IForwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
 import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
 import "mgv_lib/Debug.sol";
 
@@ -67,7 +67,7 @@ contract OfferForwarderTest is OfferLogicTest {
     uint derived_gp = mgv.offerDetails(olKey, offerId).gasprice();
     uint gasbase = mgv.offerDetails(olKey, offerId).offer_gasbase();
     uint gasreq = makerContract.offerGasreq();
-    uint locked = derived_gp * (gasbase + gasreq) * 10 ** 9;
+    uint locked = derived_gp * (gasbase + gasreq) * 1e6;
     uint leftover = fund - locked;
     assertEq(mgv.balanceOf(address(makerContract)), contractOldBalance + leftover, "Invalid contract balance");
     console.log("counterexample:", locked, fund, (locked * 1000) / fund);

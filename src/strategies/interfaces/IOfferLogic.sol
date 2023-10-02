@@ -2,9 +2,9 @@
 pragma solidity >=0.8.10;
 
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20, IMaker, OLKey} from "mgv_src/MgvLib.sol";
+import {IERC20, IMaker, OLKey} from "mgv_src/core/MgvLib.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title IOfferLogic interface for offer management
 ///@notice It is an IMaker for Mangrove.

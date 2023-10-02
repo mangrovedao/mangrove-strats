@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import "mgv_test/lib/forks/Polygon.sol";
 import "mgv_strat_src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
-import {Local} from "mgv_src/MgvLib.sol";
+import {Local} from "mgv_src/core/MgvLib.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 
 //import {console} from "forge-std/console.sol";
