@@ -104,12 +104,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
-  ///@notice take implementation
-  ///@param tko TakerOrder struct
-  ///@param approvalInfo specifies which approval strategy should be used to transfer funds on behalf of the offer owner
-  ///@dev approvalInfo.ApprovalType must be either `NormalApproval` or `Permit2Approval` if user is expecting a resting order to be posted.
-  /// The `Permit2ApprovalOneTime` strategy will make resting order fail to deliver by lack of approval (one shot approval is consumed during the initial market order)
-  ///@return res TakerOrderResult Order result
+  ///@inheritdoc IOrderLogic
   function take(TakerOrder calldata tko, ApprovalInfo calldata approvalInfo)
     external
     payable
