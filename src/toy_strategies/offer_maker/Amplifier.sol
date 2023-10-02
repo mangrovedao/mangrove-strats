@@ -127,9 +127,9 @@ contract Amplifier is Direct {
     // - residual below density (dust)
     // - not enough provision
     // - offer list is closed (governance call)
-    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
-      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SPACING2), offerId2)
-      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SPACING1), offerId1);
+    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
+      ? (OLKey(order.olKey.outbound_tkn, address(STABLE2), TICK_SPACING2), offerId2)
+      : (OLKey(order.olKey.outbound_tkn, address(STABLE1), TICK_SPACING1), offerId1);
     if (repost_status == REPOST_SUCCESS) {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
       Offer alt_offer = MGV.offers(altOlKey, alt_offerId);
@@ -204,10 +204,11 @@ contract Amplifier is Direct {
     returns (bytes32)
   {
     // if we reach this code, trade has failed for lack of base token
-    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) =
-      IERC20(order.olKey.inbound) == STABLE1 ? (STABLE2, TICK_SPACING2, offerId2) : (STABLE1, TICK_SPACING1, offerId1);
+    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
+      ? (STABLE2, TICK_SPACING2, offerId2)
+      : (STABLE1, TICK_SPACING1, offerId1);
     retractOffer({
-      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
+      olKey: OLKey(order.olKey.outbound_tkn, address(alt_stable), tickSpacing),
       offerId: alt_offerId,
       deprovision: false
     });

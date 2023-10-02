@@ -12,7 +12,7 @@ enum OfferType {
 
 ///@title Interface contract for strats needing offer type to offer list mapping.
 abstract contract IHasOfferListOfOfferType {
-  ///@notice turns an offer type into an (outbound, inbound, tickSpacing) pair identifying an offer list.
+  ///@notice turns an offer type into an (outbound_tkn, inbound_tkn, tickSpacing) pair identifying an offer list.
   ///@param ba whether one wishes to access the offer lists where asks or bids are posted.
   ///@return olKey the olKey defining the token pair
   function offerListOfOfferType(OfferType ba) internal view virtual returns (OLKey memory olKey);
@@ -44,10 +44,10 @@ abstract contract TradesBaseQuotePair is IHasOfferListOfOfferType {
   event OfferListKey(bytes32 olKeyHash);
 
   ///@notice Constructor
-  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   constructor(OLKey memory olKeyBaseQuote) {
-    BASE = IERC20(olKeyBaseQuote.outbound);
-    QUOTE = IERC20(olKeyBaseQuote.inbound);
+    BASE = IERC20(olKeyBaseQuote.outbound_tkn);
+    QUOTE = IERC20(olKeyBaseQuote.inbound_tkn);
     TICK_SPACING = olKeyBaseQuote.tickSpacing;
     emit OfferListKey(olKeyBaseQuote.hash());
   }

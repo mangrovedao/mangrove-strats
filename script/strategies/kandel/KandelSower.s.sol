@@ -32,7 +32,7 @@ contract KandelSower is Deployer {
 
   /**
    * @param kandelSeeder The address of the (Aave)KandelSeeder
-   * @param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+   * @param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
    * @param sharing whether the deployed (aave) Kandel should allow shared liquidity
    * @param onAave whether AaveKandel should be deployed instead of Kandel
    * @param registerNameOnFork whether to register the Kandel instance on the fork.
@@ -64,9 +64,9 @@ contract KandelSower is Deployer {
       string memory baseName = onAave ? "AaveKandel_" : "Kandel_";
       return string.concat(
         baseName,
-        IERC20(olKeyBaseQuote.outbound).symbol(),
+        IERC20(olKeyBaseQuote.outbound_tkn).symbol(),
         "_",
-        IERC20(olKeyBaseQuote.inbound).symbol(),
+        IERC20(olKeyBaseQuote.inbound_tkn).symbol(),
         "_",
         vm.toString(olKeyBaseQuote.tickSpacing)
       );

@@ -138,9 +138,9 @@ contract AmplifierForwarder is Forwarder {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
     OfferPair memory offerPair = offers[owner];
 
-    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
-      ? (OLKey(order.olKey.outbound, address(STABLE2), TICK_SPACING2), offerPair.id2)
-      : (OLKey(order.olKey.outbound, address(STABLE1), TICK_SPACING1), offerPair.id1);
+    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
+      ? (OLKey(order.olKey.outbound_tkn, address(STABLE2), TICK_SPACING2), offerPair.id2)
+      : (OLKey(order.olKey.outbound_tkn, address(STABLE1), TICK_SPACING1), offerPair.id1);
 
     if (repost_status == REPOST_SUCCESS) {
       (uint new_alt_gives,) = __residualValues__(order); // in base units
@@ -220,11 +220,11 @@ contract AmplifierForwarder is Forwarder {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
     // if we reach this code, trade has failed for lack of base token
     OfferPair memory offerPair = offers[owner];
-    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound) == STABLE1
+    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
       ? (STABLE2, TICK_SPACING1, offerPair.id2)
       : (STABLE1, TICK_SPACING2, offerPair.id1);
     retractOffer({
-      olKey: OLKey(order.olKey.outbound, address(alt_stable), tickSpacing),
+      olKey: OLKey(order.olKey.outbound_tkn, address(alt_stable), tickSpacing),
       offerId: alt_offerId,
       deprovision: false
     });

@@ -97,9 +97,9 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   {
     // Invoke hook that implements a last look check during execution - it may renege on trade by reverting.
     ret = __lastLook__(order);
-    // Invoke hook to put the inbound token, which are brought by the taker, into a specific reserve.
+    // Invoke hook to put the inbound_tkn, which are brought by the taker, into a specific reserve.
     require(__put__(order.takerGives, order) == 0, "mgvOffer/abort/putFailed");
-    // Invoke hook to fetch the outbound token, which are promised to the taker, from a specific reserve.
+    // Invoke hook to fetch the outbound_tkn, which are promised to the taker, from a specific reserve.
     require(__get__(order.takerWants, order) == 0, "mgvOffer/abort/getFailed");
   }
 
@@ -245,9 +245,9 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     data = bytes32(0);
   }
 
-  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound` the offer gives after it is reposted, while also allowing adjustment to the tick.
+  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound_tkn` the offer gives after it is reposted, while also allowing adjustment to the tick.
   ///@param order is a recall of the taker order that is being treated.
-  ///@return newGives the new volume of `outbound` the offer will give if fully taken.
+  ///@return newGives the new volume of `outbound_tkn` the offer will give if fully taken.
   ///@return newTick the new tick of the reposted offer.
   ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the tick.
   function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {

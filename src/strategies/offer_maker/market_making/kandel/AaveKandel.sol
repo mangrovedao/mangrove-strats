@@ -18,7 +18,7 @@ contract AaveKandel is GeometricKandel {
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
@@ -29,7 +29,8 @@ contract AaveKandel is GeometricKandel {
     // and trading on USDC.
     // The code in isOverlying verifies that neither base nor quote are official AAVE overlyings.
     require(
-      !isOverlying(olKeyBaseQuote.outbound) && !isOverlying(olKeyBaseQuote.inbound), "AaveKandel/cannotTradeAToken"
+      !isOverlying(olKeyBaseQuote.outbound_tkn) && !isOverlying(olKeyBaseQuote.inbound_tkn),
+      "AaveKandel/cannotTradeAToken"
     );
   }
 
@@ -89,7 +90,8 @@ contract AaveKandel is GeometricKandel {
   /// @inheritdoc MangroveOffer
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
     bytes32 makerData = super.__lastLook__(order);
-    return (IERC20(order.olKey.outbound).balanceOf(address(router())) < order.takerWants) ? IS_FIRST_PULLER : makerData;
+    return
+      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router())) < order.takerWants) ? IS_FIRST_PULLER : makerData;
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push and supply on AAVE with a single call when offer logic is the first to pull funds from AAVE

@@ -24,7 +24,7 @@ abstract contract AbstractKandelSeeder {
   }
 
   ///@notice deploys a new Kandel contract for the given seed parameters.
-  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param liquiditySharing if true, `msg.sender` will be used to identify the shares of the deployed Kandel strat. If msg.sender deploys several instances, reserve of the strats will be shared, but this will require a transfer from router to maker contract for each taken offer, since we cannot transfer the full amount to the first maker contract hit in a market order in case later maker contracts need the funds. Still, only a single AAVE redeem will take place.
   ///@return kandel the Kandel contract.
   function sow(OLKey memory olKeyBaseQuote, bool liquiditySharing) external returns (GeometricKandel kandel) {
@@ -42,7 +42,7 @@ abstract contract AbstractKandelSeeder {
   }
 
   ///@notice deploys a new Kandel contract for the given seed parameters.
-  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param liquiditySharing if true, `msg.sender` will be used to identify the shares of the deployed Kandel strat. If msg.sender deploys several instances, reserve of the strats will be shared, but this will require a transfer from router to maker contract for each taken offer, since we cannot transfer the full amount to the first maker contract hit in a market order in case later maker contracts need the funds. Still, only a single AAVE redeem will take place.
   ///@return kandel the Kandel contract.
   function _deployKandel(OLKey memory olKeyBaseQuote, bool liquiditySharing)

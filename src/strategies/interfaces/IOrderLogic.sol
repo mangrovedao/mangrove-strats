@@ -11,7 +11,7 @@ interface IOrderLogic {
   ///@param fillOrKill true to revert if market order cannot be filled and resting order failed or is not enabled; otherwise, false
   ///@param tick the tick
   ///@param fillVolume the volume to fill
-  ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
+  ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
   ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
@@ -47,7 +47,7 @@ interface IOrderLogic {
   ///@param fillOrKill The fillOrKill that take was called with
   ///@param tick The tick of the order. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillVolume the volume to fill. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
-  ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound` have been sold.
+  ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with
   ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters was use to start the order.
   event MangroveOrderStart(

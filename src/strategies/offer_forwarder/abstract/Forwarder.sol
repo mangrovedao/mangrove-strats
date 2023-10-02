@@ -252,13 +252,13 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@dev put received inbound tokens on offer maker's reserve during `makerExecute`
   /// if nothing is done at that stage then it could still be done during `makerPosthook`.
   /// However one would then need to pay attention to the following fact:
-  /// if `order.olKey.inbound` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.olKey.inbound` balance of this contract would then contain
+  /// if `order.olKey.inbound_tkn` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.olKey.inbound_tkn` balance of this contract would then contain
   /// the sum of all payments of offers managed by `this` that are in a better position in the offer list (because posthook is called in the call stack order).
-  /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound` and `order.olKey.outbound`) at the end of `makerExecute`.
+  /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound_tkn` and `order.olKey.outbound_tkn`) at the end of `makerExecute`.
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
-    uint pushed = router().push(IERC20(order.olKey.inbound), owner, amount);
+    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), owner, amount);
     return amount - pushed;
   }
 
@@ -269,7 +269,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // telling router one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
-    uint pulled = router().pull(IERC20(order.olKey.outbound), owner, amount, true);
+    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), owner, amount, true);
     return amount - pulled; // this will make trade fail if `amount != pulled`
   }
 

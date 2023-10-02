@@ -29,7 +29,7 @@ contract KandelDeployer is Deployer {
 
   /**
    * @param mgv The Mangrove deployment.
-   * @param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+   * @param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
    * @param gasreq the gas required for the offer logic
    * @param name The name to register the deployed Kandel instance under. If empty, a name will be generated
    */

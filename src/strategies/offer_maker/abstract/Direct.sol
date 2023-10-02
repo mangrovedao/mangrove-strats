@@ -93,7 +93,7 @@ abstract contract Direct is MangroveOffer {
   /// otherwise the function simply returns what's missing in the local balance
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint amount_ = IERC20(order.olKey.outbound).balanceOf(address(this));
+    uint amount_ = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
     if (amount_ >= amount) {
       return 0;
     }
@@ -103,7 +103,7 @@ abstract contract Direct is MangroveOffer {
       return amount_;
     } else {
       // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled = router_.pull(IERC20(order.olKey.outbound), RESERVE_ID, amount_, RESERVE_ID != address(this));
+      uint pulled = router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this));
       return pulled >= amount_ ? 0 : amount_ - pulled;
     }
   }
@@ -119,8 +119,8 @@ abstract contract Direct is MangroveOffer {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
       IERC20[] memory tokens = new IERC20[](2);
-      tokens[0] = IERC20(order.olKey.outbound); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-      tokens[1] = IERC20(order.olKey.inbound); // flushing liquidity brought by taker
+      tokens[0] = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
+      tokens[1] = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
       router_.flush(tokens, RESERVE_ID);
     }
     // reposting offer residual if any

@@ -160,7 +160,7 @@ contract CompoundModule is Exponential {
   }
 
   function compoundRedeem(uint amountToRedeem, MgvLib.SingleOrder calldata order) internal returns (uint) {
-    IcERC20 outbound_cTkn = overlyings[IERC20(order.olKey.outbound)]; // this is 0x0 if outbound_tkn is not compound sourced.
+    IcERC20 outbound_cTkn = overlyings[IERC20(order.olKey.outbound_tkn)]; // this is 0x0 if outbound_tkn is not compound sourced.
     if (address(outbound_cTkn) == address(0)) {
       return amountToRedeem;
     }
@@ -199,7 +199,7 @@ contract CompoundModule is Exponential {
   // adapted from https://medium.com/compound-finance/supplying-assets-to-the-compound-protocol-ec2cf5df5aa#afff
   // utility to supply erc20 to compound
   function compoundMint(uint amount, MgvLib.SingleOrder calldata order) internal returns (uint missing) {
-    IcERC20 ctoken = overlyings[IERC20(order.olKey.inbound)];
+    IcERC20 ctoken = overlyings[IERC20(order.olKey.inbound_tkn)];
     uint errCode = _mint(amount, ctoken);
     // Mint ctokens
     if (errCode != 0) {

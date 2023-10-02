@@ -100,8 +100,8 @@ contract KandelSeederDeployer is Deployer {
       require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
     }
     IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = IERC20(olKeyBaseQuote.outbound);
-    tokens[1] = IERC20(olKeyBaseQuote.inbound);
+    tokens[0] = IERC20(olKeyBaseQuote.outbound_tkn);
+    tokens[1] = IERC20(olKeyBaseQuote.inbound_tkn);
     kandel.checkList(tokens);
   }
 }

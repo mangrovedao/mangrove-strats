@@ -109,7 +109,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
@@ -173,7 +173,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice update or create dual offer according to transport logic
   ///@param order is a recall of the taker order that is at the origin of the current trade.
   function transportSuccessfulOrder(MgvLib.SingleOrder calldata order) internal {
-    OfferType ba = offerTypeOfOutbound(IERC20(order.olKey.outbound));
+    OfferType ba = offerTypeOfOutbound(IERC20(order.olKey.outbound_tkn));
 
     // adds any unpublished liquidity to pending[Base/Quote]
     // preparing arguments for the dual offer

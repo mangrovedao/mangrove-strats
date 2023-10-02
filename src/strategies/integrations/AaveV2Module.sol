@@ -135,7 +135,7 @@ contract AaveModule is Exponential {
   }
 
   function aaveRedeem(uint amountToRedeem, address onBehalf, MgvLib.SingleOrder calldata order) internal returns (uint) {
-    try lendingPool.withdraw(order.olKey.outbound, amountToRedeem, onBehalf) returns (uint withdrawn) {
+    try lendingPool.withdraw(order.olKey.outbound_tkn, amountToRedeem, onBehalf) returns (uint withdrawn) {
       //aave redeem was a success
       if (amountToRedeem == withdrawn) {
         return 0;
@@ -158,7 +158,7 @@ contract AaveModule is Exponential {
   /// @notice user need to approve ctoken in order to mint
   function aaveMint(uint amount, address onBehalf, MgvLib.SingleOrder calldata order) internal returns (uint) {
     // contract must haveallowance()to spend funds on behalf ofmsg.sender for at-leastamount for the asset being deposited. This can be done via the standard ERC20 approve() method.
-    try lendingPool.deposit(order.olKey.inbound, amount, onBehalf, referralCode) {
+    try lendingPool.deposit(order.olKey.inbound_tkn, amount, onBehalf, referralCode) {
       return 0;
     } catch Error(string memory message) {
       emit ErrorOnMint(order.olKey.hash(), order.offerId, amount, message);

@@ -430,11 +430,11 @@ abstract contract CoreKandelTest is KandelTest {
     (Offer bestBid, Offer bestAsk) = getBestOffers();
     uint densityMidBid = bestBid.gives();
     uint densityMidAsk = bestAsk.gives();
-    IERC20 outbound = ba == OfferType.Ask ? base : quote;
+    IERC20 outbound_tkn = ba == OfferType.Ask ? base : quote;
 
     // Fail some offers - make offers fail by removing approval
     vm.prank(maker);
-    kdl.approve(outbound, $(mgv), 0);
+    kdl.approve(outbound_tkn, $(mgv), 0);
     for (uint i = 0; i < failures; i++) {
       // This will emit LogIncident and OfferFail
       (uint successes,) = ba == Ask ? cleanBuyBestAs(taker, 1 ether) : cleanSellBestAs(taker, 1 ether);

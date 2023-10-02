@@ -105,7 +105,7 @@ contract KandelPopulate is Deployer {
     (vars.gasprice, vars.gasreq,,) = args.kdl.params();
 
     OLKey memory olKeyBaseQuote =
-      OLKey({outbound: address(vars.BASE), inbound: address(vars.QUOTE), tickSpacing: args.kdl.TICK_SPACING()});
+      OLKey({outbound_tkn: address(vars.BASE), inbound_tkn: address(vars.QUOTE), tickSpacing: args.kdl.TICK_SPACING()});
     vars.provAsk = vars.mgvReader.getProvision(olKeyBaseQuote, vars.gasreq, vars.gasprice);
     vars.provBid = vars.mgvReader.getProvision(olKeyBaseQuote.flipped(), vars.gasreq, vars.gasprice);
     uint funds = (vars.provAsk + vars.provBid) * (args.to - args.from);

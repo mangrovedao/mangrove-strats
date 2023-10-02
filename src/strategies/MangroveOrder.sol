@@ -16,7 +16,7 @@ import {Tick} from "mgv_lib/core/TickLib.sol";
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
 
 contract MangroveOrder is Forwarder, IOrderLogic {
-  ///@notice `expiring[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound, inbound)` offer list should renege on trade.
+  ///@notice `expiring[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
   ///@notice if the order tx is included after the expiry date, it reverts.
   ///@dev 0 means no expiry.
   mapping(bytes32 olKeyHash => mapping(uint offerId => uint expiry)) public expiring;
@@ -47,7 +47,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@dev this can be used to update price of the resting order
   ///@param olKey the offer list key.
   ///@param tick the tick
-  ///@param gives new amount of `olKey.outbound` offer owner gives
+  ///@param gives new amount of `olKey.outbound_tkn` offer owner gives
   ///@param offerId the id of the offer to be updated
   function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId)
     external
@@ -96,10 +96,10 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   function checkCompleteness(TakerOrder calldata tko, TakerOrderResult memory res) internal pure returns (bool) {
     // The order can be incomplete if the price becomes too high or the end of the book is reached.
     if (tko.fillWants) {
-      // when fillWants is true, the market order stops when `fillVolume` units of `outbound` have been obtained (minus potential fees);
+      // when fillWants is true, the market order stops when `fillVolume` units of `outbound_tkn` have been obtained (minus potential fees);
       return res.takerGot + res.fee >= tko.fillVolume;
     } else {
-      // otherwise, the market order stops when `fillVolume` units of `tko.olKey.inbound` have been sold.
+      // otherwise, the market order stops when `fillVolume` units of `tko.olKey.inbound_tkn` have been sold.
       return res.takerGave >= tko.fillVolume;
     }
   }
@@ -122,7 +122,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true);
+    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true);
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:
@@ -145,12 +145,14 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
       require(
-        router().push(IERC20(tko.olKey.outbound), msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed"
+        router().push(IERC20(tko.olKey.outbound_tkn), msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed"
       );
     }
     uint inboundLeft = takerGives - res.takerGave;
     if (inboundLeft > 0) {
-      require(router().push(IERC20(tko.olKey.inbound), msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
+      require(
+        router().push(IERC20(tko.olKey.inbound_tkn), msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed"
+      );
     }
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER+`res.takerGot`, IN_USER-`res.takerGave`)
@@ -167,7 +169,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
         && !isComplete // needed
     ) {
       // When posting a resting order `msg.sender` becomes a maker.
-      // For maker orders, outbound tokens are what makers send. Here `msg.sender` sends `tko.olKey.inbound`.
+      // For maker orders, outbound tokens are what makers send. Here `msg.sender` sends `tko.olKey.inbound_tkn`.
       // The offer list on which this contract must post `msg.sender`'s resting order is thus `(tko.olKey)`
       // the call below will fill the memory data `res`.
       fund = postRestingOrder({tko: tko, olKey: tko.olKey.flipped(), res: res, fund: fund});
@@ -227,8 +229,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param fund amount of WEIs used to cover for the offer bounty (covered gasprice is derived from `fund`).
   ///@param res the result of the taker order.
   ///@return refund the amount to refund to the taker of the fund.
-  ///@dev if relative limit price of taker order is `ratio` in the (outbound, inbound) offer list (represented by `tick=log_{1.0001}(ratio)` )
-  ///@dev then entailed relative price for resting order must be `1/ratio` (relative price on the (inbound, outbound) offer list)
+  ///@dev if relative limit price of taker order is `ratio` in the (outbound_tkn, inbound_tkn) offer list (represented by `tick=log_{1.0001}(ratio)` )
+  ///@dev then entailed relative price for resting order must be `1/ratio` (relative price on the (inbound_tkn, outbound_tkn) offer list)
   ///@dev so with ticks that is `-log(ratio)`, or -tick.
   ///@dev the price of the resting order should be the same as for the max price for the market order.
   function postRestingOrder(TakerOrder calldata tko, OLKey memory olKey, TakerOrderResult memory res, uint fund)

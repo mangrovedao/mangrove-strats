@@ -45,8 +45,8 @@ library KandelLib {
   ///@return distribution the distribution of bids and asks to populate
   ///@dev the absolute price of an offer is the ratio of quote/base volumes of tokens it trades
   ///@dev the tick of offers on Mangrove are in relative taker price of maker's inbound/outbound volumes of tokens it trades
-  ///@dev for Bids, outbound=quote, inbound=base so relative taker price of a a bid is the inverse of the absolute price.
-  ///@dev for Asks, outbound=base, inbound=quote so relative taker price of an ask coincides with absolute price.
+  ///@dev for Bids, outbound_tkn=quote, inbound_tkn=base so relative taker price of a a bid is the inverse of the absolute price.
+  ///@dev for Asks, outbound_tkn=base, inbound_tkn=quote so relative taker price of an ask coincides with absolute price.
   ///@dev Index0 will contain the ask with the lowest relative price and the bid with the highest relative price. Absolute price is geometrically increasing over indexes.
   ///@dev tickOffset moves an offer relative price s.t. `AskTick_{i+1} = AskTick_i + tickOffset` and `BidTick_{i+1} = BidTick_i - tickOffset`
   ///@dev A hole is left in the middle at the size of stepSize - either an offer or its dual is posted, not both.
