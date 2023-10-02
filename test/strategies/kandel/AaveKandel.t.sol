@@ -321,7 +321,7 @@ contract AaveKandelTest is CoreKandelTest {
         gas
       );
       (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
-      uint attacker_cost = gas * global.gasprice() * 10 ** 9;
+      uint attacker_cost = gas * global.gasprice() * 1e6;
       console.log("Gas cost of the attack: %s native tokens", toFixed(attacker_cost, 18));
     } catch Error(string memory reason) {
       console.log(reason);
@@ -356,7 +356,7 @@ contract AaveKandelTest is CoreKandelTest {
       console.log("Attack successful, %s collected for an overhead of %s gas units", toFixed(bounty, 18), gas);
       (Global global, Local local) = mgv.config(olKey);
       console.log("Gasbase is ", local.offer_gasbase());
-      uint attacker_cost = gas * global.gasprice() * 10 ** 9;
+      uint attacker_cost = gas * global.gasprice() * 1e6;
       console.log(
         "Gas cost of the attack (gasprice %s gwei): %s native tokens", global.gasprice(), toFixed(attacker_cost, 18)
       );

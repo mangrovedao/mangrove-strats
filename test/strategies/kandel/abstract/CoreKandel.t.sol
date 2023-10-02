@@ -814,14 +814,14 @@ abstract contract CoreKandelTest is KandelTest {
     emit SetGasprice(42);
     vm.prank(maker);
     kdl.setGasprice(42);
-    (uint16 gasprice,,,) = kdl.params();
-    assertEq(gasprice, uint16(42), "Incorrect gasprice in params");
+    (uint32 gasprice,,,) = kdl.params();
+    assertEq(gasprice, uint32(42), "Incorrect gasprice in params");
   }
 
   function test_setGasprice_invalid_reverts() public {
     vm.prank(maker);
     vm.expectRevert("Kandel/gaspriceTooHigh");
-    kdl.setGasprice(2 ** 16);
+    kdl.setGasprice(2 ** 26);
   }
 
   function test_setGasreq_valid_setsAndEmits() public {

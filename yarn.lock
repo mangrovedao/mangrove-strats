@@ -95,10 +95,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=340d271058c88e00259965ab620b310adc242c66":
+"@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=b661c43f68a6f17cc663f5f8bf3c292c24c780a6":
   version: 1.5.10
-  resolution: "@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=340d271058c88e00259965ab620b310adc242c66"
-  checksum: 03f716b0e9ef49872dbcdcc80daf308a2d316bb2586c259b75e3f8b4741c2592eb4feb7914b6a1accebabd625d37edd1505b77eb80ac3e5813e8d3b867df7e78
+  resolution: "@mangrovedao/mangrove-core@https://github.com/mangrovedao/mangrove-core.git#commit=b661c43f68a6f17cc663f5f8bf3c292c24c780a6"
+  checksum: 236003783cee67c4b09111f678d4593ba44cd493c17505680feccb85cf559649cf9ac0b6580b20fb16867e0f294d0d6c2c21a6a84192edf033e1d98a021b7494
   languageName: node
   linkType: hard
 
@@ -106,7 +106,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
-    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#commit=340d271058c88e00259965ab620b310adc242c66"
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#commit=b661c43f68a6f17cc663f5f8bf3c292c24c780a6"
     "@types/node": ^20.2.6
     husky: ^8.0.3
     lint-staged: ^13.2.2

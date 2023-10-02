@@ -9,6 +9,7 @@ import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribu
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {KandelLib} from "./KandelLib.sol";
+import {MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
@@ -40,14 +41,14 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   event Debit(IERC20 indexed token, uint amount);
 
   ///@notice Core Kandel parameters
-  ///@param gasprice the gasprice to use for offers
+  ///@param gasprice the gasprice to use for offers. Must hold on 26 bits.
   ///@param gasreq the gasreq to use for offers
   ///@param stepSize in amount of price points to jump for posting dual offer.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
-    uint16 gasprice;
+    uint32 gasprice;
     uint24 gasreq;
-    uint104 stepSize;
+    uint88 stepSize;
     uint112 pricePoints;
   }
 
@@ -57,7 +58,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the step size
   ///@param stepSize the step size.
   function setStepSize(uint stepSize) public onlyAdmin {
-    uint104 stepSize_ = uint104(stepSize);
+    uint88 stepSize_ = uint88(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
     params.stepSize = stepSize_;
@@ -67,10 +68,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the gasprice for offers
   ///@param gasprice the gasprice.
   function setGasprice(uint gasprice) public onlyAdmin {
-    uint16 gasprice_ = uint16(gasprice);
-    require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
-    params.gasprice = gasprice_;
-    emit SetGasprice(gasprice_);
+    require(gasprice < 1 << 26, "Kandel/gaspriceTooHigh");
+    params.gasprice = uint32(gasprice);
+    emit SetGasprice(gasprice);
   }
 
   ///@notice sets the gasreq (including router's gasreq) for offers
@@ -204,12 +204,13 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     args.olKey = offerListOfOfferType(baDual);
     Offer dualOffer = MGV.offers(args.olKey, dualOfferId);
 
-    // gives from order.takerGives:96 dualOffer.gives():96, so args.gives:97
+    // gives from order.takerGives:127 dualOffer.gives():127, so args.gives:128
     args.gives = order.takerGives + dualOffer.gives();
-    if (uint96(args.gives) != args.gives) {
+    if (args.gives > MAX_SAFE_VOLUME) {
       // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
       // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
-      args.gives = type(uint96).max;
+      args.gives = MAX_SAFE_VOLUME;
+      // There is no similar limit to dualOffer.wants() for allowed ticks and gives.
     }
 
     // keep existing price of offer
