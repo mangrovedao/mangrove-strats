@@ -9,6 +9,7 @@ import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribu
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {KandelLib} from "./KandelLib.sol";
+import {MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
@@ -205,10 +206,10 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
 
     // gives from order.takerGives:127 dualOffer.gives():127, so args.gives:128
     args.gives = order.takerGives + dualOffer.gives();
-    if (args.gives >= 1 << 127) {
+    if (args.gives > MAX_SAFE_VOLUME) {
       // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
       // to prevent gives to be too high, we let the surplus become "pending" (unpublished liquidity)
-      args.gives = 1 << 127 - 1;
+      args.gives = MAX_SAFE_VOLUME;
       // There is no similar limit to dualOffer.wants() for allowed ticks and gives.
     }
 
