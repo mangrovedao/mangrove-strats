@@ -1,32 +1,22 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvStructs} from "mgv_src/MgvLib.sol";
-import {IHasTokenPairOfOfferType, OfferType} from "./TradesBaseQuotePair.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IHasOfferListOfOfferType, OfferType} from "./TradesBaseQuotePair.sol";
 
 ///@title Adds a [0..length] index <--> offerId map to a strat.
-///@dev utilizes the `IHasTokenPairOfOfferType` contract.
-abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
-  ///@notice The Mangrove deployment.
-  IMangrove private immutable MGV;
-
+///@dev utilizes the `IHasOfferListOfOfferType` contract.
+abstract contract HasIndexedBidsAndAsks is IHasOfferListOfOfferType {
   ///@notice the length of the index has been set.
   ///@param value the length.
+  ///@notice By emitting this data, an indexer will be able to keep track of what length is used.
   event SetLength(uint value);
 
   ///@notice a new offer of type `ba` with `offerId` was created at price `index`
   ///@param ba the offer type
   ///@param index the index
   ///@param offerId the Mangrove offer id.
+  ///@notice By emitting this data, an indexer will be able to keep track of what offer has what index.
   event SetIndexMapping(OfferType indexed ba, uint index, uint offerId);
-
-  ///@notice Constructor
-  ///@param mgv The Mangrove deployment.
-  constructor(IMangrove mgv) {
-    MGV = mgv;
-  }
 
   ///@notice the length of the map.
   uint internal length;
@@ -38,7 +28,6 @@ abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
 
   ///@notice An inverse mapping of askOfferIdOfIndex. E.g., indexOfAskOfferId[42] is the index in askOfferIdOfIndex at which ask of id #42 on Mangrove is stored.
   mapping(uint => uint) private indexOfAskOfferId;
-
   ///@notice An inverse mapping of bidOfferIdOfIndex. E.g., indexOfBidOfferId[42] is the index in bidOfferIdOfIndex at which bid of id #42 on Mangrove is stored.
   mapping(uint => uint) private indexOfBidOfferId;
 
@@ -77,27 +66,6 @@ abstract contract HasIndexedBidsAndAsks is IHasTokenPairOfOfferType {
   ///@param length_ the new length.
   function setLength(uint length_) internal {
     length = length_;
-    emit SetLength(length);
-  }
-
-  ///@notice gets the Mangrove offer at the given index for the offer type.
-  ///@param ba the offer type.
-  ///@param index the index.
-  ///@return offer the Mangrove offer.
-  function getOffer(OfferType ba, uint index) public view returns (MgvStructs.OfferPacked offer) {
-    uint offerId = offerIdOfIndex(ba, index);
-    (IERC20 outbound, IERC20 inbound) = tokenPairOfOfferType(ba);
-    offer = MGV.offers(address(outbound), address(inbound), offerId);
-  }
-
-  /// @notice gets the total gives of all offers of the offer type.
-  /// @param ba offer type.
-  /// @return volume the total gives of all offers of the offer type.
-  /// @dev function is very gas costly, for external calls only.
-  function offeredVolume(OfferType ba) public view returns (uint volume) {
-    for (uint index = 0; index < length; ++index) {
-      MgvStructs.OfferPacked offer = getOffer(ba, index);
-      volume += offer.gives();
-    }
+    emit SetLength(length_);
   }
 }

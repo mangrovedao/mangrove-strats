@@ -2,43 +2,52 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2 as console} from "forge-std/Script.sol";
-import {
-  Kandel, IERC20, IMangrove, OfferType
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {AbstractKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
+import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove
  */
 
-/**
- * KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
- *    RATIO=101 SPREAD=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
- *    forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
+/*
+  KANDEL=Kandel_WETH_USDC FROM=0 TO=100 FIRST_ASK_INDEX=50 PRICE_POINTS=100\
+     [RATIO=10100] [TICK_OFFSET=769] STEP_SIZE=1 INIT_QUOTE=$(cast ff 6 100) VOLUME=$(cast ff 18 0.1)\
+     forge script KandelPopulate --fork-url $LOCALHOST_URL --private-key $MUMBAI_PRIVATE_KEY --broadcast
  */
 
 contract KandelPopulate is Deployer {
   function run() public {
     GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
-    params.ratio = uint24(vm.envUint("RATIO"));
-    require(params.ratio == vm.envUint("RATIO"), "Invalid RATIO");
-    params.pricePoints = uint8(vm.envUint("PRICE_POINTS"));
+    uint24 tickOffset;
+    if (envHas("TICK_OFFSET")) {
+      tickOffset = uint24(vm.envUint("TICK_OFFSET"));
+      require(tickOffset == vm.envUint("TICK_OFFSET"), "Invalid TICK_OFFSET");
+    }
+    if (envHas("RATIO")) {
+      require(tickOffset == 0, "Only RATIO or TICK_OFFSET");
+      int _tickOffset = Tick.unwrap(TickLib.tickFromVolumes(1 ether * uint(vm.envUint("RATIO")) / (100000), 1 ether));
+      tickOffset = uint24(uint(int(_tickOffset)));
+      require(tickOffset == uint(_tickOffset), "Invalid ratio");
+    }
+    params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.spread = uint8(vm.envUint("SPREAD"));
-    require(params.spread == vm.envUint("SPREAD"), "Invalid SPREAD");
+    params.stepSize = uint88(vm.envUint("STEP_SIZE"));
+    require(params.stepSize == vm.envUint("STEP_SIZE"), "Invalid STEP_SIZE");
 
     innerRun(
       HeapArgs({
         from: vm.envUint("FROM"),
         to: vm.envUint("TO"),
         firstAskIndex: vm.envUint("FIRST_ASK_INDEX"),
+        tickOffset: tickOffset,
         params: params,
         initQuote: vm.envUint("INIT_QUOTE"),
         volume: vm.envUint("VOLUME"),
@@ -63,6 +72,7 @@ contract KandelPopulate is Deployer {
     uint from;
     uint to;
     uint firstAskIndex;
+    uint24 tickOffset;
     Kandel.Params params;
     uint initQuote;
     uint volume;
@@ -74,7 +84,6 @@ contract KandelPopulate is Deployer {
     CoreKandel.Distribution distribution;
     uint baseAmountRequired;
     uint quoteAmountRequired;
-    uint[] pivotIds;
     bool bidding;
     uint snapshotId;
     uint lastOfferId;
@@ -93,20 +102,12 @@ contract KandelPopulate is Deployer {
     vars.mgvReader = args.mgvReader;
     vars.BASE = args.kdl.BASE();
     vars.QUOTE = args.kdl.QUOTE();
-    (
-      vars.gasprice,
-      vars.gasreq,
-      /*uint24 ratio*/
-      ,
-      args.params.compoundRateBase,
-      args.params.compoundRateQuote,
-      /*uint8 spread*/
-      ,
-      /*uint8 length*/
-    ) = args.kdl.params();
+    (vars.gasprice, vars.gasreq,,) = args.kdl.params();
 
-    vars.provAsk = vars.mgvReader.getProvision(address(vars.BASE), address(vars.QUOTE), vars.gasreq, vars.gasprice);
-    vars.provBid = vars.mgvReader.getProvision(address(vars.QUOTE), address(vars.BASE), vars.gasreq, vars.gasprice);
+    OLKey memory olKeyBaseQuote =
+      OLKey({outbound_tkn: address(vars.BASE), inbound_tkn: address(vars.QUOTE), tickSpacing: args.kdl.TICK_SPACING()});
+    vars.provAsk = vars.mgvReader.getProvision(olKeyBaseQuote, vars.gasreq, vars.gasprice);
+    vars.provBid = vars.mgvReader.getProvision(olKeyBaseQuote.flipped(), vars.gasreq, vars.gasprice);
     uint funds = (vars.provAsk + vars.provBid) * (args.to - args.from);
     if (broadcaster().balance < funds) {
       console.log(
@@ -120,9 +121,9 @@ contract KandelPopulate is Deployer {
     prettyLog("Calculating base and quote...");
     vars.distribution = calculateBaseQuote(args);
 
-    prettyLog("Evaluating pivots and required collateral...");
-    evaluatePivots(vars.distribution, args, vars, funds);
-    // after the above call, `vars.pivotIds` and `vars.base/quoteAmountRequired` are filled
+    prettyLog("Evaluating required collateral...");
+    evaluateAmountsRequired(vars);
+    // after the above call, `vars.base/quoteAmountRequired` are filled
     uint baseDecimals = vars.BASE.decimals();
     uint quoteDecimals = vars.QUOTE.decimals();
     prettyLog(
@@ -169,37 +170,33 @@ contract KandelPopulate is Deployer {
 
     broadcast();
 
-    args.kdl.populate{value: funds}(
-      vars.distribution,
-      vars.pivotIds,
-      args.firstAskIndex,
-      args.params,
-      vars.baseAmountRequired,
-      vars.quoteAmountRequired
-    );
+    args.kdl.populate{value: funds}(vars.distribution, args.params, vars.baseAmountRequired, vars.quoteAmountRequired);
     console.log(toFixed(funds, 18), "native tokens used as provision");
   }
 
-  function calculateBaseQuote(HeapArgs memory args) public view returns (CoreKandel.Distribution memory distribution) {
-    (distribution, /* uint lastQuote */ ) = KandelLib.calculateDistribution(
-      args.from, args.to, args.volume, args.initQuote, args.params.ratio, args.kdl.PRECISION()
+  function calculateBaseQuote(HeapArgs memory args) public pure returns (CoreKandel.Distribution memory distribution) {
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(args.initQuote, args.volume);
+    distribution = args.kdl.createDistribution(
+      args.from,
+      args.to,
+      baseQuoteTickIndex0,
+      args.tickOffset,
+      args.firstAskIndex,
+      type(uint).max,
+      args.volume,
+      args.params.pricePoints,
+      args.params.stepSize
     );
   }
 
-  ///@notice evaluates Pivot ids for offers that need to be published on Mangrove
+  ///@notice evaluates required amounts that need to be published on Mangrove
   ///@dev we use foundry cheats to revert all changes to the local node in order to prevent inconsistent tests.
-  function evaluatePivots(
-    CoreKandel.Distribution memory distribution,
-    HeapArgs memory args,
-    HeapVars memory vars,
-    uint funds
-  ) public {
-    vars.snapshotId = vm.snapshot();
-    vm.startPrank(broadcaster());
-    (vars.pivotIds, vars.baseAmountRequired, vars.quoteAmountRequired) = KandelLib.estimatePivotsAndRequiredAmount(
-      distribution, GeometricKandel(args.kdl), args.firstAskIndex, args.params, funds
-    );
-    vm.stopPrank();
-    require(vm.revertTo(vars.snapshotId), "snapshot restore failed");
+  function evaluateAmountsRequired(HeapVars memory vars) public pure {
+    for (uint i = 0; i < vars.distribution.bids.length; ++i) {
+      vars.quoteAmountRequired += vars.distribution.bids[i].gives;
+    }
+    for (uint i = 0; i < vars.distribution.asks.length; ++i) {
+      vars.baseAmountRequired += vars.distribution.asks[i].gives;
+    }
   }
 }

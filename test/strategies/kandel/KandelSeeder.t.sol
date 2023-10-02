@@ -22,30 +22,27 @@ contract KandelSeederTest is StratTest {
   AbstractKandelSeeder internal aaveSeeder;
   AavePooledRouter internal aaveRouter;
 
-  event NewAaveKandel(
-    address indexed owner, IERC20 indexed base, IERC20 indexed quote, address aaveKandel, address reserveId
-  );
-  event NewKandel(address indexed owner, IERC20 indexed base, IERC20 indexed quote, address kandel);
+  event NewAaveKandel(address indexed owner, bytes32 indexed olKeyHash, address aaveKandel, address reserveId);
+  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
 
   function sow(bool sharing) internal returns (GeometricKandel) {
-    return
-      seeder.sow(AbstractKandelSeeder.KandelSeed({base: base, quote: quote, gasprice: 0, liquiditySharing: sharing}));
+    return seeder.sow({olKeyBaseQuote: olKey, liquiditySharing: sharing});
   }
 
   function sowAave(bool sharing) internal returns (GeometricKandel) {
-    return aaveSeeder.sow(
-      AbstractKandelSeeder.KandelSeed({base: base, quote: quote, gasprice: 0, liquiditySharing: sharing})
-    );
+    return aaveSeeder.sow({olKeyBaseQuote: olKey, liquiditySharing: sharing});
   }
 
   function setEnvironment() internal {
-    fork = new PinnedPolygonFork();
+    fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
     base = TestToken(fork.get("WETH"));
     quote = TestToken(fork.get("USDC"));
-    setupMarket(base, quote);
+    olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
+    lo = olKey.flipped();
+    setupMarket(olKey);
   }
 
   function setUp() public virtual override {
@@ -67,11 +64,11 @@ contract KandelSeederTest is StratTest {
   }
 
   function test_sow_fails_if_market_not_fully_active() public {
-    mgv.deactivate($(base), $(quote));
+    mgv.deactivate(olKey);
     vm.expectRevert("KandelSeeder/inactiveMarket");
     sow(false);
-    mgv.activate($(base), $(quote), 0, 10, 50_000);
-    mgv.deactivate($(quote), $(base));
+    mgv.activate(olKey, 0, 10, 50_000);
+    mgv.deactivate(lo);
     vm.expectRevert("KandelSeeder/inactiveMarket");
     sow(false);
   }
@@ -83,7 +80,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_aaveKandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(aaveSeeder));
-    emit NewAaveKandel(maker, base, quote, 0xf5Ba21691a8bC011B7b430854B41d5be0B78b938, maker);
+    emit NewAaveKandel(maker, olKey.hash(), 0x9f92659F6b974ce0c1C144F57dbE5981bCdFa515, maker);
     vm.prank(maker);
     sowAave(true);
   }
@@ -91,7 +88,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_kandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(seeder));
-    emit NewKandel(maker, base, quote, 0xa38D17ef017A314cCD72b8F199C0e108EF7Ca04c);
+    emit NewKandel(maker, olKey.hash(), 0x42add52666C78960A219b157a1F4DbF806CbF703);
     vm.prank(maker);
     sow(true);
   }
