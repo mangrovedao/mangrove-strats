@@ -811,7 +811,7 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
       address(buyOrder.olKey.inbound), uint160(takerGives(buyOrder)), EXPIRATION, NONCE, address(mgo.router())
     );
 
-    approvalInfo.approvalType = ApprovalType.Permit2Transfer;
+    approvalInfo.approvalType = ApprovalType.Permit2Approval;
     approvalInfo.signature = getPermitSignature(approvalInfo.permit, privKey, DOMAIN_SEPARATOR);
 
     uint nativeBalBefore = fresh_taker.balance;

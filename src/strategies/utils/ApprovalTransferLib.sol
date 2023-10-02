@@ -9,9 +9,9 @@ import {IERC20} from "mgv_src/MgvLib.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 
 enum ApprovalType {
-  NormalTransfer,
-  Permit2TransferOneTime,
-  Permit2Transfer
+  NormalApproval,
+  Permit2ApprovalOneTime,
+  Permit2Approval
 }
 
 struct ApprovalInfo {
@@ -38,13 +38,13 @@ library ApprovalTransferLib {
     uint amount,
     ApprovalInfo calldata approvalInfo
   ) public returns (bool success) {
-    if (approvalInfo.approvalType == ApprovalType.NormalTransfer) {
+    if (approvalInfo.approvalType == ApprovalType.NormalApproval) {
       return TransferLib.transferTokenFrom(token, from, to, amount);
-    } else if (approvalInfo.approvalType == ApprovalType.Permit2TransferOneTime) {
+    } else if (approvalInfo.approvalType == ApprovalType.Permit2ApprovalOneTime) {
       return Permit2TransferLib.transferTokenFromWithPermit2Signature(
         approvalInfo.permit2, from, to, amount, approvalInfo.permitTransferFrom, approvalInfo.signature
       );
-    } else if (approvalInfo.approvalType == ApprovalType.Permit2Transfer) {
+    } else if (approvalInfo.approvalType == ApprovalType.Permit2Approval) {
       return Permit2TransferLib.transferTokenFromWithPermit2(
         approvalInfo.permit2, token, from, to, amount, approvalInfo.permit, approvalInfo.signature
       );

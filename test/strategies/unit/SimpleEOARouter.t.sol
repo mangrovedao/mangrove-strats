@@ -69,7 +69,7 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
 
     ApprovalInfo memory approvalInfo;
 
-    approvalInfo.approvalType = ApprovalType.NormalTransfer;
+    approvalInfo.approvalType = ApprovalType.NormalApproval;
 
     uint startBalanceFrom = weth.balanceOf(eoaAddress);
     uint startBalanceTo = weth.balanceOf(address(this));
@@ -87,7 +87,7 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
     router.bind(address(this));
     ApprovalInfo memory approvalInfo;
 
-    approvalInfo.approvalType = ApprovalType.Permit2TransferOneTime;
+    approvalInfo.approvalType = ApprovalType.Permit2ApprovalOneTime;
 
     approvalInfo.permit2 = permit2;
     approvalInfo.permitTransferFrom = getPermitTransferFrom(address(weth), AMOUNT, NONCE, EXPIRATION);
@@ -110,7 +110,7 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
 
     ApprovalInfo memory approvalInfo;
 
-    approvalInfo.approvalType = ApprovalType.Permit2Transfer;
+    approvalInfo.approvalType = ApprovalType.Permit2Approval;
 
     approvalInfo.permit2 = permit2;
     approvalInfo.permit = getPermit(address(weth), AMOUNT * 3, EXPIRATION, NONCE, address(router));
