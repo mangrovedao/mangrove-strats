@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/MgvLib.sol";
-import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
-import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+import {IERC20} from "mgv_src/core/MgvLib.sol";
+import {IPermit2} from "mgv_strat_lib/permit2/src/interfaces/IPermit2.sol";
+import {ISignatureTransfer} from "mgv_strat_lib/permit2/src/interfaces/ISignatureTransfer.sol";
+import {IAllowanceTransfer} from "mgv_strat_lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 
-///@title This library helps with safely interacting with Permit2 contract
-///@notice ERC20 tokens returning bool instead of reverting are handled.
+///@title This library helps with safely interact with Permit2 contract
+
 library Permit2TransferLib {
   ///@notice This transfer amount of token to recipient address from spender address
   ///@param permit2 Permit2 contract

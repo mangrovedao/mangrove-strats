@@ -19,7 +19,7 @@ contract SimpleRouter is MonoRouter {
   /// @param owner The account from which the tokens will be transferred.
   /// @param amount The amount of tokens to be transferred
   /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
-  /// @param approvalInfo The Approvalnfo struct that specify which approval has been made.
+  /// @param approvalInfo The Approvalnfo struct that specify which approval has been made by offer owner
   /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
   /// @dev requires approval from `owner` for `this` to transfer `token`.
   function __pull__(IERC20 token, address owner, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
