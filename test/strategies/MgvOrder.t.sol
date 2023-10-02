@@ -8,12 +8,12 @@ import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "mgv_src/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "mgv_src/core/MgvLib.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/Constants.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
+import {MAX_TICK} from "mgv_lib/core/Constants.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {

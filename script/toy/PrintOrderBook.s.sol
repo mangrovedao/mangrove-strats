@@ -5,7 +5,7 @@ import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 
 /**
  * @notice Prints the order book

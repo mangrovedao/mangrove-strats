@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {console} from "forge-std/console.sol";
 import {Script2} from "mgv_lib/Script2.sol";
 import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 
 /*  Allows MangroveOrder to trade on the tokens given in argument.

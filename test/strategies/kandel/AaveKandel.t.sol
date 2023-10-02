@@ -7,14 +7,14 @@ import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {AaveKandel, AavePooledRouter} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey, Offer, Global, Local} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global, Local} from "mgv_src/core/MgvLib.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {AaveCaller} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;

@@ -8,11 +8,11 @@ import {ITesterContract as ITester} from "mgv_strat_src/toy_strategies/interface
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature

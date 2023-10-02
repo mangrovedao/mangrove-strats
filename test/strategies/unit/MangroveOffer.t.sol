@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "mgv_strat_test/lib/StratTest.sol";
 import {DirectTester} from "mgv_strat_src/toy_strategies/offer_maker/DirectTester.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
 
 contract MangroveOfferTest is StratTest {
   TestToken weth;

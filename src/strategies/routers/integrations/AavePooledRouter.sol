@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {AbstractRouter, MonoRouter} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 
 ///@title Router acting as a liquidity reserve on AAVE for multiple depositors (possibly coming from different maker contracts).
 ///@notice maker contracts deposit/withdraw their user(s) fund(s) on this router, which maintains an accounting of shares attributed to each depositor

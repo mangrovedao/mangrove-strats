@@ -61,10 +61,11 @@ contract MumbaiActivateMarket is Deployer {
     // 1 token_i = (prices[i] * 10**12 / maticPrice) mwei of Matic
     new ActivateMarket().innerRun({
       mgv: mgv,
+      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density     
       reader: reader,
       market: market,
-      tkn1_in_mwei: toMweiOfMatic(price0),
-      tkn2_in_mwei: toMweiOfMatic(price1),
+      tkn1_in_Mwei: toMweiOfMatic(price0),
+      tkn2_in_Mwei: toMweiOfMatic(price1),
       fee: 0
     });
 

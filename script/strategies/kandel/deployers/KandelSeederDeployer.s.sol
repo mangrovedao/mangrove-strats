@@ -12,9 +12,9 @@ import {AbstractKandelSeeder} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {OLKey} from "mgv_src/MgvLib.sol";
+import {OLKey} from "mgv_src/core/MgvLib.sol";
 
 /**
  * @notice deploys a Kandel seeder

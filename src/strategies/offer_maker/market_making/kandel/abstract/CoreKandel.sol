@@ -1,15 +1,15 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib, OLKey, Offer} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer} from "mgv_src/core/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {KandelLib} from "./KandelLib.sol";
-import {MAX_SAFE_VOLUME} from "mgv_lib/Constants.sol";
+import {MAX_SAFE_VOLUME} from "mgv_lib/core/Constants.sol";
 
 ///@title the core of Kandel strategies which creates or updates a dual offer whenever an offer is taken.
 ///@notice `CoreKandel` is agnostic to the chosen price distribution.
