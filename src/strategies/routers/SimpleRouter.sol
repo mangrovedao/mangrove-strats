@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_src/MgvLib.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {AbstractRouter, ApprovalInfo} from "./abstract/AbstractRouter.sol";
 import {MonoRouter} from "./abstract/MonoRouter.sol";
 import {ApprovalTransferLib, ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";

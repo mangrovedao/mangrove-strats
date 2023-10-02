@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Amplifier, AbstractRouter, IERC20, IMangrove} from "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
+import {Amplifier, AbstractRouter, IMangrove} from "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 /*  Deploys a Amplifier instance
     First test:
@@ -19,7 +19,9 @@ contract AmplifierDeployer is Deployer {
       admin: envAddressOrName("ADMIN"),
       base: IERC20(envAddressOrName("BASE", "WETH")),
       stable1: IERC20(envAddressOrName("STABLE1", "USDC")),
-      stable2: IERC20(envAddressOrName("STABLE2", "DAI"))
+      stable2: IERC20(envAddressOrName("STABLE2", "DAI")),
+      tickSpacing1: vm.envUint("TICK_SPACING1"),
+      tickSpacing2: vm.envUint("TICK_SPACING2")
     });
   }
 
@@ -28,8 +30,18 @@ contract AmplifierDeployer is Deployer {
    * @param base address of the base on Amplifier after deployment
    * @param stable1 address of the first stable coin on Amplifier after deployment
    * @param stable2 address of the second stable coin on Amplifier after deployment
+   * @param tickSpacing1 tick spacing for the first stable coin's market
+   * @param tickSpacing2 tick spacing for the second stable coin's market
    */
-  function innerRun(IMangrove mgv, address admin, IERC20 base, IERC20 stable1, IERC20 stable2) public {
+  function innerRun(
+    IMangrove mgv,
+    address admin,
+    IERC20 base,
+    IERC20 stable1,
+    IERC20 stable2,
+    uint tickSpacing1,
+    uint tickSpacing2
+  ) public {
     try fork.get("Amplifier") returns (address payable old_amplifier_address) {
       Amplifier old_amplifier = Amplifier(old_amplifier_address);
       uint bal = mgv.balanceOf(old_amplifier_address);
@@ -47,7 +59,7 @@ contract AmplifierDeployer is Deployer {
     }
     console.log("Deploying Amplifier...");
     broadcast();
-    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, admin );
+    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, tickSpacing1, tickSpacing2, admin );
     fork.set("Amplifier", address(amplifier));
     require(amplifier.MGV() == mgv, "Smoke test failed.");
     outputDeployment();

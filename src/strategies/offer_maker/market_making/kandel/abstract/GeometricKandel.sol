@@ -1,321 +1,141 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
-import {OfferType} from "./TradesBaseQuotePair.sol";
 import {CoreKandel} from "./CoreKandel.sol";
-import {AbstractKandel} from "./AbstractKandel.sol";
+import {MAX_TICK, MIN_TICK} from "mgv_lib/Constants.sol";
+import {OLKey} from "mgv_src/MgvLib.sol";
+import {KandelLib} from "./KandelLib.sol";
+import {Tick} from "mgv_lib/TickLib.sol";
 
 ///@title Adds a geometric price progression to a `CoreKandel` strat without storing prices for individual price points.
 abstract contract GeometricKandel is CoreKandel {
-  ///@notice `compoundRateBase`, and `compoundRateQuote` have PRECISION decimals, and ditto for GeometricKandel's `ratio`.
-  ///@notice setting PRECISION higher than 5 will produce overflow in limit cases for GeometricKandel.
-  uint public constant PRECISION = 5;
+  ///@notice The tick offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param value the tick offset.
+  event SetBaseQuoteTickOffset(uint value);
+  ///@notice By emitting this data, an indexer will be able to keep track of what the stepSize and tickOffset is for the Kandel instance.
 
-  ///@notice the parameters for Geometric Kandel have been set.
-  ///@param spread in amount of price slots to jump for posting dual offer
-  ///@param ratio of price progression
-  event SetGeometricParams(uint spread, uint ratio);
-
-  ///@notice Geometric Kandel parameters
-  ///@param gasprice the gasprice to use for offers
-  ///@param gasreq the gasreq to use for offers
-  ///@param ratio of price progression (`2**16 > ratio >= 10**PRECISION`) expressed with `PRECISION` decimals, so geometric ratio is `ratio/10**PRECISION`
-  ///@param compoundRateBase percentage of the spread that is to be compounded for base, expressed with `PRECISION` decimals (`compoundRateBase <= 10**PRECISION`). Real compound rate for base is `compoundRateBase/10**PRECISION`
-  ///@param compoundRateQuote percentage of the spread that is to be compounded for quote, expressed with `PRECISION` decimals (`compoundRateQuote <= 10**PRECISION`). Real compound rate for quote is `compoundRateQuote/10**PRECISION`
-  ///@param spread in amount of price slots to jump for posting dual offer. Must be less than or equal to 8.
-  ///@param pricePoints the number of price points for the Kandel instance.
-  struct Params {
-    uint16 gasprice;
-    uint24 gasreq;
-    uint24 ratio; // max ratio is 2*10**5
-    uint24 compoundRateBase; // max compoundRate is 10**5
-    uint24 compoundRateQuote;
-    uint8 spread;
-    uint8 pricePoints;
-  }
-
-  ///@notice Storage of the parameters for the strat.
-  Params public params;
+  ///@notice The tick offset for absolute price used for the on-chain geometric progression deployment in `createDistribution`. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  uint public baseQuoteTickOffset;
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param base Address of the base token of the market Kandel will act on
-  ///@param quote Address of the quote token of the market Kandel will act on
+  ///@param olKeyBaseQuote The OLKey for the outbound base and inbound quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
-  ///@param gasprice the gasprice to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, IERC20 base, IERC20 quote, uint gasreq, uint gasprice, address reserveId)
-    CoreKandel(mgv, base, quote, gasreq, reserveId)
-  {
-    setGasprice(gasprice);
-  }
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
+    CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
+  {}
 
-  /// @inheritdoc AbstractKandel
-  function setGasprice(uint gasprice) public override onlyAdmin {
-    uint16 gasprice_ = uint16(gasprice);
-    require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
-    params.gasprice = gasprice_;
-    emit SetGasprice(gasprice_);
-  }
-
-  /// @inheritdoc AbstractKandel
-  function setGasreq(uint gasreq) public override onlyAdmin {
-    uint24 gasreq_ = uint24(gasreq);
-    require(gasreq_ == gasreq, "Kandel/gasreqTooHigh");
-    params.gasreq = gasreq_;
-    emit SetGasreq(gasreq_);
-  }
-
-  /// @notice Updates the params to new values.
-  /// @param newParams the new params to set.
-  function setParams(Params calldata newParams) internal {
-    Params memory oldParams = params;
-
-    if (oldParams.pricePoints != newParams.pricePoints) {
-      setLength(newParams.pricePoints);
-      params.pricePoints = newParams.pricePoints;
-    }
-
-    bool geometricChanged = false;
-    if (oldParams.ratio != newParams.ratio) {
-      require(newParams.ratio >= 10 ** PRECISION && newParams.ratio <= 2 * 10 ** PRECISION, "Kandel/invalidRatio");
-      params.ratio = newParams.ratio;
-      geometricChanged = true;
-    }
-    if (oldParams.spread != newParams.spread) {
-      require(newParams.spread > 0 && newParams.spread <= 8, "Kandel/invalidSpread");
-      params.spread = newParams.spread;
-      geometricChanged = true;
-    }
-
-    if (geometricChanged) {
-      emit SetGeometricParams(newParams.spread, newParams.ratio);
-    }
-
-    if (newParams.gasprice != 0 && newParams.gasprice != oldParams.gasprice) {
-      setGasprice(newParams.gasprice);
-    }
-
-    if (newParams.gasreq != 0 && newParams.gasreq != oldParams.gasreq) {
-      setGasreq(newParams.gasreq);
-    }
-
-    if (
-      oldParams.compoundRateBase != newParams.compoundRateBase
-        || oldParams.compoundRateQuote != newParams.compoundRateQuote
-    ) {
-      setCompoundRates(newParams.compoundRateBase, newParams.compoundRateQuote);
+  ///@notice sets the tick offset if different from existing.
+  ///@param _baseQuoteTickOffset the new tick offset.
+  function setBaseQuoteTickOffset(uint _baseQuoteTickOffset) public onlyAdmin {
+    require(uint24(_baseQuoteTickOffset) == _baseQuoteTickOffset, "Kandel/tickOffsetTooHigh");
+    if (baseQuoteTickOffset != _baseQuoteTickOffset) {
+      baseQuoteTickOffset = _baseQuoteTickOffset;
+      emit SetBaseQuoteTickOffset(_baseQuoteTickOffset);
     }
   }
 
-  /// @inheritdoc AbstractKandel
-  function setCompoundRates(uint compoundRateBase, uint compoundRateQuote) public override onlyAdmin {
-    require(compoundRateBase <= 10 ** PRECISION, "Kandel/invalidCompoundRateBase");
-    require(compoundRateQuote <= 10 ** PRECISION, "Kandel/invalidCompoundRateQuote");
-    emit SetCompoundRates(compoundRateBase, compoundRateQuote);
-    params.compoundRateBase = uint24(compoundRateBase);
-    params.compoundRateQuote = uint24(compoundRateQuote);
+  ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
+  ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
+  ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
+  ///@param baseQuoteTickIndex0 the tick of base per quote for the price point at index 0. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param _baseQuoteTickOffset the tick offset used for the geometric progression deployment. Must be at least 1. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param firstAskIndex the (inclusive) index after which offer should be an ask. Must be at most `pricePoints`.
+  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
+  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
+  ///@param stepSize in amount of price points to jump for posting dual offer. Must be less than `pricePoints`.
+  ///@param pricePoints the number of price points for the Kandel instance. Must be at least 2.
+  ///@return distribution the distribution of bids and asks to populate
+  ///@dev the absolute price of an offer is the ratio of quote/base volumes of tokens it trades
+  ///@dev the tick of offers on Mangrove are in relative taker price of maker's inbound/outbound volumes of tokens it trades
+  ///@dev for Bids, outbound=quote, inbound=base so relative taker price of a a bid is the inverse of the absolute price.
+  ///@dev for Asks, outbound=base, inbound=quote so relative taker price of an ask coincides with absolute price.
+  ///@dev Index0 will contain the ask with the lowest relative price and the bid with the highest relative price. Absolute price is geometrically increasing over indexes.
+  ///@dev tickOffset moves an offer relative price s.t. `AskTick_{i+1} = AskTick_i + tickOffset` and `BidTick_{i+1} = BidTick_i - tickOffset`
+  ///@dev A hole is left in the middle at the size of stepSize - either an offer or its dual is posted, not both.
+  ///@dev The caller should make sure the minimum and maximum tick does not exceed the MIN_TICK and MAX_TICK from respectively; otherwise, populate will fail for those offers.
+  ///@dev If type(uint).max is used for `bidGives` or `askGives` then very high or low prices can yield gives=0 (which results in both offer an dual being dead) or gives>=type(uin96).max which is not supported by Mangrove.
+  function createDistribution(
+    uint from,
+    uint to,
+    Tick baseQuoteTickIndex0,
+    uint _baseQuoteTickOffset,
+    uint firstAskIndex,
+    uint bidGives,
+    uint askGives,
+    uint pricePoints,
+    uint stepSize
+  ) public pure returns (Distribution memory distribution) {
+    return KandelLib.createGeometricDistribution(
+      from, to, baseQuoteTickIndex0, _baseQuoteTickOffset, firstAskIndex, bidGives, askGives, pricePoints, stepSize
+    );
   }
 
-  /// @notice Gets the compound rate for the given offer type.
-  /// @param baDual the dual offer type.
-  /// @param memoryParams the Kandel params.
-  /// @return compoundRate to use for the gives of the offer type. Asks give base so this would be the `compoundRateBase`, and vice versa.
-  function compoundRateForDual(OfferType baDual, Params memory memoryParams) private pure returns (uint compoundRate) {
-    compoundRate = uint(baDual == OfferType.Ask ? memoryParams.compoundRateBase : memoryParams.compoundRateQuote);
-  }
-
-  ///@notice publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
-  ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param pivotIds the pivot to be used for the offer
+  ///@notice publishes bids/asks according to a geometric distribution, and sets all parameters according to inputs.
+  ///@param from populate offers starting from this index (inclusive).
+  ///@param to populate offers until this index (exclusive).
+  ///@param baseQuoteTickIndex0 the tick of base per quote for the price point at index 0. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param _baseQuoteTickOffset the tick offset used for the geometric progression deployment. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
+  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
+  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
   ///@param parameters the parameters for Kandel. Only changed parameters will cause updates. Set `gasreq` and `gasprice` to 0 to keep existing values.
   ///@param baseAmount base amount to deposit
   ///@param quoteAmount quote amount to deposit
-  ///@dev This function is used at initialization and can fund with provision for the offers.
-  ///@dev Use `populateChunk` to split up initialization or re-initialization with same parameters, as this function will emit.
-  ///@dev If this function is invoked with different ratio, pricePoints, spread, then first retract all offers.
-  ///@dev msg.value must be enough to provision all posted offers (for chunked initialization only one call needs to send native tokens).
-  function populate(
-    Distribution calldata distribution,
-    uint[] calldata pivotIds,
+  ///@dev See `createDistribution` for further details.
+  function populateFromOffset(
+    uint from,
+    uint to,
+    Tick baseQuoteTickIndex0,
+    uint _baseQuoteTickOffset,
     uint firstAskIndex,
+    uint bidGives,
+    uint askGives,
     Params calldata parameters,
     uint baseAmount,
     uint quoteAmount
-  ) external payable onlyAdmin {
+  ) public payable onlyAdmin {
     if (msg.value > 0) {
       MGV.fund{value: msg.value}();
     }
     setParams(parameters);
+    setBaseQuoteTickOffset(_baseQuoteTickOffset);
 
     depositFunds(baseAmount, quoteAmount);
 
-    populateChunkInternal(distribution, pivotIds, firstAskIndex);
+    populateChunkFromOffset(from, to, baseQuoteTickIndex0, firstAskIndex, bidGives, askGives);
   }
 
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
-  ///@dev internal version does not check onlyAdmin
-  ///@param distribution the distribution of base and quote for Kandel indices
-  ///@param pivotIds the pivot to be used for the offer
+  ///@notice publishes bids/asks according to a geometric distribution, and reads parameters from the Kandel instance.
+  ///@param from populate offers starting from this index (inclusive).
+  ///@param to populate offers until this index (exclusive).
+  ///@param baseQuoteTickIndex0 the tick of base per quote for the price point at index 0. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunkInternal(Distribution calldata distribution, uint[] calldata pivotIds, uint firstAskIndex)
-    internal
-  {
-    populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
-  }
-
-  ///@notice Publishes bids/asks for the distribution in the `indices`. Caller should follow the desired distribution in `baseDist` and `quoteDist`.
-  ///@notice This function is used publicly after `populate` to reinitialize some indices or if multiple transactions are needed to split initialization due to gas cost.
-  ///@notice This function is not payable, use `populate` to fund along with populate.
-  ///@param distribution the distribution of base and quote for Kandel indices.
-  ///@param pivotIds the pivot to be used for the offer.
-  ///@param firstAskIndex the (inclusive) index after which offer should be an ask.
-  function populateChunk(Distribution calldata distribution, uint[] calldata pivotIds, uint firstAskIndex)
-    external
-    onlyAdmin
-  {
-    populateChunk(distribution, pivotIds, firstAskIndex, params.gasreq, params.gasprice);
-  }
-
-  ///@notice calculates the wants and gives for the dual offer according to the geometric price distribution.
-  ///@param baDual the dual offer type.
-  ///@param dualOfferGives the dual offer's current gives (can be 0)
-  ///@param order a recap of the taker order (order.offer is the executed offer)
-  ///@param memoryParams the Kandel params (possibly with modified spread due to boundary condition)
-  ///@return wants the new wants for the dual offer
-  ///@return gives the new gives for the dual offer
-  ///@dev Define the (maker) price of the order as `p_order := order.offer.wants() / order.offer.gives()` (what the offer originally wants by what the offer originally gives).
-  /// the (maker) price of the dual order must be `p_dual := p_order / ratio^spread` at which one should buy back at least what was sold.
-  /// thus `min_offer_wants := order.wants` at price `p_dual`
-  /// with `min_offer_gives / min_offer_wants = p_dual` we derive `min_offer_gives = order.gives/ratio^spread`.
-  /// Now at maximal compounding, maker wants to give all what taker gave. That is `max_offer_gives := order.gives`
-  /// So with compound rate we have:
-  /// `offer_gives := min_offer_gives + (max_offer_gives - min_offer_gives) * compoundRate`.
-  /// and we derive the formula:
-  /// `offer_gives = order.gives * ( 1/ratio^spread + (1 - 1/ratio^spread) * compoundRate)`
-  /// which we use in the code below where we also account for existing gives of the dual offer.
-  function dualWantsGivesOfOffer(
-    OfferType baDual,
-    uint dualOfferGives,
-    MgvLib.SingleOrder calldata order,
-    Params memory memoryParams
-  ) internal pure returns (uint wants, uint gives) {
-    // computing gives/wants for dual offer
-    // we verify we cannot overflow if PRECISION = 5
-    // spread:8
-    uint spread = uint(memoryParams.spread);
-    // compoundRate <= 10**PRECISION hence compoundRate:PRECISION*log2(10)
-    uint compoundRate = compoundRateForDual(baDual, memoryParams);
-    // params.ratio <= 2*10**PRECISION, spread:8, r: 8 * (PRECISION*log2(10) + 1)
-    uint r = uint(memoryParams.ratio) ** spread;
-    uint p = 10 ** PRECISION;
-    // order.gives:96
-    // p ~ compoundRate : log2(10) * PRECISION
-    // p ** spread : 8 * log2(10) * PRECISION
-    // (p - compoundRate) * p ** spread : 9 * log2(10) * PRECISION (=150 for PRECISION = 5)
-    // compoundRate * r : PRECISION*log2(10) + 8 * (PRECISION*log2(10) + 1) (=157 for PRECISION = 5)
-    // 157 + 96 < 256
-    gives = (order.gives * ((p - compoundRate) * p ** spread + compoundRate * r)) / (r * p);
-
-    // adding to gives what the offer was already giving so gives could be greater than 2**96
-    // gives:97
-    gives += dualOfferGives;
-    if (uint96(gives) != gives) {
-      // this should not be reached under normal circumstances unless strat is posting on top of an existing offer with an abnormal volume
-      // to prevent gives to be too high, we let the surplus be pending
-      gives = type(uint96).max;
-    }
-    // adjusting wants to price:
-    // gives * r : 237 so offerGives must be < 2**19 to completely avoid overflow.
-    // Since offerGives is high when gives * r is, we check whether the full precision can be used and only if not then we use less precision.
-    uint givesR = gives * r;
-    uint offerGives = order.offer.gives();
-    if (uint160(givesR) == givesR || offerGives < 2 ** 19) {
-      // using max precision
-      wants = (offerGives * givesR) / (order.offer.wants() * (p ** spread));
-    } else {
-      // we divide `gives*r` by `order.offer.wants()` with max precision so that the resulting `givesR:160` in order to make sure it can be multiplied by `offerGives`
-      givesR = (givesR * 2 ** 19) / order.offer.wants();
-      wants = (offerGives * givesR) / (p ** spread);
-      // we correct for the added precision above
-      wants /= 2 ** 19;
-    }
-    // wants is higher than offerGives
-    // this may cause wants to be higher than 2**96 allowed by Mangrove (for instance if one needs many quotes to buy sell base tokens)
-    // so we adjust the price so as to want an amount of tokens that mangrove will accept.
-    if (uint96(wants) != wants) {
-      gives = (type(uint96).max * gives) / wants;
-      wants = type(uint96).max;
-    }
-  }
-
-  ///@notice returns the destination index to transport received liquidity to - a better (for Kandel) price index for the offer type.
-  ///@param ba the offer type to transport to
-  ///@param index the price index one is willing to improve
-  ///@param step the number of price steps improvements
-  ///@param pricePoints the number of price points
-  ///@return better destination index
-  ///@return spread the size of the price jump, which is `step` if the index boundaries were not reached
-  function transportDestination(OfferType ba, uint index, uint step, uint pricePoints)
-    internal
-    pure
-    returns (uint better, uint8 spread)
-  {
-    if (ba == OfferType.Ask) {
-      better = index + step;
-      if (better >= pricePoints) {
-        better = pricePoints - 1;
-        spread = uint8(better - index);
-      } else {
-        spread = uint8(step);
-      }
-    } else {
-      if (index >= step) {
-        better = index - step;
-        spread = uint8(step);
-      } else {
-        // else better = 0
-        spread = uint8(index - better);
-      }
-    }
-  }
-
-  ///@inheritdoc CoreKandel
-  function transportLogic(OfferType ba, MgvLib.SingleOrder calldata order)
-    internal
-    virtual
-    override
-    returns (OfferType baDual, uint dualOfferId, uint dualIndex, OfferArgs memory args)
-  {
-    uint index = indexOfOfferId(ba, order.offerId);
-    Params memory memoryParams = params;
-    baDual = dual(ba);
-
-    // because of boundaries, actual spread might be lower than the one loaded in memoryParams
-    // this would result populating a price index at a wrong price (too high for an Ask and too low for a Bid)
-    (dualIndex, memoryParams.spread) =
-      transportDestination(baDual, index, memoryParams.spread, memoryParams.pricePoints);
-
-    dualOfferId = offerIdOfIndex(baDual, dualIndex);
-    (IERC20 outbound, IERC20 inbound) = tokenPairOfOfferType(baDual);
-    args.outbound_tkn = outbound;
-    args.inbound_tkn = inbound;
-    MgvStructs.OfferPacked dualOffer = MGV.offers(address(outbound), address(inbound), dualOfferId);
-
-    // computing gives/wants for dual offer
-    // At least: gives = order.gives/ratio and wants is then order.wants
-    // At most: gives = order.gives and wants is adapted to match the price
-    (args.wants, args.gives) = dualWantsGivesOfOffer(baDual, dualOffer.gives(), order, memoryParams);
-
-    // args.fund = 0; the offers are already provisioned
-    // posthook should not fail if unable to post offers, we capture the error as incidents
-    args.noRevert = true;
-    args.gasprice = memoryParams.gasprice;
-    args.gasreq = memoryParams.gasreq;
-    args.pivotId = dualOffer.gives() > 0 ? dualOffer.next() : 0;
+  ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.
+  ///@param askGives The initial amount of base to give for all asks. If 0, only book the offer, if type(uint).max then bidGives is used as quote for asks, and the base the ask gives is set to according to the price.
+  ///@dev This is typically used after a call to `populateFromOffset` to populate the rest of the offers with the same parameters. See that function for further details.
+  function populateChunkFromOffset(
+    uint from,
+    uint to,
+    Tick baseQuoteTickIndex0,
+    uint firstAskIndex,
+    uint bidGives,
+    uint askGives
+  ) public payable onlyAdmin {
+    Params memory parameters = params;
+    Distribution memory distribution = createDistribution(
+      from,
+      to,
+      baseQuoteTickIndex0,
+      baseQuoteTickOffset,
+      firstAskIndex,
+      bidGives,
+      askGives,
+      parameters.pricePoints,
+      parameters.stepSize
+    );
+    populateChunkInternal(distribution, parameters.gasreq, parameters.gasprice);
   }
 }

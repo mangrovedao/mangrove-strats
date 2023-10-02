@@ -5,16 +5,11 @@ import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPool.sol";
 import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPoolAddressesProvider.sol";
 import "mgv_strat_src/strategies/vendor/aave/v2/IPriceOracleGetter.sol";
 import "mgv_strat_src/strategies/vendor/compound/Exponential.sol";
-import "mgv_src/IMangrove.sol";
 import {IERC20, MgvLib} from "mgv_src/MgvLib.sol";
 
 contract AaveModule is Exponential {
-  event ErrorOnRedeem(
-    address indexed outbound_tkn, address indexed inbound_tkn, uint indexed offerId, uint amount, string errorCode
-  );
-  event ErrorOnMint(
-    address indexed outbound_tkn, address indexed inbound_tkn, uint indexed offerId, uint amount, string errorCode
-  );
+  event ErrorOnRedeem(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, string errorCode);
+  event ErrorOnMint(bytes32 indexed olKeyHash, uint indexed offerId, uint amount, string errorCode);
 
   // address of the lendingPool
   ILendingPool public immutable lendingPool;
@@ -140,7 +135,7 @@ contract AaveModule is Exponential {
   }
 
   function aaveRedeem(uint amountToRedeem, address onBehalf, MgvLib.SingleOrder calldata order) internal returns (uint) {
-    try lendingPool.withdraw(order.outbound_tkn, amountToRedeem, onBehalf) returns (uint withdrawn) {
+    try lendingPool.withdraw(order.olKey.outbound, amountToRedeem, onBehalf) returns (uint withdrawn) {
       //aave redeem was a success
       if (amountToRedeem == withdrawn) {
         return 0;
@@ -148,7 +143,7 @@ contract AaveModule is Exponential {
         return (amountToRedeem - withdrawn);
       }
     } catch Error(string memory message) {
-      emit ErrorOnRedeem(order.outbound_tkn, order.inbound_tkn, order.offerId, amountToRedeem, message);
+      emit ErrorOnRedeem(order.olKey.hash(), order.offerId, amountToRedeem, message);
       return amountToRedeem;
     }
   }
@@ -163,12 +158,12 @@ contract AaveModule is Exponential {
   /// @notice user need to approve ctoken in order to mint
   function aaveMint(uint amount, address onBehalf, MgvLib.SingleOrder calldata order) internal returns (uint) {
     // contract must haveallowance()to spend funds on behalf ofmsg.sender for at-leastamount for the asset being deposited. This can be done via the standard ERC20 approve() method.
-    try lendingPool.deposit(order.inbound_tkn, amount, onBehalf, referralCode) {
+    try lendingPool.deposit(order.olKey.inbound, amount, onBehalf, referralCode) {
       return 0;
     } catch Error(string memory message) {
-      emit ErrorOnMint(order.outbound_tkn, order.inbound_tkn, order.offerId, amount, message);
+      emit ErrorOnMint(order.olKey.hash(), order.offerId, amount, message);
     } catch {
-      emit ErrorOnMint(order.outbound_tkn, order.inbound_tkn, order.offerId, amount, "unexpected");
+      emit ErrorOnMint(order.olKey.hash(), order.offerId, amount, "unexpected");
     }
     return amount;
   }

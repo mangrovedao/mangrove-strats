@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_src/IERC20.sol";
 
 import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
@@ -25,11 +25,13 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   }
 
   ///@notice logging bound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerBind(address indexed maker);
 
   ///@notice logging unbound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerUnbind(address indexed maker);
 
   ///@notice getter for the `makers: addr => bool` mapping

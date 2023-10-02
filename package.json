@@ -12,7 +12,6 @@
     "postinstall": "husky install",
     "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
     "clean": "forge clean; rimraf index.js dist",
-    "preproc": "ts-node preprocessing/run.ts",
     "test": "forge test -vvv"
   },
   "lint-staged": {
@@ -32,7 +31,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "^1.5.8-1"
+    "@mangrovedao/mangrove-core": "https://github.com/mangrovedao/mangrove-core.git#commit=340d271058c88e00259965ab620b310adc242c66"
   },
   "devDependencies": {
     "@types/node": "^20.2.6",

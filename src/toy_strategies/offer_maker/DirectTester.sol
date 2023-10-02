@@ -1,13 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
-import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {OfferMaker} from "./OfferMaker.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {MgvLib} from "mgv_src/MgvLib.sol";
 
-contract DirectTester is ITesterContract, OfferMaker {
+contract DirectTester is OfferMaker {
   mapping(address => address) public reserves;
-  bytes32 constant retdata = "lastlook/testdata";
+  bytes32 constant retData = "lastLook/testData";
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
@@ -15,13 +16,8 @@ contract DirectTester is ITesterContract, OfferMaker {
     OfferMaker(mgv, router_, deployer, gasreq, deployer) // setting reserveId = deployer by default
   {}
 
-  function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
-    AbstractRouter router_ = router();
-    return router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, reserveId);
-  }
-
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
-    return retdata;
+    return retData;
   }
 
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)

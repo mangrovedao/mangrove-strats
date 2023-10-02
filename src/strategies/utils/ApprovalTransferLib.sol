@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {Permit2TransferLib} from "./Permit2TransferLib.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {Permit2TransferLib} from "./Permit2TransferLib.sol";
 import {IERC20} from "mgv_src/MgvLib.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 
