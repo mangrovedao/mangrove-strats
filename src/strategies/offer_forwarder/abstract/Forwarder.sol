@@ -147,7 +147,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
 
     // the call below cannot revert for lack of provision (by design)
-    // it may still revert if `args.fund` yields a gasprice that is too high (mangrove's gasprice is uint26)
+    // it may still revert if `args.fund` yields a gasprice that is too high (Mangrove's gasprice must hold on 26 bits)
     // or if `args.gives` is below density (dust)
     try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, gasprice) returns (
       uint offerId_

@@ -41,7 +41,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   event Debit(IERC20 indexed token, uint amount);
 
   ///@notice Core Kandel parameters
-  ///@param gasprice the gasprice to use for offers
+  ///@param gasprice the gasprice to use for offers. Must hold on 26 bits.
   ///@param gasreq the gasreq to use for offers
   ///@param stepSize in amount of price points to jump for posting dual offer.
   ///@param pricePoints the number of price points for the Kandel instance.
