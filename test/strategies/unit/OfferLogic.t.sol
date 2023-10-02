@@ -254,7 +254,7 @@ contract OfferLogicTest is StratTest {
       gasreq: gasreq
     });
 
-    mgv.setGasprice(1 << 26 - 1);
+    mgv.setGasprice((1 << 26) - 1);
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
     makerContract.updateOfferByVolume({

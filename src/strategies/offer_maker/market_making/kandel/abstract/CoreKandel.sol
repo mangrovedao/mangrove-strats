@@ -45,9 +45,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param stepSize in amount of price points to jump for posting dual offer.
   ///@param pricePoints the number of price points for the Kandel instance.
   struct Params {
-    uint16 gasprice;
+    uint32 gasprice;
     uint24 gasreq;
-    uint104 stepSize;
+    uint88 stepSize;
     uint112 pricePoints;
   }
 
@@ -57,7 +57,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the step size
   ///@param stepSize the step size.
   function setStepSize(uint stepSize) public onlyAdmin {
-    uint104 stepSize_ = uint104(stepSize);
+    uint88 stepSize_ = uint88(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
     params.stepSize = stepSize_;
@@ -67,10 +67,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the gasprice for offers
   ///@param gasprice the gasprice.
   function setGasprice(uint gasprice) public onlyAdmin {
-    uint16 gasprice_ = uint16(gasprice);
-    require(gasprice_ == gasprice, "Kandel/gaspriceTooHigh");
-    params.gasprice = gasprice_;
-    emit SetGasprice(gasprice_);
+    require(gasprice < 1 << 26, "Kandel/gaspriceTooHigh");
+    params.gasprice = uint32(gasprice);
+    emit SetGasprice(gasprice);
   }
 
   ///@notice sets the gasreq (including router's gasreq) for offers

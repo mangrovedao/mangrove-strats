@@ -39,7 +39,7 @@ contract KandelPopulate is Deployer {
     }
     params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.stepSize = uint104(vm.envUint("STEP_SIZE"));
+    params.stepSize = uint88(vm.envUint("STEP_SIZE"));
     require(params.stepSize == vm.envUint("STEP_SIZE"), "Invalid STEP_SIZE");
 
     innerRun(

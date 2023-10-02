@@ -92,9 +92,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       uint num = (offerGasbase + gasreq) * 1e6;
       // pre-check to avoid underflow since 0 is interpreted as "use Mangrove's gasprice"
       require(provision >= num, "mgv/insufficientProvision");
-      // Gasprice is eventually a uint16, so too much provision would yield a gasprice overflow
+      // Gasprice is eventually a uint26, so too much provision would yield a gasprice overflow
       // Reverting here with a clearer reason
-      require(provision < (1 << 26) * num, "Forwarder/provisionTooHigh");
+      require(provision < ((1 << 26) - 1) * num, "Forwarder/provisionTooHigh");
       gasprice = provision / num;
 
       // computing amount of native tokens that are not going to be locked on Mangrove
@@ -147,7 +147,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
 
     // the call below cannot revert for lack of provision (by design)
-    // it may still revert if `args.fund` yields a gasprice that is too high (mangrove's gasprice is uint16)
+    // it may still revert if `args.fund` yields a gasprice that is too high (mangrove's gasprice is uint26)
     // or if `args.gives` is below density (dust)
     try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, gasprice) returns (
       uint offerId_
