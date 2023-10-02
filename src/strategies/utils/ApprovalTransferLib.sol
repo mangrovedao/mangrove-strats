@@ -22,8 +22,15 @@ struct ApprovalInfo {
   IPermit2 permit2;
 }
 
-///@title This library helps interact with different kind of approvals.
+///@title The purpose of this library is to help interact with different kinds of approvals when transferring tokens between addresses.
 library ApprovalTransferLib {
+  ///@notice This function is designed to facilitate token transfers between addresses while considering different types of approval mechanisms. It takes into account a set of parameters and approval information to determine how the transfer should be executed.
+  ///@param token An interface to an ERC-20 token contract representing the token to be transferred.
+  ///@param from The address from which tokens will be transferred.
+  ///@param to The address to which tokens will be transferred.
+  ///@param amount The amount of tokens to be transferred.
+  ///@param approvalInfo An approvalInfo structure containing information about the approval. This structure includes details about the type of approval, permit data, and a signature for verification.
+  ///@return success true if transfer was successful; otherwise, false.
   function transferWithApprovalInfo(
     IERC20 token,
     address from,
