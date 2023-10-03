@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {OfferDispatcher, IMangrove, IERC20, AbstractRouter, Dispatcher} from "./OfferDispatcher.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
-import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
+import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
 
 contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferDispatcher(mgv, deployer) {}

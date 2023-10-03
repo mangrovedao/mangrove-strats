@@ -5,7 +5,7 @@ import {Forwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwa
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
 import {AbstractRouter, MonoRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
 
 contract OfferDispatcher is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new Dispatcher(), 30_000) {

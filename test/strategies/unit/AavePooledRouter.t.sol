@@ -8,6 +8,7 @@ import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.so
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
 import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {AbstractRouterTest} from "./AbstractRouter.t.sol";
 import "mgv_lib/Debug.sol";
 
 contract AavePooledRouterTest is AbstractRouterTest {

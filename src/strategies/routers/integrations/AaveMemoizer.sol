@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
 import {DataTypes} from "mgv_strat_src/strategies/vendor/aave/v3/DataTypes.sol";
 import {ReserveConfiguration} from "mgv_strat_src/strategies/vendor/aave/v3/ReserveConfiguration.sol";
