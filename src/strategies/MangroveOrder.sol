@@ -126,7 +126,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true, approvalInfo);
+    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true, approvalInfo);
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:

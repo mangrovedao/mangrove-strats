@@ -809,7 +809,7 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
     address fresh_taker = freshTakerForPermit2(0, takerGives(buyOrder), privKey);
     // generate permit to just in time approval
     approvalInfo.permit = getPermit(
-      address(buyOrder.olKey.inbound), uint160(takerGives(buyOrder)), EXPIRATION, NONCE, address(mgo.router())
+      address(buyOrder.olKey.inbound_tkn), uint160(takerGives(buyOrder)), EXPIRATION, NONCE, address(mgo.router())
     );
 
     approvalInfo.approvalType = ApprovalType.Permit2Approval;
