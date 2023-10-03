@@ -1,12 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IMangrove, AbstractRouter, OfferMaker, IERC20} from "./OfferMaker.sol";
-import {ITesterContract} from "mgv_strat_src/strategies/interfaces/ITesterContract.sol";
-import {MgvLib} from "mgv_src/MgvLib.sol";
+import {OfferMaker} from "./OfferMaker.sol";
 import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
+import {IMangrove} from "mgv_src/IMangrove.sol";
+import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
+import {MgvLib} from "mgv_src/core/MgvLib.sol";
 
-contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
+contract AaveMaker is OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;
   bytes32 internal constant RETDATA = "lastlook/testdata";
 
@@ -16,11 +18,6 @@ contract AaveMaker is ITesterContract, OfferMaker, AaveV3Borrower {
     OfferMaker(mgv, router_, deployer, gasreq, deployer) // setting reserveId = deployer by default
     AaveV3Borrower(addressesProvider, 1)
   {}
-
-  function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
-    AbstractRouter router_ = router();
-    return router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, reserveId);
-  }
 
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
     return RETDATA;

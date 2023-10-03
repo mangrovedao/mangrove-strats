@@ -1,20 +1,21 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {AbstractRouterTest} from "./AbstractRouter.t.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {AavePooledRouter, IERC20} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {OfferLogicTest} from "./OfferLogic.t.sol";
+import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
-import {console} from "forge-std/console.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
+import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import "mgv_lib/Debug.sol";
 
 contract AavePooledRouterTest is AbstractRouterTest {
   bool internal useForkAave = true;
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 470000;
+  uint internal constant GASREQ = 486310;
 
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
@@ -545,7 +546,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
 
     CheckAuthArgs memory args;
     args.callee = $(pooledRouter);
-    args.callers = dynamic([address($(mgv)), maker1, maker2, admin, manager, $(this)]);
+    args.callers = dynamic([address($(mgv)), maker1, maker2, admin, manager, $(this), $(pooledRouter)]);
     args.revertMessage = "AccessControlled/Invalid";
 
     // Maker or admin

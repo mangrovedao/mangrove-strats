@@ -1,10 +1,58 @@
 # Contracts in scope for the audit
 
-Initial commit: 94431a43e99348a16c609e5c0386c08d22f0e5eb
-Update: Added diagram and split KandelSeeder in two to reduce contract size.
+Changes since Audit March 2023:
+
+- Split out into [Mangrove strats repo](https://github.com/mangrovedao/mangrove-strats) from Mangrove-core. No code changes except core parts deleted.
+- Uptake of new core protocol. This has lots of mechanical, cross-cutting changes not mentioned for specific contracts below, and also for contracts not specifically mentioned due to only having these changes.
+  - `(outbound_tkn, inbound_tkn)` changed to `OLKey` in parameters.
+  - `[outbound_tkn][inbound_tkn]` changed to `OLKey.hash()` in events and mappings.
+  - `(gives, wants)` changed to `(gives, tick)` in maker perspective (MangroveOrder and Kandel)
+  - Events changed to use `OLKey` and streamlined.
+  - `pivotId` removed completely.
+  - `gasprice` is now 26 bits in Mwei.
+- Strat library
+  - MangroveOffer: `residualGives` and `residualWants` removed. Replaced with `residualValues` which by default keeps price (`tick`) and calculates remaining `gives` like before.
+  - TransferLib moved to core.
+  - SimpleRouter now inherits from a MonoRouter to specify that it only has a single-sourcing perspective.
+- Mangrove Order strategy
+  - `(gives, wants)` changed to `(fillVolume, tick)` in taker perspective given by `TakerOrder`.
+  - Manipulation of `gives` and the implicit `wants` follows the same pattern as the core protocol during a market order.
+  - The resting order is posted via the inverse price, which is now simpler than before, since it is just the negative tick.
+  - The ability to reuse an old, owned offer id is added.
+- Kandel strategy
+  - Conceptual change: Do not calculate price of offers and create them on the fly in the posthook, instead allocate all offers up front, and set their price.
+  - Cross-cutting: Refactoring to reduce bytecode size, deduplicating some functions.
+  - GeometricKandel:
+    - Moved all code which is agnostic to the geometric price progression to upstream classes; CoreKandel for Kandel-specific code, and DirectWithBidsAndAsksDistribution for Kandel-agnostic, but bids/asks-distribution-specific code.
+    - Reduced complexity significantly by removing compounding parameter and initializing all Kandel offers up front with their price (tick) stored in the core protocol
+      - It is now an invariant that an offer and its dual are both created at the same time, since posthook never creates offers, only updates.
+    - Previously price of dual offer had to be calculated based on ratio, spread, and current price (in the now deleted `dualWantsGivesOfOffer`). Now the price (tick) stays put, and only volume is moved between offers - and this is now independent of the price distribution and moved to CoreKandel. This also removes rounding errors when updating the dual offer.
+    - Forwards calls to generate the offer distribution to populate a geometric Kandel instance to the new KandelLib which has a `createGeometricDistribution`. This on-chain generation function in KandelLib is introduced to reduce call data size for L2s. A library is used to reduce contract size.
+    - Introduced a `baseQuoteTickOffset` to replace the old `ratio` parameter. Since prices in the core protocol follow a geometric progression, we offset via adding a tick offset, instead of multiplying by a ratio. All other parameters moved to CoreKandel.
+    - Reduced complexity, and using offsets for price differences means we can support much larger price differences.
+  - KandelLib:
+    - Received a cut-paste of the now simplified version of the `transportDestination` from GeometricKandel.
+    - Introduces the `createGeometricDistribution` function mentioned above.
+  - CoreKandel:
+    - Received code from GeometricKandel
+    - Increased range of constants due to decreased complexity of calculations and removal of overflow scenarios.
+    - Spread renamed to step size.
+  - DirectWithBidsAndAskDistribution
+    - Distribution struct changed to containing structs instead of arrays to reduce bytecode size and save gas.
+    - `populate` and `populateIndex` changed to be able to "reserve" offers on the offer list by creating and retracting offers up front if `gives` in the offer distribution is 0 for said offer. This is to avoid having to create offers during `posthook` since it is expensive and complicates logic. Note, since the core protocol does not accept 0 gives, we have to use a minimum gives based on the density requirements of the core protocol.
+  - AaveKandel: Removed explicit check of initialization on router usage to save gas and bytecode.
+  - IHasTokenPairOfOfferType: Renamed to IHasOfferListOfOfferType due to OLKey.
+  - AbstractKandel: Removed, merged into CoreKandel.
+  - KandelSeeder: moved event to specific seeder to reduce bytecode size.
+
+With respect to files to audit, then `src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandel.sol` has been removed and `src/strategies/offer_maker/market_making/kandel/abstract/KandelLib.sol` and `src/strategies/routers/abstract/MonoRouter.sol` have been added.
 
 The following diagram shows an overview of components making up the Kandel AMM contract.
 ![SVG Kandel overview](./kandel.drawio.svg)
+
+# Changes audited as part of the audit March 2023
+
+Audit March 2023: 3bff09efba82a6d55d19eeb807654833339785f1
 
 Kandel makes use of the same building blocks as MangroveOrder which was previously audited. MangroveOffer was a Forwarder strat - multiple accounts could interact with it. Kandel is a Direct strat and is managed by a single account. The green components are new for Kandel. The blue are not specific to Kandel, but changed and used by Kandel. Kandel can use AAVE via a router. The components making up the router are purple. Finally, the orange components make up the seeder contracts which are used to deploy Kandel contracts in a permissionless manner, but still bound to the router. The boxes with rounded corners are deployed while the others are abstract.
 

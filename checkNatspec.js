@@ -63,17 +63,30 @@ includes = [
   "OfferMakerTutorialResidual",
 ];
 
+excludes = [
+  "forge-std",
+  "node_modules",
+  "script",
+  "test",
+  "src/strategies/vendor/",
+  "/out/",
+  "toy_strategies",
+  "CompoundModule",
+  "AaveV2Module",
+  "AaveV3Borrower",
+];
+
 let anyFindings = false;
 artifacts.forEach((file) => {
-  if (!includes.some((x) => file.includes("/" + x + ".sol"))) {
-    return;
-  }
   const j = read_artifact(file);
   const fname = j.ast.absolutePath;
+  if (excludes.some((x) => fname.includes(x))) {
+    return;
+  }
   const relevant = j.ast.nodes
     .filter((x) => x.nodeType == "ContractDefinition")
     .map((x) => {
-      if (!x.documentation?.text.includes("@title")) {
+      if (!x?.documentation?.text?.includes("@title")) {
         anyFindings = true;
         console.log(`${fname} - ${x.name} missing @title`);
       }

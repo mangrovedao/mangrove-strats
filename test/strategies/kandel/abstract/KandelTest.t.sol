@@ -1,38 +1,41 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs, MgvLib} from "mgv_src/MgvLib.sol";
+import {MgvLib, OLKey, Offer, Global} from "mgv_src/core/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {KandelLib} from "mgv_strat_lib/kandel/KandelLib.sol";
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
 import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {toFixed} from "mgv_lib/Test2.sol";
+import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
+import {DirectWithBidsAndAsksDistribution} from
+  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 
 abstract contract KandelTest is StratTest {
   address payable maker;
   address payable taker;
   GeometricKandel kdl;
-  uint8 constant STEP = 1;
+  uint8 constant STEP_SIZE = 1;
   uint initQuote;
   uint initBase = 0.1 ether;
   uint globalGasprice;
   uint bufferedGasprice;
+  // A ratio of ~108% can be converted to a tick offset of ~769 via
+  // uint tickOffset = TickLib.tickFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
+  uint tickOffset = 769;
+  // and vice versa with
+  // ratio = uint24(Tick.wrap(tickOffset).inboundFromOutbound(1 ether) * 100000 / Tick.wrap(0).inboundFromOutbound(1 ether)
 
   OfferType constant Ask = OfferType.Ask;
   OfferType constant Bid = OfferType.Bid;
-  uint PRECISION;
 
   event Mgv(IMangrove mgv);
-  event Pair(IERC20 base, IERC20 quote);
-  event NewKandel(address indexed owner, IMangrove indexed mgv, IERC20 indexed base, IERC20 quote);
-  event SetGeometricParams(uint spread, uint ratio);
-  event SetCompoundRates(uint compoundRateBase, uint compoundRateQuote);
+  event OfferListKey(bytes32 olKeyHash);
+  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
+  event SetStepSize(uint value);
   event SetLength(uint value);
   event SetGasreq(uint value);
   event Credit(IERC20 indexed token, uint amount);
@@ -41,16 +44,10 @@ abstract contract KandelTest is StratTest {
   event PopulateEnd();
   event RetractStart();
   event RetractEnd();
-  event LogIncident(
-    IMangrove mangrove,
-    IERC20 indexed outbound_tkn,
-    IERC20 indexed inbound_tkn,
-    uint indexed offerId,
-    bytes32 makerData,
-    bytes32 mgvData
-  );
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+  event SetBaseQuoteTickOffset(uint value);
 
-  // sets environement  default is local node with fake base and quote
+  // sets environment default is local node with fake base and quote
   function __setForkEnvironment__() internal virtual {
     // no fork
     options.base.symbol = "WETH";
@@ -100,16 +97,15 @@ abstract contract KandelTest is StratTest {
     TransferLib.approveToken(quote, $(mgv), type(uint).max);
 
     // deploy and activate
-    (MgvStructs.GlobalPacked global,) = mgv.config(address(0), address(0));
+    (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
     globalGasprice = global.gasprice();
     bufferedGasprice = globalGasprice * 10; // covering 10 times Mangrove's gasprice at deploy time
 
     kdl = __deployKandel__(maker, maker);
-    PRECISION = kdl.PRECISION();
 
     // funding Kandel on Mangrove
-    uint provAsk = reader.getProvision($(base), $(quote), kdl.offerGasreq(), bufferedGasprice);
-    uint provBid = reader.getProvision($(quote), $(base), kdl.offerGasreq(), bufferedGasprice);
+    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
     deal(maker, (provAsk + provBid) * 10 ether);
 
     // maker approves Kandel to be able to deposit funds on it
@@ -118,70 +114,82 @@ abstract contract KandelTest is StratTest {
     vm.prank(maker);
     TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
-    uint ratio = 108 * 10 ** (PRECISION - 2);
-
-    (GeometricKandel.Distribution memory distribution1, uint lastQuote) =
-      KandelLib.calculateDistribution(0, 5, initBase, initQuote, ratio, PRECISION);
-
-    (GeometricKandel.Distribution memory distribution2,) =
-      KandelLib.calculateDistribution(5, 10, initBase, lastQuote, ratio, PRECISION);
+    uint firstAskIndex = 5;
 
     GeometricKandel.Params memory params;
-    params.ratio = uint24(ratio);
-    params.spread = STEP;
+    params.stepSize = STEP_SIZE;
     params.pricePoints = 10;
-    vm.prank(maker);
-    kdl.setParams(params);
-
-    mgv.fund{value: (provAsk + provBid) * 10}(address(kdl));
-    vm.prank(maker);
-    kdl.populateChunk(distribution1, dynamic([uint(0), 1, 2, 3, 4]), 5);
+    Tick baseQuoteTickIndex0 = TickLib.tickFromVolumes(initQuote, initBase);
 
     vm.prank(maker);
-    kdl.populateChunk(distribution2, dynamic([uint(0), 1, 2, 3, 4]), 5);
+    kdl.populateFromOffset{value: (provAsk + provBid) * 10}({
+      from: 0,
+      to: 5,
+      baseQuoteTickIndex0: baseQuoteTickIndex0,
+      _baseQuoteTickOffset: tickOffset,
+      firstAskIndex: firstAskIndex,
+      bidGives: type(uint).max,
+      askGives: initBase,
+      parameters: params,
+      baseAmount: 0,
+      quoteAmount: 0
+    });
+    vm.prank(maker);
+    kdl.populateChunkFromOffset({
+      from: 5,
+      to: 10,
+      baseQuoteTickIndex0: baseQuoteTickIndex0,
+      firstAskIndex: firstAskIndex,
+      bidGives: type(uint).max,
+      askGives: initBase
+    });
+    uint pendingBase = uint(-kdl.pending(Ask));
+    uint pendingQuote = uint(-kdl.pending(Bid));
+    deal($(base), maker, pendingBase);
+    deal($(quote), maker, pendingQuote);
+
+    expectFrom($(kdl));
+    emit Credit(base, pendingBase);
+    expectFrom($(kdl));
+    emit Credit(quote, pendingQuote);
+    vm.prank(maker);
+    kdl.depositFunds(pendingBase, pendingQuote);
   }
 
-  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint, uint) {
-    uint bestAsk = mgv.best($(base), $(quote));
+  function buyFromBestAs(address taker_, uint amount) public returns (uint, uint, uint, uint) {
+    (, Offer best) = getBestOffers();
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([bestAsk, amount, type(uint96).max, type(uint).max]), true);
+    return mgv.marketOrderByTick(olKey, best.tick(), best.gives() >= amount ? amount : best.gives(), true);
   }
 
-  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint, uint) {
-    uint bestBid = mgv.best($(quote), $(base));
+  function sellToBestAs(address taker_, uint amount) internal returns (uint, uint, uint, uint) {
+    (Offer best,) = getBestOffers();
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([bestBid, 0, amount, type(uint).max]), false);
+    return mgv.marketOrderByTick(lo, best.tick(), best.wants() >= amount ? amount : best.wants(), false);
   }
 
-  function snipeBuyAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Ask, index);
+  function cleanBuyBestAs(address taker_, uint amount) public returns (uint, uint) {
+    (, Offer best) = getBestOffers();
+    uint offerId = mgv.best(olKey);
     vm.prank(taker_);
-    return mgv.snipes($(base), $(quote), wrap_dynamic([offerId, amount, type(uint96).max, type(uint).max]), true);
+    return
+      mgv.cleanByImpersonation(olKey, wrap_dynamic(MgvLib.CleanTarget(offerId, best.tick(), 1_000_000, amount)), taker_);
   }
 
-  function snipeSellAs(address taker_, uint amount, uint index) internal returns (uint, uint, uint, uint, uint) {
-    uint offerId = kdl.offerIdOfIndex(Bid, index);
+  function cleanSellBestAs(address taker_, uint amount) internal returns (uint, uint) {
+    (Offer best,) = getBestOffers();
+    uint offerId = mgv.best(lo);
     vm.prank(taker_);
-    return mgv.snipes($(quote), $(base), wrap_dynamic([offerId, 0, amount, type(uint).max]), false);
+    return
+      mgv.cleanByImpersonation(lo, wrap_dynamic(MgvLib.CleanTarget(offerId, best.tick(), 1_000_000, amount)), taker_);
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (
-      uint16 gasprice,
-      uint24 gasreq,
-      uint24 ratio,
-      uint24 compoundRateBase,
-      uint24 compoundRateQuote,
-      uint8 spread,
-      uint8 pricePoints
-    ) = aKandel.params();
+    (uint32 gasprice, uint24 gasreq, uint88 stepSize, uint112 pricePoints) = aKandel.params();
 
     params.gasprice = gasprice;
     params.gasreq = gasreq;
-    params.ratio = ratio;
-    params.compoundRateBase = compoundRateBase;
-    params.compoundRateQuote = compoundRateQuote;
-    params.spread = spread;
+    params.stepSize = stepSize;
     params.pricePoints = pricePoints;
   }
 
@@ -193,8 +201,8 @@ abstract contract KandelTest is StratTest {
   }
 
   struct IndexStatus {
-    MgvStructs.OfferPacked bid;
-    MgvStructs.OfferPacked ask;
+    Offer bid;
+    Offer ask;
     OfferStatus status;
   }
 
@@ -223,10 +231,10 @@ abstract contract KandelTest is StratTest {
 
   ///@notice asserts status of index and verifies price based on geometric progressing quote.
   function assertStatus(uint index, OfferStatus status, uint q, uint b) internal {
-    MgvStructs.OfferPacked bid = kdl.getOffer(Bid, index);
-    MgvStructs.OfferPacked ask = kdl.getOffer(Ask, index);
-    bool bidLive = mgv.isLive(bid);
-    bool askLive = mgv.isLive(ask);
+    Offer bid = kdl.getOffer(Bid, index);
+    Offer ask = kdl.getOffer(Ask, index);
+    bool bidLive = bid.isLive();
+    bool askLive = ask.isLive();
 
     if (status == OfferStatus.Dead) {
       assertTrue(!bidLive && !askLive, "offer at index is live");
@@ -235,7 +243,7 @@ abstract contract KandelTest is StratTest {
         assertTrue(bidLive && !askLive, "Kandel not bidding at index");
         if (q != type(uint).max) {
           assertApproxEqRel(
-            bid.gives() * b, q * bid.wants(), 1e11, "Bid price does not follow distribution within 0.00001%"
+            bid.gives() * b, q * bid.wants(), 1e14, "Bid price does not follow distribution within 0.00001%"
           );
         }
       } else {
@@ -243,7 +251,7 @@ abstract contract KandelTest is StratTest {
           assertTrue(!bidLive && askLive, "Kandel is not asking at index");
           if (q != type(uint).max) {
             assertApproxEqRel(
-              ask.wants() * b, q * ask.gives(), 1e11, "Ask price does not follow distribution within 0.00001%"
+              ask.wants() * b, q * ask.gives(), 1e14, "Ask price does not follow distribution within 0.00001%"
             );
           }
         } else {
@@ -264,15 +272,23 @@ abstract contract KandelTest is StratTest {
     uint q, // initial quote at first price point, type(uint).max to ignore in verification
     uint b // initial base at first price point, type(uint).max to ignore in verification
   ) internal {
+    assertStatus(offerStatuses, q, b, tickOffset);
+  }
+
+  function assertStatus(
+    uint[] memory offerStatuses, // 1:bid 2:ask 3:crossed 0:dead - see OfferStatus
+    uint q, // initial quote at first price point, type(uint).max to ignore in verification
+    uint b, // initial base at first price point, type(uint).max to ignore in verification
+    uint _tickOffset
+  ) internal {
     uint expectedBids = 0;
     uint expectedAsks = 0;
-    GeometricKandel.Params memory params = getParams(kdl);
     for (uint i = 0; i < offerStatuses.length; i++) {
       // `price = quote / initBase` used in assertApproxEqRel below
       OfferStatus offerStatus = OfferStatus(offerStatuses[i]);
       assertStatus(i, offerStatus, q, b);
       if (q != type(uint).max) {
-        q = (q * uint(params.ratio)) / (10 ** PRECISION);
+        q = (q * Tick.wrap(int(_tickOffset)).inboundFromOutbound(1 ether)) / 1 ether;
       }
       if (offerStatus == OfferStatus.Ask) {
         expectedAsks++;
@@ -284,8 +300,8 @@ abstract contract KandelTest is StratTest {
       }
     }
 
-    (, uint[] memory bidIds,,) = reader.offerList(address(quote), address(base), 0, 1000);
-    (, uint[] memory askIds,,) = reader.offerList(address(base), address(quote), 0, 1000);
+    (, uint[] memory bidIds,,) = reader.offerList(lo, 0, 1000);
+    (, uint[] memory askIds,,) = reader.offerList(olKey, 0, 1000);
     assertEq(expectedBids, bidIds.length, "Unexpected number of live bids on book");
     assertEq(expectedAsks, askIds.length, "Unexpected number of live asks on book");
   }
@@ -298,7 +314,7 @@ abstract contract KandelTest is StratTest {
 
   function assertChange(ExpectedChange expectedChange, uint expected, uint actual, string memory descriptor) internal {
     if (expectedChange == ExpectedChange.Same) {
-      assertApproxEqRel(expected, actual, 1e11, string.concat(descriptor, " should be unchanged to within 0.00001%"));
+      assertApproxEqRel(expected, actual, 1e15, string.concat(descriptor, " should be unchanged to within 0.1%"));
     } else if (expectedChange == ExpectedChange.Decrease) {
       assertGt(expected, actual, string.concat(descriptor, " should have decreased"));
     } else {
@@ -306,13 +322,33 @@ abstract contract KandelTest is StratTest {
     }
   }
 
+  function printDistribution(CoreKandel.DistributionOffer[] memory offers) internal view {
+    for (uint i; i < offers.length; ++i) {
+      console.log(
+        "Index: %s tick: %s Gives: %s", offers[i].index, vm.toString(Tick.unwrap(offers[i].tick)), offers[i].gives
+      );
+    }
+  }
+
+  function printDistributions(CoreKandel.Distribution memory distribution) internal view {
+    console.log("Bids:");
+    printDistribution(distribution.bids);
+    console.log("Asks:");
+    printDistribution(distribution.asks);
+  }
+
   function printOB() internal view {
-    printOrderBook($(base), $(quote));
-    printOrderBook($(quote), $(base));
+    printOfferList(olKey);
+    printOfferList(lo);
     uint pendingBase = uint(kdl.pending(Ask));
     uint pendingQuote = uint(kdl.pending(Bid));
 
     console.log("-------", toFixed(pendingBase, 18), toFixed(pendingQuote, 6), "-------");
+  }
+
+  function emptyDist() internal pure returns (CoreKandel.Distribution memory) {
+    CoreKandel.Distribution memory emptyDist_;
+    return emptyDist_;
   }
 
   function populateSingle(
@@ -320,104 +356,89 @@ abstract contract KandelTest is StratTest {
     uint index,
     uint base,
     uint quote,
-    uint pivotId,
     uint firstAskIndex,
     bytes memory expectRevert
   ) internal {
     GeometricKandel.Params memory params = getParams(kdl);
-    populateSingle(
-      PopulateArgs({
-        kandel: kandel,
+    populateSingle(kandel, index, base, quote, firstAskIndex, params.pricePoints, params.stepSize, expectRevert);
+  }
+
+  function populateSingle(
+    GeometricKandel kandel,
+    uint index,
+    uint base,
+    uint quote,
+    uint firstAskIndex,
+    uint pricePoints,
+    uint stepSize,
+    bytes memory expectRevert
+  ) internal {
+    CoreKandel.Distribution memory distribution;
+
+    if (index < firstAskIndex) {
+      distribution.bids = new CoreKandel.DistributionOffer[](1);
+      // tick API should set a meaningful price, for now, just set price to 1.
+      distribution.bids[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
         index: index,
-        base: base,
-        quote: quote,
-        pivotId: pivotId,
-        firstAskIndex: firstAskIndex,
-        pricePoints: params.pricePoints,
-        ratio: params.ratio,
-        spread: params.spread,
-        expectRevert: expectRevert
-      })
-    );
-  }
+        tick: base == 0 || quote == 0 ? Tick.wrap(0) : TickLib.tickFromVolumes(base, quote),
+        gives: quote
+      });
+    } else {
+      distribution.asks = new CoreKandel.DistributionOffer[](1);
+      // tick API should set a meaningful tick, for now, just set price to 1.
+      distribution.asks[0] = DirectWithBidsAndAsksDistribution.DistributionOffer({
+        index: index,
+        tick: base == 0 || quote == 0 ? Tick.wrap(0) : TickLib.tickFromVolumes(quote, base),
+        gives: base
+      });
+    }
 
-  struct PopulateArgs {
-    GeometricKandel kandel;
-    uint index;
-    uint base;
-    uint quote;
-    uint pivotId;
-    uint firstAskIndex;
-    uint pricePoints;
-    uint ratio;
-    uint spread;
-    bytes expectRevert;
-  }
-
-  function populateSingle(PopulateArgs memory args) internal {
-    GeometricKandel.Distribution memory distribution;
-    distribution.indices = new uint[](1);
-    distribution.baseDist = new uint[](1);
-    distribution.quoteDist = new uint[](1);
-    uint[] memory pivotIds = new uint[](1);
-
-    distribution.indices[0] = args.index;
-    distribution.baseDist[0] = args.base;
-    distribution.quoteDist[0] = args.quote;
-    pivotIds[0] = args.pivotId;
-
+    vm.prank(maker);
+    if (expectRevert.length > 0) {
+      vm.expectRevert(expectRevert);
+    }
     GeometricKandel.Params memory params;
-    params.pricePoints = uint8(args.pricePoints);
-    params.ratio = uint24(args.ratio);
-    params.spread = uint8(args.spread);
+    params.pricePoints = uint112(pricePoints);
+    params.stepSize = uint88(stepSize);
 
-    vm.prank(maker);
-    mgv.fund{value: 0.1 ether}($(args.kandel));
-    vm.prank(maker);
-    args.kandel.setParams(params);
-    if (args.expectRevert.length > 0) {
-      vm.expectRevert(args.expectRevert);
-    }
-    vm.prank(maker);
-    args.kandel.populateChunk(distribution, pivotIds, args.firstAskIndex);
+    kandel.populate{value: 0.1 ether}(distribution, params, 0, 0);
   }
 
-  function populateFixedDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
-    GeometricKandel.Distribution memory distribution;
-
-    distribution.indices = new uint[](size);
-    distribution.baseDist = new uint[](size);
-    distribution.quoteDist = new uint[](size);
-    for (uint i; i < size; i++) {
-      distribution.indices[i] = i;
-      distribution.baseDist[i] = 1 ether;
-      distribution.quoteDist[i] = 1500 * 10 ** 6 + i;
-      if (i < size / 2) {
-        quoteAmount += distribution.quoteDist[i];
-      } else {
-        baseAmount += distribution.baseDist[i];
-      }
-    }
-
+  function populateConstantDistribution(uint size) internal returns (uint baseAmount, uint quoteAmount) {
     GeometricKandel.Params memory params = getParams(kdl);
-    vm.startPrank(maker);
-    {
-      mgv.fund{value: maker.balance}($(kdl));
-      kdl.setParams(params);
-      kdl.populateChunk(distribution, new uint[](size), size / 2);
+    uint firstAskIndex = size / 2;
+    CoreKandel.Distribution memory distribution = kdl.createDistribution(
+      0,
+      size,
+      TickLib.tickFromVolumes(initQuote, initBase),
+      0,
+      firstAskIndex,
+      1500 * 10 ** 6,
+      1 ether,
+      size,
+      params.stepSize
+    );
+
+    vm.prank(maker);
+    kdl.populate{value: maker.balance}(distribution, params, 0, 0);
+
+    for (uint i; i < distribution.bids.length; i++) {
+      quoteAmount += distribution.bids[i].gives;
     }
-    vm.stopPrank();
+    for (uint i; i < distribution.asks.length; i++) {
+      baseAmount += distribution.asks[i].gives;
+    }
   }
 
-  function getBestOffers() internal view returns (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) {
-    uint bestAskId = mgv.best($(base), $(quote));
-    uint bestBidId = mgv.best($(quote), $(base));
-    bestBid = mgv.offers($(quote), $(base), bestBidId);
-    bestAsk = mgv.offers($(base), $(quote), bestAskId);
+  function getBestOffers() internal view returns (Offer bestBid, Offer bestAsk) {
+    uint bestAskId = mgv.best(olKey);
+    uint bestBidId = mgv.best(lo);
+    bestBid = mgv.offers(lo, bestBidId);
+    bestAsk = mgv.offers(olKey, bestAskId);
   }
 
   function getMidPrice() internal view returns (uint midWants, uint midGives) {
-    (MgvStructs.OfferPacked bestBid, MgvStructs.OfferPacked bestAsk) = getBestOffers();
+    (Offer bestBid, Offer bestAsk) = getBestOffers();
 
     midWants = bestBid.wants() * bestAsk.wants() + bestBid.gives() * bestAsk.gives();
     midGives = bestAsk.gives() * bestBid.wants() * 2;
@@ -436,20 +457,38 @@ abstract contract KandelTest is StratTest {
 
     uint quote = initQuote;
 
+    uint firstAskIndex = type(uint).max;
+    for (uint i = 0; i < params.pricePoints; i++) {
+      // Decide on bid/ask via mid
+      OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
+      if (ba == Ask && firstAskIndex == type(uint).max) {
+        firstAskIndex = i;
+      }
+      quoteAtIndex[i] = quote;
+      quote = (quote * Tick.wrap(int(uint(tickOffset))).inboundFromOutbound(1 ether)) / 1 ether;
+    }
+
     // find missing offers
     uint numDead = 0;
     for (uint i = 0; i < params.pricePoints; i++) {
-      OfferType ba = quote * midGives <= initBase * midWants ? Bid : Ask;
-      MgvStructs.OfferPacked offer = kdl.getOffer(ba, i);
-      if (!mgv.isLive(offer)) {
-        if (ba == Bid) {
-          numBids++;
+      Offer offer = kdl.getOffer(i < firstAskIndex ? Bid : Ask, i);
+      if (!offer.isLive()) {
+        bool unexpectedDead = false;
+        if (i < firstAskIndex) {
+          if (i < firstAskIndex - params.stepSize / 2 - params.stepSize % 2) {
+            numBids++;
+            unexpectedDead = true;
+          }
+        } else {
+          if (i >= firstAskIndex + params.stepSize / 2) {
+            unexpectedDead = true;
+          }
         }
-        indicesPre[numDead] = i;
-        numDead++;
+        if (unexpectedDead) {
+          indicesPre[numDead] = i;
+          numDead++;
+        }
       }
-      quoteAtIndex[i] = quote;
-      quote = (quote * uint(params.ratio)) / 10 ** PRECISION;
     }
 
     // truncate indices - cannot do push to memory array

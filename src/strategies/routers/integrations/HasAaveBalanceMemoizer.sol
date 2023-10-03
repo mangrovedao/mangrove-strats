@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/IERC20.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 import {AaveV3Lender} from "mgv_strat_src/strategies/integrations/AaveV3Lender.sol";
 
 ///@title Memoizes values for AAVE to reduce gas cost and simplify code flow.
