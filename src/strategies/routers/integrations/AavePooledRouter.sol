@@ -289,7 +289,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function __checkList__(IERC20 token, address reserveId) internal view override {
+  function __checkList__(IERC20 token, address reserveId, address) internal view override {
     // any reserveId passes the checklist since this router does not pull or push liquidity to it (but unknown reserveId will have 0 shares)
     reserveId;
     // we check that `token` is listed on AAVE
