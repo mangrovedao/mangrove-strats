@@ -61,14 +61,13 @@ contract OfferDispatcherTest is OfferLogicTest {
 
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
-    makerContract.newOffer{value: 0.1 ether}({
-      outbound_tkn: weth,
-      inbound_tkn: usdc,
+    makerContract.newOfferByVolume{value: 0.1 ether}({
+      olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq(weth, owner)
     });
+
     vm.stopPrank();
 
     uint endWethBalance = makerContract.tokenBalance(weth, owner);

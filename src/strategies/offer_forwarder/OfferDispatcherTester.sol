@@ -2,8 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {OfferDispatcher, IMangrove, IERC20, AbstractRouter, Dispatcher} from "./OfferDispatcher.sol";
-import {MgvLib} from "mgv_src/core/MgvLib.sol";
+import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
 import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
+import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
 
 contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferDispatcher(mgv, deployer) {}
@@ -13,10 +14,8 @@ contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
     return router_.balanceOfReserve(token, owner);
   }
 
-  function internal_addOwner(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, address owner, uint leftover)
-    external
-  {
-    addOwner(outbound_tkn, inbound_tkn, offerId, owner, leftover);
+  function internal_addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) external {
+    addOwner(olKeyHash, offerId, owner, leftover);
   }
 
   function internal__put__(uint amount, MgvLib.SingleOrder calldata order) external returns (uint) {
@@ -34,7 +33,17 @@ contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
     return __posthookFallback__(order, result);
   }
 
-  function getDispatcher() external view returns (Dispatcher d) {
-    d = Dispatcher(address(router()));
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+    external
+    payable
+    returns (uint offerId)
+  {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
+  }
+
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }
