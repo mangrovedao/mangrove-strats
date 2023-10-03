@@ -13,7 +13,7 @@ import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
 import {console} from "forge-std/Test.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
 
-abstract contract GeometricKandelGasTest is KandelTest {
+abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;
   uint internal partialFill_;
   PinnedPolygonFork internal fork;
@@ -40,8 +40,8 @@ abstract contract GeometricKandelGasTest is KandelTest {
   function __setForkEnvironment__() internal virtual override {
     fork = new PinnedPolygonFork(39880000);
     fork.setUp();
-    options.gasprice = 140;
-    options.gasbase = 120_000;
+    options.gasprice = 90;
+    options.gasbase = 68_000;
     options.defaultFee = 30;
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
@@ -78,7 +78,7 @@ abstract contract GeometricKandelGasTest is KandelTest {
     // taking partial fill to have gas cost of reposting
     (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), completeFill, true);
     gas_();
-    assertTrue(takerGot > 0, "offer should succeed");
+    require(takerGot > 0, "offer should succeed");
   }
 
   function bid_order_length_n(uint n) internal {
@@ -91,7 +91,7 @@ abstract contract GeometricKandelGasTest is KandelTest {
     _gas();
     (uint takerGot,,,) = mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), volume, true);
     uint g = gas_(true);
-    assertTrue(takerGot > 0, "offer should succeed");
+    require(takerGot > 0, "offer should succeed");
     console.log(n, ",", g);
     assertStatus(5 - n, OfferStatus.Bid);
   }

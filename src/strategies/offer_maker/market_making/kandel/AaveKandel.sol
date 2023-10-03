@@ -12,7 +12,7 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds on AAVE to generate yield.
-contract AaveKandel is LongKandel {
+contract AaveKandel is GeometricKandel {
   ///@notice Indication that this is first puller (returned from __lastLook__) so posthook should deposit liquidity on AAVE
   bytes32 internal constant IS_FIRST_PULLER = "IS_FIRST_PULLER";
 
@@ -45,7 +45,7 @@ contract AaveKandel is LongKandel {
   }
 
   ///@notice returns the router as an Aave router
-  ///@return AavePooledRouter cast
+  ///@return The aave router.
   function pooledRouter() private view returns (AavePooledRouter) {
     return AavePooledRouter(address(router()));
   }

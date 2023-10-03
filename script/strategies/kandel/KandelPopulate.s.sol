@@ -24,7 +24,7 @@ import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
 
 contract KandelPopulate is Deployer {
   function run() public {
-    LongKandel kdl = Kandel(envAddressOrName("KANDEL"));
+    GeometricKandel kdl = Kandel(envAddressOrName("KANDEL"));
     Kandel.Params memory params;
     uint24 tickOffset;
     if (envHas("TICK_OFFSET")) {
@@ -76,7 +76,7 @@ contract KandelPopulate is Deployer {
     Kandel.Params params;
     uint initQuote;
     uint volume;
-    LongKandel kdl;
+    GeometricKandel kdl;
     MgvReader mgvReader;
   }
 

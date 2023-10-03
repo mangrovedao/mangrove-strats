@@ -14,10 +14,10 @@ import {toFixed} from "mgv_lib/Test2.sol";
 
 contract KandelShutdown is Deployer {
   function run() public {
-    innerRun({kdl: LongKandel(envAddressOrName("KANDEL"))});
+    innerRun({kdl: GeometricKandel(envAddressOrName("KANDEL"))});
   }
 
-  function innerRun(LongKandel kdl) public {
+  function innerRun(GeometricKandel kdl) public {
     IERC20 base = kdl.BASE();
     IERC20 quote = kdl.QUOTE();
     uint baseDecimals = base.decimals();

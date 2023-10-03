@@ -5,6 +5,9 @@ import {IERC20} from "mgv_lib/IERC20.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global} from "mgv_src/core/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {
+  CoreKandel, TransferLib
+} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {console} from "forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
@@ -67,23 +70,15 @@ abstract contract KandelTest is StratTest {
   }
 
   function getAbiPath() internal pure virtual returns (string memory) {
-    return "/out/GeometricKandel.sol/GeometricKandel.json";
+    return "/out/Kandel.sol/Kandel.json";
   }
-
-  ///@notice setUp does the following:
-  /// * forks polygon or creates a simple foundry node
-  /// * creates a `maker` and a `taker` a
-  /// * deals base and quote to `taker` and prepare `taker` to trade on mgv via the proper approvals
-  /// * deploys a Kandel instance and stores its address as a `GeometricKandel` in the storage variable `kdl`
-  /// * populates `kdl` with bids and asks.
-  /// @notice since this contract is agnostic wrt kandel being a `LongKandel` (having direct access to base and quotes) or not, the deployed `kdl` is not funded yet.
 
   function setUp() public virtual override {
     /// sets base, quote, opens a market (base,quote) on Mangrove
     __setForkEnvironment__();
     require(reader != MgvReader(address(0)), "Could not get reader");
 
-    initQuote = cash(quote, 150); // quote given/wanted at index from
+    initQuote = cash(quote, 100); // quote given/wanted at index from
 
     maker = freshAddress("maker");
     taker = freshAddress("taker");

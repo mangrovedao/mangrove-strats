@@ -7,7 +7,7 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
 
 ///@title The Kandel strat with geometric price progression.
-contract Kandel is LongKandel {
+contract Kandel is GeometricKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.

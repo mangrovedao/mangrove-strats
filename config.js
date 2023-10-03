@@ -9,7 +9,6 @@ exports.abi_exports = [
   "GeometricKandel",
   "Kandel",
   "AaveKandel",
-  "ShortKandel",
   "AavePrivateRouter",
   "AbstractKandelSeeder",
   "KandelSeeder",

@@ -243,8 +243,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   }
 
   ///@notice withdraws funds from the contract's reserve
-  ///@param token the asset one wishes to withdraw
-  ///@param amount to withdraw
+  ///@param baseAmount the amount of base tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
+  ///@param quoteAmount the amount of quote tokens to withdraw. Use type(uint).max to denote the entire reserve balance.
   ///@param recipient the address to which the withdrawn funds should be sent to.
   ///@dev it is up to the caller to make sure there are still enough funds for live offers.
   function withdrawFunds(uint baseAmount, uint quoteAmount, address recipient) public virtual onlyAdmin {

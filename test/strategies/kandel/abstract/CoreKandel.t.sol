@@ -210,7 +210,7 @@ abstract contract CoreKandelTest is KandelTest {
     assertGt(maker.balance, preBalance, "maker should be credited");
   }
 
-  function take_full_bid_and_ask_repeatedly(
+  function test_take_full_bid_and_ask_repeatedly(
     uint loops,
     ExpectedChange baseVolumeChange,
     ExpectedChange quoteVolumeChange
@@ -226,9 +226,13 @@ abstract contract CoreKandelTest is KandelTest {
       if (i == 0) {
         // With the ask filled, what is the current volume for bids?
         initialTotalVolumeQuote = kdl.offeredVolume(Bid);
+        console.log("Initial bids");
+        printOB();
       } else if (i == loops - 1) {
         // final loop - assert volume delta
         assertChange(quoteVolumeChange, initialTotalVolumeQuote, kdl.offeredVolume(Bid), "quote volume");
+        console.log("Final bids");
+        printOB();
       }
       console.log("loop %s", i);
       test_bid_complete_fill(4);
@@ -237,9 +241,13 @@ abstract contract CoreKandelTest is KandelTest {
       if (i == 0) {
         // With the bid filled, what is the current volume for asks?
         initialTotalVolumeBase = kdl.offeredVolume(Ask);
+        console.log("Initial asks");
+        printOB();
       } else if (i == loops - 1) {
         // final loop - assert volume delta
         assertChange(baseVolumeChange, initialTotalVolumeBase, kdl.offeredVolume(Ask), "base volume");
+        console.log("Final asks");
+        printOB();
       }
     }
   }
@@ -1292,6 +1300,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.TICK_SPACING();
     kdl.admin();
     kdl.checkList(new IERC20[](0));
+    kdl.depositFunds(0, 0);
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
     kdl.offerIdOfIndex(Ask, 0);
@@ -1319,6 +1328,7 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.activate, dynamic([IERC20(base)])));
     checkAuth(args, abi.encodeCall(kdl.approve, (base, taker, 42)));
     checkAuth(args, abi.encodeCall(kdl.setAdmin, (maker)));
+    checkAuth(args, abi.encodeCall(kdl.retractAndWithdraw, (0, 0, 0, 0, 0, maker)));
     checkAuth(args, abi.encodeCall(kdl.setGasprice, (42)));
     checkAuth(args, abi.encodeCall(kdl.setStepSize, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
