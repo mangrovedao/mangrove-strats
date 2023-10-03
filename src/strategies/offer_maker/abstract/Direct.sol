@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
+import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
@@ -103,7 +104,9 @@ abstract contract Direct is MangroveOffer {
       return amount_;
     } else {
       // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled = router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this));
+      ApprovalInfo memory approvalInfo;
+      uint pulled =
+        router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this), approvalInfo);
       return pulled >= amount_ ? 0 : amount_ - pulled;
     }
   }

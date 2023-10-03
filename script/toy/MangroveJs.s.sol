@@ -14,6 +14,8 @@ import {Mangrove} from "mgv_src/core/Mangrove.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "mgv_script/core/ActivateMarket.s.sol";
+import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
+import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 
 /* 
@@ -27,11 +29,11 @@ hosted in mangrove.js.*/
 contract MangroveJsDeploy is Deployer {
   TestToken public tokenA;
   TestToken public tokenB;
+  IPermit2 permit2;
   address public dai;
   address public usdc;
   address public weth;
   SimpleTestMaker public simpleTestMaker;
-  MangroveOrder public mgo;
 
   function run() public {
     innerRun({gasprice: 1, gasmax: 2_000_000, gasbot: broadcaster()});
@@ -39,6 +41,11 @@ contract MangroveJsDeploy is Deployer {
   }
 
   function innerRun(uint gasprice, uint gasmax, address gasbot) public {
+    DeployPermit2 deployPermit2 = new DeployPermit2();
+    permit2 = IPermit2(deployPermit2.deployPermit2()); // deploy permit2 using the precompiled bytecode
+
+    fork.set("Permit2", address(permit2));
+
     MangroveDeployer mgvDeployer = new MangroveDeployer();
 
     mgvDeployer.innerRun({chief: broadcaster(), gasprice: gasprice, gasmax: gasmax, gasbot: gasbot});

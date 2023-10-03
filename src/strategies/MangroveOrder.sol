@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
+import {ApprovalInfo} from "./utils/ApprovalTransferLib.sol";
 import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, IERC20, OLKey} from "mgv_src/core/MgvLib.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
@@ -14,7 +15,6 @@ import {Tick} from "mgv_lib/core/TickLib.sol";
 /// the resting order should be posted for an amount $a_later = a_goal - a_now$ at price $p$.
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
-
 contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice `expiring[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
   ///@notice if the order tx is included after the expiry date, it reverts.
@@ -105,7 +105,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   }
 
   ///@inheritdoc IOrderLogic
-  function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory res) {
+  function take(TakerOrder calldata tko, ApprovalInfo calldata approvalInfo)
+    external
+    payable
+    returns (TakerOrderResult memory res)
+  {
     // Checking whether order is expired
     require(tko.expiryDate == 0 || block.timestamp <= tko.expiryDate, "mgvOrder/expired");
 
@@ -122,7 +126,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true);
+    uint pulled = router().pull(IERC20(tko.olKey.inbound), msg.sender, takerGives, true, approvalInfo);
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:

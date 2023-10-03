@@ -95,7 +95,7 @@ contract AmplifierTest is StratTest {
       tickSpacing1: olKey.tickSpacing,
       tickSpacing2: olKeyWethDai.tickSpacing,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
-      });
+    });
 
     // NOTE:
     // For this test, we're locking base, ie WETH, in the vault of the contract

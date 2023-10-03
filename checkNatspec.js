@@ -38,6 +38,7 @@ excludes = [
   "CompoundModule",
   "AaveV2Module",
   "AaveV3Borrower",
+  "permit2",
 ];
 
 let anyFindings = false;

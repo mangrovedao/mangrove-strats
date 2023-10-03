@@ -6,5 +6,9 @@
   {
     "address": "0x0b913a76beff3887d35073b8e5530755d60f78c7",
     "name": "Aave Pool"
+  },
+  {
+    "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    "name": "Permit2"
   }
 ]

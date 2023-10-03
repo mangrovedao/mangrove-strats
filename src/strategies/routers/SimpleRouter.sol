@@ -4,19 +4,24 @@ pragma solidity ^0.8.10;
 import {IERC20} from "mgv_lib/IERC20.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {ApprovalTransferLib, ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is MonoRouter(70_000) {
+contract SimpleRouter is MonoRouter {
+  ///@notice SimpleRouter constructor which set MonoRouter. 74_000 has been computed for the worst case scenario.
+  constructor() MonoRouter(74_000) {}
+
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @param token Token to be transferred
   /// @param owner The account from which the tokens will be transferred.
   /// @param amount The amount of tokens to be transferred
   /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
+  /// @param approvalInfo The Approvalnfo struct that specify which approval has been made by offer owner
   /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
   /// @dev requires approval from `owner` for `this` to transfer `token`.
-  function __pull__(IERC20 token, address owner, uint amount, bool strict)
+  function __pull__(IERC20 token, address owner, uint amount, bool strict, ApprovalInfo calldata approvalInfo)
     internal
     virtual
     override
@@ -24,11 +29,10 @@ contract SimpleRouter is MonoRouter(70_000) {
   {
     // if not strict, pulling all available tokens from reserve
     amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
+    if (ApprovalTransferLib.transferWithApprovalInfo(token, owner, msg.sender, amount, approvalInfo)) {
       return amount;
-    } else {
-      return 0;
     }
+    return 0;
   }
 
   /// @notice transfers an amount of tokens from the maker to the reserve.

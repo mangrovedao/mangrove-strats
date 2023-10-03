@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
+import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {OLKey} from "mgv_src/core/MgvLib.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
 
@@ -82,6 +83,10 @@ interface IOrderLogic {
 
   ///@notice Implements "Fill or kill" or "Good till cancelled" orders on a given offer list.
   ///@param tko the arguments in memory of the taker order
+  ///@param approvalInfo The Approvalnfo struct that specify which approval has been made.
   ///@return res the result of the taker order. If `offerId==0`, no resting order was posted on `msg.sender`'s behalf.
-  function take(TakerOrder memory tko) external payable returns (TakerOrderResult memory res);
+  function take(TakerOrder memory tko, ApprovalInfo calldata approvalInfo)
+    external
+    payable
+    returns (TakerOrderResult memory res);
 }
