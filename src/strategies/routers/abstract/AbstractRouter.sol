@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
 
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
@@ -24,11 +24,13 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   }
 
   ///@notice logging bound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerBind(address indexed maker);
 
   ///@notice logging unbound maker contract
-  ///@param maker the maker address
+  ///@param maker the maker address. This is indexed, so that RPC calls can filter on it.
+  ///@notice by emitting this data, an indexer will be able to keep track of what maker contracts are allowed to call this router.
   event MakerUnbind(address indexed maker);
 
   ///@notice getter for the `makers: addr => bool` mapping
@@ -96,12 +98,14 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param tokens to flush
   ///@param reserveId determines the location of the reserve (router implementation dependent).
   function flush(IERC20[] calldata tokens, address reserveId) external onlyBound {
-    for (uint i = 0; i < tokens.length; ++i) {
+    bool success = true;
+    for (uint i = 0; i < tokens.length && success; ++i) {
       uint amount = tokens[i].balanceOf(msg.sender);
       if (amount > 0) {
-        require(__push__(tokens[i], reserveId, amount) == amount, "router/pushFailed");
+        success = success && amount == __push__(tokens[i], reserveId, amount);
       }
     }
+    require(success, "router/pushFailed");
   }
 
   ///@notice adds a maker contract address to the allowed makers of this router

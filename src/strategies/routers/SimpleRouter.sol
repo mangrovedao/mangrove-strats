@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/MgvLib.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {IERC20} from "mgv_lib/IERC20.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account

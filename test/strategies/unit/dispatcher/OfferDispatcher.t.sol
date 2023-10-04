@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.18;
 
-import {OfferLogicTest, IERC20, TestToken, console, TestSender} from "../OfferLogic.t.sol";
+import {OfferLogicTest, IERC20, TestToken, TestSender} from "../OfferLogic.t.sol";
 import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {
@@ -11,6 +11,7 @@ import {
 } from "mgv_strat_src/strategies/offer_forwarder/OfferDispatcherTester.sol";
 import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import "mgv_lib/Debug.sol";
 
 contract OfferDispatcherTest is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;
@@ -60,14 +61,13 @@ contract OfferDispatcherTest is OfferLogicTest {
 
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
-    makerContract.newOffer{value: 0.1 ether}({
-      outbound_tkn: weth,
-      inbound_tkn: usdc,
+    makerContract.newOfferByVolume{value: 0.1 ether}({
+      olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      pivotId: 0,
       gasreq: makerContract.offerGasreq(weth, owner)
     });
+
     vm.stopPrank();
 
     uint endWethBalance = makerContract.tokenBalance(weth, owner);
