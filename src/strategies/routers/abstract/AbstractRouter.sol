@@ -98,12 +98,14 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param tokens to flush
   ///@param reserveId determines the location of the reserve (router implementation dependent).
   function flush(IERC20[] calldata tokens, address reserveId) external onlyBound {
-    for (uint i = 0; i < tokens.length; ++i) {
+    bool success = true;
+    for (uint i = 0; i < tokens.length && success; ++i) {
       uint amount = tokens[i].balanceOf(msg.sender);
       if (amount > 0) {
-        require(__push__(tokens[i], reserveId, amount) == amount, "router/pushFailed");
+        success = success && amount == __push__(tokens[i], reserveId, amount);
       }
     }
+    require(success, "router/pushFailed");
   }
 
   ///@notice adds a maker contract address to the allowed makers of this router
