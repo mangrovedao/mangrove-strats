@@ -9,7 +9,7 @@ import {IERC20} from "mgv_src/core/MgvLib.sol";
 import {IPermit2} from "mgv_strat_lib/permit2/src/interfaces/IPermit2.sol";
 
 enum ApprovalType {
-  NormalApproval,
+  ERC20Approval,
   Permit2ApprovalOneTime,
   Permit2Approval
 }

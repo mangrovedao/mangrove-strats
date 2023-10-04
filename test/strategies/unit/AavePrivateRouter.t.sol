@@ -1,18 +1,20 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest, IERC20, TestToken} from "./OfferLogic.t.sol";
+import {AbstractRouterTest, IERC20, TestToken} from "./AbstractRouter.t.sol";
 import {
+  ApprovalInfo,
   AavePrivateRouter,
   DataTypes,
   ReserveConfiguration
 } from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
+/// could be forking Aave from Ethereum here
 import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+
 import "mgv_lib/Debug.sol";
 
-contract AavePrivateRouterNoBufferTest is OfferLogicTest {
+contract AavePrivateRouterNoBufferTest is AbstractRouterTest {
   bool internal useForkAave = true;
 
   AavePrivateRouter internal privateRouter;
@@ -51,7 +53,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
       : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
 
     vm.startPrank(deployer);
-    AavePrivateRouter router = new AavePrivateRouter({
+    router = new AavePrivateRouter({
       addressesProvider:aave, 
       interestRate:interestRate, 
       overhead: 1_000_000,
@@ -59,6 +61,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     });
     router.bind(address(makerContract));
     makerContract.setRouter(router);
+    privateRouter = AavePrivateRouter(address(router));
     vm.stopPrank();
     // although reserve is set to deployer the source remains makerContract since privateRouter is always the source of funds
     // having reserve pointing to deployed allows deployer to have multiple strats with the same shares on the router
@@ -70,9 +73,6 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     //one needs to tell router to deposit them on AAVE
 
     uint collateralAmount = 1_000_000 * 10 ** 18;
-
-    privateRouter = AavePrivateRouter(address(makerContract.router()));
-
     deal($(dai), address(makerContract), collateralAmount);
     // router has only been activated for base and quote but is agnostic wrt collateral
     // here we want to use DAI (neither base or quote) as collateral so we need to activate the router to transfer it from the maker contract
@@ -161,31 +161,38 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
   }
 
   function test_mockup_marketOrder_gas_cost() public {
+    // load useful storage in memory to prevent dummy storage reads
+    AavePrivateRouter memoizedRouter = privateRouter;
+    ApprovalInfo memory memoizedApprovalInfo = approvalInfo;
+    address maker = address(makerContract);
+    IERC20 USDC = usdc;
+    IERC20 WETH = weth;
+
     deal($(usdc), address(makerContract), 2 * 10 ** 6);
 
     // emulates a push from offer logic
-    vm.startPrank(address(makerContract));
+    vm.startPrank(maker);
     uint gas = gasleft();
-    privateRouter.push(usdc, address(makerContract), 10 ** 6);
+    memoizedRouter.push(USDC, maker, 10 ** 6);
     vm.stopPrank();
 
     uint shallow_push_cost = gas - gasleft();
 
-    vm.prank(address(makerContract));
-    privateRouter.flushBuffer(usdc);
+    vm.prank(maker);
+    memoizedRouter.flushBuffer(USDC);
 
-    vm.startPrank(address(makerContract));
+    vm.startPrank(maker);
     gas = gasleft();
     /// this emulates a `get` from the offer logic
-    privateRouter.pull(weth, address(makerContract), 0.5 ether, false);
+    memoizedRouter.pull(WETH, maker, 0.5 ether, false, memoizedApprovalInfo);
     vm.stopPrank();
 
     uint deep_pull_cost = gas - gasleft();
 
     // this emulates posthook
-    vm.startPrank(address(makerContract));
+    vm.startPrank(maker);
     gas = gasleft();
-    privateRouter.pushAndSupply(usdc, 10 ** 6, weth, 0.5 ether);
+    memoizedRouter.pushAndSupply(USDC, 10 ** 6, WETH, 0.5 ether);
     vm.stopPrank();
 
     uint finalize_cost = gas - gasleft();
@@ -216,7 +223,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
     vm.prank(address(makerContract));
-    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict);
+    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict, approvalInfo);
     /// no buffer imposes strict <=> !strict because router will always withdraw `amount` from the pool
     assertEq(pulled, 10, "Incorrect pulled amount");
     AavePrivateRouter.AssetBalances memory bal_ = privateRouter.assetBalances(dai);
@@ -228,7 +235,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
   function test_push_and_supply_repays_debt() public {
     // router borrows as a response to the pull request (because it does not supply weth)
     vm.prank(address(makerContract));
-    uint pulled = privateRouter.pull(weth, address(makerContract), 1 ether, true);
+    uint pulled = privateRouter.pull(weth, address(makerContract), 1 ether, true, approvalInfo);
     assertEq(weth.balanceOf(address(makerContract)), 1 ether, "Pull failed");
     AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(weth);
     assertTrue(bal.debt > 0, "Router should be endebted");
@@ -243,7 +250,7 @@ contract AavePrivateRouterNoBufferTest is OfferLogicTest {
     deal(address(weth), address(makerContract), 1 ether);
     // router borrows as a response to the pull request (because it does not supply weth)
     vm.prank(address(makerContract));
-    privateRouter.pull(weth, address(makerContract), 1 ether, true);
+    privateRouter.pull(weth, address(makerContract), 1 ether, true, approvalInfo);
 
     // router should empty its weth buffer and repay debt
     vm.prank(address(makerContract));
@@ -271,7 +278,7 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
     AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
     vm.prank(address(makerContract));
-    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict);
+    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict, approvalInfo);
     assertEq(pulled, strict ? 10 : bal.liquid, "incorrect pulled amount");
     // checking:
     // * 1 wei of DAI is transferred to maker contract
@@ -304,7 +311,7 @@ contract AavePrivateRouterFullBufferTest is AavePrivateRouterNoBufferTest {
   // this test makes sure that it is safe to borrow to the limit, because a malicious taker cannot prevent the router to repay at the end of the marketOrder
   function test_can_repay_debt_even_if_supply_cap_is_reached() public {
     vm.prank(address(makerContract));
-    uint pulled = privateRouter.pull(weth, address(makerContract), 10 ether, true);
+    uint pulled = privateRouter.pull(weth, address(makerContract), 10 ether, true, approvalInfo);
 
     assertEq(weth.balanceOf(address(makerContract)), pulled, "Wrong amount of ether pulled");
 
@@ -342,7 +349,7 @@ contract AavePrivateRouterHalfBufferTest is AavePrivateRouterNoBufferTest {
     AavePrivateRouter.AssetBalances memory bal = privateRouter.assetBalances(dai);
 
     vm.prank(address(makerContract));
-    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict);
+    uint pulled = privateRouter.pull(dai, address(makerContract), 10, strict, approvalInfo);
     assertEq(pulled, strict ? 10 : bal.onPool / 2, "Incorrect pulled amount");
     // checking:
     // * 1 wei of DAI is transferred to maker contract

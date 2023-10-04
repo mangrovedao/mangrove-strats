@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "mgv_lib/IERC20.sol";
-import {AbstractRouter} from "./AbstractRouter.sol";
+import {AbstractRouter, ApprovalInfo} from "./AbstractRouter.sol";
 
 ///@title `MonoRouter` instances have a sourcing strategy which is reserveId and caller independent.
 ///@dev `routerGasreq(address reserveId)` is thus a constant function.

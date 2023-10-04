@@ -1,11 +1,12 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest} from "./OfferLogic.t.sol";
-import {AbstractRouter, SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {OfferLogicTest, IERC20, TestToken} from "./OfferLogic.t.sol";
+import {AbstractRouter, SimpleRouter, ApprovalInfo} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
-contract AbstractRouterTest is OfferLogicTest {
+abstract contract AbstractRouterTest is OfferLogicTest {
   AbstractRouter internal router;
+  ApprovalInfo internal approvalInfo; // not setting this will use ERC20Approval
 
   event MakerBind(address indexed maker);
   event MakerUnbind(address indexed maker);
@@ -76,13 +77,13 @@ contract AbstractRouterTest is OfferLogicTest {
     router.push(usdc, address(makerContract), 10 ** 6);
 
     vm.expectRevert("AccessControlled/Invalid");
-    router.pull(usdc, address(this), 10 ** 6, true);
+    router.pull(usdc, address(this), 10 ** 6, true, approvalInfo);
 
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(deployer);
-    router.pull(usdc, deployer, 10 ** 6, true);
+    router.pull(usdc, deployer, 10 ** 6, true, approvalInfo);
 
     vm.prank(address(makerContract));
-    router.pull(usdc, address(makerContract), 10 ** 6, true);
+    router.pull(usdc, address(makerContract), 10 ** 6, true, approvalInfo);
   }
 }

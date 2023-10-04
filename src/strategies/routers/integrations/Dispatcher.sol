@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.18;
 
-import {MultiRouter, MonoRouter, AbstractRouter} from "../abstract/MultiRouter.sol";
+import {MultiRouter, MonoRouter, AbstractRouter, ApprovalInfo} from "../abstract/MultiRouter.sol";
 import {IERC20} from "mgv_src/core/MgvLib.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IViewDelegator} from "../../utils/ViewDelegator.sol";
@@ -62,7 +62,12 @@ contract Dispatcher is MultiRouter {
   }
 
   /// @inheritdoc	AbstractRouter
-  function __pull__(IERC20 token, address reserveId, uint, bool) internal virtual override returns (uint) {
+  function __pull__(IERC20 token, address reserveId, uint, bool, ApprovalInfo calldata)
+    internal
+    virtual
+    override
+    returns (uint)
+  {
     address router = address(_getRouterSafely(token, reserveId));
     assembly {
       calldatacopy(0, 0, calldatasize())

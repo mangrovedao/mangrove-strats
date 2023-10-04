@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "./OfferLogic.t.sol";
+import {AbstractRouterTest, IERC20, TestToken} from "./AbstractRouter.t.sol";
 import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import {ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
@@ -9,9 +9,7 @@ import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.
 import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
 import {console} from "forge-std/console.sol";
 
-contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
-  SimpleRouter router;
-
+contract SimpleRouterTest is AbstractRouterTest, Permit2Helpers {
   uint48 NONCE = 0;
   bytes32 DOMAIN_SEPARATOR;
   uint48 EXPIRATION;
@@ -20,17 +18,8 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
   address eoaAddress;
 
   function setupLiquidityRouting() internal override {
-    // OfferMaker has no router, replacing 0x router by a SimpleRouter
-    router = new SimpleRouter();
-    router.bind(address(makerContract));
-    // maker must approve router
-    vm.prank(deployer);
-    makerContract.setRouter(router);
-
-    vm.startPrank(owner);
-    weth.approve(address(router), type(uint).max);
-    usdc.approve(address(router), type(uint).max);
-    vm.stopPrank();
+    // default is to use a simple router. So we do not override this.
+    super.setupLiquidityRouting();
 
     eoaPrivateKey = 0x12341234;
     eoaAddress = vm.addr(eoaPrivateKey);
@@ -48,28 +37,8 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
     deal($(usdc), owner, cash(usdc, 2000));
   }
 
-  event MakerBind(address indexed maker);
-  event MakerUnbind(address indexed maker);
-
-  function test_admin_can_unbind() public {
-    expectFrom(address(router));
-    emit MakerUnbind(address(makerContract));
-    router.unbind(address(makerContract));
-  }
-
-  function test_maker_can_unbind() public {
-    expectFrom(address(router));
-    emit MakerUnbind(address(makerContract));
-    vm.prank(address(makerContract));
-    router.unbind();
-  }
-
-  function test_pull_with_normal_approval() public {
+  function test_pull_with_erc20_approval() public {
     router.bind(address(this));
-
-    ApprovalInfo memory approvalInfo;
-
-    approvalInfo.approvalType = ApprovalType.NormalApproval;
 
     uint startBalanceFrom = weth.balanceOf(eoaAddress);
     uint startBalanceTo = weth.balanceOf(address(this));
@@ -85,8 +54,6 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
 
   function test_pull_with_signature_transfer() public {
     router.bind(address(this));
-    ApprovalInfo memory approvalInfo;
-
     approvalInfo.approvalType = ApprovalType.Permit2ApprovalOneTime;
 
     approvalInfo.permit2 = permit2;
@@ -107,8 +74,6 @@ contract SimpleEOARouterTest is OfferLogicTest, Permit2Helpers {
 
   function test_pull_with_permit() public {
     router.bind(address(this));
-
-    ApprovalInfo memory approvalInfo;
 
     approvalInfo.approvalType = ApprovalType.Permit2Approval;
 

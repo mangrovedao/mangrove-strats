@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.18;
 
-import {MonoRouter, AbstractRouter} from "../../abstract/MonoRouter.sol";
+import {MonoRouter, AbstractRouter, ApprovalInfo} from "../../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration, DataTypes} from "../AaveMemoizer.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
@@ -93,7 +93,12 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @notice pulls amount of underlying that can be redeemed
   /// @dev if the user has no debt, the max credit line will be ignored
   /// @inheritdoc	AbstractRouter
-  function __pull__(IERC20 token, address reserveId, uint amount, bool) internal virtual override returns (uint) {
+  function __pull__(IERC20 token, address reserveId, uint amount, bool, ApprovalInfo calldata)
+    internal
+    virtual
+    override
+    returns (uint)
+  {
     Memoizer memory m;
 
     uint localBalance = balanceOf(token, m, reserveId);

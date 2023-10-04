@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MonoRouter, AbstractRouter} from "../abstract/MonoRouter.sol";
+import {MonoRouter, AbstractRouter, ApprovalInfo} from "../abstract/MonoRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration, DataTypes} from "./AaveMemoizer.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
@@ -119,7 +119,11 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   /// Note we do not borrow the full capacity as it would put this contract is a liquidatable state. A malicious offer in the same market order could prevent the posthook to repay the debt via a possible manipulation of the pool's state using flashloans.
   /// * if pull is `strict` then only amount is sent to the calling maker contract, otherwise the totality of pulled funds are sent to maker
   ///@inheritdoc AbstractRouter
-  function __pull__(IERC20 token, address, uint amount, bool strict) internal override returns (uint pulled) {
+  function __pull__(IERC20 token, address, uint amount, bool strict, ApprovalInfo calldata /*approvalInfo*/ )
+    internal
+    override
+    returns (uint pulled)
+  {
     Memoizer memory m;
     // invariant `localBalance === token.balanceOf(this)`
     // `missing === max(0,localBalance - amount)`

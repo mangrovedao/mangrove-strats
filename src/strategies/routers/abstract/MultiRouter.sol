@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {IERC20} from "mgv_lib/IERC20.sol";
-import {MonoRouter, AbstractRouter} from "./MonoRouter.sol";
+import {MonoRouter, AbstractRouter, ApprovalInfo} from "./MonoRouter.sol";
 
 ///@title `MultiRouter` instances may have token and reserveId dependant sourcing strategies.
 abstract contract MultiRouter is AbstractRouter {

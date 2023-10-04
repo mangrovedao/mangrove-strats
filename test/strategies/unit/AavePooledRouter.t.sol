@@ -26,8 +26,6 @@ contract AavePooledRouterTest is AbstractRouterTest {
   address internal maker1;
   address internal maker2;
 
-  ApprovalInfo approvalInfo;
-
   function setUp() public override {
     // deploying mangrove and opening WETH/USDC market.
     if (useForkAave) {
@@ -219,30 +217,34 @@ contract AavePooledRouterTest is AbstractRouterTest {
   function test_mockup_marketOrder_gas_cost() public {
     deal($(dai), maker1, 10 ** 18);
     ApprovalInfo memory memoized_approvalInfo = approvalInfo;
+    AavePooledRouter memoizedRouter = pooledRouter;
+    IERC20 DAI = dai;
+    IERC20 USDC = usdc;
+    address mkr = maker1;
 
-    vm.startPrank(maker1);
+    vm.startPrank(mkr);
     uint gas = gasleft();
-    pooledRouter.push(dai, maker1, 10 ** 18);
+    memoizedRouter.push(DAI, mkr, 10 ** 18);
     vm.stopPrank();
 
     uint shallow_push_cost = gas - gasleft();
 
     vm.prank(deployer);
-    pooledRouter.flushBuffer(dai, false);
+    memoizedRouter.flushBuffer(DAI, false);
 
-    vm.startPrank(maker1);
+    vm.startPrank(mkr);
     gas = gasleft();
     /// this emulates a `get` from the offer logic
-    pooledRouter.pull(dai, maker1, 0.5 ether, false, memoized_approvalInfo);
+    memoizedRouter.pull(DAI, mkr, 0.5 ether, false, memoized_approvalInfo);
     vm.stopPrank();
 
     uint deep_pull_cost = gas - gasleft();
 
-    deal($(usdc), maker1, 10 ** 6);
+    deal($(USDC), mkr, 10 ** 6);
 
-    vm.startPrank(maker1);
+    vm.startPrank(mkr);
     gas = gasleft();
-    pooledRouter.pushAndSupply(usdc, 10 ** 6, dai, 1 ether, maker1);
+    memoizedRouter.pushAndSupply(USDC, 10 ** 6, DAI, 1 ether, mkr);
     vm.stopPrank();
 
     uint finalize_cost = gas - gasleft();
