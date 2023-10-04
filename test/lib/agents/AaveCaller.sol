@@ -6,7 +6,7 @@ import {MangroveTest, console} from "mgv_test/lib/MangroveTest.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 
 contract AaveCaller is AaveV3Borrower, StdCheats {
-  constructor(address _addressesProvider, uint borrowMode) AaveV3Borrower(_addressesProvider, 0, borrowMode) {}
+  constructor(address _addressesProvider, uint borrowMode) AaveV3Borrower(_addressesProvider, borrowMode) {}
 
   address callback;
 
@@ -25,11 +25,11 @@ contract AaveCaller is AaveV3Borrower, StdCheats {
   }
 
   function borrow(IERC20 token, uint amount) public {
-    _borrow(token, amount, address(this));
+    _borrow(token, amount, address(this), false);
   }
 
   function redeem(IERC20 token, uint amount) public {
-    _redeem(token, amount, address(this));
+    _redeem(token, amount, address(this), false);
   }
 
   function executeOperation(address asset, uint amount, uint premium, address, bytes calldata cd)
@@ -40,7 +40,7 @@ contract AaveCaller is AaveV3Borrower, StdCheats {
     deal(asset, address(this), amount + premium);
     console.log("flashloan of %s succeeded, cost is %s %s", amount, premium, IERC20(asset).symbol());
     (bool success,) = callback.call(cd);
-    // attack is a success is callback succeeds
+    // attack is a success if callback succeeds
     return success;
   }
 
@@ -53,6 +53,6 @@ contract AaveCaller is AaveV3Borrower, StdCheats {
   }
 
   function repay(IERC20 token, uint amount) public {
-    _repay(token, amount, address(this));
+    _repay(token, amount, address(this), false);
   }
 }

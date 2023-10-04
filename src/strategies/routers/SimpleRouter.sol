@@ -52,7 +52,7 @@ contract SimpleRouter is MonoRouter {
   ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
   ///@param token is the asset whose approval must be checked
   ///@param owner the account that requires asset pulling/pushing
-  function __checkList__(IERC20 token, address owner) internal view virtual override {
+  function __checkList__(IERC20 token, address owner, address) internal view virtual override {
     // verifying that `this` router can withdraw tokens from owner (required for `withdrawToken` and `pull`)
     require(token.allowance(owner, address(this)) > 0, "SimpleRouter/NotApprovedByOwner");
   }

@@ -10,17 +10,17 @@ import {MgvLib} from "mgv_src/core/MgvLib.sol";
 
 contract AaveMaker is OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;
-  bytes32 constant retData = "lastLook/testData";
+  bytes32 internal constant RETDATA = "lastlook/testdata";
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
   constructor(IMangrove mgv, AbstractRouter router_, address deployer, uint gasreq, address addressesProvider)
     OfferMaker(mgv, router_, deployer, gasreq, deployer) // setting reserveId = deployer by default
-    AaveV3Borrower(addressesProvider, 0, 1)
+    AaveV3Borrower(addressesProvider, 1)
   {}
 
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
-    return retData;
+    return RETDATA;
   }
 
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
@@ -42,7 +42,7 @@ contract AaveMaker is OfferMaker, AaveV3Borrower {
   }
 
   function borrow(IERC20 token, uint amount) public onlyAdmin {
-    _borrow(token, amount, address(this));
+    _borrow(token, amount, address(this), false);
   }
 
   function approveLender(IERC20 token, uint amount) public onlyAdmin {

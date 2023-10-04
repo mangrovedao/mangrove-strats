@@ -126,7 +126,7 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_newOffer_fails_when_provision_is_zero() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
     makerContract.newOfferByVolume{value: 0}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 * 10 ** 18, gasreq: gasreq});
@@ -219,13 +219,13 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
   }
 
   function test_only_maker_can_updateOffer() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -245,7 +245,7 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_updateOffer_fails_when_provision_is_too_low() public {
-    uint gasreq = makerContract.offerGasreq();
+    uint gasreq = makerContract.offerGasreq(weth, owner);
     vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -285,7 +285,9 @@ contract OfferLogicTest is StratTest {
     assertTrue(!success || (bounty == 0 && takerGot > 0), "unexpected trade result");
   }
 
-  function test_owner_balance_is_updated_when_trade_succeeds() public {
+  // this test makes a strong assumption on the way base/quote balance evolves after a successful trade
+  // we make this test virtual in order to override it if necessary
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual {
     uint balOut = makerContract.tokenBalance(weth, owner);
     uint balIn = makerContract.tokenBalance(usdc, owner);
 

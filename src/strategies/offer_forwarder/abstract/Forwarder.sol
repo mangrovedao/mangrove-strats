@@ -307,6 +307,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   function __checkList__(IERC20 token) internal view virtual override {
     super.__checkList__(token);
     AbstractRouter router_ = router();
-    router_.checkList(token, msg.sender);
+    router_.checkList(token, msg.sender, address(this));
   }
 }

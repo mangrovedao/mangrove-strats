@@ -30,7 +30,7 @@ contract AaveV3Lender {
   /// @param token the underlying asset for which approval is required
   /// @param amount the approval amount
   function _approveLender(IERC20 token, uint amount) internal {
-    TransferLib.approveToken(token, address(POOL), amount);
+    require(TransferLib.approveToken(token, address(POOL), amount), "AaveV3Lender/approvalFail");
   }
 
   /// @notice prevents the POOL from using some underlying as collateral
@@ -60,16 +60,29 @@ contract AaveV3Lender {
   ///@param token the asset one is trying to redeem
   ///@param amount of assets one wishes to redeem
   ///@param to is the address where the redeemed assets should be transferred
+  ///@param noRevert whether Aave revert should be caught or not. If `noRevert` then revert message of aave is returned as a bytes32
   ///@return redeemed the amount of asset that were transferred to `to`
-  function _redeem(IERC20 token, uint amount, address to) internal returns (uint redeemed) {
-    redeemed = (amount == 0) ? 0 : POOL.withdraw(address(token), amount, to);
+  ///@return reason the revert message of aave if any
+  function _redeem(IERC20 token, uint amount, address to, bool noRevert)
+    internal
+    returns (uint redeemed, bytes32 reason)
+  {
+    if (amount == 0) {
+      return (0, bytes32(0));
+    }
+    try POOL.withdraw(address(token), amount, to) returns (uint withdrawn) {
+      return (withdrawn, bytes32(0));
+    } catch Error(string memory reason_) {
+      require(noRevert, reason_);
+      return (0, bytes32(bytes(reason_)));
+    }
   }
 
   ///@notice supplies funds to the pool
   ///@param token the asset one is supplying
   ///@param amount of assets to be transferred to the pool
   ///@param onBehalf address of the account whose collateral is being supplied to and which will receive the overlying
-  ///@param noRevert does not revert if supplies throws
+  ///@param noRevert whether Aave revert should be caught or not. If `noRevert` then revert message of aave is returned as a bytes32
   ///@return reason for revert from Aave.
   function _supply(IERC20 token, uint amount, address onBehalf, bool noRevert) internal returns (bytes32) {
     if (amount == 0) {
