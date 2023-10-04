@@ -6,10 +6,6 @@ import {IERC20} from "mgv_src/core/MgvLib.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IViewDelegator} from "../../utils/ViewDelegator.sol";
 
-abstract contract IDelegatedRouter {
-  function delegatedCheckList(IERC20 token, address reserveId) external view virtual;
-}
-
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
 contract Dispatcher is MultiRouter {
   mapping(bytes4 => address) public routerSpecificFunctions;
