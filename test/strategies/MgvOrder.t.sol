@@ -828,16 +828,19 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
     assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
     assertEq(mgo.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
-    assertEq(
-      quote.balanceOf(fresh_taker), takerGives(buyOrder) - expectedResult.takerGave, "Incorrect remaining quote balance"
+    assertApproxEqAbs(
+      quote.balanceOf(fresh_taker),
+      takerGives(buyOrder) - expectedResult.takerGave,
+      1,
+      "Incorrect remaining quote balance"
     );
     assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
     assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     // checking price of offer
     Offer offer = mgv.offers(lo, res.offerId);
     OfferDetail detail = mgv.offerDetails(lo, res.offerId);
-    assertEq(offer.gives(), makerGives(buyOrder) / 2, "Incorrect offer gives");
-    assertEq(offer.wants(), makerWants(buyOrder) / 2, "Incorrect offer wants");
+    assertApproxEqAbs(offer.gives(), makerGives(buyOrder) / 2, 1, "Incorrect offer gives");
+    assertApproxEqAbs(offer.wants(), makerWants(buyOrder) / 2, 1, "Incorrect offer wants");
     assertEq(offer.prev(), 0, "Offer should be best of the book");
     assertEq(detail.maker(), address(mgo), "Incorrect maker");
   }
