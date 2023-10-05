@@ -38,7 +38,7 @@ library ApprovalTransferLib {
     uint amount,
     ApprovalInfo calldata approvalInfo
   ) public returns (bool success) {
-    if (approvalInfo.approvalType == ApprovalType.NormalApproval) {
+    if (approvalInfo.approvalType == ApprovalType.ERC20Approval) {
       return TransferLib.transferTokenFrom(token, from, to, amount);
     } else if (approvalInfo.approvalType == ApprovalType.Permit2ApprovalOneTime) {
       return Permit2TransferLib.transferTokenFromWithPermit2Signature(

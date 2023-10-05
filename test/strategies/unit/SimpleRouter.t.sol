@@ -38,6 +38,7 @@ contract SimpleRouterTest is AbstractRouterTest, Permit2Helpers {
   }
 
   function test_pull_with_erc20_approval() public {
+    vm.prank(deployer);
     router.bind(address(this));
 
     uint startBalanceFrom = weth.balanceOf(eoaAddress);
@@ -53,6 +54,7 @@ contract SimpleRouterTest is AbstractRouterTest, Permit2Helpers {
   }
 
   function test_pull_with_signature_transfer() public {
+    vm.prank(deployer);
     router.bind(address(this));
     approvalInfo.approvalType = ApprovalType.Permit2ApprovalOneTime;
 
@@ -73,6 +75,7 @@ contract SimpleRouterTest is AbstractRouterTest, Permit2Helpers {
   }
 
   function test_pull_with_permit() public {
+    vm.prank(deployer);
     router.bind(address(this));
 
     approvalInfo.approvalType = ApprovalType.Permit2Approval;
