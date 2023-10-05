@@ -1,7 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {OfferDispatcher, IMangrove, IERC20, AbstractRouter, Dispatcher} from "./OfferDispatcher.sol";
+import {
+  OfferDispatcher,
+  IMangrove,
+  IERC20,
+  AbstractRouter,
+  Dispatcher
+} from "mgv_strat_src/strategies/offer_forwarder/OfferDispatcher.sol";
 import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
 import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
 import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";

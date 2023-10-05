@@ -34,6 +34,10 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
     mapping(address => mapping(IERC20 => TokenReserveData)) token_reserve_data;
   }
 
+  /// @notice contract's constructor
+  /// @param routerGasreq_ The gas requirement for the router
+  /// @param addressesProvider The address of the Aave addresses provider
+  /// @param interestRateMode The interest rate mode to use
   /// @param storage_key The storage key for this contract specific storage
   constructor(uint routerGasreq_, address addressesProvider, uint interestRateMode, string memory storage_key)
     MonoRouter(routerGasreq_)

@@ -8,7 +8,7 @@ import {
   OfferDispatcherTester,
   ITesterContract as ITester,
   IMangrove
-} from "mgv_strat_src/strategies/offer_forwarder/OfferDispatcherTester.sol";
+} from "mgv_strat_src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
 import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import "mgv_lib/Debug.sol";
