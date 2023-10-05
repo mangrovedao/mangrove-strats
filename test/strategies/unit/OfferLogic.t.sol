@@ -107,7 +107,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     assertTrue(offerId != 0);
@@ -142,7 +142,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -161,7 +161,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -181,7 +181,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     makerContract.retractOffer(olKey, offerId, true);
     uint received_wei = makerContract.retractOffer(olKey, offerId, true);
@@ -196,7 +196,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.expectRevert("mgvOffer/weiTransferFail");
     makerContract.retractOffer(olKey, offerId, true);
@@ -209,7 +209,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
 
@@ -273,7 +273,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
 
@@ -300,12 +300,12 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_below_density() public {
     vm.startPrank(owner);
-    uint offerGives = reader.minVolume(olKey, makerContract.offerGasreq());
+    uint offerGives = reader.minVolume(olKey, makerContract.offerGasreq(weth, owner));
     uint offerId = makerContract.newOffer{value: 0.1 ether}({
       olKey: olKey,
       tick: Tick.wrap(1),
       gives: offerGives,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     MgvLib.OrderResult memory result;
@@ -331,7 +331,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     mgv.setGasprice(1000000);
@@ -361,7 +361,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(weth, owner)
     });
     vm.stopPrank();
     mgv.deactivate(olKey);
