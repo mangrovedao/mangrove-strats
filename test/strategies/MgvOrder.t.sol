@@ -51,7 +51,8 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
     Tick tick,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder
+    bool restingOrder,
+    uint offerId
   );
 
   bytes32 DOMAIN_SEPARATOR;
@@ -387,6 +388,10 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.offerId = cold_buyResult.offerId;
     buyOrder.restingOrder = true;
+
+    expectFrom($(mgo));
+    logOrderData($(this), buyOrder);
+
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder, approvalInfo);
 
     // Assert
@@ -440,7 +445,7 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
 
   function logOrderData(address taker, IOrderLogic.TakerOrder memory tko) internal {
     emit MangroveOrderStart(
-      tko.olKey.hash(), taker, tko.fillOrKill, tko.tick, tko.fillVolume, tko.fillWants, tko.restingOrder
+      tko.olKey.hash(), taker, tko.fillOrKill, tko.tick, tko.fillVolume, tko.fillWants, tko.restingOrder, tko.offerId
     );
   }
 

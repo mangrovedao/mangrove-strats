@@ -223,7 +223,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       tick: tko.tick,
       fillVolume: tko.fillVolume,
       fillWants: tko.fillWants,
-      restingOrder: tko.restingOrder
+      restingOrder: tko.restingOrder,
+      offerId: tko.offerId
     });
   }
 

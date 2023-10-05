@@ -49,7 +49,8 @@ interface IOrderLogic {
   ///@param tick The tick of the order. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillVolume the volume to fill. This is not needed for an indexer, as it can get it from the OrderStart event. It is only emitted for RPC calls.
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
-  ///@param restingOrder The restingOrder boolean take was called with
+  ///@param restingOrder The restingOrder boolean take was called with.
+  ///@param offerId The optional offerId take was called with, 0 if not passed. This is not needed for an indexer. It is only emitted for RPC calls.
   ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters was use to start the order.
   event MangroveOrderStart(
     bytes32 indexed olKeyHash,
@@ -58,7 +59,8 @@ interface IOrderLogic {
     Tick tick,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder
+    bool restingOrder,
+    uint offerId
   );
 
   ///@notice The expiry of the offer has been set
