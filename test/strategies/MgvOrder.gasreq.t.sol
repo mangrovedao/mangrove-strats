@@ -1,16 +1,16 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {IERC20, OLKey, Offer} from "mgv_src/core/MgvLib.sol";
-import {TickLib} from "mgv_lib/core/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/core/Constants.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
-import {OfferGasReqBaseTest} from "mgv_test/lib/gas/OfferGasReqBase.t.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
+import {IERC20, OLKey, Offer} from "@mgv/src/core/MgvLib.sol";
+import {TickLib} from "@mgv/lib/core/TickLib.sol";
+import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 
 ///@notice Can be used to test gasreq for MangroveOrder. Pick the highest value reported by -vv and subtract gasbase.
 ///@dev Remember to use same optimization options for core and strats when comparing.
@@ -18,11 +18,6 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
-
-  function printDescription(string memory postfix) public virtual {
-    description = string.concat(description, postfix);
-    printDescription();
-  }
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);

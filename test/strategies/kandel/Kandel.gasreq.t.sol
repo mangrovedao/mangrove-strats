@@ -1,18 +1,18 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {OLKey, Offer} from "mgv_src/core/MgvLib.sol";
-import {TickLib} from "mgv_lib/core/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/core/Constants.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
-import {OfferGasReqBaseTest} from "mgv_test/lib/gas/OfferGasReqBase.t.sol";
-import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {AaveKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {OLKey, Offer} from "@mgv/src/core/MgvLib.sol";
+import {TickLib} from "@mgv/lib/core/TickLib.sol";
+import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
+import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 
 ///@notice Can be used to test gasreq for Kandel. Pick the highest value reported by -vv and subtract gasbase.
 ///@dev Remember to use same optimization options for core and strats when comparing.
@@ -22,11 +22,6 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   bytes32 internal expectedFirOfferMakerData = 0;
-
-  function printDescription(string memory postfix) public virtual {
-    description = string.concat(description, postfix);
-    printDescription();
-  }
 
   function createKandel() public virtual returns (GeometricKandel);
 
