@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 
 ///@title The Kandel strat with geometric price progression.
 contract Kandel is GeometricKandel {

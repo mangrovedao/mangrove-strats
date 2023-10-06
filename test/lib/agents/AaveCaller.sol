@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {AaveV3Borrower, IERC20} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
-import {MangroveTest, console} from "mgv_test/lib/MangroveTest.sol";
-import {StdCheats} from "forge-std/StdCheats.sol";
+import {AaveV3Borrower, IERC20} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {MangroveTest, console} from "@mgv/test/lib/MangroveTest.sol";
+import {StdCheats} from "@mgv/forge-std/StdCheats.sol";
 
 contract AaveCaller is AaveV3Borrower, StdCheats {
   constructor(address _addressesProvider, uint borrowMode) AaveV3Borrower(_addressesProvider, 0, borrowMode) {}

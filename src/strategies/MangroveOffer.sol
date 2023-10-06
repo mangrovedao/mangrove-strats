@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
-import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, OLKey, OfferDetail} from "mgv_src/core/MgvLib.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).

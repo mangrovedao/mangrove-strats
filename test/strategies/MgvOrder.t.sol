@@ -1,19 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MangroveOrder as MgvOrder, SimpleRouter} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "mgv_src/core/MgvLib.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {toFixed} from "mgv_lib/Test2.sol";
-import {TickLib} from "mgv_lib/core/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/core/Constants.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MangroveOrder as MgvOrder, SimpleRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
+import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
+import {toFixed} from "@mgv/lib/Test2.sol";
+import {TickLib} from "@mgv/lib/core/TickLib.sol";
+import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {

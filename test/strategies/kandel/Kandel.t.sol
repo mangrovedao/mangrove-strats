@@ -1,14 +1,14 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
-import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {OfferType} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title Tests for Kandel without a router, and router agnostic functions.
 contract NoRouterKandelTest is CoreKandelTest {

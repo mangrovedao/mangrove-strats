@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "./abstract/CoreKandel.gas.t.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
+import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 
 contract ColdKandelGasTest is CoreKandelGasTest {
   function setUp() public override {

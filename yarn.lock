@@ -96,9 +96,9 @@ __metadata:
   linkType: hard
 
 "@mangrovedao/mangrove-core@npm:next":
-  version: 1.5.11-0
-  resolution: "@mangrovedao/mangrove-core@npm:1.5.11-0"
-  checksum: 79550c7ccfa11ed398125cd36faf2115d80faedb8caed340565a2da07fe54fd683962f355a959b8cb5f0183f4581f84361dd269fc8857969d6de170842911d45
+  version: 1.5.11-1
+  resolution: "@mangrovedao/mangrove-core@npm:1.5.11-1"
+  checksum: a752646c48477482bb4628f626e9c75db2a3580e571de80b2d31a2d45be7cdb6f91185d5b530fe2b80e05b2a064baa31e2c1a4c17cf2450ad8f7b3d710d4b827
   languageName: node
   linkType: hard
 

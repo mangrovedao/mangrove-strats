@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.

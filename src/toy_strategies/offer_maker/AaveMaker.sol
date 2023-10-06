@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {OfferMaker} from "./OfferMaker.sol";
-import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {MgvLib} from "mgv_src/core/MgvLib.sol";
+import {AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 
 contract AaveMaker is OfferMaker, AaveV3Borrower {
   mapping(address => address) public reserves;

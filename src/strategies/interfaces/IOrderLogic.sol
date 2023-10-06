@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title Interface for resting orders functionality.
 interface IOrderLogic {
