@@ -2,13 +2,12 @@
 pragma solidity ^0.8.10;
 
 import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
-import {TestTaker} from "mgv_test/lib/agents/TestTaker.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
-import {OLKey, Offer} from "mgv_src/MgvLib.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/Constants.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {OLKey, Offer} from "mgv_src/core/MgvLib.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
+import {MAX_TICK} from "mgv_lib/core/Constants.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "mgv_test/lib/gas/OfferGasReqBase.t.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
@@ -19,6 +18,15 @@ import {AaveKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kan
 ///@dev Remember to use same optimization options for core and strats when comparing.
 abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   GeometricKandel internal kandel;
+
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+
+  bytes32 internal expectedFirOfferMakerData = 0;
+
+  function printDescription(string memory postfix) public virtual {
+    description = string.concat(description, postfix);
+    printDescription();
+  }
 
   function createKandel() public virtual returns (GeometricKandel);
 
@@ -92,16 +100,12 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both() public {
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, true, true);
-    description =
-      string.concat(description, " - Case: base/quote gasreq for taking offer repost self and dual to now empty book");
-    printDescription();
+    printDescription(" - Case: base/quote gasreq for taking offer repost self and dual to now empty book");
   }
 
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both() public {
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(lo, false, 0.25 ether, true, true);
-    description =
-      string.concat(description, " - Case: quote/base gasreq for taking offer repost self and dual to now empty book");
-    printDescription();
+    printDescription(" - Case: quote/base gasreq for taking offer repost self and dual to now empty book");
   }
 
   // Compare this to the non-setGasprice version to see the delta caused by hot hotness. This should be then added to tests that need to set gasprice to change scenario.
@@ -110,11 +114,9 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   {
     mgv.setGasprice(1);
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, true, true);
-    description = string.concat(
-      description,
+    printDescription(
       " - Case: base/quote gasreq for taking offer repost self and dual to now empty book + setGasPrice prior"
     );
-    printDescription();
   }
 
   // Compare this to the non-setAllowances version to see the delta caused by hotness. This should be then added to tests that need to set allowances to change scenario.
@@ -123,50 +125,77 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   {
     vm.prank(address(kandel));
     TransferLib.approveToken(base, address(mgv), type(uint).max - 42);
+    test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, true, true);
+    printDescription(
+      " - Case: base/quote gasreq for taking offer repost self and dual to now empty book + set allowance prior"
+    );
+  }
+
+  // Compare this to the non-setAllowances version to see the delta caused by hotness. This should be then added to tests that need to set allowances to change scenario.
+  function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both_setAllowances()
+    public
+  {
     vm.prank(address(kandel));
     TransferLib.approveToken(quote, address(mgv), type(uint).max - 42);
-    test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, true, true);
-    description = string.concat(
-      description,
-      " - Case: base/quote gasreq for taking offer repost self and dual to now empty book + set allowances prior"
+    test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(lo, false, 0.25 ether, true, true);
+    printDescription(
+      " - Case: quote/base gasreq for taking offer repost self and dual to now empty book + set allowance prior"
     );
-    printDescription();
   }
 
   ///@notice fail to repost and update due to high gasprice, remember to add delta for hotness of gasprice. Note: Dual keeps being live as update fails it keeps old values.
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both_fails_due_to_gasprice(
   ) public {
-    mgv.setGasprice(2 ** 16 - 1);
-
+    mgv.setGasprice(2 ** 26 - 1);
+    expectFrom(address(kandel));
+    emit LogIncident(lo.hash(), 1, "Kandel/updateOfferFailed", "mgv/insufficientProvision");
+    expectFrom(address(kandel));
+    emit LogIncident(olKey.hash(), 1, expectedFirOfferMakerData, "mgv/insufficientProvision");
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, false, true);
-    description = string.concat(
-      description,
+    printDescription(
       " - Case: base/quote gasreq for taking offer which fails repost self and dual to now empty book due to gasprice"
     );
-    printDescription();
   }
 
   ///@notice fail to repost and update due to high gasprice, remember to add delta for hotness of gasprice. Note: Dual keeps being live as update fails it keeps old values.
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both_fails_due_to_gasprice(
   ) public {
-    mgv.setGasprice(2 ** 16 - 1);
-
+    mgv.setGasprice(2 ** 26 - 1);
+    expectFrom(address(kandel));
+    emit LogIncident(olKey.hash(), 1, "Kandel/updateOfferFailed", "mgv/insufficientProvision");
+    expectFrom(address(kandel));
+    emit LogIncident(lo.hash(), 1, expectedFirOfferMakerData, "mgv/insufficientProvision");
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(lo, false, 0.25 ether, false, true);
-    description = string.concat(
-      description,
+    printDescription(
       " - Case: quote/base gasreq for taking offer which fails repost self and dual to now empty book due to gasprice"
     );
-    printDescription();
+  }
+
+  ///@notice fail to deliver (and therefore fail to repost and post dual) due to missing allowance, remember to add delta for hotness of allowance.
+  function test_gasreq_delivery_failure_due_to_allowance_base_quote() public {
+    vm.prank(address(kandel));
+    TransferLib.approveToken(base, address(mgv), 0);
+    test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, true, 0.25 ether, false, true);
+    printDescription(
+      " - Case: base/quote gasreq for taking offer which fails to deliver and thus repost, leaves dual as is"
+    );
+  }
+
+  ///@notice fail to deliver (and therefore fail to repost and post dual) due to missing allowance, remember to add delta for hotness of allowance.
+  function test_gasreq_delivery_failure_due_to_allowance_quote_base() public {
+    vm.prank(address(kandel));
+    TransferLib.approveToken(quote, address(mgv), 0);
+    test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(lo, true, 0.25 ether, false, true);
+    printDescription(
+      " - Case: quote/base gasreq for taking offer which fails to deliver and thus repost, leaves dual as is"
+    );
   }
 
   // self or dual below density.
-  // fail to deliver
 
-  // verify with a retract that his is less expensive - by retracting dual in setup
+  //TODO test where dual is retracted to verify it is not more expensive.
   // dead dual, repost self, and make dual live
   // dead dual, repost self, but self and dual below density
-  //TODO test where dual is retracted to verify it is not more expensive.
-  //failure in posthook should be able to log  ved for høj gasprice.
 }
 
 abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
@@ -184,6 +213,7 @@ abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
 abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
   function createKandel() public virtual override returns (GeometricKandel) {
     description = string.concat(description, " - AaveKandel");
+    expectedFirOfferMakerData = "IS_FIRST_PULLER";
 
     address aave = fork.get("Aave");
     AavePooledRouter router = new AavePooledRouter(aave, 500_000);

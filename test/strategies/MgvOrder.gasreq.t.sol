@@ -6,10 +6,10 @@ import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
 import {IOrderLogic} from "mgv_strat_src/strategies/interfaces/IOrderLogic.sol";
-import {IERC20, OLKey, Offer} from "mgv_src/MgvLib.sol";
-import {TickLib} from "mgv_lib/TickLib.sol";
-import {MAX_TICK} from "mgv_lib/Constants.sol";
-import {Tick} from "mgv_lib/TickLib.sol";
+import {IERC20, OLKey, Offer} from "mgv_src/core/MgvLib.sol";
+import {TickLib} from "mgv_lib/core/TickLib.sol";
+import {MAX_TICK} from "mgv_lib/core/Constants.sol";
+import {Tick} from "mgv_lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "mgv_test/lib/gas/OfferGasReqBase.t.sol";
 
 ///@notice Can be used to test gasreq for MangroveOrder. Pick the highest value reported by -vv and subtract gasbase.
@@ -18,6 +18,11 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
+
+  function printDescription(string memory postfix) public virtual {
+    description = string.concat(description, postfix);
+    printDescription();
+  }
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
@@ -87,32 +92,22 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_success() public {
     test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, false);
-    description =
-      string.concat(description, " - Case: base/quote gasreq for taking single offer and repost to now empty book");
-    printDescription();
+    printDescription(" - Case: base/quote gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_success() public {
     test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, false);
-    description =
-      string.concat(description, " - Case: quote/base gasreq for taking single offer and repost to now empty book");
-    printDescription();
+    printDescription(" - Case: quote/base gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_failure() public {
     test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, true);
-    description = string.concat(
-      description, " - Case: base/quote gasreq for taking single failing offer on now empty book so not reposted"
-    );
-    printDescription();
+    printDescription(" - Case: base/quote gasreq for taking single failing offer on now empty book so not reposted");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_failure() public {
     test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, true);
-    description = string.concat(
-      description, " - Case: quote/base gasreq for taking single failing offer on now empty book so not reposted"
-    );
-    printDescription();
+    printDescription(" - Case: quote/base gasreq for taking single failing offer on now empty book so not reposted");
   }
 }
 
