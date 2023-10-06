@@ -134,7 +134,7 @@ contract MangroveJsDeploy is Deployer {
       addressesProvider: aaveAddressProvider,
       aaveRouterGasreq: 318_000,
       aaveKandelGasreq: 338_000,
-      kandelGasreq: 128_000
+      kandelGasreq: 90000 // see CoreKandelGasreqBaseTest
     });
   }
 }

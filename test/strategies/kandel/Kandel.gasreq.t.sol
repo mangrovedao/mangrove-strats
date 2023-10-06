@@ -13,9 +13,32 @@ import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kande
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
-///@notice Can be used to test gasreq for Kandel. Pick the highest value reported by -vv and subtract gasbase.
+///@notice Can be used to test gasreq for Kandel. Pick the highest value reported by -vv and subtract gasbase. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing.
+///@dev For instance, as of writing, if `yarn gas-measurement` is executed, then for the generic case on A/B tokens with default foundry.toml (no optimization):
+///@dev Gasbase is 265531 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
+///@dev Kandel's most expensive case is 349889 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:NoRouterKandelGasreqBaseTest_Generic_A_B:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both())
+///@dev The difference is 84358.
+///@dev This is assuming, that the code in this test hits the worst case. However, looking at core runs that is not entirely the case. For the dual:
+///@dev  - 44339 is the comparable case for core for updating the dual (c.f. test/core/gas/UpdateOfferOtherOfferList.t.sol:ExternalUpdateOfferOtherOfferList_WithNoOtherOffersGasTest:test_single_gas())
+///@dev  - 45090 would be if another offer existed on the dual offer's bin (c.f. test/core/gas/UpdateOfferOtherOfferList.t.sol:ExternalUpdateOfferOtherOfferList_WithOtherOfferGasTest:test_ExistingBin())
+///@dev The difference is below 1000, so we add that and round up to get 86000.
+///@dev Similarly for the primary offer:
+///@dev  - 19675 is the comparable case for core (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithNoOtherOffersGasTest:test_ExistingBin() (Updating an offer in posthook for now empty offer list but where new offer has varying closeness to taken offer - Case: Existing bin))
+///@dev  - 22841 would be if an offer existed in the same bin as the reposted offer (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithOtherOfferGasTest:test_ExistingBin() (Updating an offer in posthook for offer list with other offer at same bin as taken but where new offer has varying closeness to taken offer - Case: Existing bin))
+///@dev The difference is just above 3000, so we add that and round up to get 90000.
+///@dev This is then used in MangroveJs.s.sol.
+
+// self or dual below density.
+
+//TODO test where dual is retracted to verify it is not more expensive.
+// dead dual, repost self, and make dual live
+// dead dual, repost self, but self and dual below density
+
+////// AaveKandel's most expensive case it 757869 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:AaveKandelGasreqBaseTest_Polygon_WETH_DAI:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both())
+
 abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   GeometricKandel internal kandel;
 
@@ -52,6 +75,9 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
     TransferLib.approveToken(base, address(mgv), type(uint).max);
     TransferLib.approveToken(quote, address(mgv), type(uint).max);
     mgv.marketOrderByTick(olKey, Tick.wrap(MAX_TICK), 0.5 ether, true);
+
+    // Set gasprice a bit higher to cause provision events during offer update
+    setGasprice(mgv.global().gasprice() + 1);
   }
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
@@ -107,7 +133,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both_setGasprice()
     public
   {
-    mgv.setGasprice(1);
+    setGasprice(mgv.global().gasprice());
     test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list(olKey, false, 0.25 ether, true, true);
     printDescription(
       " - Case: base/quote gasreq for taking offer repost self and dual to now empty book + setGasPrice prior"
@@ -141,7 +167,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   ///@notice fail to repost and update due to high gasprice, remember to add delta for hotness of gasprice. Note: Dual keeps being live as update fails it keeps old values.
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both_fails_due_to_gasprice(
   ) public {
-    mgv.setGasprice(2 ** 26 - 1);
+    setGasprice(2 ** 26 - 1);
     expectFrom(address(kandel));
     emit LogIncident(lo.hash(), 1, "Kandel/updateOfferFailed", "mgv/insufficientProvision");
     expectFrom(address(kandel));
@@ -155,7 +181,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   ///@notice fail to repost and update due to high gasprice, remember to add delta for hotness of gasprice. Note: Dual keeps being live as update fails it keeps old values.
   function test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both_fails_due_to_gasprice(
   ) public {
-    mgv.setGasprice(2 ** 26 - 1);
+    setGasprice(2 ** 26 - 1);
     expectFrom(address(kandel));
     emit LogIncident(olKey.hash(), 1, "Kandel/updateOfferFailed", "mgv/insufficientProvision");
     expectFrom(address(kandel));
@@ -185,12 +211,6 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
       " - Case: quote/base gasreq for taking offer which fails to deliver and thus repost, leaves dual as is"
     );
   }
-
-  // self or dual below density.
-
-  //TODO test where dual is retracted to verify it is not more expensive.
-  // dead dual, repost self, and make dual live
-  // dead dual, repost self, but self and dual below density
 }
 
 abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
@@ -244,5 +264,14 @@ contract AaveKandelGasreqBaseTest_Polygon_WETH_DAI is AaveKandelGasreqBaseTest {
   function setUp() public override {
     super.setUpPolygon();
     this.setUpTokens("WETH", "DAI");
+  }
+}
+
+contract AaveKandelGasreqBaseTest_Generic_A_B is AaveKandelGasreqBaseTest {
+  function setUp() public override {
+    super.setUpGeneric();
+    address aave = address(new PoolAddressProviderMock(dynamic([address(base), address(quote)])));
+    fork.set("Aave", aave);
+    this.setUpTokens(options.base.symbol, options.quote.symbol);
   }
 }
