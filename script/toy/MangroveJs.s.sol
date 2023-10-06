@@ -5,16 +5,16 @@ import {MangroveDeployer} from "@mgv/script/core/deployers/MangroveDeployer.s.so
 
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
-import {MangroveOrderDeployer} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
-import {KandelSeederDeployer} from "mgv_strat_script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
-import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
+import {MangroveOrderDeployer} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+import {KandelSeederDeployer} from "@mgv-strats/script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
+import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "@mgv/test/lib/agents/TestMaker.sol";
 import {Mangrove} from "@mgv/src/core/Mangrove.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
 /* 
 This script prepares a local server for testing by mangrove.js.

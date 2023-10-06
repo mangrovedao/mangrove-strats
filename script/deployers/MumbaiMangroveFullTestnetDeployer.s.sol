@@ -7,20 +7,20 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 import {MumbaiMangroveDeployer} from "@mgv/script/core/deployers/MumbaiMangroveDeployer.s.sol";
 import {MumbaiMangroveOrderDeployer} from
-  "mgv_strat_script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
+  "@mgv-strats/script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
 import {
   MumbaiKandelSeederDeployer,
   KandelSeeder,
   AaveKandelSeeder
-} from "mgv_strat_script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
+} from "@mgv-strats/script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
 
 import {Market, ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
 import {
   ActivateMangroveOrder, MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
-import {KandelSower, IMangrove} from "mgv_strat_script/strategies/kandel/KandelSower.s.sol";
-import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
+import {KandelSower, IMangrove} from "@mgv-strats/script/strategies/kandel/KandelSower.s.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";

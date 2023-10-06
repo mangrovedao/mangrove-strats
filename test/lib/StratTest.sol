@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@mgv/test/lib/MangroveTest.sol";
-import "mgv_strat_src/strategies/utils/AccessControlled.sol";
+import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 contract StratTest is MangroveTest {
   function $(AccessControlled t) internal pure returns (address payable) {

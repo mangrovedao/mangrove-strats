@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPool.sol";
-import "mgv_strat_src/strategies/vendor/aave/v2/ILendingPoolAddressesProvider.sol";
-import "mgv_strat_src/strategies/vendor/aave/v2/IPriceOracleGetter.sol";
-import "mgv_strat_src/strategies/vendor/compound/Exponential.sol";
+import "@mgv-strats/src/strategies/vendor/aave/v2/ILendingPool.sol";
+import "@mgv-strats/src/strategies/vendor/aave/v2/ILendingPoolAddressesProvider.sol";
+import "@mgv-strats/src/strategies/vendor/aave/v2/IPriceOracleGetter.sol";
+import "@mgv-strats/src/strategies/vendor/compound/Exponential.sol";
 import {IERC20, MgvLib} from "@mgv/src/core/MgvLib.sol";
 
 contract AaveModule is Exponential {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {AavePooledRouter, IERC20} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AavePooledRouter, IERC20} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 ///@title  AavePooledRouter deployer

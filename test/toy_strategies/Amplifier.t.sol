@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import "@mgv/test/lib/forks/Polygon.sol";
-import "mgv_strat_src/toy_strategies/offer_maker/Amplifier.sol";
+import "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
 import {Local} from "@mgv/src/core/MgvLib.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import "mgv_strat_src/strategies/vendor/compound/ICompound.sol";
-import "mgv_strat_src/strategies/vendor/compound/Exponential.sol";
+import "@mgv-strats/src/strategies/vendor/compound/ICompound.sol";
+import "@mgv-strats/src/strategies/vendor/compound/Exponential.sol";
 import "@mgv/src/IMangrove.sol";
 import {IERC20, MgvLib} from "@mgv/src/core/MgvLib.sol";
 

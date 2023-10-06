@@ -4,16 +4,17 @@ pragma solidity ^0.8.13;
 import {console} from "@mgv/forge-std/Script.sol";
 import {
   IMangrove, KandelSeeder, Kandel
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
+} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
-  AaveKandelSeeder, AaveKandel
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
+  AaveKandelSeeder,
+  AaveKandel
+} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
-  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
-import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+  "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
+import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**

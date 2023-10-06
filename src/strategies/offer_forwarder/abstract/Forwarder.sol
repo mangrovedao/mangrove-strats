@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {IForwarder} from "mgv_strat_src/strategies/interfaces/IForwarder.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {IForwarder} from "@mgv-strats/src/strategies/interfaces/IForwarder.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 

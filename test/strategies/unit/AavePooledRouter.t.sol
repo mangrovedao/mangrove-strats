@@ -2,10 +2,10 @@
 pragma solidity ^0.8.10;
 
 import {OfferLogicTest} from "./OfferLogic.t.sol";
-import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import "@mgv/lib/Debug.sol";

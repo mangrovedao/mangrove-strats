@@ -5,7 +5,7 @@ import {MangroveDeployer} from "@mgv/script/core/deployers/MangroveDeployer.s.so
 import {
   MangroveOrderDeployer,
   MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 
 import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
 

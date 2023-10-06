@@ -11,11 +11,11 @@ import {Mangrove} from "@mgv/src/core/Mangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {MgvOracle} from "@mgv/src/periphery/MgvOracle.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {
   MangroveOrderDeployer,
   MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 
 /**
  * Base test suite for [Chain]MangroveOrderDeployer scripts

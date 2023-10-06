@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {Deployer, SINGLETON_BROADCASTER} from "@mgv/script/lib/Deployer.sol";
-import {MangroveJsDeploy} from "mgv_strat_script/toy/MangroveJs.s.sol";
+import {MangroveJsDeploy} from "@mgv-strats/script/toy/MangroveJs.s.sol";
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import "@mgv/forge-std/console.sol";
 
 contract MangroveJsDeployTest is StratTest {

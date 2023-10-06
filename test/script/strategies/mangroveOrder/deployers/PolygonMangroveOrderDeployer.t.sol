@@ -8,7 +8,7 @@ import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
 import {
   PolygonMangroveOrderDeployer,
   MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/deployers/PolygonMangroveOrderDeployer.s.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/deployers/PolygonMangroveOrderDeployer.s.sol";
 
 contract PolygonMangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
   function setUp() public {

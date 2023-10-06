@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {OfferMaker} from "./OfferMaker.sol";
-import {AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 

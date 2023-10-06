@@ -6,7 +6,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
 import {
   ActivateMangroveOrder, MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader, Market} from "@mgv/src/periphery/MgvReader.sol";

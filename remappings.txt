@@ -5,7 +5,7 @@
 @mgv/forge-std/=node_modules/@mangrovedao/mangrove-core/lib/forge-std/src/
 ds-test/=node_modules/@mangrovedao/mangrove-core/lib/forge-std/lib/ds-test/src
 
-mgv_strat_src/=src/
-mgv_strat_lib/=lib/
-mgv_strat_test/=test/
-mgv_strat_script/=script/
+@mgv-strats/src/=src/
+@mgv-strats/lib/=lib/
+@mgv-strats/test/=test/
+@mgv-strats/script/=script/

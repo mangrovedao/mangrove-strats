@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
 
-import {IMangrove, KandelSeeder} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
-import {AaveKandelSeeder} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
+import {IMangrove, KandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
+import {AaveKandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {KandelSeederDeployer} from "./KandelSeederDeployer.s.sol";

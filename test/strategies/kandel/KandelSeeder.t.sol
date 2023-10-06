@@ -1,20 +1,20 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_strat_test/lib/StratTest.sol";
+import "@mgv-strats/test/lib/StratTest.sol";
 import {
   KandelSeeder,
   IMangrove,
   GeometricKandel
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
+} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
   AaveKandelSeeder,
   AavePooledRouter
-} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
+} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
-  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
+  "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract KandelSeederTest is StratTest {
   PinnedPolygonFork internal fork;

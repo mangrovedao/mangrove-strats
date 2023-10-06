@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 
-import {DirectTester} from "mgv_strat_src/toy_strategies/offer_maker/DirectTester.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";

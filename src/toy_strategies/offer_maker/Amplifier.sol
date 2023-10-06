@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
-import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 

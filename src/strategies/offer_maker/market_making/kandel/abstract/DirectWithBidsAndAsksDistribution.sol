@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
-import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {HasIndexedBidsAndAsks} from "./HasIndexedBidsAndAsks.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";

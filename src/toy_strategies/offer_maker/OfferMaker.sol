@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
+import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
-import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
