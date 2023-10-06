@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {DataTypes} from "mgv_strat_src/strategies/vendor/aave/v3/DataTypes.sol";
-import {MintableERC20BLWithDecimals} from "mgv_src/toy/MintableERC20BLWithDecimals.sol";
+import {MintableERC20BLWithDecimals} from "@mgv/src/toy/MintableERC20BLWithDecimals.sol";
 
 contract RewardsControllerIshMock {
   function claimAllRewards(address[] calldata assets, address to)

@@ -2,16 +2,16 @@
 pragma solidity ^0.8.10;
 
 import {KandelTest} from "./KandelTest.t.sol";
-import {Local, OLKey, Offer, MgvLib} from "mgv_src/core/MgvLib.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {Local, OLKey, Offer, MgvLib} from "@mgv/src/core/MgvLib.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {MAX_TICK} from "mgv_lib/core/Constants.sol";
+import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {console} from "forge-std/Test.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {console} from "@mgv/forge-std/Test.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 abstract contract CoreKandelGasTest is KandelTest {
   uint internal completeFill_;

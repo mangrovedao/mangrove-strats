@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "mgv_strat_test/lib/StratTest.sol";
-import "mgv_test/lib/forks/Polygon.sol";
+import "@mgv/test/lib/forks/Polygon.sol";
 import {ICreditDelegationToken, AaveV3Borrower} from "mgv_strat_src/strategies/integrations/AaveV3Borrower.sol";
 import {AaveCaller, console} from "mgv_strat_test/lib/agents/AaveCaller.sol";
 

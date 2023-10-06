@@ -1,15 +1,15 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
-import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
+import {ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
 import {
   ActivateMangroveOrder, MangroveOrder
 } from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvReader, Market} from "mgv_src/periphery/MgvReader.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvReader, Market} from "@mgv/src/periphery/MgvReader.sol";
 
 /**
  * This scripts:

@@ -13,7 +13,7 @@ import {
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
+import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract KandelSeederTest is StratTest {

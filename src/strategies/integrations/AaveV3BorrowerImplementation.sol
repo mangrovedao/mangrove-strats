@@ -10,10 +10,10 @@ import {ICreditDelegationToken} from "../vendor/aave/v3/ICreditDelegationToken.s
 import "../vendor/aave/v3/IPriceOracleGetter.sol";
 import {ReserveConfiguration as RC} from "../vendor/aave/v3/ReserveConfiguration.sol";
 
-import "mgv_src/IMangrove.sol";
+import "@mgv/src/IMangrove.sol";
 
-import {IERC20} from "mgv_lib/IERC20.sol";
-import "mgv_lib/TransferLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import "@mgv/lib/TransferLib.sol";
 
 contract AaveV3BorrowerImplementation {
   IPool public immutable POOL;

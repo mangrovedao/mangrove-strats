@@ -2,9 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {OfferMaker} from "./OfferMaker.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {MgvLib} from "mgv_src/core/MgvLib.sol";
+import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 
 contract DirectTester is OfferMaker {
   mapping(address => address) public reserves;

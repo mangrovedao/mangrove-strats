@@ -4,9 +4,9 @@ pragma solidity ^0.8.10;
 // Import the types we will be using below
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 //----------------
 

@@ -2,13 +2,13 @@
 pragma solidity ^0.8.10;
 
 import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 import {Direct} from "mgv_strat_src/strategies/offer_maker/abstract/Direct.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
   // router_ needs to bind to this contract

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {ToyENS} from "mgv_lib/ToyENS.sol";
+import {ToyENS} from "@mgv/lib/ToyENS.sol";
 
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
-import {MumbaiMangroveDeployer} from "mgv_script/core/deployers/MumbaiMangroveDeployer.s.sol";
+import {MumbaiMangroveDeployer} from "@mgv/script/core/deployers/MumbaiMangroveDeployer.s.sol";
 import {MumbaiMangroveOrderDeployer} from
   "mgv_strat_script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
 import {
@@ -14,7 +14,7 @@ import {
   AaveKandelSeeder
 } from "mgv_strat_script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
 
-import {Market, ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
+import {Market, ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
 import {
   ActivateMangroveOrder, MangroveOrder
 } from "mgv_strat_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
@@ -22,9 +22,9 @@ import {KandelSower, IMangrove} from "mgv_strat_script/strategies/kandel/KandelS
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
 
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
  * Deploy and configure a complete Mangrove testnet deployment:

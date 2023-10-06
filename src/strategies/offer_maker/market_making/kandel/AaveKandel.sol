@@ -2,14 +2,14 @@
 pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
 import {IATokenIsh} from "mgv_strat_src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds on AAVE to generate yield.
 contract AaveKandel is GeometricKandel {

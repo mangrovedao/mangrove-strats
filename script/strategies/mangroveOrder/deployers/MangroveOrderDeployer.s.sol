@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {Script, console} from "forge-std/Script.sol";
+import {Script, console} from "@mgv/forge-std/Script.sol";
 import {MangroveOrder, IERC20, IMangrove} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Deploys a MangroveOrder instance
     First test:

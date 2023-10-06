@@ -1,19 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvLib, OLKey, Offer, Global} from "mgv_src/core/MgvLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvLib, OLKey, Offer, Global} from "@mgv/src/core/MgvLib.sol";
 import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {
   CoreKandel, TransferLib
 } from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {console} from "forge-std/Test.sol";
+import {console} from "@mgv/forge-std/Test.sol";
 import {StratTest, MangroveTest} from "mgv_strat_test/lib/StratTest.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {toFixed} from "mgv_lib/Test2.sol";
-import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {toFixed} from "@mgv/lib/Test2.sol";
+import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 import {DirectWithBidsAndAsksDistribution} from
   "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
 

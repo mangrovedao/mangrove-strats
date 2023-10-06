@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "../interfaces/IOracle.sol";
 import "mgv_strat_src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract SimpleOracle is IOracle, AccessControlled {
   address reader; // if unset, anyone can read price

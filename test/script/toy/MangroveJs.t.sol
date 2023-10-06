@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {Deployer, SINGLETON_BROADCASTER} from "mgv_script/lib/Deployer.sol";
+import {Deployer, SINGLETON_BROADCASTER} from "@mgv/script/lib/Deployer.sol";
 import {MangroveJsDeploy} from "mgv_strat_script/toy/MangroveJs.s.sol";
 
 import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
-import "forge-std/console.sol";
+import "@mgv/forge-std/console.sol";
 
 contract MangroveJsDeployTest is StratTest {
   function test_runs(address chief, uint gasprice, uint gasmax, address gasbot, uint mintA, uint mintB) public {
