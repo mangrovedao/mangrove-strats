@@ -9,11 +9,9 @@ import {
   ITesterContract as ITester,
   IMangrove
 } from "mgv_strat_src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
-import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import "mgv_lib/Debug.sol";
 
-contract AbstractDispatchedRouter is OfferLogicTest {
+abstract contract AbstractDispatchedRouter is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;
 
   function setUp() public virtual override {
@@ -41,36 +39,8 @@ contract AbstractDispatchedRouter is OfferLogicTest {
     vm.stopPrank();
   }
 
-  function setupLiquidityRouting() internal virtual override {
-    vm.prank(deployer);
-    SimpleRouter router = new SimpleRouter();
-
-    vm.startPrank(owner);
-    offerDispatcher.setRoute(weth, owner, router);
-    offerDispatcher.setRoute(usdc, owner, router);
-    vm.stopPrank();
-  }
-
   function fundStrat() internal virtual override {
     deal($(weth), owner, 1 ether);
     deal($(usdc), owner, cash(usdc, 2000));
-  }
-
-  function test_keep_funds_after_new_offer() public {
-    uint startWethBalance = makerContract.tokenBalance(weth, owner);
-
-    vm.startPrank(owner);
-    // ask 2000 USDC for 1 weth
-    makerContract.newOfferByVolume{value: 0.1 ether}({
-      olKey: olKey,
-      wants: 2000 * 10 ** 6,
-      gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq(weth, owner)
-    });
-
-    vm.stopPrank();
-
-    uint endWethBalance = makerContract.tokenBalance(weth, owner);
-    assertEq(endWethBalance, startWethBalance, "unexpected movement");
   }
 }
