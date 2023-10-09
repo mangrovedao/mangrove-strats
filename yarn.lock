@@ -107,7 +107,7 @@ __metadata:
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
     "@mangrovedao/mangrove-core": next
-    "@types/node": ^20.2.6
+    "@types/node": ^20.8.3
     husky: ^8.0.3
     lint-staged: ^13.2.2
     micromatch: ^4.0.5
@@ -174,10 +174,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^20.2.6":
-  version: 20.2.6
-  resolution: "@types/node@npm:20.2.6"
-  checksum: 5222bceb188ca36947ac20b1fdbb39eabb599bb57d46d010182299a959ad38e3a6abc5167d81e685538b1aed1702e62df9a61ac473cafacd6a0a5f73bd627abf
+"@types/node@npm:^20.8.3":
+  version: 20.8.3
+  resolution: "@types/node@npm:20.8.3"
+  checksum: bfb88b341faeb19f8fd37306a3bf433721b876c6491d10fcb0b13fd26601fa36ee45113dd82b1e1c23e3c957dff5b99f81a16493cefa03abe797e41a2487a4f7
   languageName: node
   linkType: hard
 
