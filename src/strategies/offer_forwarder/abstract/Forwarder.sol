@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.20;
 
-import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {IForwarder} from "mgv_strat_src/strategies/interfaces/IForwarder.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
@@ -22,8 +22,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param weiBalance fraction of `this` balance on Mangrove that is assigned to `owner`.
   ///@dev `OwnerData` packs into one word.
   struct OwnerData {
-    address owner;
-    uint96 weiBalance;
+    address owner; // 160 bits
+    uint88 weiBalance; // 88 bits
+    bool usePermit2; // 8 bits
   }
 
   ///@notice Owner data mapping.
@@ -72,9 +73,15 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// @param offerId the offer identifier in the offer list.
   /// @param owner the address of the offer maker.
   /// @param leftover the fraction of `msg.value` that is not locked in the offer provision due to rounding error (see `_newOffer`).
-  function addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) internal {
-    ownerData[olKeyHash][offerId] = OwnerData({owner: owner, weiBalance: uint96(leftover)});
+  function addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover, bool usePermit2) internal {
+    ownerData[olKeyHash][offerId] = OwnerData({owner: owner, weiBalance: uint88(leftover), usePermit2: usePermit2});
     emit NewOwnedOffer(olKeyHash, offerId, owner);
+  }
+
+  ///@inheritdoc MangroveOffer
+  ///@dev approval strategy is set by offer owner when offer is created.
+  function __usePermit2__(MgvLib.SingleOrder calldata order) internal virtual override returns (bool) {
+    return ownerData[order.olKey.hash()][order.offerId].usePermit2;
   }
 
   /// @notice computes the maximum `gasprice` that can be covered by the amount of provision given in argument.
@@ -154,7 +161,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       uint offerId_
     ) {
       // assign `offerId_` to caller
-      addOwner(args.olKey.hash(), offerId_, owner, leftover);
+      addOwner(args.olKey.hash(), offerId_, owner, leftover, args.usePermit2);
       offerId = offerId_;
       status = NEW_OFFER_SUCCESS;
     } catch Error(string memory reason) {
@@ -193,13 +200,15 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
         (args.gasprice, vars.leftover) =
           deriveGasprice(args.gasreq, args.fund + locked_funds, vars.local.offer_gasbase());
 
-        // leftover can be safely cast to uint96 since it's a rounding error
+        // leftover can be safely cast to uint88 since it's a rounding error
         // adding `leftover` to potential previous value since it was not included in args.fund
-        ownerData[args.olKey.hash()][offerId].weiBalance += uint96(vars.leftover);
+        ownerData[args.olKey.hash()][offerId].weiBalance += uint88(vars.leftover);
       } else {
         // no funds are added so we keep old gasprice
         args.gasprice = vars.offerDetail.gasprice();
       }
+      // updating approval choice for offer
+      ownerData[args.olKey.hash()][offerId].usePermit2 = args.usePermit2;
       // if `args.fund` is too low, offer gasprice might be below mangrove's gasprice
       // Mangrove will then take its own gasprice for the offer and would possibly tap into `this` contract's balance to cover for the missing provision
       require(args.gasprice >= vars.global.gasprice(), "mgv/insufficientProvision");
@@ -266,13 +275,16 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@dev get outbound tokens from offer owner reserve
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    address owner = ownerOf(order.olKey.hash(), order.offerId);
+    OwnerData memory data = ownerData[order.olKey.hash()][order.offerId];
     // telling router one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
 
     ApprovalInfo memory approvalInfo;
-    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), owner, amount, true, approvalInfo);
+    if (data.usePermit2) {
+      approvalInfo.approvalType = ApprovalType.Permit2Approval;
+    }
+    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), data.owner, amount, true, approvalInfo);
     return amount - pulled; // this will make trade fail if `amount != pulled`
   }
 
@@ -299,7 +311,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
     // storing the portion of this contract's balance on Mangrove that should be attributed back to the failing offer's owner
     // those free WEIs can be retrieved by offer owner, by calling `retractOffer` with the `deprovision` flag.
-    semiBookOwnerData[order.offerId].weiBalance += uint96(approxReturnedProvision);
+    semiBookOwnerData[order.offerId].weiBalance += uint88(approxReturnedProvision);
   }
 
   ///@inheritdoc MangroveOffer
