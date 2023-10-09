@@ -26,7 +26,7 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, bool usePermit2)
     public
     payable
     override
@@ -40,7 +40,8 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
         gasreq: gasreq,
         gasprice: 0,
         fund: msg.value,
-        noRevert: false // propagates Mangrove's revert data in case of newOffer failure
+        noRevert: false, // propagates Mangrove's revert data in case of newOffer failure
+        usePermit2: usePermit2
       }),
       msg.sender
     );
@@ -52,12 +53,12 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   ///@param gives the amount of inbound tokens the offer maker gives for a complete fill
   ///@return offerId the Mangrove offer id.
   function newOffer(OLKey memory olKey, Tick tick, uint gives) external payable returns (uint offerId) {
-    return newOffer(olKey, tick, gives, offerGasreq(IERC20(olKey.outbound_tkn), msg.sender));
+    return newOffer(olKey, tick, gives, offerGasreq(IERC20(olKey.outbound_tkn), msg.sender), false);
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq, bool usePermit2)
     public
     payable
     override
@@ -74,6 +75,7 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
     args.gives = gives;
     args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
+    args.usePermit2 = usePermit2;
     // weiBalance is used to provision offer
     _updateOffer(args, offerId);
   }
@@ -83,10 +85,10 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   ///@param tick the tick
   ///@param gives the new amount of inbound tokens the offer maker gives for a complete fill
   ///@param offerId the id of the offer in the offer list.
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) public payable {
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, bool usePermit2) public payable {
     address owner = ownerOf(olKey.hash(), offerId);
     require(owner == msg.sender, "OfferForwarder/unauthorized");
-    updateOffer(olKey, tick, gives, offerId, offerGasreq(IERC20(olKey.outbound_tkn), msg.sender));
+    updateOffer(olKey, tick, gives, offerId, offerGasreq(IERC20(olKey.outbound_tkn), msg.sender), usePermit2);
   }
 
   ///@inheritdoc ILiquidityProvider

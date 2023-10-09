@@ -20,8 +20,8 @@ contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
     return router_.balanceOfReserve(token, owner);
   }
 
-  function internal_addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) external {
-    addOwner(olKeyHash, offerId, owner, leftover);
+  function internal_addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover, bool usePermit2) external {
+    addOwner(olKeyHash, offerId, owner, leftover, usePermit2);
   }
 
   function internal__put__(uint amount, MgvLib.SingleOrder calldata order) external returns (uint) {
@@ -39,17 +39,20 @@ contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
     return __posthookFallback__(order, result);
   }
 
-  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq, bool usePermit2)
     external
     payable
     returns (uint offerId)
   {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
-    return newOffer(olKey, tick, gives, gasreq);
+    return newOffer(olKey, tick, gives, gasreq, usePermit2);
   }
 
-  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq, bool usePermit2)
+    external
+    payable
+  {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
-    updateOffer(olKey, tick, gives, offerId, gasreq);
+    updateOffer(olKey, tick, gives, offerId, gasreq, usePermit2);
   }
 }

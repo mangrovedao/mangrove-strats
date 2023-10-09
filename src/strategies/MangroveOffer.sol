@@ -7,6 +7,7 @@ import {MgvLib, IERC20, OLKey, OfferDetail} from "mgv_src/core/MgvLib.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
@@ -261,6 +262,12 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     order; // we leave the provision on Mangrove
   }
 
+  ///@notice hook that can be used to override default approval mode for Direct strats
+  ///@param order the taker order that triggered the current makerExecute
+  ///@return usePermit2 if order.offer is using permit2 approval
+  function __usePermit2__(MgvLib.SingleOrder calldata order) internal virtual returns (bool usePermit2) { // deliberately void to that approval default is ERC20 approval
+  }
+
   ///@notice Post-hook that implements default behavior when Taker Order's execution succeeded.
   ///@param order is a recall of the taker order that is at the origin of the current trade.
   ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the list.
@@ -291,7 +298,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
         gasreq: order.offerDetail.gasreq(),
         gasprice: order.offerDetail.gasprice(),
         noRevert: true,
-        fund: 0
+        fund: 0,
+        usePermit2: __usePermit2__(order)
       }),
       order.offerId
     );

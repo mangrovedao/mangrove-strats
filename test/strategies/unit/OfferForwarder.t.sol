@@ -62,7 +62,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     uint derived_gp = mgv.offerDetails(olKey, offerId).gasprice();
     uint gasbase = mgv.offerDetails(olKey, offerId).offer_gasbase();
@@ -80,7 +81,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     uint old_gasprice = mgv.offerDetails(olKey, offerId).gasprice();
     vm.prank(owner);
@@ -89,7 +91,8 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     assertTrue(old_gasprice < mgv.offerDetails(olKey, offerId).gasprice(), "Gasprice not updated as expected");
   }
@@ -102,7 +105,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     result.mgvData = "anythingButSuccess";
     result.makerData = "failReason";
@@ -126,7 +130,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     // revoking Mangrove's approvals to make `offerId` fail
     vm.prank(deployer);
@@ -155,7 +160,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Invalid maker ownership relation");
   }
@@ -171,7 +177,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     assertEq(next_id, offerId, "Unexpected offer id");
   }
@@ -185,7 +192,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: gasreq
+      gasreq: gasreq,
+      usePermit2: usePermit2
     });
   }
 
@@ -195,7 +203,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
@@ -207,7 +216,8 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     detail = mgv.offerDetails(olKey, offerId);
@@ -220,7 +230,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
@@ -231,7 +242,8 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     detail = mgv.offerDetails(olKey, offerId);
@@ -244,7 +256,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     address new_maker = freshAddress("New maker");
@@ -254,7 +267,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     vm.stopPrank();
     assertEq(forwarder.ownerOf(olKey.hash(), offerId_), new_maker, "Incorrect maker");
@@ -268,7 +282,8 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: makerContract.offerGasreq(),
+      usePermit2: usePermit2
     });
     usdc.approve($(makerContract.router()), 0);
     vm.stopPrank();

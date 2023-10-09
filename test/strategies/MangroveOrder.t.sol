@@ -229,7 +229,8 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
       tick: tickFromPrice_e18(MID_PRICE - 1e18),
       restingOrder: false,
       expiryDate: 0, //NA
-      offerId: 0
+      offerId: 0,
+      approvalInfo: approvalInfo
     });
   }
 
@@ -273,7 +274,8 @@ contract MangroveOrder_Test is StratTest, Permit2Helpers {
       fillVolume: fillVolume,
       restingOrder: false,
       expiryDate: 0, //NA
-      offerId: 0
+      offerId: 0,
+      approvalInfo: approvalInfo
     });
   }
 

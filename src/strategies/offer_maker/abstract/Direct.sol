@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
 import {IOfferLogic} from "mgv_strat_src/strategies/interfaces/IOfferLogic.sol";
+import {ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
@@ -40,10 +40,11 @@ abstract contract Direct is MangroveOffer {
   /// @param args Function arguments stored in memory.
   /// @return offerId Identifier of the newly created offer. Returns 0 if offer creation was rejected by Mangrove and `args.noRevert` is set to `true`.
   /// @return status NEW_OFFER_SUCCESS if the offer was successfully posted on Mangrove. Returns Mangrove's revert reason otherwise.
-  function _newOffer(OfferArgs memory args) internal returns (uint offerId, bytes32 status) {
+  function _newOffer(OfferArgs memory args) internal virtual returns (uint offerId, bytes32 status) {
     try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice) returns (
       uint offerId_
     ) {
+      require(!args.usePermit2, "Direct/Permit2RequiresClassExtension");
       offerId = offerId_;
       status = NEW_OFFER_SUCCESS;
     } catch Error(string memory reason) {
@@ -53,7 +54,8 @@ abstract contract Direct is MangroveOffer {
   }
 
   ///@inheritdoc MangroveOffer
-  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 status) {
+  function _updateOffer(OfferArgs memory args, uint offerId) internal virtual override returns (bytes32 status) {
+    require(!args.usePermit2, "Direct/Permit2RequiresClassExtension");
     try MGV.updateOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId)
     {
       status = REPOST_SUCCESS;
@@ -103,8 +105,11 @@ abstract contract Direct is MangroveOffer {
     if (router_ == NO_ROUTER) {
       return amount_;
     } else {
-      // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
       ApprovalInfo memory approvalInfo;
+      if (__usePermit2__(order)) {
+        approvalInfo.approvalType = ApprovalType.Permit2Approval;
+      }
+      // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
       uint pulled =
         router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this), approvalInfo);
       return pulled >= amount_ ? 0 : amount_ - pulled;

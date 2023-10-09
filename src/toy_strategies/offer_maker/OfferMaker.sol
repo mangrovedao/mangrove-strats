@@ -24,7 +24,7 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
   }
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, bool usePermit2)
     public
     payable
     override
@@ -32,29 +32,47 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     returns (uint offerId)
   {
     (offerId,) = _newOffer(
-      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false})
+      OfferArgs({
+        olKey: olKey,
+        tick: tick,
+        gives: gives,
+        gasreq: gasreq,
+        gasprice: 0,
+        fund: msg.value,
+        noRevert: false,
+        usePermit2: usePermit2
+      })
     );
   }
 
   function newOffer(OLKey memory olKey, Tick tick, uint gives) external payable onlyAdmin returns (uint offerId) {
-    return newOffer(olKey, tick, gives, offerGasreq());
+    return newOffer(olKey, tick, gives, offerGasreq(), false);
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq, bool usePermit2)
     public
     payable
     override
     onlyAdmin
   {
     _updateOffer(
-      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false}),
+      OfferArgs({
+        olKey: olKey,
+        tick: tick,
+        gives: gives,
+        gasreq: gasreq,
+        gasprice: 0,
+        fund: msg.value,
+        noRevert: false,
+        usePermit2: usePermit2
+      }),
       offerId
     );
   }
 
   function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) external payable onlyAdmin {
-    updateOffer(olKey, tick, gives, offerId, offerGasreq());
+    updateOffer(olKey, tick, gives, offerId, offerGasreq(), false);
   }
 
   ///@inheritdoc ILiquidityProvider
@@ -73,18 +91,21 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     }
   }
 
-  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq, bool usePermit2)
     external
     payable
     returns (uint offerId)
   {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
-    return newOffer(olKey, tick, gives, gasreq);
+    return newOffer(olKey, tick, gives, gasreq, usePermit2);
   }
 
-  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq, bool usePermit2)
+    external
+    payable
+  {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
-    updateOffer(olKey, tick, gives, offerId, gasreq);
+    updateOffer(olKey, tick, gives, offerId, gasreq, usePermit2);
   }
 
   function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {

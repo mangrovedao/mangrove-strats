@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {AccessControlled} from "mgv_strat_src/strategies/utils/AccessControlled.sol";
 import {IERC20} from "mgv_lib/IERC20.sol";
-import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
+import {ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.

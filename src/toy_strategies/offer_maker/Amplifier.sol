@@ -90,7 +90,8 @@ contract Amplifier is Direct {
         gasreq: offerGasreq(),
         gasprice: 0,
         fund: msg.value,
-        noRevert: false
+        noRevert: false,
+        usePermit2: false
       })
     );
     // no need to fund this second call for provision
@@ -105,7 +106,8 @@ contract Amplifier is Direct {
         gasreq: offerGasreq(),
         gasprice: 0,
         fund: 0,
-        noRevert: false
+        noRevert: false,
+        usePermit2: false
       })
     );
 
@@ -154,7 +156,8 @@ contract Amplifier is Direct {
           gasreq: alt_detail.gasreq(),
           gasprice: 0,
           fund: 0,
-          noRevert: true
+          noRevert: true,
+          usePermit2: false
         }),
         alt_offerId
       );

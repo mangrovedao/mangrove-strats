@@ -14,7 +14,10 @@ interface ILiquidityProvider is IOfferLogic {
   ///@param gives the amount of inbound tokens the offer maker gives for a complete fill
   ///@param gasreq the gas required by the offer logic
   ///@return offerId the Mangrove offer id.
-  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq) external payable returns (uint offerId);
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, bool usePermit2)
+    external
+    payable
+    returns (uint offerId);
 
   ///@notice updates an offer existing on Mangrove (not necessarily live) with an override for gas requirement
   ///@param olKey the offer list key.
@@ -22,7 +25,9 @@ interface ILiquidityProvider is IOfferLogic {
   ///@param gives the new amount of inbound tokens the offer maker gives for a complete fill
   ///@param offerId the id of the offer in the offer list.
   ///@param gasreq the gas required by the offer logic
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq) external payable;
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq, bool usePermit2)
+    external
+    payable;
 
   ///@notice Retracts an offer from an Offer List of Mangrove.
   ///@param olKey the offer list key.

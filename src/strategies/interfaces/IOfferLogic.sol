@@ -4,6 +4,7 @@ pragma solidity >=0.8.10;
 import {IMangrove} from "mgv_src/IMangrove.sol";
 import {IERC20, IMaker, OLKey} from "mgv_src/core/MgvLib.sol";
 import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {ApprovalTransferLib, ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
 
 ///@title IOfferLogic interface for offer management
@@ -86,6 +87,7 @@ interface IOfferLogic is IMaker {
     uint gasprice;
     uint fund;
     bool noRevert;
+    bool usePermit2;
   }
 
   /// @notice Contract's router getter.
