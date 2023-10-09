@@ -30,7 +30,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
   //--------------
 
   ///@inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, bool usePermit2)
     public
     payable /* the function is payable to allow us to provision an offer*/
     onlyAdmin /* only the admin of this contract is allowed to post offers using this contract*/
@@ -44,20 +44,30 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
         gasreq: gasreq,
         gasprice: 0,
         fund: msg.value, // WEIs in that are used to provision the offer.
-        noRevert: false // we want to revert on error
+        noRevert: false, // we want to revert on error
+        usePermit2: usePermit2
       })
     );
   }
 
   ///@inheritdoc ILiquidityProvider
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq, bool usePermit2)
     public
     payable
     override
     adminOrCaller(address(MGV))
   {
     _updateOffer(
-      OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false}),
+      OfferArgs({
+        olKey: olKey,
+        tick: tick,
+        gives: gives,
+        gasreq: gasreq,
+        gasprice: 0,
+        fund: msg.value,
+        noRevert: false,
+        usePermit2: usePermit2
+      }),
       offerId
     );
   }

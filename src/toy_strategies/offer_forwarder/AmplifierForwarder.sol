@@ -92,7 +92,8 @@ contract AmplifierForwarder is Forwarder {
         gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
         gasprice: 0, // ignored
         fund: args.fund1,
-        noRevert: false
+        noRevert: false,
+        usePermit2: false
       }),
       msg.sender
     );
@@ -110,7 +111,8 @@ contract AmplifierForwarder is Forwarder {
         gasreq: offerGasreq(),
         gasprice: 0, // ignored
         fund: args.fund2,
-        noRevert: false
+        noRevert: false,
+        usePermit2: false
       }),
       msg.sender
     );
@@ -169,7 +171,8 @@ contract AmplifierForwarder is Forwarder {
           gasreq: gasreq,
           gasprice: 0, // ignored
           noRevert: true,
-          fund: 0
+          fund: 0,
+          usePermit2: false
         }),
         alt_offerId
       );

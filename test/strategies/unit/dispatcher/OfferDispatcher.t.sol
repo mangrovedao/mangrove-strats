@@ -65,7 +65,8 @@ contract OfferDispatcherTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq(weth, owner)
+      gasreq: makerContract.offerGasreq(weth, owner),
+      usePermit2: usePermit2
     });
 
     vm.stopPrank();

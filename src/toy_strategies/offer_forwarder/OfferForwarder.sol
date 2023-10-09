@@ -18,7 +18,7 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
   }
 
   /// @inheritdoc ILiquidityProvider
-  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, bool usePermit2)
     public
     payable
     override
@@ -32,19 +32,20 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
         gasreq: gasreq,
         gasprice: 0,
         fund: msg.value,
-        noRevert: false // propagates Mangrove's revert data in case of newOffer failure
+        noRevert: false, // propagates Mangrove's revert data in case of newOffer failure
+        usePermit2: usePermit2
       }),
       msg.sender
     );
   }
 
-  function newOffer(OLKey memory olKey, Tick tick, uint gives) public payable returns (uint offerId) {
-    return newOffer(olKey, tick, gives, offerGasreq());
+  function newOffer(OLKey memory olKey, Tick tick, uint gives, bool usePermit2) public payable returns (uint offerId) {
+    return newOffer(olKey, tick, gives, offerGasreq(), usePermit2);
   }
 
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq, bool usePermit2)
     public
     payable
     override
@@ -61,14 +62,15 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     args.gives = gives;
     args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
+    args.usePermit2 = usePermit2;
     // weiBalance is used to provision offer
     _updateOffer(args, offerId);
   }
 
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) public payable {
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, bool usePermit2) public payable {
     address owner = ownerOf(olKey.hash(), offerId);
     require(owner == msg.sender, "OfferForwarder/unauthorized");
-    updateOffer(olKey, tick, gives, offerId, offerGasreq());
+    updateOffer(olKey, tick, gives, offerId, offerGasreq(), usePermit2);
   }
 
   ///@inheritdoc ILiquidityProvider
