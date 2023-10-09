@@ -13,7 +13,7 @@ import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatch
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 import "mgv_lib/Debug.sol";
 
-contract OfferDispatcherTest is OfferLogicTest {
+contract AbstractDispatchedRouter is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;
 
   function setUp() public virtual override {

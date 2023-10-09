@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.18;
 
-import {OfferDispatcherTest, OfferLogicTest, IERC20, TestToken, console} from "./OfferDispatcher.t.sol";
+import {AbstractDispatchedRouter, OfferLogicTest, IERC20, TestToken, console} from "./AbstractDispatchedRouter.sol";
 import {
   AavePrivateRouter,
   DataTypes,
@@ -17,7 +17,7 @@ import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
-contract AaveDispatchedRouterTest is OfferDispatcherTest {
+contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;
   IERC20 internal dai;
 
