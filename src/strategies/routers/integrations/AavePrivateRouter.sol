@@ -8,7 +8,7 @@ import {IERC20} from "mgv_lib/IERC20.sol";
 
 ///@title Router for smart offers that borrow promised assets on AAVE
 ///@dev router assumes all bound makers share the same liquidity
-///@dev if the same maker has many smart offers that are succeptible to be consumed in the same market order, it can set `BUFFER_SIZE` to a non zero value to increase gas efficiency (see below)
+///@dev upon pull, router sends local tokens first and then tries to borrow missing liquidity from the pool. It will not try to withdraw funds from the pool.
 
 contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@notice Logs unexpected throws from AAVE
@@ -17,91 +17,61 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   ///@param aaveReason the aave error string cast to a bytes32. Interpret the string by reading `src/strategies/vendor/aave/v3/Errors.sol`
   event LogAaveIncident(address indexed maker, address indexed asset, bytes32 aaveReason);
 
-  /// @notice portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow` function
-  /// @notice expressed in percent of the total borrow capacity of this router
-  /// @dev setting BUFFER_SIZE to 0 will make this router borrow only what is missing from the pool
-  /// @dev setting BUFFER_SIZE to 100 will make this router borrow its whole credit line from the Pool. As a consequence this router's position can be liquidated on the next block should the router fail to repay its debt at the end of the taker's order. This could happen if the taker consummes an offer of its own during the m.o and manages to put the pool into a state where it refuses repaying (should only be possible if the reserve is paused or inactive).
-  /// (so as not to call `borrow` multiple times if the router is to be called several times in the same market order)
-  uint internal immutable BUFFER_SIZE;
-
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRate interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
   ///@param overhead is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  ///@param buffer_size portion of the outbound token credit line that is borrowed from the pool when this router calls the `borrow`.
   ///@dev `msg.sender` will be admin of this router
-  constructor(address addressesProvider, uint interestRate, uint overhead, uint buffer_size)
+  constructor(address addressesProvider, uint interestRate, uint overhead)
     AaveMemoizer(addressesProvider, interestRate)
     MonoRouter(overhead)
-  {
-    require(buffer_size <= 100, "PrivateRouter/InvalidBufferSize");
-    BUFFER_SIZE = buffer_size;
-  }
+  {}
 
   ///@notice Deposit funds on this router from the calling maker contract
   ///@dev no transfer to AAVE is done at this moment.
   ///@inheritdoc AbstractRouter
   function __push__(IERC20 token, address, uint amount) internal override returns (uint) {
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "AavePrivateRouter/pushFailed");
-    return amount;
+    Memoizer memory m;
+    (uint repaid, bytes32 reason) = repayIfAnyDebt(token, amount, m, true);
+    if (reason != bytes32(0)) {
+      emit LogAaveIncident(msg.sender, address(token), reason);
+    }
+    return amount - repaid;
   }
 
-  ///@notice Moves assets to pool. If asset has any debt it repays the debt before depositing the residual
+  ///@notice push and supplies token on the pool, repaying any ongoing debt first
+  ///@param token the asset one wishes to supply
+  ///@param amount of available token from `msg.sender`
+  function pushAndSupply(IERC20 token, uint amount) external onlyBound {
+    uint pushed = __push__(token, address(this), amount);
+    _supply(token, pushed, address(this), false);
+  }
+
+  ///@notice supplies local balance of tokens on the pool
+  ///@param token the asset one wishes to supply
+  function supply(IERC20 token) external onlyAdmin {
+    _supply(token, token.balanceOf(address(this)), address(this), false);
+  }
+
+  ///@notice If asset has any debt it repays it and leaves any surplus on `this` balance
   ///@param token the asset to push to the pool
   ///@param amount the amount of asset
   ///@param m the memoizer
   ///@param noRevert whether the function should revert with AAVE or return the revert message
+  ///@return repaid the fraction of amount that was used to repay debt
   ///@return reason in case AAVE reverts (cast to a bytes32)
-  function _toPool(IERC20 token, uint amount, Memoizer memory m, bool noRevert) internal returns (bytes32 reason) {
+  function repayIfAnyDebt(IERC20 token, uint amount, Memoizer memory m, bool noRevert)
+    internal
+    returns (uint repaid, bytes32 reason)
+  {
     if (amount == 0) {
-      return bytes32(0);
+      return (0, bytes32(0));
     }
     if (debtBalanceOf(token, m, address(this)) > 0) {
-      uint repaid;
       (repaid, reason) = _repay(token, amount, address(this), noRevert);
-      if (reason != bytes32(0)) {
-        return reason;
-      }
-      amount -= repaid;
     }
-    reason = _supply(token, amount, address(this), noRevert);
-  }
-
-  ///@notice deposits router-local balance of an asset on the AAVE pool
-  ///@param token the address of the asset
-  function flushBuffer(IERC20 token) external onlyBound {
-    Memoizer memory m;
-    _toPool(token, balanceOf(token, m, address(this)), m, false);
-  }
-
-  ///@notice pushes each given token from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
-  ///@param token0 the first token to deposit
-  ///@param amount0 the amount of `token0` to deposit
-  ///@param token1 the second token to deposit, might by IERC20(address(0)) when making a single token deposit
-  ///@param amount1 the amount of `token1` to deposit
-  ///@dev an offer logic should call this instead of `flush` when it is the last posthook to be executed
-  ///@dev this can be determined by checking during __lastLook__ whether the logic will trigger a withdraw from AAVE (this is the case if router's balance of token is empty)
-  ///@dev this function is also to be used when user deposits funds on the maker contract
-  ///@dev if repay/supply should fail, funds are left on the router's balance, therefore bound maker must implement a public withdraw function to recover these funds if needed
-  function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1) external onlyBound {
-    require(TransferLib.transferTokenFrom(token0, msg.sender, address(this), amount0), "AavePrivateRouter/pushFailed");
-    require(TransferLib.transferTokenFrom(token1, msg.sender, address(this), amount1), "AavePrivateRouter/pushFailed");
-    Memoizer memory m0;
-    Memoizer memory m1;
-
-    bytes32 reason;
-    if (address(token0) != address(0)) {
-      reason = _toPool(token0, balanceOf(token0, m0, address(this)), m0, true);
-      if (reason != bytes32(0)) {
-        emit LogAaveIncident(msg.sender, address(token0), reason);
-      }
-    }
-    if (address(token1) != address(0)) {
-      reason = _toPool(token1, balanceOf(token1, m1, address(this)), m1, true);
-      if (reason != bytes32(0)) {
-        emit LogAaveIncident(msg.sender, address(token1), reason);
-      }
-    }
+    require(noRevert || reason == bytes32(0));
   }
 
   ///@notice queries the reserve data of a particular token on Aave
@@ -119,49 +89,22 @@ contract AavePrivateRouter is AaveMemoizer, MonoRouter {
   /// Note we do not borrow the full capacity as it would put this contract is a liquidatable state. A malicious offer in the same market order could prevent the posthook to repay the debt via a possible manipulation of the pool's state using flashloans.
   /// * if pull is `strict` then only amount is sent to the calling maker contract, otherwise the totality of pulled funds are sent to maker
   ///@inheritdoc AbstractRouter
-  function __pull__(IERC20 token, address, uint amount, bool strict, ApprovalInfo calldata /*approvalInfo*/ )
-    internal
-    override
-    returns (uint pulled)
-  {
+  function __pull__(
+    IERC20 token,
+    address,
+    uint amount,
+    bool, /*always strict*/
+    ApprovalInfo calldata /*standard erc20 approval*/
+  ) internal override returns (uint pulled) {
     Memoizer memory m;
     // invariant `localBalance === token.balanceOf(this)`
     // `missing === max(0,localBalance - amount)`
-    uint localBalance = balanceOf(token, m, address(this));
-    uint missing = amount > localBalance ? amount - localBalance : 0;
-    if (missing > 0) {
-      // there is not enough on the router's balance to pay the taker
-      // one needs to withdraw and/or borrow on the pool
-      (uint maxWithdraw, uint maxBorrow) = maxGettableUnderlying(token, m, address(this), missing);
-      // trying to withdraw if asset is available on pool
-      if (maxWithdraw > 0) {
-        uint withdrawBuffer = (BUFFER_SIZE * maxWithdraw) / 100;
-        // withdrawing max(buffer,min(missing,maxWithdraw)`
-        uint toWithdraw = withdrawBuffer > missing ? withdrawBuffer : (maxWithdraw > missing ? missing : maxWithdraw);
-        (uint withdrawn, bytes32 reason) = _redeem(token, toWithdraw, address(this), true);
-        if (reason == bytes32(0)) {
-          // success
-          localBalance += withdrawn;
-          missing = localBalance > amount ? 0 : amount - localBalance;
-        } else {
-          // failed to withdraw possibly because asset is used as collateral for borrow or pool is dry
-          emit LogAaveIncident(msg.sender, address(token), reason);
-        }
-      }
-      // testing whether one still misses funds to pay the taker and if so, whether one can borrow what's missing
-      if (missing > 0) {
-        // because we might already have pulled some tokens from the pool, the code below reverts if anything goes wrong
-        uint borrowBuffer = (BUFFER_SIZE * maxBorrow) / 100;
-        // if buffer < missing, we still borrow missing from the pool in order not to make offer fail if possible
-        uint toBorrow = borrowBuffer > missing ? borrowBuffer : missing;
-
-        require(toBorrow <= maxBorrow, "AavePrivateRouter/NotEnoughFundsOnPool");
-        // try to borrow and revert if Aave throws
-        _borrow(token, toBorrow, address(this), false);
-        localBalance += toBorrow;
-      }
+    pulled = balanceOf(token, m, address(this));
+    if (pulled < amount) {
+      // we then try to borrow what's missing
+      bytes32 reason = _borrow(token, amount - pulled, address(this), true);
+      pulled += reason == bytes32(0) ? amount - pulled : pulled;
     }
-    pulled = strict ? amount : localBalance;
     require(TransferLib.transferToken(token, msg.sender, pulled), "AavePrivateRouter/pullFailed");
   }
 

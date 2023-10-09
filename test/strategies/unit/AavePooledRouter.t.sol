@@ -17,7 +17,7 @@ contract AavePooledRouterTest is AbstractRouterTest {
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 486310;
+  uint internal constant GASREQ = 488126;
 
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
