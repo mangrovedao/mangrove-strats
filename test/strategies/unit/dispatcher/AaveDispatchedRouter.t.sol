@@ -209,10 +209,12 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
 
     setCreditLine(owner, weth, 1);
 
+    // expect to fail
     performTrade(false);
 
     setCreditLine(owner, weth, 100);
 
+    // should work again
     performTrade(true);
   }
 }
