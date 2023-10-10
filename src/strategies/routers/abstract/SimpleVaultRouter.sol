@@ -19,6 +19,14 @@ abstract contract SimpleVaultRouter is MonoRouter {
   /// @return vaultToken The ERC20 token to represent the vault shares
   function __vault_token__(IERC20 token) internal view virtual returns (address);
 
+  /// @notice Gets the ERC20 token to represent the vault shares
+  /// @dev if the token is not supported, returns address(0)
+  /// @param token The ERC20 token to get the vault token for
+  /// @return vaultToken The ERC20 token to represent the vault shares
+  function vaultToken(IERC20 token) external view returns (address) {
+    return __vault_token__(token);
+  }
+
   /// @notice deposit `amount` of `token` into the vault to `onBehalf`
   /// @dev if the token is not supported, throws
   /// * If `onBehalf` option is not supported by underlying protocol, this function transfers the tokens to `onBehalf` after vault shares are minted
@@ -43,11 +51,11 @@ abstract contract SimpleVaultRouter is MonoRouter {
     override
     returns (uint pulled)
   {
-    address vaultToken = __vault_token__(token);
-    require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
+    address vault_token = __vault_token__(token);
+    require(vault_token != address(0), "SimpleVaultRouter/InvalidToken");
 
     require(
-      TransferLib.transferTokenFrom(IERC20(vaultToken), reserveId, address(this), amount),
+      TransferLib.transferTokenFrom(IERC20(vault_token), reserveId, address(this), amount),
       "SimpleVaultRouter/PullFailed"
     );
     return __withdraw__(token, amount, msg.sender);
@@ -62,8 +70,8 @@ abstract contract SimpleVaultRouter is MonoRouter {
 
   /// @inheritdoc AbstractRouter
   function __checkList__(IERC20 token, address reserveId, address) internal view virtual override {
-    address vaultToken = __vault_token__(token);
-    require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
-    require(IERC20(vaultToken).allowance(reserveId, address(this)) > 0, "SimpleVaultRouter/NotApproved");
+    address vault_token = __vault_token__(token);
+    require(vault_token != address(0), "SimpleVaultRouter/InvalidToken");
+    require(IERC20(vault_token).allowance(reserveId, address(this)) > 0, "SimpleVaultRouter/NotApproved");
   }
 }
