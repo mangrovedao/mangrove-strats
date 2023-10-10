@@ -17,11 +17,11 @@ abstract contract SimpleVaultRouter is MonoRouter {
   /// @dev if the token is not supported, returns address(0)
   /// @param token The ERC20 token to get the vault token for
   /// @return vaultToken The ERC20 token to represent the vault shares
-  function __vault_token__(IERC20 token) internal view virtual returns (IERC20);
+  function __vault_token__(IERC20 token) internal view virtual returns (address);
 
   /// @notice deposit `amount` of `token` into the vault to `onBehalf`
   /// @dev if the token is not supported, throws
-  /// * If `onBehalf` option is not supported by underlying protocol, transfers the tokens to `onBehalf` after vault shares are minted
+  /// * If `onBehalf` option is not supported by underlying protocol, this function transfers the tokens to `onBehalf` after vault shares are minted
   /// @param token The ERC20 token to deposit
   /// @param amount The amount of `token` to deposit
   /// @param onBehalf The address to deposit the tokens to
@@ -29,10 +29,12 @@ abstract contract SimpleVaultRouter is MonoRouter {
 
   /// @notice withdraw `amount` of `token` from the vault
   /// @dev if the token is not supported, throws
+  /// * If `to` option is not supported by underlying protocol, this function transfers the tokens to `to` after withdrawn
   /// @param token The ERC20 token to withdraw
   /// @param amount The amount of `token` to withdraw
+  /// @param to The address to withdraw the tokens to
   /// @return withdrawn The amount of `token` withdrawn
-  function __withdraw__(IERC20 token, uint amount) internal virtual returns (uint);
+  function __withdraw__(IERC20 token, uint amount, address to) internal virtual returns (uint);
 
   /// @inheritdoc AbstractRouter
   function __pull__(IERC20 token, address reserveId, uint amount, bool, ApprovalInfo calldata)
@@ -41,11 +43,14 @@ abstract contract SimpleVaultRouter is MonoRouter {
     override
     returns (uint pulled)
   {
-    IERC20 vaultToken = __vault_token__(token);
-    require(vaultToken != IERC20(address(0)), "SimpleVaultRouter/InvalidToken");
+    address vaultToken = __vault_token__(token);
+    require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
 
-    require(TransferLib.transferTokenFrom(vaultToken, reserveId, address(this), amount), "SimpleVaultRouter/PullFailed");
-    return __withdraw__(token, amount);
+    require(
+      TransferLib.transferTokenFrom(IERC20(vaultToken), reserveId, address(this), amount),
+      "SimpleVaultRouter/PullFailed"
+    );
+    return __withdraw__(token, amount, msg.sender);
   }
 
   /// @inheritdoc AbstractRouter
@@ -57,8 +62,8 @@ abstract contract SimpleVaultRouter is MonoRouter {
 
   /// @inheritdoc AbstractRouter
   function __checkList__(IERC20 token, address reserveId, address) internal view virtual override {
-    IERC20 vaultToken = __vault_token__(token);
-    require(vaultToken != IERC20(address(0)), "SimpleVaultRouter/InvalidToken");
-    require(vaultToken.allowance(reserveId, address(this)) > 0, "SimpleVaultRouter/NotApproved");
+    address vaultToken = __vault_token__(token);
+    require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
+    require(IERC20(vaultToken).allowance(reserveId, address(this)) > 0, "SimpleVaultRouter/NotApproved");
   }
 }
