@@ -28,15 +28,13 @@ contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
     // deploying mangrove and opening WETH/USDC market.
     fork = new PolygonFork();
     super.setUp();
-
-    vm.prank(deployer);
   }
 
   function fundStrat() internal virtual override {
     super.fundStrat();
     vm.startPrank(owner);
     // approve and supply weth to stargate
-    usdc.approve(address(stargateRouter), type(uint).max);
+    usdc.approve(address(stargate), type(uint).max);
     stargate.addLiquidity(STARGATE_USDC_POOL_ID, cash(usdc, 2000), owner);
     vm.stopPrank();
   }

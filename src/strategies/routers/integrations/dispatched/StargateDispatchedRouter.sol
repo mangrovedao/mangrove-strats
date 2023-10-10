@@ -30,10 +30,11 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
 
   /// @inheritdoc SimpleVaultRouter
   function __vault_token__(IERC20 token) internal view virtual override returns (address vaultToken) {
-    address[] memory pools = stargateRouter.factory().allPools();
+    IFactory factory = stargateRouter.factory();
+    uint length = factory.allPoolsLength();
     // TODO: check if we want to add pool ids manually to save gas
-    for (uint i = 0; i < pools.length; i++) {
-      IPool pool = IPool(pools[i]);
+    for (uint i = 0; i < length; i++) {
+      IPool pool = IPool(factory.allPools(i));
       if (pool.token() == address(token)) {
         return address(pool);
       }
