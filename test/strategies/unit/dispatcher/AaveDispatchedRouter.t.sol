@@ -102,6 +102,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   function setCreditLine(address owner, IERC20 token, uint8 creditLine) internal {
     bytes4 sig = aaveRouter.setAaveCreditLine.selector;
     bytes memory data = abi.encode(creditLine);
+    vm.prank(owner);
     offerDispatcher.mutateSpecifics(sig, owner, token, data);
   }
 
@@ -182,13 +183,23 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     uint8 creditLine = getCreditLine(owner, weth);
     assertEq(creditLine, 100, "incorrect credit line");
 
-    vm.startPrank(owner);
     setCreditLine(owner, weth, 50);
     creditLine = getCreditLine(owner, weth);
     assertEq(creditLine, 50, "incorrect credit line");
 
     vm.expectRevert("AaveDispatchedRouter/InvalidCreditLineDecrease");
     setCreditLine(owner, weth, 101);
-    vm.stopPrank();
+  }
+
+  function test_can_withdraw_low_credit_line_no_debt() public {
+    setCreditLine(owner, weth, 1);
+    uint balOut = makerContract.tokenBalance(weth, owner);
+    uint balIn = makerContract.tokenBalance(usdc, owner);
+
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
   }
 }
