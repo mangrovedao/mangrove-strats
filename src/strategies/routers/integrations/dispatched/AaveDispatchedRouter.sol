@@ -150,10 +150,26 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   }
 
   /// @notice Deposit underlying tokens to the reserve
-  /// @dev Supply the underlying on behalf
+  /// @dev First repay debt if any and then supply the underlying on behalf
   /// @inheritdoc	AbstractRouter
   function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint) {
-    _supply(token, amount, reserveId, false);
+    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "AavePrivateRouter/pushFailed");
+    require(TransferLib.approveToken(token, address(POOL), amount), "AavePrivateRouter/pushFailed");
+
+    uint _leftToPush = amount;
+    Memoizer memory m;
+    // repay debt if any
+    if (debtBalanceOf(token, m, reserveId) > 0) {
+      (uint repaid, bytes32 reason) = _repay(token, amount, reserveId, true);
+      require(reason == bytes32(0), "AaveDispatchedRouter/pushFailed");
+      _leftToPush -= repaid;
+    }
+    // supply
+    if (_leftToPush > 0) {
+      bytes32 reason = _supply(token, _leftToPush, reserveId, true);
+      require(reason == bytes32(0), "AaveDispatchedRouter/pushFailed");
+    }
+    require(token.allowance(address(this), address(POOL)) == 0, "AaveDispatchedRouter/pushFailed");
     return amount;
   }
 

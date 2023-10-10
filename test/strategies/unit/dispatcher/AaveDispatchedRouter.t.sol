@@ -83,13 +83,15 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     vm.stopPrank();
 
     IERC20 aWETH = getOverlying(weth);
+    IERC20 aUSDC = getOverlying(usdc);
 
     vm.startPrank(owner);
     aWETH.approve(address(makerContract.router()), type(uint).max);
+    aUSDC.approve(address(makerContract.router()), type(uint).max);
     // Setting aave routers only for outbound (weth) by default
     // otherwise simple router will be used
     offerDispatcher.setRoute(weth, owner, aaveRouter);
-    offerDispatcher.setRoute(usdc, owner, simpleRouter);
+    offerDispatcher.setRoute(usdc, owner, aaveRouter);
     vm.stopPrank();
   }
 
@@ -205,7 +207,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
 
   function test_cannot_withdraw_above_credit_line() public {
     vm.prank(owner);
-    POOL.borrow(address(usdc), 100 * 10 ** 6, 2, 0, owner);
+    POOL.borrow(address(usdc), 1000 * 10 ** 6, 2, 0, owner);
 
     setCreditLine(owner, weth, 1);
 
