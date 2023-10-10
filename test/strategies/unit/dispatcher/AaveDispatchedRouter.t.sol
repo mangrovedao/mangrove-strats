@@ -17,6 +17,8 @@ import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
+import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
+
 contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;
   IERC20 internal dai;
@@ -60,7 +62,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     ADDRESS_PROVIDER = IPoolAddressesProvider(aave);
     POOL = IPool(ADDRESS_PROVIDER.getPool());
 
-    vm.prank(deployer);
+    vm.startPrank(deployer);
     aaveRouter = new AaveDispatchedRouter({
       routerGasreq_: 1_000_000,
       addressesProvider: aave,
@@ -68,8 +70,17 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
       storage_key: "router.aave.1"
     });
 
-    vm.prank(deployer);
     simpleRouter = new SimpleRouter();
+
+    bytes4[] memory mutators = new bytes4[](1);
+    mutators[0] = aaveRouter.setAaveCreditLine.selector;
+
+    bytes4[] memory accessors = new bytes4[](1);
+    accessors[0] = aaveRouter.getAaveCreditLine.selector;
+
+    offerDispatcher.initializeRouter(address(aaveRouter), mutators, accessors);
+
+    vm.stopPrank();
 
     IERC20 aWETH = getOverlying(weth);
 
@@ -80,6 +91,18 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     offerDispatcher.setRoute(weth, owner, aaveRouter);
     offerDispatcher.setRoute(usdc, owner, simpleRouter);
     vm.stopPrank();
+  }
+
+  function getCreditLine(address owner, IERC20 token) internal view returns (uint8) {
+    bytes4 sig = aaveRouter.getAaveCreditLine.selector;
+    bytes memory data = offerDispatcher.querySpecifics(sig, owner, token, "");
+    return abi.decode(data, (uint8));
+  }
+
+  function setCreditLine(address owner, IERC20 token, uint8 creditLine) internal {
+    bytes4 sig = aaveRouter.setAaveCreditLine.selector;
+    bytes memory data = abi.encode(creditLine);
+    offerDispatcher.mutateSpecifics(sig, owner, token, data);
   }
 
   // must be made in order to have aave rewards taken into account
@@ -153,5 +176,19 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
 
     assertEq(endWethBalance, 0, "Should have taken all WETH first");
     assertApproxEqAbs(startAWethBalance - endAWethBalance, 0.5 ether - startWethBalance, 1, "incorrect trade output");
+  }
+
+  function test_get_set_credit_line() public {
+    uint8 creditLine = getCreditLine(owner, weth);
+    assertEq(creditLine, 100, "incorrect credit line");
+
+    vm.startPrank(owner);
+    setCreditLine(owner, weth, 50);
+    creditLine = getCreditLine(owner, weth);
+    assertEq(creditLine, 50, "incorrect credit line");
+
+    vm.expectRevert("AaveDispatchedRouter/InvalidCreditLineDecrease");
+    setCreditLine(owner, weth, 101);
+    vm.stopPrank();
   }
 }

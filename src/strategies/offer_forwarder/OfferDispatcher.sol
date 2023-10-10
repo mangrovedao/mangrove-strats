@@ -120,12 +120,29 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   /// @param reserveId The reserveId to call the function on
   /// @param token The token to call the function on
   /// @param data The data to call the function with
-  function callDispatcherSpecificFunction(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
+  function mutateSpecifics(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
     external
     onlyCaller(reserveId)
   {
     Dispatcher dispatcher = Dispatcher(address(router()));
-    dispatcher.callRouterSpecificFunction(selector, reserveId, token, data);
+    dispatcher.mutateRouterState(selector, reserveId, token, data);
+  }
+
+  /// @notice Queries the data for a specific router implementation
+  /// @dev the function that receive the call must have the data as follows (address, IERC20, bytes calldata)
+  /// * only the reserveId can call this function
+  /// @param selector The selector of the function to call
+  /// @param reserveId The reserveId to call the function on
+  /// @param token The token to call the function on
+  /// @param data The data to call the function with
+  /// @return retdata The data returned by the router
+  function querySpecifics(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
+    external
+    view
+    returns (bytes memory)
+  {
+    Dispatcher dispatcher = Dispatcher(address(router()));
+    return dispatcher.queryRouterState(selector, reserveId, token, data);
   }
 
   /// @notice Sets a route for a given token and reserveId
@@ -137,5 +154,28 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   function setRoute(IERC20 token, address reserveId, MonoRouter route) external onlyCaller(reserveId) {
     Dispatcher dispatcher = Dispatcher(address(router()));
     dispatcher.setRoute(token, reserveId, route);
+  }
+
+  /// @notice Initializes a new router contract by setting the router specific functions
+  /// @dev Selectors must be unique across all routers
+  /// * if a selector is already set, it will revert
+  /// @param _router The router contract to initialize
+  /// @param mutators The mutator functions to set
+  /// @param accessors The accessor functions to set
+  function initializeRouter(address _router, bytes4[] calldata mutators, bytes4[] calldata accessors)
+    external
+    onlyAdmin
+  {
+    Dispatcher dispatcher = Dispatcher(address(router()));
+    dispatcher.initializeRouter(_router, mutators, accessors);
+  }
+
+  /// @notice Removes a router contract by removing the router specific functions
+  /// @dev if a selector is not set, it will revert
+  /// @param mutators The mutator functions to remove
+  /// @param accessors The accessor functions to remove
+  function removeFunctions(bytes4[] calldata mutators, bytes4[] calldata accessors) external onlyAdmin {
+    Dispatcher dispatcher = Dispatcher(address(router()));
+    dispatcher.removeFunctions(mutators, accessors);
   }
 }
