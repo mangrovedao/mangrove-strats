@@ -12,19 +12,18 @@ import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 
-///@notice Can be used to test gasreq for MangroveOrder. Pick the highest value reported by -vv and subtract gasbase. Use `yarn gas-measurement` for better output.
+///@notice Can be used to measure gasreq for MangroveOrder. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing with gas-measurement in core.
 ///@dev For instance, as of writing, if `yarn gas-measurement` is executed, then for the generic case on A/B tokens with default foundry.toml (no optimization):
-///@dev Gasbase is 265531 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
-///@dev MangroveOrder's most expensive case is 385765 (c.f. test/strategies/MgvOrder.gasreq.t.sol:MangroveOrderGasreqTest_Generic_A_B:test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_success())
-///@dev The difference is 120234.
+///@dev MangroveOrder's most expensive case is 148451 (c.f. test/strategies/MgvOrder.gasreq.t.sol:MangroveOrderGasreqTest_Generic_A_B:test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_success())
 ///@dev SimpleRouter is hardcoded to 70000 gas (c.f. src/strategies/routers/SimpleRouter.sol),
-///@dev so gasreq for MangroveOrder should be 120234-70000=50234.
+///@dev so gasreq for MangroveOrder should be 148451-70000=78451.
 ///@dev This is assuming, that the code in this test hits the worst case. However, looking at core runs that is not entirely the case.
 ///@dev  - 19675 is the comparable case for core (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithNoOtherOffersGasTest:test_ExistingBin() (Updating an offer in posthook for now empty offer list but where new offer has varying closeness to taken offer - Case: Existing bin))
 ///@dev  - 22841 would be if an offer existed in the same bin as the reposted offer (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithOtherOfferGasTest:test_ExistingBin() (Updating an offer in posthook for offer list with other offer at same bin as taken but where new offer has varying closeness to taken offer - Case: Existing bin))
-///@dev The difference is just above 3000, so we add that and round up to get 54000. This is then used in MangroveOrderDeployer.
+///@dev The difference is just above 3000, so we add that and round up to get 82000. This is then used in MangroveOrderDeployer.
 ///@dev Note that for instance for polygon with WETH/DAI the numbers are lower due to the A/B test tokens being expensive contracts, so it should cover that, especially with optimization.
+///@dev In addition, wrt density then gasbase is 271276 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
 abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
@@ -93,9 +92,14 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
 
     (IMangrove _mgv,,,) = getStored();
     prankTaker(_olKey);
-    _gas();
     (uint takerGot,, uint bounty,) = _mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), volume, true);
-    gas_();
+
+    // Measurement 0 is from setUp().
+    logGasreqAsGasUsed(0);
+    // Verify there are no additional measurements, so we are measuring the right one.
+    vm.expectRevert();
+    getMeasuredGasused(1);
+
     assertEq(takerGot == 0, failure, "taker should get some of the offer if not failure");
     assertEq(mgv.best(_olKey), failure ? 0 : buyResult.offerId, "offer should be reposted if not failure");
     assertEq(bounty != 0, failure, "bounty should be paid for failure");

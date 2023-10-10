@@ -53,9 +53,8 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
-    // FIXME: Measure gasreq
-    uint router_gasreq = 500 * 1000;
-    uint kandel_gasreq = 300 * 1000;
+    uint router_gasreq = 0;
+    uint kandel_gasreq = 629000;
     router = address(router) == address(0) ? new AavePooledRouter(aave, router_gasreq) : router;
     AaveKandel aaveKandel_ = new AaveKandel({
       mgv: IMangrove($(mgv)),

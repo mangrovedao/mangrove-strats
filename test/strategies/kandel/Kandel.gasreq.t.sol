@@ -15,29 +15,26 @@ import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
-///@notice Can be used to test gasreq for Kandel. Pick the highest value reported by -vv and subtract gasbase. Use `yarn gas-measurement` for better output.
+///@notice Can be used to test gasreq for Kandel. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing.
 ///@dev For instance, as of writing, if `yarn gas-measurement` is executed, then for the generic case on A/B tokens with default foundry.toml (no optimization):
-///@dev Gasbase is 265531 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
-///@dev Kandel's most expensive case is 349889 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:NoRouterKandelGasreqBaseTest_Generic_A_B:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both())
-///@dev The difference is 84358.
+///@dev Kandel's most expensive case is 121413 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:NoRouterKandelGasreqBaseTest_Generic_A_B:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both())
 ///@dev This is assuming, that the code in this test hits the worst case. However, looking at core runs that is not entirely the case. For the dual:
 ///@dev  - 44339 is the comparable case for core for updating the dual (c.f. test/core/gas/UpdateOfferOtherOfferList.t.sol:ExternalUpdateOfferOtherOfferList_WithNoOtherOffersGasTest:test_single_gas())
 ///@dev  - 45090 would be if another offer existed on the dual offer's bin (c.f. test/core/gas/UpdateOfferOtherOfferList.t.sol:ExternalUpdateOfferOtherOfferList_WithOtherOfferGasTest:test_ExistingBin())
-///@dev The difference is below 1000, so we add that and round up to get 86000.
+///@dev The difference is below 1000.
 ///@dev Similarly for the primary offer:
 ///@dev  - 19675 is the comparable case for core (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithNoOtherOffersGasTest:test_ExistingBin() (Updating an offer in posthook for now empty offer list but where new offer has varying closeness to taken offer - Case: Existing bin))
 ///@dev  - 22841 would be if an offer existed in the same bin as the reposted offer (c.f. test/core/gas/UpdateOfferSameOfferList.t.sol:PosthookSuccessUpdateOfferSameList_WithOtherOfferGasTest:test_ExistingBin() (Updating an offer in posthook for offer list with other offer at same bin as taken but where new offer has varying closeness to taken offer - Case: Existing bin))
-///@dev The difference is just above 3000, so we add that and round up to get 90000.
-///@dev This is then used in MangroveJs.s.sol.
+///@dev The difference is just above 3000, so we add both (4000) and round up to get 126000.
+///@dev This is then used in MangroveJs.s.sol and tests. For deployments we need to inspect token measurements and optimization options, or let this un-optimized, expensive token measurement be an upper bound.
+///@dev In addition, wrt density then gasbase is 271276 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
 
-// self or dual below density.
-
-//TODO test where dual is retracted to verify it is not more expensive.
-// dead dual, repost self, and make dual live
-// dead dual, repost self, but self and dual below density
-
-////// AaveKandel's most expensive case it 757869 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:AaveKandelGasreqBaseTest_Polygon_WETH_DAI:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both())
+///@dev Similarly, for AaveKandel, the most expensive case is 553326 (c.f. test/strategies/kandel/Kandel.gasreq.t.sol:AaveKandelGasreqBaseTest_Generic_A_B:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_base_quote_repost_both())
+///@dev However, that measurement is for a mocked aave, so a better measurement is 624677 (c.f. for test/strategies/kandel/Kandel.gasreq.t.sol:AaveKandelGasreqBaseTest_Polygon_WETH_DAI:test_gasreq_repost_and_post_dual_first_offer_now_empty_offer_list_quote_base_repost_both())
+///@dev but that is with a specific pair of tokens, so not an upper bound.
+///@dev With the additional 4000, and rounding up we get 629000.
+///@dev This is then used in MangroveJs.s.sol and tests. For deployments we need to inspect token measurements and optimization options, or let this un-optimized, expensive token measurement be an upper bound.
 
 abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   GeometricKandel internal kandel;
@@ -78,6 +75,8 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 
     // Set gasprice a bit higher to cause provision events during offer update
     setGasprice(mgv.global().gasprice() + 1);
+
+    // Testing the base/quote side with the quote/base offer retracted: kandel.retractOffers(0,1); - yields lower gas consumption and since it requires an extra test contract for cool setup we leave it out.
   }
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
@@ -102,9 +101,12 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 
     (IMangrove _mgv,,,) = getStored();
     prankTaker(_olKey);
-    _gas();
     (uint takerGot,, uint bounty,) = _mgv.marketOrderByTick(_olKey, Tick.wrap(MAX_TICK), volume, true);
-    gas_();
+    // Measurement 0 is from setUp().
+    logGasreqAsGasUsed(1);
+    // Verify there are no additional measurements, so we are measuring the right one.
+    vm.expectRevert();
+    getMeasuredGasused(2);
     assertEq(takerGot == 0, failure, "taker should get some of the offer if not failure");
     if (expectRepostSelf) {
       assertGt(mgv.best(_olKey), 0, "offer should be reposted");

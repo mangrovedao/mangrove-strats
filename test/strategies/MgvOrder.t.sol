@@ -24,7 +24,7 @@ library TickNegator {
 contract MangroveOrder_Test is StratTest {
   using TickNegator for Tick;
 
-  uint constant GASREQ = 150_000;
+  uint constant GASREQ = 82000; // see MangroveOrderGasreqBaseTest
   uint constant MID_PRICE = 2000e18;
   // to check ERC20 logging
 
