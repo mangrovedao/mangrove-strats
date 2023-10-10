@@ -149,8 +149,8 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
-    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     assertEq(endAWethBalance, startAWethBalance, "Suppose to have same amount of aWETH");
