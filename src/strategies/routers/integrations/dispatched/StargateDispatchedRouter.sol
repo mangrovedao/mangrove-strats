@@ -7,6 +7,7 @@ import {IERC20} from "mgv_lib/IERC20.sol";
 import {IStargateRouter} from "mgv_strat_src/strategies/vendor/stargate/IStargateRouter.sol";
 import {IFactory} from "mgv_strat_src/strategies/vendor/stargate/IFactory.sol";
 import {IPool} from "mgv_strat_src/strategies/vendor/stargate/IPool.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 /// @title `StargateDispatchedRouter` is a router contract for Stargate Pools.
 contract StargateDispatchedRouter is SimpleVaultRouter {
@@ -29,7 +30,7 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
   }
 
   /// @inheritdoc SimpleVaultRouter
-  function __vault_token__(IERC20 token) internal view virtual override returns (address vaultToken) {
+  function __vault_token__(IERC20 token) internal view virtual override returns (address vault_token) {
     IFactory factory = stargateRouter.factory();
     uint length = factory.allPoolsLength();
     // TODO: check if we want to add pool ids manually to save gas
@@ -47,6 +48,7 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
     require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
     IPool pool = IPool(vaultToken);
 
+    require(TransferLib.approveToken(token, address(stargateRouter), amount), "StargateDispatchedRouter/DepositFailed");
     stargateRouter.addLiquidity(pool.poolId(), amount, onBehalf);
   }
 
@@ -70,5 +72,13 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
     uint amountLP = amountLDtoLP(amount, pool);
 
     return stargateRouter.instantRedeemLocal(pool.poolId(), amountLP, to);
+  }
+
+  /// @dev Checks if user gave allowance for token and overlying
+  /// @inheritdoc	AbstractRouter
+  function __checkList__(IERC20 token, address reserveId, address) internal view override {
+    require(token.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
+    address vault_token = __vault_token__(token);
+    require(IERC20(vault_token).allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/OverlyingNotApproved");
   }
 }
