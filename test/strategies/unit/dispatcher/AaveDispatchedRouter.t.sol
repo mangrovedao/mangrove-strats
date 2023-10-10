@@ -202,4 +202,17 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
   }
+
+  function test_cannot_withdraw_above_credit_line() public {
+    vm.prank(owner);
+    POOL.borrow(address(usdc), 100 * 10 ** 6, 2, 0, owner);
+
+    setCreditLine(owner, weth, 1);
+
+    performTrade(false);
+
+    setCreditLine(owner, weth, 100);
+
+    performTrade(true);
+  }
 }
