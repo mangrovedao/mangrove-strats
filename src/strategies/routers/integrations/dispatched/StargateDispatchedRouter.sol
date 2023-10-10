@@ -8,6 +8,7 @@ import {IStargateRouter} from "mgv_strat_src/strategies/vendor/stargate/IStargat
 import {IFactory} from "mgv_strat_src/strategies/vendor/stargate/IFactory.sol";
 import {IPool} from "mgv_strat_src/strategies/vendor/stargate/IPool.sol";
 
+/// @title `StargateDispatchedRouter` is a router contract for Stargate Pools.
 contract StargateDispatchedRouter is SimpleVaultRouter {
   /// @notice The StargateRouter contract
   IStargateRouter public immutable stargateRouter;
