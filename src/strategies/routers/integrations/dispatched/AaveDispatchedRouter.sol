@@ -134,7 +134,8 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
         uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
         toWithdraw = missing > maxCreditLine ? maxCreditLine : missing;
       } else {
-        toWithdraw = missing;
+        uint balance = overlying(token, m).balanceOf(reserveId);
+        toWithdraw = missing > balance ? balance : missing;
       }
       require(
         TransferLib.transferTokenFrom(overlying(token, m), reserveId, address(this), toWithdraw),
