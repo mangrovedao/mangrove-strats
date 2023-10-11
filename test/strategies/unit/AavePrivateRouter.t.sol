@@ -11,6 +11,7 @@ import {
 /// could be forking Aave from Ethereum here
 import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import "@mgv/lib/Debug.sol";
 
 contract AavePrivateRouterTest is AbstractRouterTest {
   bool internal useForkAave = true;

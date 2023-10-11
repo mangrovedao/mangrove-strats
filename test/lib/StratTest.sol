@@ -6,7 +6,7 @@ import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 
-contract StratTest is MangroveTest, DeployPermit2 {
+contract StratTest is MangroveTest {
   IPermit2 public permit2;
 
   function $(AccessControlled t) internal pure returns (address payable) {
@@ -14,7 +14,8 @@ contract StratTest is MangroveTest, DeployPermit2 {
   }
 
   function setUp() public virtual override {
-    permit2 = IPermit2(deployPermit2());
+    DeployPermit2 deployPermit2 = new DeployPermit2();
+    permit2 = IPermit2(deployPermit2.deployPermit2());
 
     super.setUp();
   }
