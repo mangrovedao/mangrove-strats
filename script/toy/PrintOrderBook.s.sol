@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {MangroveTest} from "mgv_test/lib/MangroveTest.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
+import {MangroveTest} from "@mgv/test/lib/MangroveTest.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
  * @notice Prints the order book

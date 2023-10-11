@@ -13,7 +13,9 @@ let all_files = (dir, accumulator = []) => {
     if (fs.statSync(file_path).isDirectory()) {
       all_files(file_path, accumulator);
     } else {
-      accumulator.push(file_path);
+      if (file_name.endsWith(".json")) {
+        accumulator.push(file_path);
+      }
     }
   }
   return accumulator;
@@ -80,8 +82,8 @@ excludes = [
 let anyFindings = false;
 artifacts.forEach((file) => {
   const j = read_artifact(file);
-  const fname = j.ast.absolutePath;
-  if (excludes.some((x) => fname.includes(x))) {
+  const fname = j.ast?.absolutePath;
+  if (!fname || excludes.some((x) => fname.includes(x))) {
     return;
   }
   const relevant = j.ast.nodes
@@ -100,7 +102,7 @@ artifacts.forEach((file) => {
       (x) =>
         x.nodeType == "FunctionDefinition" ||
         x.nodeType == "EventDefinition" ||
-        x.nodeType == "VariableDeclaration"
+        x.nodeType == "VariableDeclaration",
     )
     .forEach((x) => {
       const doc = x?.documentation?.text ?? "";

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {ISignatureTransfer} from "mgv_strat_lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {IAllowanceTransfer} from "mgv_strat_lib/permit2/src/interfaces/IAllowanceTransfer.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {ISignatureTransfer} from "@mgv-strats/lib/permit2/src/interfaces/ISignatureTransfer.sol";
+import {IAllowanceTransfer} from "@mgv-strats/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {Permit2TransferLib} from "./Permit2TransferLib.sol";
-import {IERC20} from "mgv_src/core/MgvLib.sol";
-import {IPermit2} from "mgv_strat_lib/permit2/src/interfaces/IPermit2.sol";
+import {IERC20} from "@mgv/src/core/MgvLib.sol";
+import {IPermit2} from "@mgv-strats/lib/permit2/src/interfaces/IPermit2.sol";
 
 enum ApprovalType {
   ERC20Approval,

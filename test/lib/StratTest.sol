@@ -1,8 +1,8 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import "mgv_strat_src/strategies/utils/AccessControlled.sol";
+import "@mgv/test/lib/MangroveTest.sol";
+import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 import {IPermit2} from "lib/permit2/src/interfaces/IPermit2.sol";
 import {DeployPermit2} from "lib/permit2/test/utils/DeployPermit2.sol";
 

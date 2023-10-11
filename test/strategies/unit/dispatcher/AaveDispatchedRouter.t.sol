@@ -1,21 +1,21 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.18;
 
-import {OfferDispatcherTest, OfferLogicTest, IERC20, TestToken, console} from "./OfferDispatcher.t.sol";
+import {OfferDispatcherTest, OfferLogicTest, IERC20, TestToken} from "./OfferDispatcher.t.sol";
 import {
   AavePrivateRouter,
   DataTypes,
   ReserveConfiguration
-} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
-import {AaveDispatchedRouter} from "mgv_strat_src/strategies/routers/integrations/dispatched/AaveDispatchedRouter.sol";
+} from "@mgv-strats/src/strategies/routers/integrations/AavePrivateRouter.sol";
+import {AaveDispatchedRouter} from "@mgv-strats/src/strategies/routers/integrations/dispatched/AaveDispatchedRouter.sol";
 
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
-import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
 contract AaveDispatchedRouterTest is OfferDispatcherTest {
   bool internal useForkAave = true;

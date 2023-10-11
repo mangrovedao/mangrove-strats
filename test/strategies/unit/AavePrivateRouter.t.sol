@@ -7,12 +7,10 @@ import {
   AavePrivateRouter,
   DataTypes,
   ReserveConfiguration
-} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
+} from "@mgv-strats/src/strategies/routers/integrations/AavePrivateRouter.sol";
 /// could be forking Aave from Ethereum here
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
-
-import "mgv_lib/Debug.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
 contract AavePrivateRouterTest is AbstractRouterTest {
   bool internal useForkAave = true;

@@ -2,16 +2,15 @@
 pragma solidity ^0.8.18;
 
 import {OfferLogicTest, IERC20, TestToken, TestSender} from "../OfferLogic.t.sol";
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
 import {
   OfferDispatcherTester,
   ITesterContract as ITester,
   IMangrove
-} from "mgv_strat_src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
-import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import "mgv_lib/Debug.sol";
+} from "@mgv-strats/src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
+import {Dispatcher} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
+import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
 contract OfferDispatcherTest is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;

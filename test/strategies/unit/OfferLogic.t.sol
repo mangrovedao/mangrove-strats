@@ -1,19 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "mgv_strat_test/lib/StratTest.sol";
-import {GenericFork} from "mgv_test/lib/forks/Generic.sol";
-import {DirectTester} from "mgv_strat_src/toy_strategies/offer_maker/DirectTester.sol";
-import {ITesterContract as ITester} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
-import {AbstractRouter} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {TestSender} from "mgv_test/lib/agents/TestSender.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
-import {MgvLib} from "mgv_src/core/MgvLib.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
+import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {ITesterContract as ITester} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {TestSender} from "@mgv/test/lib/agents/TestSender.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {MgvLib} from "@mgv/src/core/MgvLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 

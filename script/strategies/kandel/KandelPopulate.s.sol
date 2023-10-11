@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {Script, console2 as console} from "forge-std/Script.sol";
-import {Kandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/Kandel.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
-import {toFixed} from "mgv_lib/Test2.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
+import {Script, console2 as console} from "@mgv/forge-std/Script.sol";
+import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {toFixed} from "@mgv/lib/Test2.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
 /**
  * @notice Populates Kandel's distribution on Mangrove

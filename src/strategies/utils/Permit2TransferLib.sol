@@ -1,10 +1,10 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/core/MgvLib.sol";
-import {IPermit2} from "mgv_strat_lib/permit2/src/interfaces/IPermit2.sol";
-import {ISignatureTransfer} from "mgv_strat_lib/permit2/src/interfaces/ISignatureTransfer.sol";
-import {IAllowanceTransfer} from "mgv_strat_lib/permit2/src/interfaces/IAllowanceTransfer.sol";
+import {IERC20} from "@mgv/src/core/MgvLib.sol";
+import {IPermit2} from "@mgv-strats/lib/permit2/src/interfaces/IPermit2.sol";
+import {ISignatureTransfer} from "@mgv-strats/lib/permit2/src/interfaces/ISignatureTransfer.sol";
+import {IAllowanceTransfer} from "@mgv-strats/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 
 ///@title This library helps with safely interact with Permit2 contract
 

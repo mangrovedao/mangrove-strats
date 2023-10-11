@@ -4,8 +4,8 @@ pragma solidity ^0.8.10;
 import {AaveKandel, AavePooledRouter} from "./AaveKandel.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 ///@title AaveKandel strat deployer.
 contract AaveKandelSeeder is AbstractKandelSeeder {

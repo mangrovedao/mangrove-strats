@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {AbstractKandelSeeder} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
-import {OLKey} from "mgv_src/core/MgvLib.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {AbstractKandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /**
  * @notice deploys a Kandel instance on a given market

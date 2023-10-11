@@ -1,13 +1,13 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_strat_test/lib/StratTest.sol";
-import "mgv_test/lib/forks/Polygon.sol";
-import "mgv_strat_src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
-import {Local} from "mgv_src/core/MgvLib.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
+import "@mgv-strats/test/lib/StratTest.sol";
+import "@mgv/test/lib/forks/Polygon.sol";
+import "@mgv-strats/src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
+import {Local} from "@mgv/src/core/MgvLib.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 
-//import {console} from "forge-std/console.sol";
+//import {console} from "@mgv/forge-std/console.sol";
 
 contract AmplifierForwarderTest is StratTest {
   IERC20 weth;

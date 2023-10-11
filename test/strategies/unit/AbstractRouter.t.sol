@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {OfferLogicTest, IERC20, TestToken} from "./OfferLogic.t.sol";
-import {AbstractRouter, SimpleRouter, ApprovalInfo} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
+import {AbstractRouter, SimpleRouter, ApprovalInfo} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
 abstract contract AbstractRouterTest is OfferLogicTest {
   AbstractRouter internal router;

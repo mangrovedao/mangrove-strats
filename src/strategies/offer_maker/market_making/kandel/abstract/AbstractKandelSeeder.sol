@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {GeometricKandel} from "./GeometricKandel.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {OLKey, Local} from "mgv_src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {OLKey, Local} from "@mgv/src/core/MgvLib.sol";
 
 ///@title Abstract Kandel strat deployer.
 ///@notice This seeder deploys Kandel strats on demand and binds them to an AAVE router if needed.

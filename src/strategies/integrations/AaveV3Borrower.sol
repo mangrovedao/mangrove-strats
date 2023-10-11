@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import {IERC20, AaveV3Lender} from "./AaveV3Lender.sol";
-import {IPriceOracleGetter} from "mgv_strat_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
-import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 
 /// @title This contract provides a collection of interactions capabilities with AAVE-v3 to whichever contract inherits it
 /// `AaveV3Borrower` contracts are in particular able to perform basic pool interactions (lending, borrowing, supplying and repaying)
