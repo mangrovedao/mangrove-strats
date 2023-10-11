@@ -16,8 +16,23 @@ abstract contract MultiRouter is AbstractRouter {
   mapping(IERC20 token => mapping(address reserveId => MonoRouter)) public routes;
 
   ///@inheritdoc AbstractRouter
-  function __routerGasreq__(IERC20 token, address reserveId) internal view override returns (uint) {
-    return routes[token][reserveId].ROUTER_GASREQ();
+  function __routerGasreq__(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId)
+    internal
+    view
+    override
+    returns (uint)
+  {
+    return __routerPushGasreq__(inbound_tkn, reserveId) + __routerPullGasreq__(outbound_tkn, inbound_tkn, reserveId);
+  }
+
+  ///@inheritdoc AbstractRouter
+  function __routerPushGasreq__(IERC20 inbound_tkn, address reserveId) internal view override returns (uint) {
+    return routes[inbound_tkn][reserveId].ROUTER_PUSH_GASREQ();
+  }
+
+  ///@inheritdoc AbstractRouter
+  function __routerPullGasreq__(IERC20 outbound_tkn, IERC20, address reserveId) internal view override returns (uint) {
+    return routes[outbound_tkn][reserveId].ROUTER_PULL_GASREQ();
   }
 
   ///@notice associates a router to a specific strategy for sourcing liquidity

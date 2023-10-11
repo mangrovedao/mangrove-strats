@@ -11,7 +11,9 @@ import {TransferLib} from "mgv_lib/TransferLib.sol";
 abstract contract SimpleVaultRouter is MonoRouter {
   /// @notice contract's constructor
   /// @param routerGasreq_ The gas requirement for the router
-  constructor(uint routerGasreq_) MonoRouter(routerGasreq_) {}
+  constructor(uint routerGasreq_, uint routerPushGasreq_, uint routerPullGasreq_)
+    MonoRouter(routerGasreq_, routerPushGasreq_, routerPullGasreq_)
+  {}
 
   /// @notice Gets the ERC20 token to represent the vault shares
   /// @dev if the token is not supported, returns address(0)

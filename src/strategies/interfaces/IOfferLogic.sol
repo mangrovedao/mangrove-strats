@@ -25,9 +25,10 @@ interface IOfferLogic is IMaker {
 
   ///@notice Actual gas requirement when posting offers via this strategy. Returned value may change if this contract's router is updated.
   ///@param reserveId passed to router to potentially specify a reserve specific routing strategy
-  ///@param token passed to router to potentially specify a token specific routing strategy
+  ///@param outbound_tkn passed to router to potentially specify a token specific routing strategy for pulling
+  ///@param inbound_tkn passed to router to potentially specify a token specific routing strategy for pushing
   ///@return total gas cost including router specific costs (if any).
-  function offerGasreq(IERC20 token, address reserveId) external view returns (uint total);
+  function offerGasreq(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId) external view returns (uint total);
 
   /// @notice offerGasreq for the default route
   /// @return total gas requirement for the default liquidity sourcing strategy

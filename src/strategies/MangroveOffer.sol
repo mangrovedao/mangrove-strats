@@ -63,14 +63,14 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /// @inheritdoc IOfferLogic
   function offerGasreq() public view returns (uint) {
-    return offerGasreq(IERC20(address(0)), address(0));
+    return offerGasreq(IERC20(address(0)), IERC20(address(0)), address(0));
   }
 
   /// @inheritdoc IOfferLogic
-  function offerGasreq(IERC20 token, address reserveId) public view returns (uint) {
+  function offerGasreq(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId) public view returns (uint) {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
-      return CONSTANT_GASREQ + router_.routerGasreq(token, reserveId);
+      return CONSTANT_GASREQ + router_.routerGasreq(outbound_tkn, inbound_tkn, reserveId);
     } else {
       return CONSTANT_GASREQ;
     }

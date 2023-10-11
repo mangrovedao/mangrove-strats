@@ -42,17 +42,43 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
 
   ///@notice view for gas overhead of this router.
   ///@param reserveId that should be considered if a reserve specific route is defined.
-  ///@param token that should be considered if a token specific route is defined.
+  ///@param outbound_tkn that should be considered if a token specific route is defined when pulling.
+  ///@param inbound_tkn that should be considered if a token specific route is defined when pushing.
   ///@return overhead the added (overapproximated) gas cost of `push` and `pull` for the routing strategy.
-  function routerGasreq(IERC20 token, address reserveId) public view returns (uint overhead) {
-    return __routerGasreq__(token, reserveId);
+  function routerGasreq(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId) public view returns (uint overhead) {
+    return __routerGasreq__(outbound_tkn, inbound_tkn, reserveId);
   }
 
   ///@notice hook that implements router specific gas requirement for a given routing strategy.
+  ///* This can be the sum of gas requirements of `pull` and `push` for a given routing strategy or smaller considering hot storage changes.
   ///@param reserveId that should be considered if a reserve specific route is defined.
-  ///@param token that should be considered if a token specific route is defined.
+  ///@param outbound_tkn that should be considered if a token specific route is defined when pulling.
+  ///@param inbound_tkn that should be considered if a token specific route is defined when pushing.
   ///@return overhead the added (overapproximated) gas cost of `push` and `pull`.
-  function __routerGasreq__(IERC20 token, address reserveId) internal view virtual returns (uint overhead);
+  function __routerGasreq__(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId)
+    internal
+    view
+    virtual
+    returns (uint overhead);
+
+  ///@notice hook that implements router specific gas requirement for a given routing strategy on push.
+  ///* As the first operation, taking outbound_tkn from the maker contract is not necessary.
+  ///@param inbound_tkn that should be considered if a token specific route is defined when pushing.
+  ///@param reserveId that should be considered if a reserve specific route is defined.
+  ///@return overhead the added (overapproximated) gas cost of `push`.
+  function __routerPushGasreq__(IERC20 inbound_tkn, address reserveId) internal view virtual returns (uint overhead);
+
+  ///@notice hook that implements router specific gas requirement for a given routing strategy on pull.
+  ///* As the last operation, any logic can be executed regarding inbound_tkn (eg. hot storage considerations).
+  ///@param outbound_tkn that should be considered if a token specific route is defined when pulling.
+  ///@param inbound_tkn that should be considered if a token specific route is defined when pushing.
+  ///@param reserveId that should be considered if a reserve specific route is defined.
+  ///@return overhead the added (overapproximated) gas cost of `pull`.
+  function __routerPullGasreq__(IERC20 outbound_tkn, IERC20 inbound_tkn, address reserveId)
+    internal
+    view
+    virtual
+    returns (uint overhead);
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset
