@@ -225,4 +225,29 @@ contract Dispatcher is MultiRouter {
       return(add(retdata, 32), returndatasize())
     }
   }
+
+  /// @inheritdoc	AbstractRouter
+  function __activate__(IERC20) internal virtual override {
+    revert("Dispatcher/NoRouterSpecified");
+  }
+
+  /// @notice Activates a router for a given token
+  /// @dev This implementation overrides the AbstractRouter implementation to allow for a router to be activated
+  /// * Throws if the router is not bound
+  /// @param token The token to activate the router for
+  /// @param router The router to activate
+  function activate(IERC20 token, MonoRouter router) external boundOrAdmin {
+    (bool success, bytes memory retdata) =
+      address(router).delegatecall(abi.encodeWithSelector(AbstractRouter.activate.selector, token));
+    if (!success) {
+      if (retdata.length > 0) {
+        assembly {
+          let returndata_size := mload(retdata)
+          revert(add(0x20, retdata), returndata_size)
+        }
+      } else {
+        revert("Dispatcher/ActivateFailed");
+      }
+    }
+  }
 }

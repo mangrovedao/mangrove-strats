@@ -47,8 +47,6 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
     address vaultToken = __vault_token__(token);
     require(vaultToken != address(0), "SimpleVaultRouter/InvalidToken");
     IPool pool = IPool(vaultToken);
-
-    require(TransferLib.approveToken(token, address(stargateRouter), amount), "StargateDispatchedRouter/DepositFailed");
     stargateRouter.addLiquidity(pool.poolId(), amount, onBehalf);
   }
 
@@ -76,9 +74,14 @@ contract StargateDispatchedRouter is SimpleVaultRouter {
 
   /// @dev Checks if user gave allowance for token and overlying
   /// @inheritdoc	AbstractRouter
-  function __checkList__(IERC20 token, address reserveId, address) internal view override {
-    require(token.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
-    address vault_token = __vault_token__(token);
-    require(IERC20(vault_token).allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/OverlyingNotApproved");
+  function __checkList__(IERC20 token, address reserveId, address makerContract) internal view override {
+    super.__checkList__(token, reserveId, makerContract);
+    require(token.allowance(address(this), address(stargateRouter)) > 0, "StargateRouter/NotActivated");
+    require(token.allowance(reserveId, address(this)) > 0, "StargateRouter/NotApproved");
+  }
+
+  /// @inheritdoc	AbstractRouter
+  function __activate__(IERC20 token) internal virtual override {
+    require(TransferLib.approveToken(token, address(stargateRouter), type(uint).max), "StargateRouter/ActivationFailed");
   }
 }

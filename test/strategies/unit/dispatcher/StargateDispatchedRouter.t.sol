@@ -30,12 +30,17 @@ contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
     super.setUp();
   }
 
+  function activate() public {}
+
   function fundStrat() internal virtual override {
     super.fundStrat();
+    // 3000 USDC instead of 2000 to the owner (fees collected by the strategy)
+    deal($(usdc), owner, cash(usdc, 3000));
+
     vm.startPrank(owner);
     // approve and supply weth to stargate
     usdc.approve(address(stargate), type(uint).max);
-    stargate.addLiquidity(STARGATE_USDC_POOL_ID, cash(usdc, 2000), owner);
+    stargate.addLiquidity(STARGATE_USDC_POOL_ID, cash(usdc, 3000), owner);
     vm.stopPrank();
   }
 
@@ -49,6 +54,10 @@ contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
     });
 
     simpleRouter = new SimpleRouter();
+
+    offerDispatcher.activate(dynamic([IERC20(usdc)]), stargateRouter);
+    offerDispatcher.activate(dynamic([IERC20(weth)]), simpleRouter);
+
     vm.stopPrank();
 
     IPool stargateUSDCLP = stargate.factory().getPool(STARGATE_USDC_POOL_ID);
