@@ -62,6 +62,10 @@ interface IOrderLogic {
     uint offerId
   );
 
+  ///@notice Indicates that the MangroveOrder has been completed.
+  ///@notice We only emit this, so that an indexer can know that the order is completed and can thereby keep a correct context
+  event MangroveOrderComplete();
+
   ///@notice The expiry of the offer has been set
   ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
   ///@param offerId the Mangrove offer id.

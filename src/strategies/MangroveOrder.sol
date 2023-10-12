@@ -204,7 +204,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // POST (else)
     // * (NAT_USER+`res.bounty`, OUT_USER+`res.takerGot`, IN_USER-`res.takerGave`)
     // * (NAT_THIS, OUT_THIS, IN_THIS)
-
+    emit MangroveOrderComplete();
     return res;
   }
 

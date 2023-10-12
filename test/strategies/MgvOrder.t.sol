@@ -41,6 +41,8 @@ contract MangroveOrder_Test is StratTest {
     uint offerId
   );
 
+  event MangroveOrderComplete();
+
   MgvOrder internal mgo;
   TestMaker internal ask_maker;
   TestMaker internal bid_maker;
@@ -366,6 +368,8 @@ contract MangroveOrder_Test is StratTest {
 
     expectFrom($(mgo));
     logOrderData($(this), buyOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
 
@@ -443,6 +447,8 @@ contract MangroveOrder_Test is StratTest {
     // checking log emission
     expectFrom($(mgo));
     logOrderData(fresh_taker, buyOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -476,6 +482,8 @@ contract MangroveOrder_Test is StratTest {
     // checking log emission
     expectFrom($(mgo));
     logOrderData(fresh_taker, buyOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -516,6 +524,8 @@ contract MangroveOrder_Test is StratTest {
     // checking log emission
     expectFrom($(mgo));
     logOrderData(fresh_taker, sellOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -562,6 +572,8 @@ contract MangroveOrder_Test is StratTest {
     // checking log emission
     expectFrom($(mgo));
     logOrderData(fresh_taker, sellOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
@@ -588,6 +600,8 @@ contract MangroveOrder_Test is StratTest {
     // checking log emission
     expectFrom($(mgo));
     logOrderData(fresh_taker, sellOrder);
+    expectFrom($(mgo));
+    emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
