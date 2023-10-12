@@ -8,8 +8,8 @@ import {
   OfferDispatcherTester,
   ITesterContract as ITester,
   IMangrove
-} from "mgv_strat_src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
-import "mgv_lib/Debug.sol";
+} from "@mgv-strats/src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
+import "@mgv/lib/Debug.sol";
 
 abstract contract AbstractDispatchedRouter is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;

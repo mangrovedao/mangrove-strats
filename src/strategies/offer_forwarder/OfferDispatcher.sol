@@ -1,14 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {Forwarder, IMangrove, IERC20} from "mgv_strat_src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {ILiquidityProvider} from "mgv_strat_src/strategies/interfaces/ILiquidityProvider.sol";
-import {AbstractRouter, MonoRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
-import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
-import {Tick} from "mgv_lib/core/TickLib.sol";
-import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {Forwarder, IMangrove, IERC20} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
+import {AbstractRouter, MonoRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {Dispatcher} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title `OfferDispatcher` is a forwarder contract for Mangrove using the `Dispatcher` router.
 /// @notice This contract makes use of the dispatcher router to route offers to the correct router.

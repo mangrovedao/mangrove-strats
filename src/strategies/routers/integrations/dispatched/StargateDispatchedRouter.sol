@@ -3,11 +3,11 @@ pragma solidity ^0.8.20;
 
 import {SimpleVaultRouter} from "../../abstract/SimpleVaultRouter.sol";
 import {AbstractRouter} from "../../abstract/AbstractRouter.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {IStargateRouter} from "mgv_strat_src/strategies/vendor/stargate/IStargateRouter.sol";
-import {IFactory} from "mgv_strat_src/strategies/vendor/stargate/IFactory.sol";
-import {IPool} from "mgv_strat_src/strategies/vendor/stargate/IPool.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IStargateRouter} from "@mgv-strats/src/strategies/vendor/stargate/IStargateRouter.sol";
+import {IFactory} from "@mgv-strats/src/strategies/vendor/stargate/IFactory.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/stargate/IPool.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title `StargateDispatchedRouter` is a router contract for Stargate Pools.
 contract StargateDispatchedRouter is SimpleVaultRouter {

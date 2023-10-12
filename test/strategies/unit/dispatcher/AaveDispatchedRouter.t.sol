@@ -13,10 +13,10 @@ import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
-import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 
-import {Dispatcher, AbstractRouter} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
+import {Dispatcher, AbstractRouter} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
 
 contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;

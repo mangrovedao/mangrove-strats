@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import {AbstractDispatchedRouter} from "./AbstractDispatchedRouter.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract SimpleDispatchedRouter is AbstractDispatchedRouter {
   SimpleRouter internal simpleRouter;

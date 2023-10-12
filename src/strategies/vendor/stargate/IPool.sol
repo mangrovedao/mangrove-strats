@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.20;
 
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 interface IPool is IERC20 {
 

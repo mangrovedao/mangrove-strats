@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import {MonoRouter} from "./MonoRouter.sol";
 import {AbstractRouter} from "./AbstractRouter.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {ApprovalInfo} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {ApprovalInfo} from "@mgv-strats/src/strategies/utils/ApprovalTransferLib.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title `SimpleVaultRouter` is a router contract for Simple Vaults.
 abstract contract SimpleVaultRouter is MonoRouter {

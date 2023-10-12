@@ -3,18 +3,18 @@ pragma solidity ^0.8.20;
 
 import {AbstractDispatchedRouter, OfferLogicTest, IERC20, TestToken, console} from "./AbstractDispatchedRouter.sol";
 
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
 
 import {
   StargateDispatchedRouter,
   AbstractRouter
-} from "mgv_strat_src/strategies/routers/integrations/dispatched/StargateDispatchedRouter.sol";
-import {SimpleRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
+} from "@mgv-strats/src/strategies/routers/integrations/dispatched/StargateDispatchedRouter.sol";
+import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {Dispatcher} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
 
-import {IStargateRouter} from "mgv_strat_src/strategies/vendor/stargate/IStargateRouter.sol";
-import {IPool} from "mgv_strat_src/strategies/vendor/stargate/IPool.sol";
+import {IStargateRouter} from "@mgv-strats/src/strategies/vendor/stargate/IStargateRouter.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/stargate/IPool.sol";
 
 contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
   SimpleRouter internal simpleRouter;
