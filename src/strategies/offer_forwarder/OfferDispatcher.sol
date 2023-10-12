@@ -8,6 +8,7 @@ import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatch
 import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
 import {Tick} from "mgv_lib/core/TickLib.sol";
 import {MangroveOffer} from "mgv_strat_src/strategies/MangroveOffer.sol";
+import {TransferLib} from "mgv_lib/TransferLib.sol";
 
 /// @title `OfferDispatcher` is a forwarder contract for Mangrove using the `Dispatcher` router.
 /// @notice This contract makes use of the dispatcher router to route offers to the correct router.
@@ -177,5 +178,24 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   function removeFunctions(bytes4[] calldata mutators, bytes4[] calldata accessors) external onlyAdmin {
     Dispatcher dispatcher = Dispatcher(address(router()));
     dispatcher.removeFunctions(mutators, accessors);
+  }
+
+  /// @inheritdoc MangroveOffer
+  /// @dev this function is not used by the dispatcher router
+  function __activate__(IERC20) internal virtual override {
+    // revert("OfferDispatcher/NoRouterSupplied");
+  }
+
+  /// @notice Activates tokens for a given router
+  /// @dev this function is not used by the dispatcher router
+  /// @param tokens The tokens to activate
+  /// @param _router The router to activate the tokens for
+  function activate(IERC20[] calldata tokens, MonoRouter _router) external onlyAdmin {
+    Dispatcher dispatcher = Dispatcher(address(router()));
+    for (uint i = 0; i < tokens.length; ++i) {
+      require(TransferLib.approveToken(tokens[i], address(MGV), type(uint).max), "mgvOffer/approveMangrove/Fail");
+      require(TransferLib.approveToken(tokens[i], address(dispatcher), type(uint).max), "mgvOffer/approveRouterFail");
+      dispatcher.activate(tokens[i], _router);
+    }
   }
 }

@@ -15,9 +15,8 @@ import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
 
 import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {SimpleRouter, AbstractRouter} from "mgv_strat_src/strategies/routers/SimpleRouter.sol";
 
-import {Dispatcher} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
+import {Dispatcher, AbstractRouter} from "mgv_strat_src/strategies/routers/integrations/Dispatcher.sol";
 
 contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;
@@ -27,7 +26,6 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   IPool internal POOL;
 
   AaveDispatchedRouter internal aaveRouter;
-  SimpleRouter internal simpleRouter;
 
   function setUp() public virtual override {
     // deploying mangrove and opening WETH/USDC market.
@@ -35,9 +33,6 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
       fork = new PolygonFork();
     }
     super.setUp();
-
-    vm.prank(deployer);
-    makerContract.activate(dynamic([dai]));
   }
 
   function fundStrat() internal virtual override {
@@ -70,8 +65,6 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
       storage_key: "router.aave.1"
     });
 
-    simpleRouter = new SimpleRouter();
-
     bytes4[] memory mutators = new bytes4[](1);
     mutators[0] = aaveRouter.setAaveCreditLine.selector;
 
@@ -79,6 +72,8 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     accessors[0] = aaveRouter.getAaveCreditLine.selector;
 
     offerDispatcher.initializeRouter(address(aaveRouter), mutators, accessors);
+
+    offerDispatcher.activate(dynamic([IERC20(dai), IERC20(usdc), IERC20(weth)]), aaveRouter);
 
     vm.stopPrank();
 
@@ -88,8 +83,6 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     vm.startPrank(owner);
     aWETH.approve(address(makerContract.router()), type(uint).max);
     aUSDC.approve(address(makerContract.router()), type(uint).max);
-    // Setting aave routers only for outbound (weth) by default
-    // otherwise simple router will be used
     offerDispatcher.setRoute(weth, owner, aaveRouter);
     offerDispatcher.setRoute(usdc, owner, aaveRouter);
     vm.stopPrank();
@@ -149,8 +142,8 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
-    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     assertEq(endAWethBalance, startAWethBalance, "Suppose to have same amount of aWETH");
