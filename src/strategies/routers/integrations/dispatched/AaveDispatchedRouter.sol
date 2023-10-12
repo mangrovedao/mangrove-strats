@@ -2,9 +2,9 @@
 pragma solidity ^0.8.18;
 
 import {MonoRouter, AbstractRouter, ApprovalInfo} from "../../abstract/MonoRouter.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AaveMemoizer, ReserveConfiguration, DataTypes} from "../AaveMemoizer.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 /// @title `AaveDispatchedRouter` is a router contract for Aave used by the `Dispatcher` contract.
 /// @dev No tokens should be directly sent to this contract

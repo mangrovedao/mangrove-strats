@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {MangroveDeployer} from "mgv_script/core/deployers/MangroveDeployer.s.sol";
+import {MangroveDeployer} from "@mgv/script/core/deployers/MangroveDeployer.s.sol";
 import {
   MangroveOrderDeployer,
   MangroveOrder
-} from "mgv_strat_script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 
 import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
 

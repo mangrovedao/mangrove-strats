@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouterTest, IERC20, TestToken} from "./AbstractRouter.t.sol";
-import "mgv_strat_src/strategies/routers/SimpleRouter.sol";
-import {ApprovalInfo, ApprovalType} from "mgv_strat_src/strategies/utils/ApprovalTransferLib.sol";
+import "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {ApprovalInfo, ApprovalType} from "@mgv-strats/src/strategies/utils/ApprovalTransferLib.sol";
 import {ISignatureTransfer} from "lib/permit2/src/interfaces/ISignatureTransfer.sol";
 import {IAllowanceTransfer} from "lib/permit2/src/interfaces/IAllowanceTransfer.sol";
-import {Permit2Helpers} from "mgv_strat_test/lib/permit2/permit2Helpers.sol";
+import {Permit2Helpers} from "@mgv-strats/test/lib/permit2/permit2Helpers.sol";
 import {console} from "forge-std/console.sol";
 
 contract SimpleRouterTest is AbstractRouterTest, Permit2Helpers {

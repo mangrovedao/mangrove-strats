@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import {MultiRouter, MonoRouter, AbstractRouter, ApprovalInfo} from "../abstract/MultiRouter.sol";
-import {IERC20} from "mgv_src/core/MgvLib.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+import {IERC20} from "@mgv/src/core/MgvLib.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
 contract Dispatcher is MultiRouter {

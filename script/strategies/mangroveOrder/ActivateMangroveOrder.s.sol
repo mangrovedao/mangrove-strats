@@ -1,11 +1,11 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {console} from "forge-std/console.sol";
-import {Script2} from "mgv_lib/Script2.sol";
-import {MangroveOrder} from "mgv_strat_src/strategies/MangroveOrder.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {console} from "@mgv/forge-std/console.sol";
+import {Script2} from "@mgv/lib/Script2.sol";
+import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Allows MangroveOrder to trade on the tokens given in argument.
 

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import {OfferLogicTest, IERC20, TestToken, TestSender} from "../OfferLogic.t.sol";
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
 import {
   OfferDispatcherTester,
   ITesterContract as ITester,

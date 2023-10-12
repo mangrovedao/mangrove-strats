@@ -1,19 +1,19 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferType} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {GeometricKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {OfferType} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {KandelTest} from "./KandelTest.t.sol";
-import {TickLib, Tick} from "mgv_lib/core/TickLib.sol";
-import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "mgv_lib/core/Constants.sol";
+import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
+import {MAX_TICK, MIN_TICK, MAX_SAFE_VOLUME} from "@mgv/lib/core/Constants.sol";
 import {DirectWithBidsAndAsksDistribution} from
-  "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {MgvLib} from "mgv_src/core/MgvLib.sol";
-import {CoreKandel} from "mgv_strat_src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import "mgv_lib/Debug.sol";
-import {TransferLib} from "mgv_lib/TransferLib.sol";
+  "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/DirectWithBidsAndAsksDistribution.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
+import {MgvLib} from "@mgv/src/core/MgvLib.sol";
+import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import "@mgv/lib/Debug.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {

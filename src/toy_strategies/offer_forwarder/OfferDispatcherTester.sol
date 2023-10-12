@@ -7,10 +7,10 @@ import {
   IERC20,
   AbstractRouter,
   Dispatcher
-} from "mgv_strat_src/strategies/offer_forwarder/OfferDispatcher.sol";
-import {MgvLib, OLKey} from "mgv_src/core/MgvLib.sol";
-import {ITesterContract} from "mgv_strat_src/toy_strategies/interfaces/ITesterContract.sol";
-import {Tick, TickLib} from "mgv_lib/core/TickLib.sol";
+} from "@mgv-strats/src/strategies/offer_forwarder/OfferDispatcher.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
+import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 
 contract OfferDispatcherTester is OfferDispatcher, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferDispatcher(mgv, deployer) {}

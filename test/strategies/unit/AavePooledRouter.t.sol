@@ -1,16 +1,16 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {ApprovalInfo} from "mgv_strat_src/strategies/routers/abstract/AbstractRouter.sol";
+import {ApprovalInfo} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {OfferLogicTest} from "./OfferLogic.t.sol";
-import {AavePooledRouter} from "mgv_strat_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {PinnedPolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
-import {IERC20} from "mgv_lib/IERC20.sol";
-import {TestToken} from "mgv_test/lib/tokens/TestToken.sol";
+import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {AbstractRouterTest} from "./AbstractRouter.t.sol";
-import "mgv_lib/Debug.sol";
+import "@mgv/lib/Debug.sol";
 
 contract AavePooledRouterTest is AbstractRouterTest {
   bool internal useForkAave = true;

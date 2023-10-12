@@ -6,12 +6,12 @@ import {
   AavePrivateRouter,
   DataTypes,
   ReserveConfiguration
-} from "mgv_strat_src/strategies/routers/integrations/AavePrivateRouter.sol";
-import {AaveDispatchedRouter} from "mgv_strat_src/strategies/routers/integrations/dispatched/AaveDispatchedRouter.sol";
+} from "@mgv-strats/src/strategies/routers/integrations/AavePrivateRouter.sol";
+import {AaveDispatchedRouter} from "@mgv-strats/src/strategies/routers/integrations/dispatched/AaveDispatchedRouter.sol";
 
-import {PolygonFork} from "mgv_test/lib/forks/Polygon.sol";
-import {AllMethodIdentifiersTest} from "mgv_test/lib/AllMethodIdentifiersTest.sol";
-import {PoolAddressProviderMock} from "mgv_strat_script/toy/AaveMock.sol";
+import {PolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
+import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
+import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
 import {IPool} from "mgv_strat_src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "mgv_strat_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
