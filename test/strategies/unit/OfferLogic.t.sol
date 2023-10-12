@@ -266,7 +266,7 @@ contract OfferLogicTest is StratTest {
     });
   }
 
-  function performTrade(bool success) internal returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
+  function performTrade(bool success) internal virtual returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
     makerContract.newOfferByVolume{value: 0.1 ether}({

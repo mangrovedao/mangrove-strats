@@ -70,4 +70,28 @@ contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
     offerDispatcher.setRoute(weth, owner, simpleRouter);
     vm.stopPrank();
   }
+
+  function performTrade(bool success)
+    internal
+    virtual
+    override
+    returns (uint takerGot, uint takerGave, uint bounty, uint fee)
+  {
+    vm.startPrank(owner);
+    // ask 2000 USDC for 1 weth
+    makerContract.newOfferByVolume{value: 0.1 ether}({
+      olKey: olKey,
+      wants: 2000 * 10 ** 6,
+      gives: 1 * 10 ** 18,
+      gasreq: 1_000_000
+    });
+    vm.stopPrank();
+
+    // taker has approved mangrove in the setUp
+    vm.startPrank(taker);
+    (takerGot, takerGave, bounty, fee) =
+      mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
+    vm.stopPrank();
+    assertTrue(!success || (bounty == 0 && takerGot > 0), "unexpected trade result");
+  }
 }
