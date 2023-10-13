@@ -82,12 +82,14 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
 
   ///@inheritdoc AbstractRouter
   function __activate__(IERC20 token) internal virtual override {
+    super.__activate__(token);
     _approveLender(token, type(uint).max);
   }
 
   /// @dev Checks if user gave allowance for token and overlying
   /// @inheritdoc	AbstractRouter
-  function __checkList__(IERC20 token, address reserveId, address) internal view override {
+  function __checkList__(IERC20 token, address reserveId, address makerContract) internal view override {
+    super.__checkList__(token, reserveId, makerContract);
     require(token.allowance(reserveId, address(this)) > 0, "AaveDispatchedRouter/NotApproved");
     Memoizer memory m;
     IERC20 overlying = overlying(token, m);
