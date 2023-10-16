@@ -9,10 +9,12 @@ import {
   ITesterContract as ITester,
   IMangrove
 } from "@mgv-strats/src/toy_strategies/offer_forwarder/OfferDispatcherTester.sol";
+import {DispatcherRouter} from "@mgv-strats/src/strategies/routers/integrations/DispatcherRouter.sol";
 import "@mgv/lib/Debug.sol";
 
 abstract contract AbstractDispatchedRouter is OfferLogicTest {
   OfferDispatcherTester offerDispatcher;
+  DispatcherRouter router;
 
   function setUp() public virtual override {
     deployer = freshAddress("deployer");
@@ -27,6 +29,8 @@ abstract contract AbstractDispatchedRouter is OfferLogicTest {
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
+
+    router = DispatcherRouter(address(offerDispatcher.router()));
 
     owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);

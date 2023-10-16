@@ -12,6 +12,8 @@ contract SimpleDispatchedRouter is AbstractDispatchedRouter {
     vm.startPrank(deployer);
     simpleRouter = new SimpleRouter();
 
+    router.initializeRouter(simpleRouter);
+
     offerDispatcher.activate(dynamic([IERC20(weth), IERC20(usdc)]), simpleRouter);
     vm.stopPrank();
 

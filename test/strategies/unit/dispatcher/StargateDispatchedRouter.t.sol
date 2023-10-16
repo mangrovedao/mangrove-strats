@@ -11,7 +11,7 @@ import {
   AbstractRouter
 } from "@mgv-strats/src/strategies/routers/integrations/dispatched/StargateDispatchedRouter.sol";
 import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {Dispatcher} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
+import {DispatcherRouter} from "@mgv-strats/src/strategies/routers/integrations/DispatcherRouter.sol";
 
 import {IStargateRouter} from "@mgv-strats/src/strategies/vendor/stargate/IStargateRouter.sol";
 import {IPool} from "@mgv-strats/src/strategies/vendor/stargate/IPool.sol";
@@ -54,6 +54,9 @@ contract StargateDispatchedRouterTest is AbstractDispatchedRouter {
     });
 
     simpleRouter = new SimpleRouter();
+
+    router.initializeRouter(stargateRouter);
+    router.initializeRouter(simpleRouter);
 
     offerDispatcher.activate(dynamic([IERC20(usdc)]), stargateRouter);
     offerDispatcher.activate(dynamic([IERC20(weth)]), simpleRouter);

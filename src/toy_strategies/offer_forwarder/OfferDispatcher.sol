@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {Forwarder, IMangrove, IERC20} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
 import {AbstractRouter, MonoRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {Dispatcher} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
+import {DispatcherRouter} from "@mgv-strats/src/strategies/routers/integrations/DispatcherRouter.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
@@ -17,7 +17,7 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   /// @notice contract's constructor
   /// @param mgv The Mangrove contract
   /// @param deployer The address to set as admin
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new Dispatcher(), 30_000) {
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new DispatcherRouter(), 30_000) {
     AbstractRouter router_ = router();
     router_.bind(address(this));
     if (deployer != msg.sender) {
@@ -114,38 +114,6 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
     );
   }
 
-  /// @notice Calls a function of a specific router implementation
-  /// @dev the function that receive the call must have the data as follows (address, IERC20, bytes calldata)
-  /// * only the reserveId can call this function
-  /// @param selector The selector of the function to call
-  /// @param reserveId The reserveId to call the function on
-  /// @param token The token to call the function on
-  /// @param data The data to call the function with
-  function mutateSpecifics(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
-    external
-    onlyCaller(reserveId)
-  {
-    Dispatcher dispatcher = Dispatcher(address(router()));
-    dispatcher.mutateRouterState(selector, reserveId, token, data);
-  }
-
-  /// @notice Queries the data for a specific router implementation
-  /// @dev the function that receive the call must have the data as follows (address, IERC20, bytes calldata)
-  /// * only the reserveId can call this function
-  /// @param selector The selector of the function to call
-  /// @param reserveId The reserveId to call the function on
-  /// @param token The token to call the function on
-  /// @param data The data to call the function with
-  /// @return retdata The data returned by the router
-  function querySpecifics(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
-    external
-    view
-    returns (bytes memory)
-  {
-    Dispatcher dispatcher = Dispatcher(address(router()));
-    return dispatcher.queryRouterState(selector, reserveId, token, data);
-  }
-
   /// @notice Sets a route for a given token and reserveId
   /// @dev calls a function with the same signature on the router
   /// * only the reserveId can call this function
@@ -153,31 +121,8 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   /// @param reserveId The reserveId to set the route for
   /// @param route The route to set
   function setRoute(IERC20 token, address reserveId, MonoRouter route) external onlyCaller(reserveId) {
-    Dispatcher dispatcher = Dispatcher(address(router()));
+    DispatcherRouter dispatcher = DispatcherRouter(address(router()));
     dispatcher.setRoute(token, reserveId, route);
-  }
-
-  /// @notice Initializes a new router contract by setting the router specific functions
-  /// @dev Selectors must be unique across all routers
-  /// * if a selector is already set, it will revert
-  /// @param _router The router contract to initialize
-  /// @param mutators The mutator functions to set
-  /// @param accessors The accessor functions to set
-  function initializeRouter(address _router, bytes4[] calldata mutators, bytes4[] calldata accessors)
-    external
-    onlyAdmin
-  {
-    Dispatcher dispatcher = Dispatcher(address(router()));
-    dispatcher.initializeRouter(_router, mutators, accessors);
-  }
-
-  /// @notice Removes a router contract by removing the router specific functions
-  /// @dev if a selector is not set, it will revert
-  /// @param mutators The mutator functions to remove
-  /// @param accessors The accessor functions to remove
-  function removeFunctions(bytes4[] calldata mutators, bytes4[] calldata accessors) external onlyAdmin {
-    Dispatcher dispatcher = Dispatcher(address(router()));
-    dispatcher.removeFunctions(mutators, accessors);
   }
 
   /// @inheritdoc MangroveOffer
@@ -191,11 +136,11 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   /// @param tokens The tokens to activate
   /// @param _router The router to activate the tokens for
   function activate(IERC20[] calldata tokens, MonoRouter _router) external onlyAdmin {
-    Dispatcher dispatcher = Dispatcher(address(router()));
+    address dispatcher = address(router());
     for (uint i = 0; i < tokens.length; ++i) {
       require(TransferLib.approveToken(tokens[i], address(MGV), type(uint).max), "mgvOffer/approveMangrove/Fail");
-      require(TransferLib.approveToken(tokens[i], address(dispatcher), type(uint).max), "mgvOffer/approveRouterFail");
-      dispatcher.activate(tokens[i], _router);
+      require(TransferLib.approveToken(tokens[i], dispatcher, type(uint).max), "mgvOffer/approveRouterFail");
+      DispatcherRouter(dispatcher).activate(tokens[i], _router);
     }
   }
 }

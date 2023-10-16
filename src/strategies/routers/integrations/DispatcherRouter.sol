@@ -6,60 +6,36 @@ import {IERC20} from "@mgv/src/core/MgvLib.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title `Dispatcher` delegates calls to the correct router contract depending on the token and reserveId sourcing strategy.
-contract Dispatcher is MultiRouter {
-  /// @notice Holds signatures for the functions that can be called to mutate the state on the router contracts
-  mapping(bytes4 => address) public mutatorFunctions;
+contract DispatcherRouter is MultiRouter {
+  ///@notice WhiteList of allowed routers
+  mapping(MonoRouter => bool) public allowedRouters;
 
-  /// @notice Holds signatures for the functions that can be called to query the state on the router contracts
-  mapping(bytes4 => address) public accessorFunctions;
+  /// @notice WhiteList a router contract
+  /// @dev This event is emitted when a router contract is whitelisted
+  /// @param router The router contract that was whitelisted
+  event AddedAllowedRouter(MonoRouter indexed router);
 
-  /// @notice Fired when a router specific function is added to the dispatcher
-  /// @dev This must be fired for the indexers to pick up the function
-  /// @param router The dispatched router contract
-  /// @param selector The function selector
-  /// @param isMutator Whether the function is a mutator or not
-  event RouterSpecificFunctionAdded(address indexed router, bytes4 indexed selector, bool indexed isMutator);
+  /// @notice Remove a router contract from the whitelist
+  /// @dev This event is emitted when a router contract is removed from the whitelist
+  /// @param router The router contract that was removed from the whitelist
+  event RemovedAllowedRouter(MonoRouter indexed router);
 
-  /// @notice Fired when a router specific function is removed from the dispatcher
-  /// @param router The dispatched router contract
-  /// @param selector The function selector
-  /// @param isMutator Whether the function is a mutator or not
-  event RouterSpecificFunctionRemoved(address indexed router, bytes4 indexed selector, bool indexed isMutator);
-
-  /// @notice Initializes a new router contract by setting the router specific functions
-  /// @dev Selectors must be unique across all routers
-  /// * if a selector is already set, it will revert
+  /// @notice Initializes a new router contract.
+  /// @dev Whitelists a given router contract.
   /// @param router The router contract to initialize
-  /// @param mutators The mutator functions to set
-  /// @param accessors The accessor functions to set
-  function initializeRouter(address router, bytes4[] calldata mutators, bytes4[] calldata accessors) external onlyBound {
-    for (uint i = 0; i < mutators.length; i++) {
-      require(mutatorFunctions[mutators[i]] == address(0), "Dispatcher/SelectorAlreadySet");
-      mutatorFunctions[mutators[i]] = router;
-      emit RouterSpecificFunctionAdded(router, mutators[i], true);
-    }
-    for (uint i = 0; i < accessors.length; i++) {
-      require(accessorFunctions[accessors[i]] == address(0), "Dispatcher/SelectorAlreadySet");
-      accessorFunctions[accessors[i]] = router;
-      emit RouterSpecificFunctionAdded(router, accessors[i], false);
-    }
+  function initializeRouter(MonoRouter router) external onlyAdmin {
+    require(!allowedRouters[router], "Dispatcher/RouterAlreadySet");
+    allowedRouters[router] = true;
+    emit AddedAllowedRouter(router);
   }
 
-  /// @notice Removes a router contract by removing the router specific functions
-  /// @dev if a selector is not set, it will revert
-  /// @param mutators The mutator functions to remove
-  /// @param accessors The accessor functions to remove
-  function removeFunctions(bytes4[] calldata mutators, bytes4[] calldata accessors) external onlyBound {
-    for (uint i = 0; i < mutators.length; i++) {
-      require(mutatorFunctions[mutators[i]] != address(0), "Dispatcher/SelectorNotSet");
-      mutatorFunctions[mutators[i]] = address(0);
-      emit RouterSpecificFunctionRemoved(mutatorFunctions[mutators[i]], mutators[i], true);
-    }
-    for (uint i = 0; i < accessors.length; i++) {
-      require(accessorFunctions[accessors[i]] != address(0), "Dispatcher/SelectorNotSet");
-      accessorFunctions[accessors[i]] = address(0);
-      emit RouterSpecificFunctionRemoved(accessorFunctions[accessors[i]], accessors[i], false);
-    }
+  /// @notice Removes a router contract from the whitelist.
+  /// @dev Throws if the router contract is not whitelisted.
+  /// @param router The router contract to remove
+  function removeRouter(MonoRouter router) external onlyAdmin {
+    require(allowedRouters[router], "Dispatcher/RouterNotSet");
+    allowedRouters[router] = false;
+    emit RemovedAllowedRouter(router);
   }
 
   /// @notice Get the current router for the given token and reserveId
@@ -69,8 +45,8 @@ contract Dispatcher is MultiRouter {
   /// @return router The MonoRouter contract
   function _getRouterSafely(IERC20 token, address reserveId) internal view returns (MonoRouter router) {
     router = routes[token][reserveId];
-    // TODO: check if we set a default route for gas costs
-    require(address(router) != address(0), "Dispatcher/UnkownRoute");
+    // TODO: should we set a default router in cas of address(0)?
+    require(allowedRouters[router], "Dispatcher/RouterNotSet");
   }
 
   /// @inheritdoc	AbstractRouter
@@ -149,8 +125,11 @@ contract Dispatcher is MultiRouter {
   /// @param reserveId The reserveId to call the function on
   /// @param token The token to call the function on
   /// @param data The data to call the function with
-  function mutateRouterState(bytes4 selector, address reserveId, IERC20 token, bytes calldata data) external onlyBound {
-    address router = mutatorFunctions[selector];
+  function mutateRouterState(bytes4 selector, address reserveId, IERC20 token, bytes calldata data)
+    external
+    onlyCaller(reserveId)
+  {
+    address router = address(_getRouterSafely(token, reserveId));
     require(router != address(0), "Dispatcher/SelectorNotSet");
     (bool success, bytes memory retdata) = router.delegatecall(abi.encodeWithSelector(selector, reserveId, token, data));
     if (!success) {
@@ -182,7 +161,7 @@ contract Dispatcher is MultiRouter {
     token;
     data;
 
-    address router = accessorFunctions[selector];
+    address router = address(_getRouterSafely(token, reserveId));
     require(router != address(0), "Dispatcher/SelectorNotSet");
     (bool success, bytes memory retdata) = address(this).staticcall(
       abi.encodeWithSelector(

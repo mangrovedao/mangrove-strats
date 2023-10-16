@@ -16,7 +16,7 @@ import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 
-import {Dispatcher, AbstractRouter} from "@mgv-strats/src/strategies/routers/integrations/Dispatcher.sol";
+import {DispatcherRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/integrations/DispatcherRouter.sol";
 
 contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;
@@ -65,13 +65,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
       storage_key: "router.aave.1"
     });
 
-    bytes4[] memory mutators = new bytes4[](1);
-    mutators[0] = aaveRouter.setAaveCreditLine.selector;
-
-    bytes4[] memory accessors = new bytes4[](1);
-    accessors[0] = aaveRouter.getAaveCreditLine.selector;
-
-    offerDispatcher.initializeRouter(address(aaveRouter), mutators, accessors);
+    router.initializeRouter(aaveRouter);
 
     offerDispatcher.activate(dynamic([IERC20(dai), IERC20(usdc), IERC20(weth)]), aaveRouter);
 
@@ -90,7 +84,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
 
   function getCreditLine(address owner, IERC20 token) internal view returns (uint8) {
     bytes4 sig = aaveRouter.getAaveCreditLine.selector;
-    bytes memory data = offerDispatcher.querySpecifics(sig, owner, token, "");
+    bytes memory data = router.queryRouterState(sig, owner, token, "");
     return abi.decode(data, (uint8));
   }
 
@@ -98,7 +92,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     bytes4 sig = aaveRouter.setAaveCreditLine.selector;
     bytes memory data = abi.encode(creditLine);
     vm.prank(owner);
-    offerDispatcher.mutateSpecifics(sig, owner, token, data);
+    router.mutateRouterState(sig, owner, token, data);
   }
 
   // must be made in order to have aave rewards taken into account
