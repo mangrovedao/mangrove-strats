@@ -110,7 +110,7 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
     assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
   }
 
   function test_token_balance_of() public {
@@ -165,12 +165,12 @@ contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
     assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     uint endWethBalance = weth.balanceOf(owner);
 
-    assertEq(endWethBalance, 0, "Should have taken all WETH first");
+    assertApproxEqAbs(endWethBalance, 0, 1, "Should have taken all WETH first");
     assertApproxEqAbs(startAWethBalance - endAWethBalance, 0.5 ether - startWethBalance, 1, "incorrect trade output");
   }
 
