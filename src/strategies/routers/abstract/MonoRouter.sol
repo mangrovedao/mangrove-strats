@@ -20,4 +20,10 @@ abstract contract MonoRouter is AbstractRouter {
   function __routerGasreq__(IERC20, address) internal view override returns (uint) {
     return ROUTER_GASREQ;
   }
+
+  ///@notice Balance of a reserve
+  ///@param token the asset one wishes to know the balance of
+  ///@param reserveId the identifier of the reserve
+  ///@return the balance of the reserve
+  function balanceOfReserve(IERC20 token, address reserveId) public view virtual returns (uint);
 }
