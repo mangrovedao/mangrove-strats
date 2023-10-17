@@ -48,6 +48,14 @@ contract DispatcherRouter is AbstractRouter {
     emit SetRoute(msg.sender, token, olKeyHash, offerId, logic);
   }
 
+  /// @notice Exectue a transfer for the wanted supposed overlying from the owner to the caller
+  /// @dev This assumes that the user has given allowance of the supoosed overlying to this contract
+  /// * This function is called by the routing logic contract
+  /// @param underlying The underlying token
+  /// @param overlying The overlying token (token we want to pull)
+  /// @param amount The amount of overlying to pull
+  /// @param offer The pull data from the `DispatcherRouter` `pull` request
+  /// @return success True if the transfer was successful
   function executeTransfer(IERC20 underlying, IERC20 overlying, uint amount, PullStruct calldata offer)
     external
     returns (bool)

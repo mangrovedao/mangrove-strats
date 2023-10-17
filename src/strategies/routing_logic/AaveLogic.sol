@@ -6,6 +6,8 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 
+/// @title AaveLogic
+/// @notice Routing logic for Aave
 contract AaveLogic is AbstractRoutingLogic, AaveMemoizer {
   /// @notice The maximum credit line to be redeemed
   /// * Credit line is the maximum amount that can be borrowed to stay above the liquidation threshold (health factor > 1)
