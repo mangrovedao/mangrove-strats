@@ -9,14 +9,28 @@ import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is MonoRouter(70_000) {
+  /// @notice Pull Structure for `SimpleRouter`
+  /// @param owner the owner of the offer
+  /// @param strict if true, the router will pull exactly `amount` tokens from the reserve.
+  struct PullStruct {
+    address owner;
+    bool strict;
+  }
+
+  /// @notice Push Structure for `SimpleRouter`
+  /// @param owner the owner of the offer
+  struct PushStruct {
+    address owner;
+  }
+
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.
   /// @inheritdoc AbstractRouter
   function __pull__(IERC20 token, uint amount, bytes memory pullData) internal virtual override returns (uint pulled) {
     // if not strict, pulling all available tokens from reserve
-    (address owner, bool strict) = abi.decode(pullData, (address, bool));
-    amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
+    PullStruct memory p = abi.decode(pullData, (PullStruct));
+    amount = p.strict ? amount : token.balanceOf(p.owner);
+    if (TransferLib.transferTokenFrom(token, p.owner, msg.sender, amount)) {
       return amount;
     } else {
       return 0;
@@ -27,8 +41,8 @@ contract SimpleRouter is MonoRouter(70_000) {
   /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
   function __push__(IERC20 token, uint amount, bytes memory pushData) internal virtual override returns (uint) {
-    address owner = abi.decode(pushData, (address));
-    bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
+    PushStruct memory p = abi.decode(pushData, (PushStruct));
+    bool success = TransferLib.transferTokenFrom(token, msg.sender, p.owner, amount);
     return success ? amount : 0;
   }
 
