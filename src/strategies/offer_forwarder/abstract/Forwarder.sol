@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:	BSD-2-Clause
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import {ApprovalInfo} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:	BSD-2-Clause
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import {SimpleVaultRouter} from "../../abstract/SimpleVaultRouter.sol";
 import {AbstractRouter} from "../../abstract/AbstractRouter.sol";
