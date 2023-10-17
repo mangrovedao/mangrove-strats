@@ -68,7 +68,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount The amount of tokens to be transferred
   ///@param pullData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(IERC20 token, uint amount, bytes calldata pullData) internal virtual returns (uint);
+  function __pull__(IERC20 token, uint amount, bytes memory pullData) internal virtual returns (uint);
 
   ///@notice pushes assets from calling's maker contract to a reserve
   ///@param token is the asset the maker is pushing
@@ -87,7 +87,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@param amount The amount of tokens to be transferred
   ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pushed The amount pushed if successful; otherwise, 0.
-  function __push__(IERC20 token, uint amount, bytes calldata pushData) internal virtual returns (uint pushed);
+  function __push__(IERC20 token, uint amount, bytes memory pushData) internal virtual returns (uint pushed);
 
   ///@notice iterative `push` for the whole balance in a single call
   ///@param tokens to flush

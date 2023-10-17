@@ -170,9 +170,11 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
 
   ///@notice Deposit funds on this router from the calling maker contract
   ///@dev no transfer to AAVE is done at that moment.
+  /// * pushData is a bytes array that holds the reserveId.
   ///@inheritdoc AbstractRouter
-  function __push__(IERC20 token, address reserveId, uint amount) internal override returns (uint) {
+  function __push__(IERC20 token, uint amount, bytes memory pushData) internal override returns (uint) {
     BalanceMemoizer memory memoizer;
+    address reserveId = abi.decode(pushData, (address));
     _mintShares(token, reserveId, amount, memoizer);
     // Transfer must occur *after* state updating _mintShares above
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "AavePooledRouter/pushFailed");
@@ -206,11 +208,12 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   {
     // Push will fail for amount of 0, but since this function is only called for the first maker contract in a chain
     // it needs to also flush tokens with a contract-local 0 amount.
+    bytes memory pushData = abi.encode(reserveId);
     if (amount0 > 0) {
-      pushed0 = __push__(token0, reserveId, amount0);
+      pushed0 = __push__(token0, amount0, pushData);
     }
     if (amount1 > 0) {
-      pushed1 = __push__(token1, reserveId, amount1);
+      pushed1 = __push__(token1, amount1, pushData);
     }
     // if AAVE refuses deposit, funds are stored in `this` balance (with no yield)
     // this may happen because max supply of `token` has been reached, or because `token` is not listed on AAVE (`overlying(token)` returns `IERC20(address(0))`)
@@ -228,7 +231,8 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
   ///@dev outside a market order (i.e if `__pull__` is not called during offer logic's execution) the `token` balance of this router should be empty.
   /// This may not be the case when a "donation" occurred to this contract or if the maker posthook failed to push funds back to AAVE
   /// If the donation is large enough to cover the pull request we use the donation funds
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal override returns (uint) {
+  /// * pullData is a bytes array that holds the reserveId and a boolean indicating if the pull should be strict.
+  function __pull__(IERC20 token, uint amount, bytes memory pushData) internal override returns (uint) {
     // The amount to redeem from AAVE
     uint toRedeem;
     // The amount to transfer to the calling maker contract
@@ -236,6 +240,9 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
     BalanceMemoizer memory memoizer;
     // The local buffer of token to transfer in case funds have already been redeemed or due to a donation.
     uint buffer = balanceOf(token, memoizer);
+
+    (address reserveId, bool strict) = abi.decode(pushData, (address, bool));
+
     uint reserveBalance = _balanceOfReserve(token, reserveId, memoizer);
     if (buffer < amount) {
       // this pull is the first of the market order (that requires funds from AAVE) so we redeem all the reserve from AAVE

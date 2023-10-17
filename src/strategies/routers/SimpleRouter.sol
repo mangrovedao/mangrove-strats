@@ -12,7 +12,7 @@ contract SimpleRouter is MonoRouter(70_000) {
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.
   /// @inheritdoc AbstractRouter
-  function __pull__(IERC20 token, uint amount, bytes calldata pullData) internal virtual override returns (uint pulled) {
+  function __pull__(IERC20 token, uint amount, bytes memory pullData) internal virtual override returns (uint pulled) {
     // if not strict, pulling all available tokens from reserve
     (address owner, bool strict) = abi.decode(pullData, (address, bool));
     amount = strict ? amount : token.balanceOf(owner);
@@ -26,7 +26,7 @@ contract SimpleRouter is MonoRouter(70_000) {
   /// @notice transfers an amount of tokens from the maker to the reserve.
   /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
-  function __push__(IERC20 token, uint amount, bytes calldata pushData) internal virtual override returns (uint) {
+  function __push__(IERC20 token, uint amount, bytes memory pushData) internal virtual override returns (uint) {
     address owner = abi.decode(pushData, (address));
     bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
     return success ? amount : 0;
