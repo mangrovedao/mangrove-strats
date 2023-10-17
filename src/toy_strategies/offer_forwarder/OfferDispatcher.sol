@@ -20,9 +20,9 @@ contract OfferDispatcher is ILiquidityProvider, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new DispatcherRouter(), 30_000) {
     AbstractRouter router_ = router();
     router_.bind(address(this));
+    router_.setAdmin(deployer);
     if (deployer != msg.sender) {
       setAdmin(deployer);
-      router_.setAdmin(deployer);
     }
   }
 

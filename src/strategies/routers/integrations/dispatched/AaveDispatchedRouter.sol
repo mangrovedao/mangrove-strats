@@ -60,7 +60,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @param reserveId The reserveId to set the data for
   /// @param token The token to set the data for
   /// @param data must be encoded uint8 as bytes (credit_line in percentage range 0-100)
-  function setAaveCreditLine(address reserveId, IERC20 token, bytes calldata data) external onlyBound {
+  function setAaveCreditLine(address reserveId, IERC20 token, bytes calldata data) external onlyCaller(msg.sender) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
     uint8 credit_line = abi.decode(data, (uint8));
     require(credit_line <= MAX_CREDIT_LINE, "AaveDispatchedRouter/InvalidCreditLineDecrease");
