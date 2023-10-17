@@ -23,6 +23,10 @@ contract DispatcherRouter is AbstractRouter {
     uint offerId;
   }
 
+  struct PushStruct {
+    address owner;
+  }
+
   ///@inheritdoc AbstractRouter
   function __routerGasreq__(IERC20 token, address reserveId) internal view override returns (uint) {
     revert("DispatcherRouter/NotImplemented");
