@@ -12,18 +12,30 @@ interface IOrderLogic {
   ///@param tick the tick
   ///@param fillVolume the volume to fill
   ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
-  ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
-  ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
-  ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
+  ///@param userWantsRoutingLogic logic to use for routing funds that are expected by the originator of the order. Use address(0) for simple erc20 transfer
+  ///@param pullLogic logic to use for routing funds that are promised by the originator of the order. Use address(0) for simple erc20 transfer
+  ///@param isResting whether a resting order is required in case of a partial fill
+  ///@param restingOrderParams parameters for the resting order (when `isResting` is true)
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
     Tick tick;
     uint fillVolume;
     bool fillWants;
-    bool restingOrder;
-    uint expiryDate;
+    AbstractRoutingLogic userWantsRoutingLogic;
+    AbstractRoutingLogic userGivesRoutingLogic;
+    bool isResting;
+    OfferParams restingOrderParams;
+  }
+
+  ///@notice whether the complement of the partial fill (if any) should be posted as a resting limit order.
+  ///@param gasreq overrides gasreq for the resting order (0 means use default gasreq)
+  ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
+  ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
+  struct OfferParams {
+    uint gasreq;
     uint offerId;
+    uint expiryDate;
   }
 
   ///@notice Result of an order from the takers side.

@@ -4,7 +4,9 @@ pragma solidity ^0.8.10;
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
-import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {
+  AbstractRoutingLogic, Dispatcher, PullStruct, PushStruct
+} from "@mgv-strats/src/strategies/routers/Dispatcher.sol";
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
@@ -20,6 +22,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice if the order tx is included after the expiry date, it reverts.
   ///@dev 0 means no expiry.
   mapping(bytes32 olKeyHash => mapping(uint offerId => uint expiry)) public expiring;
+
+  uint internal constant SIMPLE_TRANSFER_GASREQ = 60_000;
 
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
@@ -43,12 +47,49 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     emit SetExpiry(olKeyHash, offerId, date);
   }
 
+  ///@notice sets the owner custom route for pull or push logic
+  ///@param token the ERC20 that the logic will pull
+  ///@param offerId the specific offerId for which the pull logic is valid. Set to 0 is the pull logic is to be called outside makerExecute
+  ///@param sourcingLogic the address of the logic that owner trusts to be able to source `token`. Use address(0) to use simple transfer[From]
+  function setRoute(IERC20 token, bytes32 olKeyHash, uint offerId, AbstractRoutingLogic sourcingLogic) public {
+    Dispatcher(address(router())).setRoute(msg.sender, token, olKeyHash, offerId, sourcingLogic);
+  }
+
+  ///@notice pulls tokens to this contract according to msg.sender sourcing strategy
+  ///@param token the asset type one is pulling
+  ///@param amount the amount of asset that is being pulled
+  ///@param pullLogic the pull strategy of msg.sender
+  function pullWithLogic(IERC20 token, uint amount, AbstractRoutingLogic routingLogic) internal {
+    // since we are using pull outside of makerExecute, we tell the dispatcher to use the pull strategy required by the user in the TakerOrder struct
+    setRoute(token, bytes32(0), 0, routingLogic);
+    bytes memory pullData = abi.encode(PullStruct({owner: msg.sender, strict: true, offerId: 0, olKeyHash: bytes32(0)}));
+    uint pulled = router().pull(token, amount, pullData);
+    require(pulled == amount, "mgvOrder/pullWithLogicFail");
+    // for gas refund
+    setRoute(token, bytes32(0), 0, address(0));
+  }
+
+  ///@notice pushes tokens from this contract to msg.sender's reserve
+  ///@param token the asset type one is pushing
+  ///@param amount the amount of asset that is being pushed
+  ///@param pushLogic the push strategy of msg.sender
+  function pushWithLogic(IERC20 token, uint amount, AbstractRoutingLogic routingLogic) internal {
+    // since we are using push outside of makerExecute, we tell the dispatcher to use the push strategy required by the user in the TakerOrder struct
+    setRoute(token, bytes32(0), 0, routingLogic);
+    bytes memory pushData = abi.encode(PushStruct({owner: msg.sender, offerId: 0, olKeyHash: bytes32(0)}));
+    uint pushed = router().push(token, amount, pushData);
+    require(pushed == amount, "mgvOrder/pushWithLogicFail");
+    // for gas refund
+    setRoute(token, bytes32(0), 0, address(0));
+  }
+
   ///@notice updates an offer on Mangrove
   ///@dev this can be used to update price of the resting order
   ///@param olKey the offer list key.
   ///@param tick the tick
   ///@param gives new amount of `olKey.outbound_tkn` offer owner gives
   ///@param offerId the id of the offer to be updated
+  ///@param params the parameters for sourcing the liquidity of the offer
   function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId)
     external
     payable
@@ -104,6 +145,18 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
   }
 
+  ///@notice returns an over approximation of the gas required for a liquity routing strategy
+  ///@param pullLogic logic at use for pulling funds. Is address(0) when funds are pulled using ERC20 `transferFrom`
+  ///@param pushLogic logic at use for pushing funds. Is address(0) when funds are pushed using ERC20 `transfer`
+  function offerGasreq(AbstractRoutingLogic pullLogic, AbstractRoutingLogic pushLogic)
+    public
+    view
+    returns (uint gasreq)
+  {
+    gasreq += address(pullLogic) != address(0) ? pullLogic.pullGasreq() : SIMPLE_TRANSFER_GASREQ;
+    gasreq += address(pushLogic) != address(0) ? pushLogic.pushGasreq() : SIMPLE_TRANSFER_GASREQ;
+  }
+
   ///@inheritdoc IOrderLogic
   function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory res) {
     // Checking whether order is expired
@@ -122,8 +175,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true);
-    require(pulled == takerGives, "mgvOrder/transferInFail");
+
+    // pulling required funds for the market order from the source defined by the pullLogic
+    pullWithLogic(IERC20(tko.olKey.inbound_tkn), takerGives, tko.userGivesRoutingLogic);
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -144,15 +198,12 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
-      require(
-        router().push(IERC20(tko.olKey.outbound_tkn), msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed"
-      );
+      pushWithLogic(IERC20(tko.olKey.outbound_tkn), res.takerGot, tko.userWantsRoutingLogic);
     }
     uint inboundLeft = takerGives - res.takerGave;
     if (inboundLeft > 0) {
-      require(
-        router().push(IERC20(tko.olKey.inbound_tkn), msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed"
-      );
+      // FIXME too much gas spent here since logic for inbound could have been kept during the first pull at the begining of marketOrder
+      pushWithLogic(IERC20(tko.olKey.inbound_tkn), inboundLeft, tko.userGivesRoutingLogic);
     }
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER+`res.takerGot`, IN_USER-`res.takerGave`)
@@ -253,7 +304,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       olKey: olKey,
       tick: residualTick,
       gives: residualGives,
-      gasreq: offerGasreq(), // using default gasreq of the strat
+      gasreq: tko.restingOrderParams.gasreq == 0
+        ? offerGasreq(tko.inboundRoutingLogic, tko.outboundRoutingLogic)
+        : tko.restingOrderParams.gasreq,
       gasprice: 0, // ignored
       fund: fund,
       noRevert: true // returns 0 when MGV reverts
@@ -289,6 +342,14 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       // setting expiry date for the resting order
       if (tko.expiryDate > 0) {
         setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
+      }
+      // setting liquidity sourcing strategy for the resting order
+      if (tko.outboundRoutingLogic != address(0)) {
+        setRoute(olKey.outbound_tkn, olKey.hash(), res.offerId, tko.userGivesRoutingLogic);
+      }
+      // setting liquidity targetting strategy for the resting order
+      if (tko.inboundRoutingLogic != address(0)) {
+        setRoute(olKey.inbound_tkn, olKey.hash(), res.offerId, tko.userWantsRoutingLogic);
       }
     }
   }
