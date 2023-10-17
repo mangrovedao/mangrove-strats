@@ -56,52 +56,47 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset
-  ///@param reserveId identifies the fund owner (router implementation dependent).
   ///@param amount of `token` the maker contract wishes to pull from its reserve
-  ///@param strict when the calling maker contract accepts to receive more funds from reserve than required (this may happen for gas optimization)
+  ///@param pullData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pulled the amount that was successfully pulled.
-  function pull(IERC20 token, address reserveId, uint amount, bool strict) external onlyBound returns (uint pulled) {
-    if (strict && amount == 0) {
-      return 0;
-    }
-    pulled = __pull__({token: token, reserveId: reserveId, amount: amount, strict: strict});
+  function pull(IERC20 token, uint amount, bytes calldata pullData) external onlyBound returns (uint pulled) {
+    pulled = __pull__({token: token, amount: amount, pullData: pullData});
   }
 
   ///@notice router-dependent implementation of the `pull` function
   ///@param token Token to be transferred
-  ///@param reserveId determines the location of the reserve (router implementation dependent).
   ///@param amount The amount of tokens to be transferred
-  ///@param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
+  ///@param pullData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(IERC20 token, address reserveId, uint amount, bool strict) internal virtual returns (uint);
+  function __pull__(IERC20 token, uint amount, bytes calldata pullData) internal virtual returns (uint);
 
   ///@notice pushes assets from calling's maker contract to a reserve
   ///@param token is the asset the maker is pushing
-  ///@param reserveId determines the location of the reserve (router implementation dependent).
   ///@param amount is the amount of asset that should be transferred from the calling maker contract
+  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pushed fraction of `amount` that was successfully pushed to reserve.
-  function push(IERC20 token, address reserveId, uint amount) external onlyBound returns (uint pushed) {
+  function push(IERC20 token, uint amount, bytes calldata pushData) external onlyBound returns (uint pushed) {
     if (amount == 0) {
       return 0;
     }
-    pushed = __push__({token: token, reserveId: reserveId, amount: amount});
+    pushed = __push__({token: token, amount: amount, pushData: pushData});
   }
 
   ///@notice router-dependent implementation of the `push` function
   ///@param token Token to be transferred
-  ///@param reserveId determines the location of the reserve (router implementation dependent).
   ///@param amount The amount of tokens to be transferred
+  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pushed The amount pushed if successful; otherwise, 0.
-  function __push__(IERC20 token, address reserveId, uint amount) internal virtual returns (uint pushed);
+  function __push__(IERC20 token, uint amount, bytes calldata pushData) internal virtual returns (uint pushed);
 
   ///@notice iterative `push` for the whole balance in a single call
   ///@param tokens to flush
-  ///@param reserveId determines the location of the reserve (router implementation dependent).
-  function flush(IERC20[] calldata tokens, address reserveId) external onlyBound {
+  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
+  function flush(IERC20[] calldata tokens, bytes calldata pushData) external onlyBound {
     for (uint i = 0; i < tokens.length; ++i) {
       uint amount = tokens[i].balanceOf(msg.sender);
       if (amount > 0) {
-        require(__push__(tokens[i], reserveId, amount) == amount, "router/pushFailed");
+        require(__push__(tokens[i], amount, pushData) == amount, "router/pushFailed");
       }
     }
   }
