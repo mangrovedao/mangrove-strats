@@ -10,19 +10,11 @@ import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is MonoRouter(70_000) {
   /// @notice transfers an amount of tokens from the reserve to the maker.
-  /// @param token Token to be transferred
-  /// @param owner The account from which the tokens will be transferred.
-  /// @param amount The amount of tokens to be transferred
-  /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
-  /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
-  /// @dev requires approval from `owner` for `this` to transfer `token`.
-  function __pull__(IERC20 token, address owner, uint amount, bool strict)
-    internal
-    virtual
-    override
-    returns (uint pulled)
-  {
+  /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.
+  /// @inheritdoc AbstractRouter
+  function __pull__(IERC20 token, uint amount, bytes calldata pullData) internal virtual override returns (uint pulled) {
     // if not strict, pulling all available tokens from reserve
+    (address owner, bool strict) = abi.decode(pullData, (address, bool));
     amount = strict ? amount : token.balanceOf(owner);
     if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
       return amount;
@@ -32,8 +24,10 @@ contract SimpleRouter is MonoRouter(70_000) {
   }
 
   /// @notice transfers an amount of tokens from the maker to the reserve.
+  /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
-  function __push__(IERC20 token, address owner, uint amount) internal virtual override returns (uint) {
+  function __push__(IERC20 token, uint amount, bytes calldata pushData) internal virtual override returns (uint) {
+    address owner = abi.decode(pushData, (address));
     bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
     return success ? amount : 0;
   }
