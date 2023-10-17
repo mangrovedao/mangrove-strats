@@ -5,8 +5,11 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {
-  AbstractRoutingLogic, Dispatcher, PullStruct, PushStruct
-} from "@mgv-strats/src/strategies/routers/Dispatcher.sol";
+  AbstractRoutingLogic,
+  Dispatcher,
+  PullStruct,
+  PushStruct
+} from "@mgv-strats/src/strategies/routers/DispatcherRouter.sol";
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
