@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.18;
 
-import {OfferDispatcherTest, OfferLogicTest, IERC20, TestToken} from "./OfferDispatcher.t.sol";
+import {AbstractDispatchedRouter, OfferLogicTest, IERC20, TestToken, console} from "./AbstractDispatchedRouter.sol";
 import {
   AavePrivateRouter,
   DataTypes,
@@ -15,9 +15,10 @@ import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
 import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
 import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
-contract AaveDispatchedRouterTest is OfferDispatcherTest {
+import {DispatcherRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/integrations/DispatcherRouter.sol";
+
+contract AaveDispatchedRouterTest is AbstractDispatchedRouter {
   bool internal useForkAave = true;
   IERC20 internal dai;
 
@@ -25,7 +26,6 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
   IPool internal POOL;
 
   AaveDispatchedRouter internal aaveRouter;
-  SimpleRouter internal simpleRouter;
 
   function setUp() public virtual override {
     // deploying mangrove and opening WETH/USDC market.
@@ -33,9 +33,6 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
       fork = new PolygonFork();
     }
     super.setUp();
-
-    vm.prank(deployer);
-    makerContract.activate(dynamic([dai]));
   }
 
   function fundStrat() internal virtual override {
@@ -60,7 +57,7 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     ADDRESS_PROVIDER = IPoolAddressesProvider(aave);
     POOL = IPool(ADDRESS_PROVIDER.getPool());
 
-    vm.prank(deployer);
+    vm.startPrank(deployer);
     aaveRouter = new AaveDispatchedRouter({
       routerGasreq_: 1_000_000,
       addressesProvider: aave,
@@ -68,18 +65,34 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
       storage_key: "router.aave.1"
     });
 
-    vm.prank(deployer);
-    simpleRouter = new SimpleRouter();
+    router.initializeRouter(aaveRouter);
+
+    offerDispatcher.activate(dynamic([IERC20(dai), IERC20(usdc), IERC20(weth)]), aaveRouter);
+
+    vm.stopPrank();
 
     IERC20 aWETH = getOverlying(weth);
+    IERC20 aUSDC = getOverlying(usdc);
 
     vm.startPrank(owner);
     aWETH.approve(address(makerContract.router()), type(uint).max);
-    // Setting aave routers only for outbound (weth) by default
-    // otherwise simple router will be used
+    aUSDC.approve(address(makerContract.router()), type(uint).max);
     offerDispatcher.setRoute(weth, owner, aaveRouter);
-    offerDispatcher.setRoute(usdc, owner, simpleRouter);
+    offerDispatcher.setRoute(usdc, owner, aaveRouter);
     vm.stopPrank();
+  }
+
+  function getCreditLine(address owner, IERC20 token) internal view returns (uint8) {
+    bytes4 sig = aaveRouter.getAaveCreditLine.selector;
+    bytes memory data = router.queryRouterState(sig, owner, token, "");
+    return abi.decode(data, (uint8));
+  }
+
+  function setCreditLine(address owner, IERC20 token, uint8 creditLine) internal {
+    bytes4 sig = aaveRouter.setAaveCreditLine.selector;
+    bytes memory data = abi.encode(creditLine);
+    vm.prank(owner);
+    router.mutateRouterState(sig, owner, token, data);
   }
 
   // must be made in order to have aave rewards taken into account
@@ -91,7 +104,7 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
     assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
   }
 
   function test_token_balance_of() public {
@@ -123,8 +136,8 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
-    assertEq(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     assertEq(endAWethBalance, startAWethBalance, "Suppose to have same amount of aWETH");
@@ -146,12 +159,52 @@ contract AaveDispatchedRouterTest is OfferDispatcherTest {
     assertTrue(bounty == 0 && takergot > 0, "trade failed");
 
     assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
-    assertEq(makerContract.tokenBalance(usdc, owner), balIn + takergave, "incorrect in balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
 
     uint endAWethBalance = aWETH.balanceOf(owner);
     uint endWethBalance = weth.balanceOf(owner);
 
-    assertEq(endWethBalance, 0, "Should have taken all WETH first");
+    assertApproxEqAbs(endWethBalance, 0, 1, "Should have taken all WETH first");
     assertApproxEqAbs(startAWethBalance - endAWethBalance, 0.5 ether - startWethBalance, 1, "incorrect trade output");
+  }
+
+  function test_get_set_credit_line() public {
+    uint8 creditLine = getCreditLine(owner, weth);
+    assertEq(creditLine, 100, "incorrect credit line");
+
+    setCreditLine(owner, weth, 50);
+    creditLine = getCreditLine(owner, weth);
+    assertEq(creditLine, 50, "incorrect credit line");
+
+    vm.expectRevert("AaveDispatchedRouter/InvalidCreditLineDecrease");
+    setCreditLine(owner, weth, 101);
+  }
+
+  function test_can_withdraw_low_credit_line_no_debt() public {
+    setCreditLine(owner, weth, 1);
+    uint balOut = makerContract.tokenBalance(weth, owner);
+    uint balIn = makerContract.tokenBalance(usdc, owner);
+
+    (uint takergot, uint takergave, uint bounty, uint fee) = performTrade(true);
+    assertTrue(bounty == 0 && takergot > 0, "trade failed");
+
+    assertApproxEqAbs(makerContract.tokenBalance(weth, owner), balOut - (takergot + fee), 1, "incorrect out balance");
+    assertApproxEqAbs(makerContract.tokenBalance(usdc, owner), balIn + takergave, 1, "incorrect in balance");
+  }
+
+  function test_cannot_withdraw_above_credit_line() public {
+    vm.prank(owner);
+
+    POOL.borrow(address(usdc), 1000 * 10 ** 6, 2, 0, owner);
+
+    setCreditLine(owner, weth, 0);
+
+    // expect to fail
+    performTrade(false);
+
+    setCreditLine(owner, weth, 100);
+
+    // should work again
+    performTrade(true);
   }
 }

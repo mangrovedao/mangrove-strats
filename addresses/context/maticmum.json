@@ -10,5 +10,9 @@
   {
     "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
     "name": "Permit2"
+  },
+  {
+    "address": "0x817436a076060D158204d955E5403b6Ed0A5fac0",
+    "name": "Stargate"
   }
 ]

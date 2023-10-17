@@ -20,7 +20,7 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// * 100 means we can redeem or borrow 100% of the credit line
   /// * 0 means we can't redeem or borrow anything
   /// * If the user has no debt, this number will be ignored
-  uint internal immutable MAX_CREDIT_LINE = 100;
+  uint8 internal immutable MAX_CREDIT_LINE = 100;
 
   /// @notice Data for a reserve <=> token pair
   /// @param credit_line_decrease The Credit line decrease for a given token and reserveId
@@ -59,11 +59,21 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @dev This can only be called by the reserveId
   /// @param reserveId The reserveId to set the data for
   /// @param token The token to set the data for
-  /// @param data The data to set
-  function setTokenReserveData(address reserveId, IERC20 token, bytes calldata data) external onlyBound {
+  /// @param data must be encoded uint8 as bytes (credit_line in percentage range 0-100)
+  function setAaveCreditLine(address reserveId, IERC20 token, bytes calldata data) external onlyCaller(msg.sender) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
-    TokenReserveData memory tokenReserveData = abi.decode(data, (TokenReserveData));
-    s.token_reserve_data[reserveId][token] = tokenReserveData;
+    uint8 credit_line = abi.decode(data, (uint8));
+    require(credit_line <= MAX_CREDIT_LINE, "AaveDispatchedRouter/InvalidCreditLineDecrease");
+    s.token_reserve_data[reserveId][token].credit_line_decrease = MAX_CREDIT_LINE - credit_line;
+  }
+
+  /// @notice Gets the data for a reserve <=> token pair
+  /// @dev This can only be called by the reserveId
+  /// @param reserveId The reserveId to get the data for
+  /// @param token The token to get the data for
+  /// @return credit_line The credit line for a given token and reserveId
+  function getAaveCreditLine(address reserveId, IERC20 token, bytes calldata) external view returns (uint8) {
+    return creditLineOf(token, reserveId);
   }
 
   /// @notice Gets the max credit line for a given token and reserveId
@@ -71,10 +81,10 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   /// @param token The token to get the buffer size for
   /// @param reserveId The reserveId to get the buffer size for
   /// @return credit_line max credit line that can be used by this contract
-  function creditLineOf(IERC20 token, address reserveId) internal view returns (uint credit_line) {
+  function creditLineOf(IERC20 token, address reserveId) internal view returns (uint8 credit_line) {
     AaveDispatcherStorage storage s = getAaveDispatcherStorage();
     credit_line = MAX_CREDIT_LINE;
-    uint decrease = s.token_reserve_data[reserveId][token].credit_line_decrease;
+    uint8 decrease = s.token_reserve_data[reserveId][token].credit_line_decrease;
     if (decrease > 0) {
       credit_line -= decrease;
     }
@@ -126,7 +136,8 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
         uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
         toWithdraw = missing > maxCreditLine ? maxCreditLine : missing;
       } else {
-        toWithdraw = missing;
+        uint balance = overlying(token, m).balanceOf(reserveId);
+        toWithdraw = missing > balance ? balance : missing;
       }
       require(
         TransferLib.transferTokenFrom(overlying(token, m), reserveId, address(this), toWithdraw),
@@ -142,10 +153,23 @@ contract AaveDispatchedRouter is MonoRouter, AaveMemoizer {
   }
 
   /// @notice Deposit underlying tokens to the reserve
-  /// @dev Supply the underlying on behalf
+  /// @dev First repay debt if any and then supply the underlying on behalf
   /// @inheritdoc	AbstractRouter
   function __push__(IERC20 token, address reserveId, uint amount) internal virtual override returns (uint) {
-    _supply(token, amount, reserveId, false);
+    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "AavePrivateRouter/pushFailed");
+    uint _leftToPush = amount;
+    Memoizer memory m;
+    // repay debt if any
+    if (debtBalanceOf(token, m, reserveId) > 0) {
+      (uint repaid, bytes32 reason) = _repay(token, amount, reserveId, true);
+      require(reason == bytes32(0), "AaveDispatchedRouter/pushFailed");
+      _leftToPush -= repaid;
+    }
+    // supply
+    if (_leftToPush > 0) {
+      bytes32 reason = _supply(token, _leftToPush, reserveId, true);
+      require(reason == bytes32(0), "AaveDispatchedRouter/pushFailed");
+    }
     return amount;
   }
 

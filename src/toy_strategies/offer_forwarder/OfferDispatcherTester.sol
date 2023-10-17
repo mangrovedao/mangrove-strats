@@ -6,8 +6,8 @@ import {
   IMangrove,
   IERC20,
   AbstractRouter,
-  Dispatcher
-} from "@mgv-strats/src/strategies/offer_forwarder/OfferDispatcher.sol";
+  DispatcherRouter
+} from "@mgv-strats/src/toy_strategies/offer_forwarder/OfferDispatcher.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
 import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
