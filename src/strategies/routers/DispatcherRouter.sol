@@ -48,12 +48,13 @@ contract DispatcherRouter is AbstractRouter {
     emit SetRoute(msg.sender, token, olKeyHash, offerId, logic);
   }
 
-  function executeTransfer(IERC20 underlying, IERC20 overlying, uint amount, PullStruct calldata offer) external {
+  function executeTransfer(IERC20 underlying, IERC20 overlying, uint amount, PullStruct calldata offer)
+    external
+    returns (bool)
+  {
     AbstractRoutingLogic route = routes[offer.owner][underlying][offer.olKeyHash][offer.offerId];
     require(address(route) == msg.sender, "DispatcherRouter/InvalidAccess");
-    require(
-      TransferLib.transferTokenFrom(overlying, offer.owner, msg.sender, amount), "DispatcherRouter/TransferFailed"
-    );
+    return TransferLib.transferTokenFrom(overlying, offer.owner, msg.sender, amount);
   }
 
   /// @notice Pulls the funds from the owner wallet
