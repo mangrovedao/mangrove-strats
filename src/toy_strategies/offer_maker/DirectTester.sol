@@ -12,8 +12,8 @@ contract DirectTester is OfferMaker {
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer, uint gasreq)
-    OfferMaker(mgv, router_, deployer, gasreq, deployer) // setting reserveId = deployer by default
+  constructor(IMangrove mgv, AbstractRouter router_, address deployer)
+    OfferMaker(mgv, router_, deployer, deployer) // setting reserveId = deployer by default
   {}
 
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
