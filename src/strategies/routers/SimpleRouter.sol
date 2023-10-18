@@ -3,12 +3,12 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is MonoRouter(70_000) {
+contract SimpleRouter is AbstractRouter {
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @param token Token to be transferred
   /// @param owner The account from which the tokens will be transferred.
