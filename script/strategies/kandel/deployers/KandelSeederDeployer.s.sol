@@ -26,20 +26,16 @@ contract KandelSeederDeployer is Deployer {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       addressesProvider: envAddressOrName("AAVE", "Aave"),
-      aaveKandelGasreq: 200_000,
-      kandelGasreq: 200_000,
-      aaveRouterGasreq: 280_000
+      aaveKandelGasreq: 628_000,
+      kandelGasreq: 128_000
     });
     outputDeployment();
   }
 
-  function innerRun(
-    IMangrove mgv,
-    address addressesProvider,
-    uint aaveRouterGasreq,
-    uint aaveKandelGasreq,
-    uint kandelGasreq
-  ) public returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) {
+  function innerRun(IMangrove mgv, address addressesProvider, uint aaveKandelGasreq, uint kandelGasreq)
+    public
+    returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder)
+  {
     prettyLog("Deploying Kandel seeder...");
     broadcast();
     seeder = new KandelSeeder(mgv, kandelGasreq);
@@ -50,7 +46,7 @@ contract KandelSeederDeployer is Deployer {
     //                 We therefore ensure that this happens.
     uint64 nonce = vm.getNonce(broadcaster());
     broadcast();
-    aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveRouterGasreq, aaveKandelGasreq);
+    aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveKandelGasreq);
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
       vm.setNonce(broadcaster(), nonce + 1);
@@ -67,11 +63,11 @@ contract KandelSeederDeployer is Deployer {
 
     prettyLog("Deploying Kandel instance...");
     broadcast();
-    new Kandel(mgv, olKeyBaseQuote, 1, address(0));
+    new Kandel(mgv, olKeyBaseQuote, 200_000, address(0));
 
     prettyLog("Deploying AaveKandel instance...");
     broadcast();
-    new AaveKandel(mgv, olKeyBaseQuote, 1, address(0));
+    new AaveKandel(mgv, olKeyBaseQuote, address(0));
 
     smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());

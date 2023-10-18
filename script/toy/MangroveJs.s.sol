@@ -132,7 +132,6 @@ contract MangroveJsDeploy is Deployer {
     kandelSeederDeployer.innerRun({
       mgv: IMangrove(payable(mgv)),
       addressesProvider: aaveAddressProvider,
-      aaveRouterGasreq: 0, // see CoreKandelGasreqBaseTest
       aaveKandelGasreq: 629000, // see CoreKandelGasreqBaseTest
       kandelGasreq: 126000 // see CoreKandelGasreqBaseTest
     });
