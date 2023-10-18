@@ -17,8 +17,6 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 /// `__f__() virtual internal`: descendant of this contract should override this function to specialize it to the needs of the strat.
 
 abstract contract MangroveOffer is AccessControlled, IOfferLogic {
-  ///@notice Gas requirement when posting offers via this strategy, excluding router requirement.
-  uint public immutable CONSTANT_GASREQ;
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
   ///@notice constant for no router
@@ -47,33 +45,15 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /**
    * @notice `MangroveOffer`'s constructor
    * @param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   * @param gasreq Gas requirement when posting offers via this strategy, excluding router requirement.
    */
-  constructor(IMangrove mgv, uint gasreq) AccessControlled(msg.sender) {
-    require(uint24(gasreq) == gasreq, "mgvOffer/gasreqOverflow");
+  constructor(IMangrove mgv) AccessControlled(msg.sender) {
     MGV = mgv;
-    CONSTANT_GASREQ = gasreq;
     emit Mgv(mgv);
   }
 
   /// @inheritdoc IOfferLogic
   function router() public view override returns (AbstractRouter) {
     return __router;
-  }
-
-  /// @inheritdoc IOfferLogic
-  function offerGasreq() public view returns (uint) {
-    return offerGasreq(IERC20(address(0)), address(0));
-  }
-
-  /// @inheritdoc IOfferLogic
-  function offerGasreq(IERC20 token, address reserveId) public view returns (uint) {
-    AbstractRouter router_ = router();
-    if (router_ != NO_ROUTER) {
-      return CONSTANT_GASREQ + router_.routerGasreq(token, reserveId);
-    } else {
-      return CONSTANT_GASREQ;
-    }
   }
 
   ///*****************************
