@@ -12,7 +12,8 @@
     "postinstall": "husky install",
     "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
     "clean": "forge clean; rimraf index.js dist",
-    "test": "forge test -vvv"
+    "test": "forge test -vvv",
+    "gas-measurement": "GAS_MATCH_PATH='*.gasreq.*' bash ./node_modules/@mangrovedao/mangrove-core/gas-measurement.sh"
   },
   "lint-staged": {
     "*.sol": "forge fmt",
