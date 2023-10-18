@@ -26,7 +26,6 @@ abstract contract KandelTest is StratTest {
   uint initBase = 0.1 ether;
   uint globalGasprice;
   uint bufferedGasprice;
-  uint kandelGasreq;
   // A ratio of ~108% can be converted to a tick offset of ~769 via
   // uint tickOffset = TickLib.tickFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
   uint tickOffset = 769;
@@ -74,8 +73,8 @@ abstract contract KandelTest is StratTest {
     return "/out/Kandel.sol/Kandel.json";
   }
 
-  function gasreq() internal view returns (uint gasreq) {
-    (, gasreq,,) = kdl.params();
+  function gasreq() internal view returns (uint gasreq_) {
+    (, gasreq_,,) = kdl.params();
   }
 
   function setUp() public virtual override {
@@ -185,12 +184,12 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint32 gasprice, uint24 gasreq, uint88 stepSize, uint112 pricePoints) = aKandel.params();
+    (uint32 gasprice_, uint24 gasreq_, uint88 stepSize_, uint112 pricePoints_) = aKandel.params();
 
-    params.gasprice = gasprice;
-    params.gasreq = gasreq;
-    params.stepSize = stepSize;
-    params.pricePoints = pricePoints;
+    params.gasprice = gasprice_;
+    params.gasreq = gasreq_;
+    params.stepSize = stepSize_;
+    params.pricePoints = pricePoints_;
   }
 
   enum OfferStatus {

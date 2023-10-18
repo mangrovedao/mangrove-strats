@@ -51,6 +51,7 @@ contract AaveKandel is GeometricKandel {
 
   ///@notice Sets the AaveRouter as router and activates router for base and quote
   ///@param router_ the Aave router to use.
+  ///@param gasreq the gas required to execute an offer of this Kandel strat
   function initialize(AavePooledRouter router_, uint gasreq) external onlyAdmin {
     setRouter(router_);
     // calls below will fail if router's admin has not bound router to `this`. We call __activate__ instead of activate just to save gas.
