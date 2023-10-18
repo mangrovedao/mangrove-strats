@@ -113,9 +113,4 @@ contract DispatcherRouter is AbstractRouter {
   function __checkList__(IERC20 token, address reserveId) internal view virtual override {
     revert("DispatcherRouter/NotImplemented");
   }
-
-  ///@inheritdoc AbstractRouter
-  function balanceOfReserve(IERC20 token, address reserveId) public view virtual override returns (uint) {
-    revert("DispatcherRouter/NotImplemented");
-  }
 }
