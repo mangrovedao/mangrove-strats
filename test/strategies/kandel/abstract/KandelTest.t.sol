@@ -37,7 +37,9 @@ abstract contract KandelTest is StratTest {
 
   event Mgv(IMangrove mgv);
   event OfferListKey(bytes32 olKeyHash);
-  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
+  event NewKandel(
+    address indexed owner, bytes32 indexed baseQuoteOlKeyHash, bytes32 indexed quoteBaseOlKeyHash, address kandel
+  );
   event SetStepSize(uint value);
   event SetLength(uint value);
   event SetGasreq(uint value);
