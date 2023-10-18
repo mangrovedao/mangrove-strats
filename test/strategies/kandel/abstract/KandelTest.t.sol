@@ -26,6 +26,7 @@ abstract contract KandelTest is StratTest {
   uint initBase = 0.1 ether;
   uint globalGasprice;
   uint bufferedGasprice;
+  uint kandelGasreq;
   // A ratio of ~108% can be converted to a tick offset of ~769 via
   // uint tickOffset = TickLib.tickFromVolumes(1 ether * uint(108000) / (100000), 1 ether);
   uint tickOffset = 769;
@@ -73,6 +74,10 @@ abstract contract KandelTest is StratTest {
     return "/out/Kandel.sol/Kandel.json";
   }
 
+  function gasreq() internal view returns (uint gasreq) {
+    (, gasreq,,) = kdl.params();
+  }
+
   function setUp() public virtual override {
     /// sets base, quote, opens a market (base,quote) on Mangrove
     __setForkEnvironment__();
@@ -99,8 +104,8 @@ abstract contract KandelTest is StratTest {
     kdl = __deployKandel__(maker, maker);
 
     // funding Kandel on Mangrove
-    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
-    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
+    uint provAsk = reader.getProvision(olKey, gasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, gasreq(), bufferedGasprice);
     deal(maker, (provAsk + provBid) * 10 ether);
 
     // maker approves Kandel to be able to deposit funds on it

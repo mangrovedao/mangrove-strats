@@ -31,8 +31,7 @@ contract AccessControlTest is StratTest {
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
       router_: AbstractRouter(address(0)),
-      deployer: admin,
-      gasreq: 50_000
+      deployer: admin
     });
     vm.startPrank(admin);
     makerContract.activate(dynamic([IERC20(weth), usdc]));

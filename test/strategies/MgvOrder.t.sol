@@ -24,7 +24,7 @@ library TickNegator {
 contract MangroveOrder_Test is StratTest {
   using TickNegator for Tick;
 
-  uint constant GASREQ = 82000; // see MangroveOrderGasreqBaseTest
+  uint constant GASREQ = 150_000; // see MangroveOrderGasreqBaseTest
   uint constant MID_PRICE = 2000e18;
   // to check ERC20 logging
 
@@ -93,7 +93,7 @@ contract MangroveOrder_Test is StratTest {
     setupMarket(olKey);
 
     // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), $(this), GASREQ);
+    mgo = new MgvOrder(IMangrove(payable(mgv)), $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
     IERC20[] memory tokens = new IERC20[](2);
     tokens[0] = base;
@@ -206,7 +206,8 @@ contract MangroveOrder_Test is StratTest {
       tick: tickFromPrice_e18(MID_PRICE - 1e18),
       restingOrder: false,
       expiryDate: 0, //NA
-      offerId: 0
+      offerId: 0,
+      restingOrderGasreq: GASREQ
     });
   }
 
@@ -250,7 +251,8 @@ contract MangroveOrder_Test is StratTest {
       fillVolume: fillVolume,
       restingOrder: false,
       expiryDate: 0, //NA
-      offerId: 0
+      offerId: 0,
+      restingOrderGasreq: GASREQ
     });
   }
 
@@ -797,7 +799,7 @@ contract MangroveOrder_Test is StratTest {
   }
 
   function test_offer_owner_can_update_offer() public {
-    mgo.updateOffer(lo, Tick.wrap(100), 2000 ether, cold_buyResult.offerId);
+    mgo.updateOffer(lo, Tick.wrap(100), 2000 ether, 10, cold_buyResult.offerId);
     Offer offer = mgv.offers(lo, cold_buyResult.offerId);
     assertEq(Tick.unwrap(offer.tick()), 100, "Incorrect updated price");
     assertEq(offer.gives(), 2000 ether, "Incorrect updated gives");
@@ -807,7 +809,7 @@ contract MangroveOrder_Test is StratTest {
   function test_only_offer_owner_can_update_offer() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.updateOffer(lo, Tick.wrap(0), 2000 ether, cold_buyResult.offerId);
+    mgo.updateOffer(lo, Tick.wrap(0), 2000 ether, cold_buyResult.offerId, 10);
   }
 
   //////////////////////////////

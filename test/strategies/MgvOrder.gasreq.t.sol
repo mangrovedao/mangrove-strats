@@ -28,10 +28,11 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
+  uint GASREQ = 200_000; // simple resting order gasreq cf discussion above
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this), 400_000);
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
     mangroveOrder.activate(dynamic([IERC20(base), IERC20(quote)]));
 
     // We approve both base and quote to be able to test both tokens.
@@ -51,7 +52,8 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
       tick: Tick.wrap(10),
       restingOrder: true,
       expiryDate: block.timestamp + 10000,
-      offerId: 0
+      offerId: 0,
+      restingOrderGasreq: GASREQ
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision
@@ -68,7 +70,8 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
       tick: Tick.wrap(-20),
       restingOrder: true,
       expiryDate: block.timestamp + 10000,
-      offerId: 0
+      offerId: 0,
+      restingOrderGasreq: GASREQ // overestimate
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision
