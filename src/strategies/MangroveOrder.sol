@@ -7,6 +7,7 @@ import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol
 import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {DispatcherRouter} from "@mgv-strats/src/strategies/routers/DispatcherRouter.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -122,7 +123,13 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true);
+
+    MgvLib.SingleOrder memory mockOrder;
+
+    mockOrder.olKey = tko.olKey;
+    mockOrder.offerId = tko.offerId;
+
+    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), takerGives, __encodePullParams__(msg.sender, mockOrder));
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:
@@ -145,13 +152,17 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
       require(
-        router().push(IERC20(tko.olKey.outbound_tkn), msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed"
+        router().push(IERC20(tko.olKey.outbound_tkn), res.takerGot, __encodePushParams__(msg.sender, mockOrder))
+          == res.takerGot,
+        "mgvOrder/pushFailed"
       );
     }
     uint inboundLeft = takerGives - res.takerGave;
     if (inboundLeft > 0) {
       require(
-        router().push(IERC20(tko.olKey.inbound_tkn), msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed"
+        router().push(IERC20(tko.olKey.inbound_tkn), inboundLeft, __encodePushParams__(msg.sender, mockOrder))
+          == inboundLeft,
+        "mgvOrder/pushFailed"
       );
     }
     // POST:
@@ -164,9 +175,10 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     /// The funds will then be sent back to `msg.sender` (see below).
     uint fund = msg.value + res.bounty;
 
-    if ( // resting order is:
-      tko.restingOrder // required
-        && !isComplete // needed
+    if (
+      tko
+        // resting order is:
+        .restingOrder && !isComplete // required // needed
     ) {
       // When posting a resting order `msg.sender` becomes a maker.
       // For maker orders, outbound tokens are what makers send. Here `msg.sender` sends `tko.olKey.inbound_tkn`.
@@ -291,5 +303,35 @@ contract MangroveOrder is Forwarder, IOrderLogic {
         setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
       }
     }
+  }
+
+  /// @inheritdoc Forwarder
+  /// @dev this defaults to the `DispatcherRouter`'s `pull` function.
+  function __encodePullParams__(address owner, MgvLib.SingleOrder memory order)
+    internal
+    virtual
+    override
+    returns (bytes memory)
+  {
+    return abi.encode(
+      DispatcherRouter.PullStruct({
+        owner: owner,
+        caller: address(this),
+        olKeyHash: order.olKey.hash(),
+        offerId: order.offerId
+      })
+    );
+  }
+
+  /// @inheritdoc Forwarder
+  /// @dev this defaults to the `DispatcherRouter`'s `push` function.
+  function __encodePushParams__(address owner, MgvLib.SingleOrder memory order)
+    internal
+    virtual
+    override
+    returns (bytes memory)
+  {
+    return
+      abi.encode(DispatcherRouter.PushStruct({owner: owner, olKeyHash: order.olKey.hash(), offerId: order.offerId}));
   }
 }

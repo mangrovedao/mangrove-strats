@@ -248,6 +248,22 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     }
   }
 
+  /// @notice Encodes the pull parameters to be decoded by a given router
+  /// @dev This implementation will depend on the informations you need and the type of router you are using
+  /// * This ideal imlementation would require to encode a Struct defined by the router to have a type safe encoding and decoding
+  /// @param owner the owner of the offer
+  /// @param order the order to be executed
+  /// @return pullParams the encoded parameters
+  function __encodePullParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory);
+
+  /// @notice Encodes the push parameters to be decoded by a given router
+  /// @dev This implementation will depend on the informations you need and the type of router you are using
+  /// * This ideal imlementation would require to encode a Struct defined by the router to have a type safe encoding and decoding
+  /// @param owner the owner of the offer
+  /// @param order the order to be executed
+  /// @return pullParams the encoded parameters
+  function __encodePushParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory);
+
   ///@dev put received inbound tokens on offer maker's reserve during `makerExecute`
   /// if nothing is done at that stage then it could still be done during `makerPosthook`.
   /// However one would then need to pay attention to the following fact:
@@ -257,7 +273,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
-    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), owner, amount);
+    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), amount, __encodePushParams__(owner, order));
     return amount - pushed;
   }
 
@@ -268,7 +284,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // telling router one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
-    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), owner, amount, true);
+    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), amount, __encodePullParams__(owner, order));
     return amount - pulled; // this will make trade fail if `amount != pulled`
   }
 

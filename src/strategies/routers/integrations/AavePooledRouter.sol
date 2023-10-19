@@ -104,7 +104,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@param token the asset one wants to know the balance of
   ///@param reserveId the identifier of the reserve whose balance is queried
   ///@return available funds for the reserve
-  function balanceOfReserve(IERC20 token, address reserveId) public view override returns (uint) {
+  function balanceOfReserve(IERC20 token, address reserveId) public view returns (uint) {
     BalanceMemoizer memory memoizer;
     return _balanceOfReserve(token, reserveId, memoizer);
   }
@@ -120,7 +120,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     returns (uint balance)
   {
     uint totalShares_ = totalShares(token);
-    balance = totalShares_ == 0 ? 0 : sharesOf(token, reserveId) * _totalBalance(token, memoizer) / totalShares_;
+    balance = totalShares_ == 0 ? 0 : (sharesOf(token, reserveId) * _totalBalance(token, memoizer)) / totalShares_;
   }
 
   ///@notice computes how many shares an amount of tokens represents
@@ -134,7 +134,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     returns (uint shares)
   {
     uint totalShares_ = totalShares(token);
-    shares = totalShares_ == 0 ? INIT_MINT : totalShares_ * amount / _totalBalance(token, memoizer);
+    shares = totalShares_ == 0 ? INIT_MINT : (totalShares_ * amount) / _totalBalance(token, memoizer);
   }
 
   ///@notice mints a certain quantity of shares for a given asset and assigns them to a reserve
