@@ -13,9 +13,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer, uint gasreq, address owner)
-    Direct(mgv, router_, gasreq, owner)
-  {
+  constructor(IMangrove mgv, AbstractRouter router_, address deployer, address owner) Direct(mgv, router_, owner) {
     // stores total gas requirement of this strat (depends on router gas requirements)
     // if contract is deployed with static address, then one must set admin to something else than msg.sender
     if (deployer != msg.sender) {
@@ -36,10 +34,6 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     );
   }
 
-  function newOffer(OLKey memory olKey, Tick tick, uint gives) external payable onlyAdmin returns (uint offerId) {
-    return newOffer(olKey, tick, gives, offerGasreq());
-  }
-
   ///@inheritdoc ILiquidityProvider
   function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
     public
@@ -51,10 +45,6 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
       OfferArgs({olKey: olKey, tick: tick, gives: gives, gasreq: gasreq, gasprice: 0, fund: msg.value, noRevert: false}),
       offerId
     );
-  }
-
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) external payable onlyAdmin {
-    updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

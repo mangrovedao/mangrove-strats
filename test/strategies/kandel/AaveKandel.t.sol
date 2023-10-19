@@ -53,22 +53,18 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
-    // FIXME: Measure gasreq
-    uint router_gasreq = 500 * 1000;
-    uint kandel_gasreq = 300 * 1000;
-    router = address(router) == address(0) ? new AavePooledRouter(aave, router_gasreq) : router;
+    uint kandel_gasreq = 629000;
+    router = address(router) == address(0) ? new AavePooledRouter(aave) : router;
     AaveKandel aaveKandel_ = new AaveKandel({
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
-      gasreq: kandel_gasreq,
       reserveId: id
     });
 
     router.bind(address(aaveKandel_));
     // Setting AaveRouter as Kandel's router and activating router on BASE and QUOTE ERC20
-    aaveKandel_.initialize(router);
+    aaveKandel_.initialize(router, kandel_gasreq);
     aaveKandel_.setAdmin(deployer);
-    assertEq(aaveKandel_.offerGasreq(), kandel_gasreq + router_gasreq, "Incorrect gasreq");
     return aaveKandel_;
   }
 
@@ -88,7 +84,7 @@ contract AaveKandelTest is CoreKandelTest {
     args.allowed = dynamic([address(maker)]);
     args.revertMessage = "AccessControlled/Invalid";
 
-    checkAuth(args, abi.encodeCall(AaveKandel($(kdl)).initialize, AavePooledRouter($(kdl.router()))));
+    checkAuth(args, abi.encodeCall(AaveKandel($(kdl)).initialize, (AavePooledRouter($(kdl.router())), 10)));
   }
 
   function test_initialize() public {
@@ -375,7 +371,6 @@ contract AaveKandelTest is CoreKandelTest {
     new AaveKandel({
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
-      gasreq: 100,
       reserveId: address(0)
     });
   }
@@ -387,7 +382,6 @@ contract AaveKandelTest is CoreKandelTest {
     new AaveKandel({
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
-      gasreq: 100,
       reserveId: address(0)
     });
   }

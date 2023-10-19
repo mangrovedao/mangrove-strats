@@ -21,11 +21,8 @@ abstract contract GeometricKandel is CoreKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
-  ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
-    CoreKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
-  {}
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, address reserveId) CoreKandel(mgv, olKeyBaseQuote, reserveId) {}
 
   ///@notice sets the tick offset if different from existing.
   ///@param _baseQuoteTickOffset the new tick offset.

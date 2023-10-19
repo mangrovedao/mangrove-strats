@@ -15,6 +15,8 @@ contract SimpleEOARouterTest is OfferLogicTest {
     vm.prank(deployer);
     makerContract.setRouter(router);
 
+    gasreq = 80_000;
+
     vm.startPrank(owner);
     weth.approve(address(router), type(uint).max);
     usdc.approve(address(router), type(uint).max);

@@ -14,8 +14,8 @@ contract AaveMaker is OfferMaker, AaveV3Borrower {
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer, uint gasreq, address addressesProvider)
-    OfferMaker(mgv, router_, deployer, gasreq, deployer) // setting reserveId = deployer by default
+  constructor(IMangrove mgv, AbstractRouter router_, address deployer, address addressesProvider)
+    OfferMaker(mgv, router_, deployer, deployer) // setting reserveId = deployer by default
     AaveV3Borrower(addressesProvider, 0, 1)
   {}
 

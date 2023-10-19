@@ -11,6 +11,7 @@ contract MangroveOfferTest is StratTest {
   TestToken usdc;
   address payable deployer;
   DirectTester makerContract;
+  uint constant GASREQ = 50_000;
 
   // tracking IOfferLogic logs
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
@@ -37,8 +38,7 @@ contract MangroveOfferTest is StratTest {
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
       router_: AbstractRouter(address(0)), // no router
-      deployer: deployer,
-      gasreq: 50_000
+      deployer: deployer
     });
   }
 
@@ -149,10 +149,6 @@ contract MangroveOfferTest is StratTest {
     makerContract.activate(dynamic([IERC20(weth)]));
   }
 
-  function test_offerGasreq_with_no_router_is_constant() public {
-    assertEq(makerContract.CONSTANT_GASREQ(), makerContract.offerGasreq(), "Incorrect gasreq for offer");
-  }
-
   // makerExecute and makerPosthook guards
   function testCannot_call_makerExecute_if_not_Mangrove() public {
     MgvLib.SingleOrder memory order;
@@ -227,16 +223,6 @@ contract MangroveOfferTest is StratTest {
     makerContract.withdrawFromMangrove(type(uint).max, deployer);
     assertEq(mgv.balanceOf(address(makerContract)), 0 ether, "incorrect balance");
     assertEq(deployer.balance, 1 ether, "incorrect balance");
-  }
-
-  function test_offerGasreq_takes_new_router_into_account() public {
-    uint gasreq = makerContract.offerGasreq();
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    router.setAdmin(address(makerContract));
-    makerContract.setRouter(router);
-    assertEq(makerContract.offerGasreq(), gasreq + router.ROUTER_GASREQ(), "incorrect gasreq");
-    vm.stopPrank();
   }
 
   function test_get_fail_reverts() public {

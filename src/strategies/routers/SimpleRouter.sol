@@ -3,12 +3,9 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 
-///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
-///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
-/// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is MonoRouter(70_000) {
+contract SimpleRouter is AbstractRouter {
   /// @notice Pull Structure for `SimpleRouter`
   /// @param owner the owner of the offer
   /// @param strict if true, the router will pull exactly `amount` tokens from the reserve.
@@ -44,11 +41,6 @@ contract SimpleRouter is MonoRouter(70_000) {
     PushStruct memory p = abi.decode(pushData, (PushStruct));
     bool success = TransferLib.transferTokenFrom(token, msg.sender, p.owner, amount);
     return success ? amount : 0;
-  }
-
-  ///@inheritdoc AbstractRouter
-  function balanceOfReserve(IERC20 token, address owner) public view override returns (uint) {
-    return token.balanceOf(owner);
   }
 
   ///@notice router-dependent implementation of the `checkList` function

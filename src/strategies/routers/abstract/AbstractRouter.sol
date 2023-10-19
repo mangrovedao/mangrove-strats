@@ -40,20 +40,6 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
     return boundMakerContracts[mkr];
   }
 
-  ///@notice view for gas overhead of this router.
-  ///@param reserveId that should be considered if a reserve specific route is defined.
-  ///@param token that should be considered if a token specific route is defined.
-  ///@return overhead the added (overapproximated) gas cost of `push` and `pull` for the routing strategy.
-  function routerGasreq(IERC20 token, address reserveId) public view returns (uint overhead) {
-    return __routerGasreq__(token, reserveId);
-  }
-
-  ///@notice hook that implements router specific gas requirement for a given routing strategy.
-  ///@param reserveId that should be considered if a reserve specific route is defined.
-  ///@param token that should be considered if a token specific route is defined.
-  ///@return overhead the added (overapproximated) gas cost of `push` and `pull`.
-  function __routerGasreq__(IERC20 token, address reserveId) internal view virtual returns (uint overhead);
-
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset
   ///@param amount of `token` the maker contract wishes to pull from its reserve

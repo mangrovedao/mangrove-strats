@@ -56,8 +56,7 @@ contract KandelSeederTest is StratTest {
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
       mgv:IMangrove($(mgv)), 
       addressesProvider: fork.get("Aave"), 
-      routerGasreq: 500_000, 
-      aaveKandelGasreq: 128_001
+      aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;
     aaveRouter = aaveKandelSeeder.AAVE_ROUTER();
@@ -117,7 +116,6 @@ contract KandelSeederTest is StratTest {
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
-    assertEq(kdl.offerGasreq(), 500_000 + 128_001);
 
     IERC20[] memory tokens = new IERC20[](2);
     tokens[0] = base;
