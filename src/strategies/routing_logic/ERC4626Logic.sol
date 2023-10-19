@@ -21,14 +21,16 @@ contract ERC4626Logic is AbstractRoutingLogic {
   {
     uint _amountToWithdraw = ERC4626.convertToShares(amount);
     DispatcherRouter(msg.sender).executeTransfer(token, ERC4626, _amountToWithdraw, pullData);
-    // return ERC4626
-    return 0;
+    ERC4626.withdraw(amount, pullData.caller, address(this));
   }
 
-  function executePushLogic(IERC20 token, uint amount, DispatcherRouter.PushStruct calldata pushData)
+  function executePushLogic(IERC20, uint amount, DispatcherRouter.PushStruct calldata pushData)
     external
     virtual
     override
     returns (uint)
-  {}
+  {
+    ERC4626.deposit(amount, pushData.owner);
+    return amount;
+  }
 }
