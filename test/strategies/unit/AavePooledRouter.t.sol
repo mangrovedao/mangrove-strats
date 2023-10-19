@@ -15,8 +15,6 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   AavePooledRouter internal pooledRouter;
 
-  uint internal constant GASREQ = 486310;
-
   event SetAaveManager(address);
   event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
 
@@ -65,8 +63,7 @@ contract AavePooledRouterTest is OfferLogicTest {
 
     vm.startPrank(deployer);
     AavePooledRouter router = new AavePooledRouter({
-      addressesProvider: aave,
-      overhead: 218_000 // fails < 218K
+      addressesProvider: aave
     });
     router.bind(address(makerContract));
     makerContract.setRouter(router);
@@ -74,6 +71,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     // although reserve is set to deployer the source remains makerContract since pooledRouter is always the source of funds
     // having reserve pointing to deployed allows deployer to have multiple strats with the same shares on the router
     owner = deployer;
+    gasreq = 486_310;
   }
 
   function fundStrat() internal virtual override {
@@ -254,9 +252,9 @@ contract AavePooledRouterTest is OfferLogicTest {
     uint finalize_cost = gas - gasleft();
     console.log("deep pull: %d, finalize: %d", deep_pull_cost, finalize_cost);
     console.log("shallow push: %d", shallow_push_cost);
-    console.log("Strat gasreq (%d), mockup (%d)", GASREQ, deep_pull_cost + finalize_cost);
+    console.log("Strat gasreq (%d), mockup (%d)", gasreq, deep_pull_cost + finalize_cost);
     //FIXME enable
-    //assertApproxEqAbs(deep_pull_cost + finalize_cost, GASREQ, 200, "Check new gas cost");
+    //assertApproxEqAbs(deep_pull_cost + finalize_cost, gasreq, 200, "Check new gas cost");
   }
 
   function test_push_token_increases_first_minter_shares() public {
@@ -545,8 +543,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.POOL();
     pooledRouter.aaveManager();
     pooledRouter.admin();
-    pooledRouter.ROUTER_GASREQ();
-    pooledRouter.routerGasreq(IERC20(address(0)), address(0));
     pooledRouter.balanceOfReserve(dai, maker1);
     pooledRouter.sharesOf(dai, maker1);
     pooledRouter.totalBalance(dai);

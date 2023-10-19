@@ -24,6 +24,7 @@ interface IOrderLogic {
     bool restingOrder;
     uint expiryDate;
     uint offerId;
+    uint restingOrderGasreq;
   }
 
   ///@notice Result of an order from the takers side.

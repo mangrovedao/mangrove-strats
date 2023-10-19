@@ -27,9 +27,8 @@ abstract contract DirectWithBidsAndAsksDistribution is Direct, HasIndexedBidsAnd
 
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
-  ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, uint gasreq, address reserveId) Direct(mgv, NO_ROUTER, gasreq, reserveId) {}
+  constructor(IMangrove mgv, address reserveId) Direct(mgv, NO_ROUTER, reserveId) {}
 
   ///@param index the index of the offer
   ///@param tick the tick for the index (the tick price of base per quote for bids and quote per base for asks)

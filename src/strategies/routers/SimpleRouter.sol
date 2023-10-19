@@ -3,28 +3,31 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 
-///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
-///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
-/// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is MonoRouter(70_000) {
+contract SimpleRouter is AbstractRouter {
+  /// @notice Pull Structure for `SimpleRouter`
+  /// @param owner the owner of the offer
+  /// @param strict if true, the router will pull exactly `amount` tokens from the reserve.
+  struct PullStruct {
+    address owner;
+    bool strict;
+  }
+
+  /// @notice Push Structure for `SimpleRouter`
+  /// @param owner the owner of the offer
+  struct PushStruct {
+    address owner;
+  }
+
   /// @notice transfers an amount of tokens from the reserve to the maker.
-  /// @param token Token to be transferred
-  /// @param owner The account from which the tokens will be transferred.
-  /// @param amount The amount of tokens to be transferred
-  /// @param strict wether the caller maker contract wishes to pull at most `amount` tokens of owner.
-  /// @return pulled The amount pulled if successful (will be equal to `amount`); otherwise, 0.
-  /// @dev requires approval from `owner` for `this` to transfer `token`.
-  function __pull__(IERC20 token, address owner, uint amount, bool strict)
-    internal
-    virtual
-    override
-    returns (uint pulled)
-  {
+  /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.
+  /// @inheritdoc AbstractRouter
+  function __pull__(IERC20 token, uint amount, bytes memory pullData) internal virtual override returns (uint pulled) {
     // if not strict, pulling all available tokens from reserve
-    amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
+    PullStruct memory p = abi.decode(pullData, (PullStruct));
+    amount = p.strict ? amount : token.balanceOf(p.owner);
+    if (TransferLib.transferTokenFrom(token, p.owner, msg.sender, amount)) {
       return amount;
     } else {
       return 0;
@@ -32,15 +35,12 @@ contract SimpleRouter is MonoRouter(70_000) {
   }
 
   /// @notice transfers an amount of tokens from the maker to the reserve.
+  /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
-  function __push__(IERC20 token, address owner, uint amount) internal virtual override returns (uint) {
-    bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
+  function __push__(IERC20 token, uint amount, bytes memory pushData) internal virtual override returns (uint) {
+    PushStruct memory p = abi.decode(pushData, (PushStruct));
+    bool success = TransferLib.transferTokenFrom(token, msg.sender, p.owner, amount);
     return success ? amount : 0;
-  }
-
-  ///@inheritdoc AbstractRouter
-  function balanceOfReserve(IERC20 token, address owner) public view override returns (uint) {
-    return token.balanceOf(owner);
   }
 
   ///@notice router-dependent implementation of the `checkList` function

@@ -19,6 +19,7 @@ contract AmplifierTest is StratTest {
   address payable taker;
   Amplifier strat;
   OLKey olKeyWethDai;
+  uint constant GASREQ = 200_000;
 
   receive() external payable virtual {}
 
@@ -115,14 +116,15 @@ contract AmplifierTest is StratTest {
     strat.activate(tokens);
   }
 
-  function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC)
+  function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC, uint gasreq)
     public
     returns (uint offerId1, uint offerId2)
   {
     (offerId1, offerId2) = strat.newAmplifiedOffers{value: 2 ether}({
       gives: makerGivesAmount, // WETH
       wants1: makerWantsAmountUSDC, // USDC
-      wants2: makerWantsAmountDAI // DAI
+      wants2: makerWantsAmountDAI, // DAI
+      gasreq: gasreq
     });
   }
 
@@ -148,7 +150,8 @@ contract AmplifierTest is StratTest {
     deal($(weth), $(this), cash(weth, 5));
 
     // post offers with Amplifier liquidity
-    (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    (uint offerId1, uint offerId2) =
+      postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     //only take half of the offer
     (uint takerGot, uint takerGave,) = takeOffer(makerWantsAmountDAI / 2, dai, offerId1);
@@ -174,7 +177,8 @@ contract AmplifierTest is StratTest {
 
     deal($(weth), $(this), cash(weth, 10));
 
-    (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    (uint offerId1, uint offerId2) =
+      postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     (uint takerGot, uint takerGave,) = takeOffer(makerWantsAmountDAI, dai, offerId1);
 
@@ -198,7 +202,7 @@ contract AmplifierTest is StratTest {
 
     deal($(weth), $(this), cash(weth, 10));
 
-    (uint offerId1,) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    (uint offerId1,) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     takeOffer(makerWantsAmountDAI, dai, offerId1);
 
@@ -219,15 +223,16 @@ contract AmplifierTest is StratTest {
 
     deal($(weth), $(this), cash(weth, 10));
 
-    (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    (uint offerId1, uint offerId2) =
+      postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     vm.expectRevert("Amplifier/offer1AlreadyActive");
-    postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     strat.retractOffer(lo, offerId1, false);
 
     vm.expectRevert("Amplifier/offer2AlreadyActive");
-    postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
     Offer offer_on_dai = mgv.offers(olKeyWethDai, offerId1);
@@ -242,7 +247,8 @@ contract AmplifierTest is StratTest {
     uint makerWantsAmountUSDC = cash(usdc, 300);
 
     // not giving the start any WETH, the offer will therefor fail when taken
-    (uint offerId1, uint offerId2) = postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
+    (uint offerId1, uint offerId2) =
+      postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC, GASREQ);
 
     (uint takerGot, uint takerGave, uint bounty) = takeOffer(makerWantsAmountUSDC, usdc, offerId2);
 

@@ -23,17 +23,6 @@ interface IOfferLogic is IMaker {
   ///@notice By emitting this an indexer can keep track of what router is used.
   event SetRouter(AbstractRouter router);
 
-  ///@notice Actual gas requirement when posting offers via this strategy. Returned value may change if this contract's router is updated.
-  ///@param reserveId passed to router to potentially specify a reserve specific routing strategy
-  ///@param token passed to router to potentially specify a token specific routing strategy
-  ///@return total gas cost including router specific costs (if any).
-  function offerGasreq(IERC20 token, address reserveId) external view returns (uint total);
-
-  /// @notice offerGasreq for the default route
-  /// @return total gas requirement for the default liquidity sourcing strategy
-  /// @dev call may revert if the strategy uses a reserveId or token dependant routing strategy and has no default
-  function offerGasreq() external view returns (uint total);
-
   ///@notice sets a new router to pull outbound tokens from contract's reserve to `this` and push inbound tokens to reserve.
   ///@param router_ the new router contract that this contract should use. Use `NO_ROUTER` for no router.
   ///@dev new router needs to be approved by `this` to push funds to reserve (see `activate` function). It also needs to be approved by reserve to pull from it.

@@ -233,16 +233,15 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     expectedFirOfferMakerData = "IS_FIRST_PULLER";
 
     address aave = fork.get("Aave");
-    AavePooledRouter router = new AavePooledRouter(aave, 500_000);
+    AavePooledRouter router = new AavePooledRouter(aave);
     AaveKandel aaveKandel = new AaveKandel({
       mgv: mgv,
       olKeyBaseQuote: olKey,
-      gasreq: 500_000,
       reserveId: $(this)
     });
 
     router.bind(address(aaveKandel));
-    aaveKandel.initialize(router);
+    aaveKandel.initialize(router, 1_000_000);
 
     return aaveKandel;
   }

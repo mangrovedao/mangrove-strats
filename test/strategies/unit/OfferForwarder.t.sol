@@ -32,6 +32,7 @@ contract OfferForwarderTest is OfferLogicTest {
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
+    gasreq = 80_000;
     owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);
 
@@ -55,19 +56,14 @@ contract OfferForwarderTest is OfferLogicTest {
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {
-    vm.assume(fund >= reader.getProvision(olKey, makerContract.offerGasreq(), 0));
+    vm.assume(fund >= reader.getProvision(olKey, gasreq, 0));
     vm.assume(fund < 5 ether); // too high provision would yield a gasprice overflow
     uint contractOldBalance = mgv.balanceOf(address(makerContract));
     vm.prank(owner);
-    uint offerId = makerContract.newOfferByVolume{value: fund}({
-      olKey: olKey,
-      wants: 2000 * 10 ** 6,
-      gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
-    });
+    uint offerId =
+      makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
     uint derived_gp = mgv.offerDetails(olKey, offerId).gasprice();
     uint gasbase = mgv.offerDetails(olKey, offerId).offer_gasbase();
-    uint gasreq = makerContract.offerGasreq();
     uint locked = derived_gp * (gasbase + gasreq) * 1e6;
     uint leftover = fund - locked;
     assertEq(mgv.balanceOf(address(makerContract)), contractOldBalance + leftover, "Invalid contract balance");
@@ -81,7 +77,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     uint old_gasprice = mgv.offerDetails(olKey, offerId).gasprice();
     vm.prank(owner);
@@ -90,7 +86,7 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     assertTrue(old_gasprice < mgv.offerDetails(olKey, offerId).gasprice(), "Gasprice not updated as expected");
   }
@@ -103,7 +99,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     result.mgvData = "anythingButSuccess";
     result.makerData = "failReason";
@@ -114,21 +110,17 @@ contract OfferForwarderTest is OfferLogicTest {
     // this should reach the posthookFallback and computes released provision, assuming offer has failed for half gasreq
     // as a result the amount of provision that can be redeemed by retracting offerId should increase.
     vm.startPrank($(mgv));
-    makerContract.makerPosthook{gas: makerContract.offerGasreq() / 2}(order, result);
+    makerContract.makerPosthook{gas: gasreq / 2}(order, result);
     vm.stopPrank();
     assertTrue(makerContract.provisionOf(olKey, offerId) > 1 ether, "fallback was not reached");
   }
 
   function test_failed_offer_credits_maker(uint fund) public {
-    vm.assume(fund >= reader.getProvision(olKey, makerContract.offerGasreq(), 0));
+    vm.assume(fund >= reader.getProvision(olKey, gasreq, 0));
     vm.assume(fund < 5 ether);
     vm.prank(owner);
-    uint offerId = makerContract.newOfferByVolume{value: fund}({
-      olKey: olKey,
-      wants: 2000 * 10 ** 6,
-      gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
-    });
+    uint offerId =
+      makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
     // revoking Mangrove's approvals to make `offerId` fail
     vm.prank(deployer);
     makerContract.approve(weth, address(mgv), 0);
@@ -156,7 +148,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Invalid maker ownership relation");
   }
@@ -172,13 +164,12 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     assertEq(next_id, offerId, "Unexpected offer id");
   }
 
   function test_provision_too_high_reverts() public {
-    uint gasreq = makerContract.offerGasreq();
     vm.deal(owner, 20 ether);
     vm.expectRevert("Forwarder/provisionTooHigh");
     vm.prank(owner);
@@ -196,7 +187,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
@@ -208,7 +199,7 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     detail = mgv.offerDetails(olKey, offerId);
@@ -221,7 +212,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
@@ -232,7 +223,7 @@ contract OfferForwarderTest is OfferLogicTest {
       wants: 2000 * 10 ** 6,
       gives: 1.1 ether,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     detail = mgv.offerDetails(olKey, offerId);
@@ -245,7 +236,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     address new_maker = freshAddress("New maker");
@@ -255,7 +246,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     assertEq(forwarder.ownerOf(olKey.hash(), offerId_), new_maker, "Incorrect maker");
@@ -269,7 +260,7 @@ contract OfferForwarderTest is OfferLogicTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     usdc.approve($(makerContract.router()), 0);
     vm.stopPrank();

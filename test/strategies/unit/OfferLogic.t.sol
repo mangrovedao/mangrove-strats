@@ -25,6 +25,7 @@ contract OfferLogicTest is StratTest {
   address payable owner; // owner of the offers (==deployer for Direct strats)
 
   ITester makerContract; // can be either OfferMaker or OfferForwarder
+  uint gasreq;
 
   GenericFork fork;
 
@@ -74,13 +75,13 @@ contract OfferLogicTest is StratTest {
   function setupMakerContract() internal virtual {
     deployer = payable(address(new TestSender()));
     vm.deal(deployer, 1 ether);
+    gasreq = 50_000; // cost for no router, override gasreq for specific strats
 
     vm.startPrank(deployer);
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
       router_: AbstractRouter(address(0)),
-      deployer: deployer,
-      gasreq: 80_000
+      deployer: deployer
     });
     weth.approve(address(makerContract), type(uint).max);
     usdc.approve(address(makerContract), type(uint).max);
@@ -107,7 +108,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     assertTrue(offerId != 0);
@@ -126,7 +127,6 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_newOffer_fails_when_provision_is_zero() public {
-    uint gasreq = makerContract.offerGasreq();
     vm.expectRevert("mgv/insufficientProvision");
     vm.prank(owner);
     makerContract.newOfferByVolume{value: 0}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 * 10 ** 18, gasreq: gasreq});
@@ -142,7 +142,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -161,7 +161,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     uint makerBalWei = owner.balance;
@@ -181,7 +181,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     makerContract.retractOffer(olKey, offerId, true);
     uint received_wei = makerContract.retractOffer(olKey, offerId, true);
@@ -196,7 +196,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.expectRevert("mgvOffer/weiTransferFail");
     makerContract.retractOffer(olKey, offerId, true);
@@ -209,7 +209,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
 
@@ -219,13 +219,12 @@ contract OfferLogicTest is StratTest {
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
       offerId: offerId,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
   }
 
   function test_only_maker_can_updateOffer() public {
-    uint gasreq = makerContract.offerGasreq();
     vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -245,7 +244,6 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_updateOffer_fails_when_provision_is_too_low() public {
-    uint gasreq = makerContract.offerGasreq();
     vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -273,7 +271,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: 2 * makerContract.offerGasreq()
+      gasreq: 2 * gasreq
     });
     vm.stopPrank();
 
@@ -298,13 +296,9 @@ contract OfferLogicTest is StratTest {
 
   function test_reposting_fails_with_expected_reason_when_below_density() public {
     vm.startPrank(owner);
-    uint offerGives = reader.minVolume(olKey, makerContract.offerGasreq());
-    uint offerId = makerContract.newOffer{value: 0.1 ether}({
-      olKey: olKey,
-      tick: Tick.wrap(1),
-      gives: offerGives,
-      gasreq: makerContract.offerGasreq()
-    });
+    uint offerGives = reader.minVolume(olKey, gasreq);
+    uint offerId =
+      makerContract.newOffer{value: 0.1 ether}({olKey: olKey, tick: Tick.wrap(1), gives: offerGives, gasreq: gasreq});
     vm.stopPrank();
     MgvLib.OrderResult memory result;
     result.mgvData = "mgv/tradeSuccess";
@@ -329,7 +323,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     mgv.setGasprice(1000000);
@@ -359,7 +353,7 @@ contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: makerContract.offerGasreq()
+      gasreq: gasreq
     });
     vm.stopPrank();
     mgv.deactivate(olKey);

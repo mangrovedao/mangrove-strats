@@ -32,7 +32,7 @@ contract Amplifier is Direct {
     uint tickSpacing1,
     uint tickSpacing2,
     address admin
-  ) Direct(mgv, NO_ROUTER, 200_000, admin) {
+  ) Direct(mgv, NO_ROUTER, admin) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
@@ -52,6 +52,7 @@ contract Amplifier is Direct {
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
    * @param wants2 in STABLE2 decimals
+   * @param gasreq for one offer
    * @return (offerid for STABLE1, offerid for STABLE2)
    * @dev these offer's provision must be in msg.value
    * @dev `reserve(admin())` must have approved base for `this` contract transfer prior to calling this function
@@ -60,7 +61,8 @@ contract Amplifier is Direct {
     // this function posts two asks
     uint gives,
     uint wants1,
-    uint wants2
+    uint wants2,
+    uint gasreq
   ) external payable onlyAdmin returns (uint, uint) {
     // there is a cost of being paternalistic here, we read MGV storage
     // an offer can be in 4 states:
@@ -87,7 +89,7 @@ contract Amplifier is Direct {
         olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
         tick: tick,
         gives: gives,
-        gasreq: offerGasreq(),
+        gasreq: gasreq,
         gasprice: 0,
         fund: msg.value,
         noRevert: false
@@ -102,7 +104,7 @@ contract Amplifier is Direct {
         olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
         tick: tick,
         gives: gives,
-        gasreq: offerGasreq(),
+        gasreq: gasreq,
         gasprice: 0,
         fund: 0,
         noRevert: false

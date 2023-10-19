@@ -14,7 +14,7 @@ contract Kandel is GeometricKandel {
   ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
-    GeometricKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
+    GeometricKandel(mgv, olKeyBaseQuote, reserveId)
   {
     // since we won't add a router later, we can activate the strat now.  We call __activate__ instead of activate just to save gas.
     __activate__(BASE);
