@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
+import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 
@@ -31,11 +31,6 @@ contract DispatcherRouter is AbstractRouter {
     address owner;
     bytes32 olKeyHash;
     uint offerId;
-  }
-
-  ///@inheritdoc AbstractRouter
-  function __routerGasreq__(IERC20 token, address reserveId) internal view override returns (uint) {
-    revert("DispatcherRouter/NotImplemented");
   }
 
   ///@notice This function is used to set the routing strategy for a given offer.
@@ -110,7 +105,7 @@ contract DispatcherRouter is AbstractRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function __checkList__(IERC20 token, address reserveId) internal view virtual override {
-    revert("DispatcherRouter/NotImplemented");
+  function __checkList__(IERC20, address) internal view virtual override {
+    // TODO: implement
   }
 }
