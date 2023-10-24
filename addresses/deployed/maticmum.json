@@ -20,10 +20,6 @@
     "name": "KandelSeeder"
   },
   {
-    "address": "0x0295a7f3093Fb656d982B6E2c52B07699aDA9594",
-    "name": "AaveKandelSeeder"
-  },
-  {
     "address": "0x756fAc8bb6fb96A3b005ad7b3337052aE69aAf65",
     "name": "MangroveOrder"
   },
@@ -32,16 +28,8 @@
     "name": "MangroveOrder-Router"
   },
   {
-    "address": "0xB3ba79DB150E8650efa5c534EEaf6404a25Fdf00",
-    "name": "AavePooledRouter"
-  },
-  {
     "address": "0x193163EeFfc795F9d573b171aB12cCDdE10392e8",
     "name": "WMATIC"
-  },
-  {
-    "address": "0xf402f6197d979F0A4cba61596921a3d762520570",
-    "name": "WBTC"
   },
   {
     "address": "0xe8099699aa4A79d89dBD20A63C50b7d35ED3CD9e",
@@ -52,11 +40,19 @@
     "name": "USDC"
   },
   {
-    "address": "0x5b67e3fa6f8AF1ca80C78102B8c039a40B96689E",
-    "name": "DAI"
-  },
-  {
     "address": "0x406bF0fcE108dD8864627EC6816AaFF8336f8231",
     "name": "WETH"
+  },
+  {
+    "address": "0x3F3Fae0689e573630a66aba7A1d5081EfD850716",
+    "name": "AaveKandelSeeder"
+  },
+  {
+    "address": "0x644f1ac9a95B644454BFA78691f553B559E0e04C",
+    "name": "AavePooledRouter"
+  },
+  {
+    "address": "0x4D387a79946FD75c3c27878d06fA2Db788fdb267",
+    "name": "AaveKandel_CRV_WBTC"
   }
 ]

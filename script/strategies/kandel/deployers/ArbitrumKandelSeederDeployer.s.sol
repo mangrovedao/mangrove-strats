@@ -9,7 +9,7 @@ import {AaveKandelSeeder} from "mgv_src/strategies/offer_maker/market_making/kan
 import {Deployer} from "mgv_script/lib/Deployer.sol";
 import {KandelSeederDeployer, IERC20} from "./KandelSeederDeployer.s.sol";
 
-contract PolygonKandelSeederDeployer is Deployer {
+contract ArbitrumKandelSeederDeployer is Deployer {
   function run() public {
     runWithChainSpecificParams();
     outputDeployment();

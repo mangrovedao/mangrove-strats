@@ -1,5 +1,30 @@
 # Next version
 
+# 1.5.12
+
+- fix: withdrawFunds from AaveKandel now taking local funds into account
+- fix: gasreq for AaveKandel in script no longer underestimated
+- updates address of addresses provider for Aave on mumbai testnet
+
+# 1.5.11
+
+- use Aave faucets on Mumbai for wbtc, dai and crv tokens
+- removes Mangrove's faucet addresses for wbtc and dai
+
+# 1.5.10
+
+- Duplicate 1.5.9
+
+# 1.5.9
+
+- deploy new Mangrove and periphery contracts to Arbitrum
+- deploy MangroveOrder to Arbitrum
+- deploy KandelSeeders to Arbitrum
+
+# 1.5.8
+
+- Pinned fork to a block number as a constructor argument
+
 # 1.5.7
 
 - Fix: New publish workflow with foundry

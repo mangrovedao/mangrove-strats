@@ -22,15 +22,15 @@ contract AaveMakerTest is MangroveTest {
 
   function setUp() public override {
     // use the pinned Polygon fork
-    fork = new PinnedPolygonFork(); // use polygon fork to use dai, usdc and weth addresses
+    fork = new PinnedPolygonFork(39880000); // use polygon fork to use dai, usdc and weth addresses
     fork.setUp();
 
     dai = IERC20(fork.get("DAI"));
     weth = IERC20(fork.get("WETH"));
     usdc = IERC20(fork.get("USDC"));
-    v_attacker = new AaveCaller(fork.get("Aave"), 2);
-    s_attacker = new AaveCaller(fork.get("Aave"), 1);
-    lender = new AaveCaller(fork.get("Aave"), 2);
+    v_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    s_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 1);
+    lender = new AaveCaller(fork.get("AaveAddressProvider"), 2);
   }
 
   struct HeapVars {
