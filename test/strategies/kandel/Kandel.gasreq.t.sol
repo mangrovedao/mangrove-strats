@@ -232,7 +232,7 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     description = string.concat(description, " - AaveKandel");
     expectedFirOfferMakerData = "IS_FIRST_PULLER";
 
-    address aave = fork.get("Aave");
+    address aave = fork.get("AaveAddressProvider");
     AavePooledRouter router = new AavePooledRouter(aave, 500_000);
     AaveKandel aaveKandel = new AaveKandel({
       mgv: mgv,
@@ -273,7 +273,7 @@ contract AaveKandelGasreqBaseTest_Generic_A_B is AaveKandelGasreqBaseTest {
   function setUp() public override {
     super.setUpGeneric();
     address aave = address(new PoolAddressProviderMock(dynamic([address(base), address(quote)])));
-    fork.set("Aave", aave);
+    fork.set("AaveAddressProvider", aave);
     this.setUpTokens(options.base.symbol, options.quote.symbol);
   }
 }

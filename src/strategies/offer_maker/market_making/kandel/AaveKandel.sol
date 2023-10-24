@@ -71,14 +71,21 @@ contract AaveKandel is GeometricKandel {
   }
 
   ///@inheritdoc CoreKandel
+  ///@notice tries to withdraw funds on this contract's balance and then reaches out to the router available funds for the remainder
   function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
-    if (amount != 0) {
-      pooledRouter().withdraw(token, RESERVE_ID, amount);
+    uint localBalance = token.balanceOf(address(this));
+
+    // if amount is `type(uint).max` tell the router to withdraw all it can (i.e. pass `type(uint).max` to the router)
+    // else withdraw only if there is not enough funds on this contract to match amount
+    uint amount_ = amount == type(uint).max ? amount : localBalance > amount ? 0 : amount - localBalance;
+
+    if (amount_ != 0) {
+      pooledRouter().withdraw(token, RESERVE_ID, amount_);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
 
-  ///@notice returns the amount of the router's balance that belong to this contract for the token offered for the offer type.
+  ///@notice returns the amount of the router's that can be used by this contract, as well as local balance for the token offered for the offer type.
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {

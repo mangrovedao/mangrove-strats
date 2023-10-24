@@ -15,6 +15,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 /* 
 This script prepares a local server for testing by mangrove.js.
@@ -134,7 +135,11 @@ contract MangroveJsDeploy is Deployer {
       addressesProvider: aaveAddressProvider,
       aaveRouterGasreq: 0, // see CoreKandelGasreqBaseTest
       aaveKandelGasreq: 629000, // see CoreKandelGasreqBaseTest
-      kandelGasreq: 126000 // see CoreKandelGasreqBaseTest
+      kandelGasreq: 126000, // see CoreKandelGasreqBaseTest
+      deployKandel: true,
+      deployAaveKandel: true,
+      testBase: IERC20(fork.get("WETH")),
+      testQuote: IERC20(fork.get("DAI"))
     });
   }
 }
