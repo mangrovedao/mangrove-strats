@@ -1,21 +1,5 @@
 [
   {
-    "address": "0xb1a49C54192Ea59B233200eA38aB56650Dfb448C",
-    "name": "MgvOracle"
-  },
-  {
-    "address": "0x1dbF9445A6c8Dc912AfAD8CCe48E40F2A8D9D227",
-    "name": "Mangrove"
-  },
-  {
-    "address": "0x9204743121466F9de67eb058c9764b5A6608E418",
-    "name": "MgvReader"
-  },
-  {
-    "address": "0x55b196D0d51840b99C7973D1b8D6d036B69eD24C",
-    "name": "MgvCleaner"
-  },
-  {
     "address": "0x0ea85F9E19763eeC0e376F988FE9A19c9328e3FA",
     "name": "MangroveOrder"
   },
