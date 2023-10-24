@@ -7,6 +7,7 @@ import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/Abstra
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
 ///@title Class for maker contracts that forward offer makers instructions to Mangrove in a permissionless fashion.
 ///@notice Each offer posted via this contract are managed by their offer maker, not by this contract's admin.
@@ -251,18 +252,26 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// @notice Encodes the pull parameters to be decoded by a given router
   /// @dev This implementation will depend on the informations you need and the type of router you are using
   /// * This ideal imlementation would require to encode a Struct defined by the router to have a type safe encoding and decoding
+  /// * default implementations uses params for a simple router
   /// @param owner the owner of the offer
   /// @param order the order to be executed
   /// @return pullParams the encoded parameters
-  function __encodePullParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory);
+  function __encodePullParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory) {
+    order;
+    return abi.encode(SimpleRouter.PullStruct({owner: owner, strict: true}));
+  }
 
   /// @notice Encodes the push parameters to be decoded by a given router
   /// @dev This implementation will depend on the informations you need and the type of router you are using
   /// * This ideal imlementation would require to encode a Struct defined by the router to have a type safe encoding and decoding
+  /// * default implementations uses params for a simple router
   /// @param owner the owner of the offer
   /// @param order the order to be executed
   /// @return pullParams the encoded parameters
-  function __encodePushParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory);
+  function __encodePushParams__(address owner, MgvLib.SingleOrder memory order) internal virtual returns (bytes memory) {
+    order;
+    return abi.encode(SimpleRouter.PushStruct({owner: owner}));
+  }
 
   ///@dev put received inbound tokens on offer maker's reserve during `makerExecute`
   /// if nothing is done at that stage then it could still be done during `makerPosthook`.
