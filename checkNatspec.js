@@ -13,7 +13,9 @@ let all_files = (dir, accumulator = []) => {
     if (fs.statSync(file_path).isDirectory()) {
       all_files(file_path, accumulator);
     } else {
-      accumulator.push(file_path);
+      if (file_name.endsWith(".json")) {
+        accumulator.push(file_path);
+      }
     }
   }
   return accumulator;
@@ -27,49 +29,30 @@ const read_artifact = (file_path) => {
 // gather all artifact files
 const artifacts = all_files(path.join(cwd, "out"));
 
-includes = [
-  "AbstractKandelSeeder",
-  "AaveKandelSeeder",
-  "KandelSeeder",
-  "Direct",
-  "DirectWithBidsAndAsksDistribution",
-  "HasIndexedBidsAndAsks",
-  "AbstractKandel",
-  "CoreKandel",
-  "TradesBaseQuotePair",
-  "GeometricKandel",
-  "AaveKandel",
-  "Kandel",
-  "AaveV3Lender",
-  "HasAaveBalanceMemoizer",
-  "AbstractRouter",
-  "AavePooledRouter",
-  "MangroveOrder",
-  "IOrderLogic",
-  "Forwarder",
-  "AccessControlled",
-  "AbstractRouter",
-  "SimpleRouter",
-  "MangroveOffer",
-  "IOfferLogic",
-  "IForwarder",
-  "TransferLib",
-  "ILiquidityProvider",
-  "OfferMakerTutorial",
-  "OfferMakerTutorialResidual",
+excludes = [
+  "forge-std",
+  "node_modules",
+  "script",
+  "test",
+  "src/strategies/vendor/",
+  "/out/",
+  "toy_strategies",
+  "CompoundModule",
+  "AaveV2Module",
+  "AaveV3Borrower",
 ];
 
 let anyFindings = false;
 artifacts.forEach((file) => {
-  if (!includes.some((x) => file.includes("/" + x + ".sol"))) {
+  const j = read_artifact(file);
+  const fname = j.ast?.absolutePath;
+  if (!fname || excludes.some((x) => fname.includes(x))) {
     return;
   }
-  const j = read_artifact(file);
-  const fname = j.ast.absolutePath;
   const relevant = j.ast.nodes
     .filter((x) => x.nodeType == "ContractDefinition")
     .map((x) => {
-      if (!x.documentation.text.includes("@title")) {
+      if (!x?.documentation?.text?.includes("@title")) {
         anyFindings = true;
         console.log(`${fname} - ${x.name} missing @title`);
       }
@@ -82,7 +65,7 @@ artifacts.forEach((file) => {
       (x) =>
         x.nodeType == "FunctionDefinition" ||
         x.nodeType == "EventDefinition" ||
-        x.nodeType == "VariableDeclaration"
+        x.nodeType == "VariableDeclaration",
     )
     .forEach((x) => {
       const doc = x?.documentation?.text ?? "";

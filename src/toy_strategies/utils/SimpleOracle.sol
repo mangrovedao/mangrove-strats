@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "../interfaces/IOracle.sol";
-import "mgv_src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "../../MgvLib.sol";
+import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract SimpleOracle is IOracle, AccessControlled {
   address reader; // if unset, anyone can read price
@@ -13,10 +13,10 @@ contract SimpleOracle is IOracle, AccessControlled {
   constructor(address base_, address admin) AccessControlled(admin) {
     try IERC20(base_).decimals() returns (uint8 d) {
       require(d != 0, "Invalid decimals number for Oracle base");
-      base_token = IERC20(base_);
     } catch {
       revert("Invalid Oracle base address");
     }
+    base_token = IERC20(base_);
   }
 
   function decimals() external view override returns (uint8) {

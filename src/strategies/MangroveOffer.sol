@@ -1,12 +1,13 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "mgv_src/strategies/utils/AccessControlled.sol";
-import {IOfferLogic} from "mgv_src/strategies/interfaces/IOfferLogic.sol";
-import {MgvLib, IERC20, MgvStructs} from "mgv_src/MgvLib.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {AbstractRouter} from "mgv_src/strategies/routers/AbstractRouter.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
+import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 /// @title This contract is the basic building block for Mangrove strats.
 /// @notice It contains the mandatory interface expected by Mangrove (`IOfferLogic` is `IMaker`) and enforces additional functions implementations (via `IOfferLogic`).
@@ -17,7 +18,7 @@ import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
 
 abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice Gas requirement when posting offers via this strategy, excluding router requirement.
-  uint public immutable OFFER_GASREQ;
+  uint public immutable CONSTANT_GASREQ;
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
   ///@notice constant for no router
@@ -34,7 +35,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /**
    * @notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   *   @param mgv The Mangrove deployment.
+   * @param mgv The Mangrove deployment.
+   * @notice By emitting this event, an indexer will be able to create a mapping from this contract address to the used Mangrove address.
    */
   event Mgv(IMangrove mgv);
 
@@ -50,7 +52,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   constructor(IMangrove mgv, uint gasreq) AccessControlled(msg.sender) {
     require(uint24(gasreq) == gasreq, "mgvOffer/gasreqOverflow");
     MGV = mgv;
-    OFFER_GASREQ = gasreq;
+    CONSTANT_GASREQ = gasreq;
     emit Mgv(mgv);
   }
 
@@ -61,11 +63,16 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /// @inheritdoc IOfferLogic
   function offerGasreq() public view returns (uint) {
+    return offerGasreq(IERC20(address(0)), address(0));
+  }
+
+  /// @inheritdoc IOfferLogic
+  function offerGasreq(IERC20 token, address reserveId) public view returns (uint) {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
-      return OFFER_GASREQ + router_.routerGasreq();
+      return CONSTANT_GASREQ + router_.routerGasreq(token, reserveId);
     } else {
-      return OFFER_GASREQ;
+      return CONSTANT_GASREQ;
     }
   }
 
@@ -80,8 +87,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /// NB #1: if `makerExecute` reverts, the offer will be considered to be refusing the trade.
   /// NB #2: `makerExecute` may return a `bytes32` word to pass information to posthook w/o using storage reads/writes.
   /// NB #3: Reneging on trade will have the following effects:
-  /// * Offer is removed from the Order Book
-  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to the maker account on Mangrove
+  /// * Offer is removed from the Offer List
+  /// * Offer bounty will be withdrawn from offer provision and sent to the offer taker. The remaining provision will be credited to `this` contract's account on Mangrove
   function makerExecute(MgvLib.SingleOrder calldata order)
     external
     override
@@ -90,17 +97,17 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   {
     // Invoke hook that implements a last look check during execution - it may renege on trade by reverting.
     ret = __lastLook__(order);
-    // Invoke hook to put the inbound token, which are brought by the taker, into a specific reserve.
-    require(__put__(order.gives, order) == 0, "mgvOffer/abort/putFailed");
-    // Invoke hook to fetch the outbound token, which are promised to the taker, from a specific reserve.
-    require(__get__(order.wants, order) == 0, "mgvOffer/abort/getFailed");
+    // Invoke hook to put the inbound_tkn, which are brought by the taker, into a specific reserve.
+    require(__put__(order.takerGives, order) == 0, "mgvOffer/abort/putFailed");
+    // Invoke hook to fetch the outbound_tkn, which are promised to the taker, from a specific reserve.
+    require(__get__(order.takerWants, order) == 0, "mgvOffer/abort/getFailed");
   }
 
   /// @notice `makerPosthook` is the callback function that is called by Mangrove *after* the offer execution.
   /// @notice reverting during its execution will not renege on trade. Revert reason (casted to 32 bytes) is then logged by Mangrove in event `PosthookFail`.
   /// @param order a data structure that recapitulates the taker order and the offer as it was posted on mangrove
   /// @param result a data structure that gathers information about trade execution
-  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__` and `__posthookFallback__` (see below).
+  /// @dev It cannot be overridden but can be customized via the hooks `__posthookSuccess__`, `__posthookFallback__` and `__handleResidualProvision__` (see below).
   function makerPosthook(MgvLib.SingleOrder calldata order, MgvLib.OrderResult calldata result)
     external
     override
@@ -110,10 +117,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       __posthookSuccess__(order, result.makerData);
     } else {
       // logging what went wrong during `makerExecute`
-      emit LogIncident(
-        MGV, IERC20(order.outbound_tkn), IERC20(order.inbound_tkn), order.offerId, result.makerData, result.mgvData
-      );
-      // calling strat specific todos in case of failure
+      emit LogIncident(order.olKey.hash(), order.offerId, result.makerData, result.mgvData);
+      // calling strat specific handlers in case of failure
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
     }
@@ -131,9 +136,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       return;
     } else {
       // Offer failed to repost for bad reason, logging the incident
-      emit LogIncident(
-        MGV, IERC20(order.outbound_tkn), IERC20(order.inbound_tkn), order.offerId, makerData, repostStatus
-      );
+      emit LogIncident(order.olKey.hash(), order.offerId, makerData, repostStatus);
     }
   }
 
@@ -242,20 +245,14 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     data = bytes32(0);
   }
 
-  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.inbound_tkn` the offer wants after it is reposted.
-  ///@param order is a recall of the taker order that is being treated.
-  ///@return newWants the new volume of `inbound_tkn` the offer will ask for on Mangrove
-  ///@dev default is to require the original amount of tokens minus those that have been given by the taker during trade execution.
-  function __residualWants__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newWants) {
-    newWants = order.offer.wants() - order.gives;
-  }
-
-  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.outbound_tkn` the offer gives after it is reposted.
+  ///@notice Given the current taker order that (partially) consumes an offer, this hook is used to declare how much `order.olKey.outbound_tkn` the offer gives after it is reposted, while also allowing adjustment to the tick.
   ///@param order is a recall of the taker order that is being treated.
   ///@return newGives the new volume of `outbound_tkn` the offer will give if fully taken.
-  ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution.
-  function __residualGives__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives) {
-    return order.offer.gives() - order.wants;
+  ///@return newTick the new tick of the reposted offer.
+  ///@dev default is to require the original amount of tokens minus those that have been sent to the taker during trade execution and keep the tick.
+  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {
+    newGives = order.offer.gives() - order.takerWants;
+    newTick = order.offer.tick();
   }
 
   ///@notice Hook that defines what needs to be done to the part of an offer provision that was added to the balance of `this` on Mangrove after an offer has failed.
@@ -266,7 +263,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   ///@notice Post-hook that implements default behavior when Taker Order's execution succeeded.
   ///@param order is a recall of the taker order that is at the origin of the current trade.
-  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the book.
+  ///@param makerData is the returned value of the `__lastLook__` hook, triggered during trade execution. The special value `"lastLook/retract"` should be treated as an instruction not to repost the offer on the list.
   ///@return data can be:
   /// * `COMPLETE_FILL` when offer was completely filled
   /// * returned data of `_updateOffer` signalling the status of the reposting attempt.
@@ -277,23 +274,22 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     returns (bytes32 data)
   {
     // now trying to repost residual
-    uint new_gives = __residualGives__(order);
-    uint new_wants = __residualWants__(order);
+    (uint newGives, Tick newTick) = __residualValues__(order);
     // Density check at each repost would be too gas costly.
     // We only treat the special case of `gives==0` or `wants==0` (total fill).
+    // Note: wants (given by `inboundFromOutbound`) can be 0 due to rounding given the price. We could repost to get rid of the last gives at 0 wants,
+    // but the maker does not need to give away these tokens for free, so we skip it.
     // Offer below the density will cause Mangrove to throw so we encapsulate the call to `updateOffer` in order not to revert posthook for posting at dust level.
-    if (new_gives == 0 || new_wants == 0) {
+    if (newGives == 0 || newTick.inboundFromOutbound(newGives) == 0) {
       return COMPLETE_FILL;
     }
     data = _updateOffer(
       OfferArgs({
-        outbound_tkn: IERC20(order.outbound_tkn),
-        inbound_tkn: IERC20(order.inbound_tkn),
-        wants: new_wants,
-        gives: new_gives,
+        olKey: order.olKey,
+        tick: newTick,
+        gives: newGives,
         gasreq: order.offerDetail.gasreq(),
         gasprice: order.offerDetail.gasprice(),
-        pivotId: order.offer.next(), // using next as pivot since this offer is off the book
         noRevert: true,
         fund: 0
       }),
@@ -310,14 +306,13 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   function _updateOffer(OfferArgs memory args, uint offerId) internal virtual returns (bytes32);
 
   ///@notice computes the provision that can be redeemed if deprovisioning a certain offer
-  ///@param outbound_tkn the outbound token of the offer list
-  ///@param inbound_tkn the inbound token of the offer list
+  ///@param olKey the offer list key.
   ///@param offerId the id of the offer
   ///@return provision the provision that can be redeemed
-  function _provisionOf(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId) internal view returns (uint provision) {
-    MgvStructs.OfferDetailPacked offerDetail = MGV.offerDetails(address(outbound_tkn), address(inbound_tkn), offerId);
+  function _provisionOf(OLKey memory olKey, uint offerId) internal view returns (uint provision) {
+    OfferDetail offerDetail = MGV.offerDetails(olKey, offerId);
     unchecked {
-      provision = offerDetail.gasprice() * 10 ** 9 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
+      provision = offerDetail.gasprice() * 1e6 * (offerDetail.offer_gasbase() + offerDetail.gasreq());
     }
   }
 }

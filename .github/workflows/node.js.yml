@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - uses: dorny/paths-filter@v2
       id: changes
@@ -38,16 +38,16 @@ jobs:
            &&  steps.changes.outputs.addresses == 'true')
       uses: actions/github-script@v6
       with:
-        script: core.setFailed('You have changed an address in mangrove-core (deployed/*.json). PR must be marked \'update address\' for CI to run')
+        script: core.setFailed('You have changed an address in mangrove-strats (deployed/*.json). PR must be marked \'update address\' for CI to run')
 
-  # ==== Job: Build and test mangrove-core
-  mangrove-core:
-    runs-on: ubuntu-latest
+  # ==== Job: Build and test mangrove-strats
+  mangrove-strats:
+    runs-on: ubuntu-22.0-4core
 
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -56,10 +56,10 @@ jobs:
       with:
         cache: 'yarn'
         
-    - run: yarn install --immutable
-
     - name: Foundry Setup
-      uses: ./.github/actions/foundry-setup
+      uses: mangrovedao/.github/.github/actions/foundry-setup@master
+    
+    - run: yarn install --immutable
 
     - name: Solidity Compile
       run: yarn run build
@@ -108,8 +108,6 @@ jobs:
     #     path: ./solidity-mocha-test-report.json # Path to test results
     #     reporter: mocha-json                  # Format of test results
 
-    # == check docs can be created ==
-    - run: yarn run doc
 
     # == check precommit works ==
     - run: yarn run precommit
@@ -122,7 +120,7 @@ jobs:
 
     needs:
     - file-guard
-    - mangrove-core
+    - mangrove-strats
 
     runs-on: ubuntu-latest
 
@@ -130,5 +128,5 @@ jobs:
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
-        allowed-skips: file-guard, mangrove-core
+        allowed-skips: file-guard, mangrove-strats
         jobs: ${{ toJSON(needs) }}

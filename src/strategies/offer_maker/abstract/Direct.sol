@@ -1,15 +1,18 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer, IMangrove, AbstractRouter} from "mgv_src/strategies/MangroveOffer.sol";
-import {MgvLib, IERC20, MgvStructs} from "mgv_src/MgvLib.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {IOfferLogic} from "mgv_src/strategies/interfaces/IOfferLogic.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
   ///@notice `reserveId` is set in the constructor
-  ///@param reserveId identifier of this contract's reserve when using a router.
+  ///@param reserveId identifier of this contract's reserve when using a router. This is indexed so that RPC calls can filter on it.
+  ///@notice by emitting this event, an indexer will be able to keep track of what reserve is used.
   event SetReserveId(address indexed reserveId);
 
   ///@notice identifier of this contract's reserve when using a router
@@ -37,15 +40,9 @@ abstract contract Direct is MangroveOffer {
   /// @return offerId Identifier of the newly created offer. Returns 0 if offer creation was rejected by Mangrove and `args.noRevert` is set to `true`.
   /// @return status NEW_OFFER_SUCCESS if the offer was successfully posted on Mangrove. Returns Mangrove's revert reason otherwise.
   function _newOffer(OfferArgs memory args) internal returns (uint offerId, bytes32 status) {
-    try MGV.newOffer{value: args.fund}(
-      address(args.outbound_tkn),
-      address(args.inbound_tkn),
-      args.wants,
-      args.gives,
-      args.gasreq,
-      args.gasprice,
-      args.pivotId
-    ) returns (uint offerId_) {
+    try MGV.newOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice) returns (
+      uint offerId_
+    ) {
       offerId = offerId_;
       status = NEW_OFFER_SUCCESS;
     } catch Error(string memory reason) {
@@ -56,16 +53,8 @@ abstract contract Direct is MangroveOffer {
 
   ///@inheritdoc MangroveOffer
   function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 status) {
-    try MGV.updateOffer{value: args.fund}(
-      address(args.outbound_tkn),
-      address(args.inbound_tkn),
-      args.wants,
-      args.gives,
-      args.gasreq,
-      args.gasprice,
-      args.pivotId,
-      offerId
-    ) {
+    try MGV.updateOfferByTick{value: args.fund}(args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId)
+    {
       status = REPOST_SUCCESS;
     } catch Error(string memory reason) {
       require(args.noRevert, reason);
@@ -74,30 +63,23 @@ abstract contract Direct is MangroveOffer {
   }
 
   ///@notice Retracts an offer from an Offer List of Mangrove.
-  ///@param outbound_tkn the outbound token of the offer list.
-  ///@param inbound_tkn the inbound token of the offer list.
-  ///@param offerId the identifier of the offer in the (`outbound_tkn`,`inbound_tkn`) offer list
+  ///@param olKey the offer list key.
+  ///@param offerId the identifier of the offer in the offer list
   ///@param deprovision if set to `true` if offer admin wishes to redeem the offer's provision.
   ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
   ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
   function _retractOffer(
-    IERC20 outbound_tkn,
-    IERC20 inbound_tkn,
+    OLKey memory olKey,
     uint offerId,
     bool deprovision // if set to `true`, `this` contract will receive the remaining provision (in WEI) associated to `offerId`.
   ) internal returns (uint freeWei) {
-    freeWei = MGV.retractOffer(address(outbound_tkn), address(inbound_tkn), offerId, deprovision);
+    freeWei = MGV.retractOffer(olKey, offerId, deprovision);
   }
 
   ///@inheritdoc IOfferLogic
-  function provisionOf(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId)
-    external
-    view
-    override
-    returns (uint provision)
-  {
-    provision = _provisionOf(outbound_tkn, inbound_tkn, offerId);
+  function provisionOf(OLKey memory olKey, uint offerId) external view override returns (uint provision) {
+    provision = _provisionOf(olKey, offerId);
   }
 
   ///@notice direct contract do not need to do anything specific with incoming funds during trade
@@ -111,7 +93,7 @@ abstract contract Direct is MangroveOffer {
   /// otherwise the function simply returns what's missing in the local balance
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint amount_ = IERC20(order.outbound_tkn).balanceOf(address(this));
+    uint amount_ = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
     if (amount_ >= amount) {
       return 0;
     }
@@ -121,7 +103,7 @@ abstract contract Direct is MangroveOffer {
       return amount_;
     } else {
       // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled = router_.pull(IERC20(order.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this));
+      uint pulled = router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this));
       return pulled >= amount_ ? 0 : amount_ - pulled;
     }
   }
@@ -137,8 +119,8 @@ abstract contract Direct is MangroveOffer {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
       IERC20[] memory tokens = new IERC20[](2);
-      tokens[0] = IERC20(order.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-      tokens[1] = IERC20(order.inbound_tkn); // flushing liquidity brought by taker
+      tokens[0] = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
+      tokens[1] = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
       router_.flush(tokens, RESERVE_ID);
     }
     // reposting offer residual if any

@@ -1,29 +1,29 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.13;
 
-import {ToyENS} from "mgv_lib/ToyENS.sol";
+import {ToyENS} from "@mgv/lib/ToyENS.sol";
 
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
-import {MumbaiMangroveDeployer} from "mgv_script/core/deployers/MumbaiMangroveDeployer.s.sol";
+import {MumbaiMangroveDeployer} from "@mgv/script/core/deployers/MumbaiMangroveDeployer.s.sol";
 import {MumbaiMangroveOrderDeployer} from
-  "mgv_script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
+  "@mgv-strats/script/strategies/mangroveOrder/deployers/MumbaiMangroveOrderDeployer.s.sol";
 import {
   MumbaiKandelSeederDeployer,
   KandelSeeder,
   AaveKandelSeeder
-} from "mgv_script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
+} from "@mgv-strats/script/strategies/kandel/deployers/MumbaiKandelSeederDeployer.s.sol";
 
-import {ActivateMarket, IERC20} from "mgv_script/core/ActivateMarket.s.sol";
-import {ActivateMangroveOrder, MangroveOrder} from "mgv_script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
-import {KandelSower, IMangrove} from "mgv_script/strategies/kandel/KandelSower.s.sol";
-import {IPoolAddressesProvider} from "mgv_src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IPriceOracleGetter} from "mgv_src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
-
-import {Mangrove} from "mgv_src/Mangrove.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
-
-import {console} from "forge-std/console.sol";
+import {Market, ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
+import {
+  ActivateMangroveOrder, MangroveOrder
+} from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
+import {KandelSower} from "@mgv-strats/script/strategies/kandel/KandelSower.s.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
  * Deploy and configure a complete Mangrove testnet deployment:
@@ -42,14 +42,14 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     outputDeployment();
   }
 
-  function toGweiOfMatic(uint price) internal view returns (uint) {
-    return (price * 10 ** 9) / maticPrice;
+  function toMweiOfMatic(uint price) internal view returns (uint) {
+    return (price * 10 ** 12) / maticPrice;
   }
 
   function runWithChainSpecificParams() public {
     // Deploy Mangrove
     new MumbaiMangroveDeployer().runWithChainSpecificParams();
-    Mangrove mgv = Mangrove(fork.get("Mangrove"));
+    IMangrove mgv = IMangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
     IPriceOracleGetter priceOracle =
       IPriceOracleGetter(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getAddress("PRICE_ORACLE"));
@@ -72,35 +72,36 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // 1 token_i = (prices[i] / 10**8) USD
     // 1 USD = (10**8 / maticPrice) Matic
-    // 1 token_i = (prices[i] * 10**9 / maticPrice) gwei of Matic
+    // 1 token_i = (prices[i] * 10**12 / maticPrice) gwei of Matic
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
+      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density      
       reader: reader,
-      tkn1: dai,
-      tkn2: usdc,
-      tkn1_in_gwei: toGweiOfMatic(prices[0]),
-      tkn2_in_gwei: toGweiOfMatic(prices[1]),
+      //Stable/stable ticks should be as small as possible, so using tick spacing 1
+      market: Market({tkn0: address(dai), tkn1: address(usdc), tickSpacing: 1}),
+      tkn1_in_Mwei: toMweiOfMatic(prices[0]),
+      tkn2_in_Mwei: toMweiOfMatic(prices[1]),
       fee: 0
     });
     new ActivateMarket().innerRun({
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      tkn1: weth,
-      tkn2: dai,
-      tkn1_in_gwei: toGweiOfMatic(prices[2]),
-      tkn2_in_gwei: toGweiOfMatic(prices[0]),
+    // Using 1 bps tick size like popular CEX.
+      market: Market({tkn0: address(weth), tkn1: address(dai), tickSpacing: 1}),
+      tkn1_in_Mwei: toMweiOfMatic(prices[2]),
+      tkn2_in_Mwei: toMweiOfMatic(prices[0]),
       fee: 0
     });
+    // Using 1 bps tick size like popular CEX.
+    uint wethUsdcTickSpacing = 1;
     new ActivateMarket().innerRun({
       mgv: mgv,
       gaspriceOverride: 140,
       reader: reader,
-      tkn1: weth,
-      tkn2: usdc,
-      tkn1_in_gwei: toGweiOfMatic(prices[2]),
-      tkn2_in_gwei: toGweiOfMatic(prices[1]),
+      market: Market({tkn0: address(weth), tkn1: address(usdc), tickSpacing: wethUsdcTickSpacing}),
+      tkn1_in_Mwei: toMweiOfMatic(prices[2]),
+      tkn2_in_Mwei: toMweiOfMatic(prices[1]),
       fee: 0
     });
 
@@ -116,11 +117,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
     new KandelSower().innerRun({
-      mgv: IMangrove(payable(mgv)),
       kandelSeeder: seeder,
-      base: weth,
-      quote: usdc,
-      gaspriceFactor: 1,
+      olKeyBaseQuote: OLKey(address(weth), address(usdc), wethUsdcTickSpacing),
       sharing: false,
       onAave: false,
       registerNameOnFork: false,
@@ -129,11 +127,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
 
     // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
     new KandelSower().innerRun({
-      mgv: IMangrove(payable(mgv)),
       kandelSeeder: aaveSeeder,
-      base: weth,
-      quote: usdc,
-      gaspriceFactor: 1,
+      olKeyBaseQuote: OLKey(address(weth), address(usdc), wethUsdcTickSpacing),
       sharing: false,
       onAave: true,
       registerNameOnFork: false,

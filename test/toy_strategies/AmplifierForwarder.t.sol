@@ -1,16 +1,15 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import "mgv_test/lib/forks/Polygon.sol";
-import "mgv_src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
-import {MgvReader} from "mgv_src/periphery/MgvReader.sol";
+import "@mgv-strats/test/lib/StratTest.sol";
+import "@mgv/test/lib/forks/Polygon.sol";
+import "@mgv-strats/src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
+import {Local} from "@mgv/src/core/MgvLib.sol";
+import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 
-//import {console} from "forge-std/console.sol";
+//import {console} from "@mgv/forge-std/console.sol";
 
-contract AmplifierForwarderTest is MangroveTest {
+contract AmplifierForwarderTest is StratTest {
   IERC20 weth;
   IERC20 dai;
   IERC20 usdc;
@@ -20,6 +19,7 @@ contract AmplifierForwarderTest is MangroveTest {
   address payable taker;
   address payable maker;
   AmplifierForwarder strat;
+  OLKey olKeyWethDai;
 
   receive() external payable virtual {}
 
@@ -27,7 +27,6 @@ contract AmplifierForwarderTest is MangroveTest {
     // use the pinned Polygon fork
     fork = new PinnedPolygonFork(39880000); // use polygon fork, to use dai, usdc, weth addresses
     fork.setUp();
-
     // use convenience helpers to setup Mangrove
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
@@ -36,9 +35,12 @@ contract AmplifierForwarderTest is MangroveTest {
     dai = IERC20(fork.get("DAI"));
     weth = IERC20(fork.get("WETH"));
     usdc = IERC20(fork.get("USDC"));
+    olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickSpacing);
+    olKey = OLKey($(usdc), $(weth), options.defaultTickSpacing);
+    lo = olKey.flipped();
 
-    setupMarket(dai, weth);
-    setupMarket(usdc, weth);
+    setupMarket(olKeyWethDai);
+    setupMarket(olKey);
 
     // setup separate taker/maker and give some native token (for gas)
     taker = freshAddress("taker");
@@ -62,8 +64,10 @@ contract AmplifierForwarderTest is MangroveTest {
       base: weth,
       stable1: usdc, 
       stable2: dai,
+      tickSpacing1: olKey.tickSpacing,
+      tickSpacing2: olKeyWethDai.tickSpacing,
       deployer: $(this),
-      gasreq: 250000
+      gasreq: 450000
       });
 
     // allow (the router to) pull of WETH from Amplifier (i.e., strat) to Mangrove
@@ -102,26 +106,22 @@ contract AmplifierForwarderTest is MangroveTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1,
         fund2: prov2
       })
     );
   }
 
-  function takeOffer(uint makerGivesAmount, uint makerWantsAmount, IERC20 makerWantsToken, uint offerId)
+  function takeOffer(uint makerGivesAmount, uint, IERC20 makerWantsToken, uint offerId)
     public
     returns (uint takerGot, uint takerGave, uint bounty)
   {
-    // try to snipe one of the offers (using the separate taker account)
+    OLKey memory _olKey = OLKey($(weth), $(makerWantsToken), olKey.tickSpacing);
+    Tick tick = mgv.offers(_olKey, offerId).tick();
+    // try to take one of the offers (using the separate taker account)
     vm.startPrank(taker);
-    (, takerGot, takerGave, bounty,) = mgv.snipes({
-      outbound_tkn: $(weth),
-      inbound_tkn: $(makerWantsToken),
-      targets: wrap_dynamic([offerId, makerGivesAmount, makerWantsAmount, type(uint).max]),
-      fillWants: true
-    });
+    (takerGot, takerGave, bounty,) =
+      mgv.marketOrderByTick({olKey: _olKey, maxTick: tick, fillVolume: makerGivesAmount, fillWants: true});
     vm.stopPrank();
   }
 
@@ -169,28 +169,30 @@ contract AmplifierForwarderTest is MangroveTest {
     // assert that
     assertEq(
       takerFromTester.got,
-      reader.minusFee($(dai), $(weth), makerGivesAmount / 2),
+      reader.minusFee(olKeyWethDai.flipped(), makerGivesAmount / 2),
       "taker got wrong amount: testOffer.daiOffer"
     );
-    assertEq(takerFromTester.gave, makerWantsAmountDAI / 2, "taker gave wrong amount: testOffer.daiOffer");
+    assertApproxEqRel(
+      takerFromTester.gave, makerWantsAmountDAI / 2, 1e14, "taker gave wrong amount: testOffer.daiOffer"
+    );
 
     // assert that
     assertEq(
       takerFromMaker.got,
-      reader.minusFee($(dai), $(weth), makerGivesAmount),
+      reader.minusFee(olKeyWethDai.flipped(), makerGivesAmount),
       "taker got wrong amount: makerOffer.daiOffer"
     );
-    assertEq(takerFromMaker.gave, makerWantsAmountDAI, "taker gave wrong amount: makerOffer.daiOffer");
+    assertApproxEqRel(takerFromMaker.gave, makerWantsAmountDAI, 1e14, "taker gave wrong amount: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers($(weth), $(dai), testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(mgv.isLive(offer_on_dai1), "weth->dai offer should not have been retracted: testOffer.daiOffer");
-    assertTrue(mgv.isLive(offer_on_usdc1), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
+    assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
+    assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratWithSuccess() public {
@@ -227,28 +229,28 @@ contract AmplifierForwarderTest is MangroveTest {
     // assert that
     assertEq(
       takerFromTester.got,
-      reader.minusFee($(dai), $(weth), makerGivesAmount),
+      reader.minusFee(olKeyWethDai.flipped(), makerGivesAmount),
       "taker got wrong amount: testOffer.daiOffer"
     );
-    assertEq(takerFromTester.gave, makerWantsAmountDAI, "taker gave wrong amount: testOffer.daiOffer");
+    assertApproxEqRel(takerFromTester.gave, makerWantsAmountDAI, 1e14, "taker gave wrong amount: testOffer.daiOffer");
 
     // assert that
     assertEq(
       takerFromMaker.got,
-      reader.minusFee($(dai), $(weth), makerGivesAmount),
+      reader.minusFee(olKeyWethDai.flipped(), makerGivesAmount),
       "taker got wrong amount: makerOffer.daiOffer"
     );
-    assertEq(takerFromMaker.gave, makerWantsAmountDAI, "taker gave wrong amount: makerOffer.daiOffer");
+    assertApproxEqRel(takerFromMaker.gave, makerWantsAmountDAI, 1e14, "taker gave wrong amount: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers($(weth), $(dai), testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(!mgv.isLive(offer_on_dai1), "weth->dai offer should have been retracted: testOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc1), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
+    assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
+    assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratWithFallback() public {
@@ -268,34 +270,35 @@ contract AmplifierForwarderTest is MangroveTest {
     vm.stopPrank();
 
     //only take half of the tester offer
-    gotGaveBounty memory takerFromTester;
-    (takerFromTester.got, takerFromTester.gave, takerFromTester.bounty) =
-      takeOffer(makerGivesAmount, makerWantsAmountDAI, dai, testOffer.daiOffer);
 
-    // take the full offer from maker
-    gotGaveBounty memory takerFromMaker;
-    (takerFromMaker.got, takerFromMaker.gave, takerFromMaker.bounty) =
-      takeOffer(makerGivesAmount, makerWantsAmountDAI, dai, makerOffer.daiOffer);
+    // try to take one of the offers (using the separate taker account)
+    Tick tick = mgv.offers(olKeyWethDai, testOffer.daiOffer).tick();
+    vm.prank(taker);
+    (uint successes, uint bounty) = mgv.cleanByImpersonation(
+      olKeyWethDai, wrap_dynamic(MgvLib.CleanTarget(testOffer.daiOffer, tick, 1_000_000, makerWantsAmountDAI)), taker
+    );
 
-    // assert that
-    assertEq(takerFromTester.got, 0, "taker got wrong amount: testOffer.daiOffer");
-    assertEq(takerFromTester.gave, 0, "taker gave wrong amount: testOffer.daiOffer");
-    assertTrue(takerFromTester.bounty > 0, "taker should get bounty for failing offer: testerOffer.daiOffer");
+    tick = mgv.offers(olKeyWethDai, makerOffer.daiOffer).tick();
+    vm.prank(taker);
+    (uint successes2, uint bounty2) = mgv.cleanByImpersonation(
+      olKeyWethDai, wrap_dynamic(MgvLib.CleanTarget(makerOffer.daiOffer, tick, 1_000_000, makerWantsAmountDAI)), taker
+    );
 
-    // assert that
-    assertEq(takerFromMaker.got, 0, "taker got wrong amount: makerOffer.daiOffer");
-    assertEq(takerFromMaker.gave, 0, "taker gave wrong amount: makerOffer.daiOffer");
-    assertTrue(takerFromMaker.bounty > 0, "taker should get bounty for failing offer: makerOffer.daiOffer");
+    assertEq(successes, 1, "did not clean testOffer.daiOffer");
+    assertTrue(bounty > 0, "taker should get bounty for failing offer: testerOffer.daiOffer");
+
+    assertEq(successes2, 1, "did not clean makerOffer.daiOffer");
+    assertTrue(bounty2 > 0, "taker should get bounty for failing offer: makerOffer.daiOffer");
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers($(weth), $(dai), testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(!mgv.isLive(offer_on_dai1), "weth->dai offer should have been retracted: testOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc1), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
-    assertTrue(!mgv.isLive(offer_on_dai2), "weth->dai offer should have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(olKey, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(olKey, makerOffer.usdcOffer);
+    assertTrue(!offer_on_dai1.isLive(), "weth->dai offer should have been retracted: testOffer.daiOffer");
+    assertTrue(!offer_on_usdc1.isLive(), "weth->usdc offer should have been retracted: testOffer.usdcOffer");
+    assertTrue(!offer_on_dai2.isLive(), "weth->dai offer should have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratOfferAlreadyActive() public {
@@ -311,8 +314,8 @@ contract AmplifierForwarderTest is MangroveTest {
     (testOffer.daiOffer, testOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
     //Find missing provision for both markets
-    uint prov1Tester = reader.getProvision($(weth), $(usdc), strat.offerGasreq(), 0);
-    uint prov2Tester = reader.getProvision($(weth), $(dai), strat.offerGasreq(), 0);
+    uint prov1Tester = reader.getProvision(lo, strat.offerGasreq(), 0);
+    uint prov2Tester = reader.getProvision(olKeyWethDai, strat.offerGasreq(), 0);
 
     vm.expectRevert("AmplifierForwarder/offer1AlreadyActive");
 
@@ -321,8 +324,6 @@ contract AmplifierForwarderTest is MangroveTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1Tester,
         fund2: prov2Tester
       })
@@ -335,10 +336,10 @@ contract AmplifierForwarderTest is MangroveTest {
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
-    strat.retractOffer(weth, usdc, makerOffer.usdcOffer, false);
+    strat.retractOffer(lo, makerOffer.usdcOffer, false);
 
-    uint prov1Maker = reader.getProvision($(weth), $(usdc), strat.offerGasreq(), 0);
-    uint prov2Maker = reader.getProvision($(weth), $(dai), strat.offerGasreq(), 0);
+    uint prov1Maker = reader.getProvision(lo, strat.offerGasreq(), 0);
+    uint prov2Maker = reader.getProvision(olKeyWethDai, strat.offerGasreq(), 0);
 
     vm.expectRevert("AmplifierForwarder/offer2AlreadyActive");
 
@@ -347,8 +348,6 @@ contract AmplifierForwarderTest is MangroveTest {
         gives: makerGivesAmount, // WETH
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
-        pivot1: 0,
-        pivot2: 0,
         fund1: prov1Maker,
         fund2: prov2Maker
       })
@@ -356,14 +355,14 @@ contract AmplifierForwarderTest is MangroveTest {
     vm.stopPrank();
 
     // assert that neither offer posted by Amplifier are live (= have been retracted)
-    MgvStructs.OfferPacked offer_on_dai1 = mgv.offers($(weth), $(dai), testOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc1 = mgv.offers($(weth), $(usdc), testOffer.usdcOffer);
-    MgvStructs.OfferPacked offer_on_dai2 = mgv.offers($(weth), $(dai), makerOffer.daiOffer);
-    MgvStructs.OfferPacked offer_on_usdc2 = mgv.offers($(weth), $(usdc), makerOffer.usdcOffer);
-    assertTrue(mgv.isLive(offer_on_dai1), "weth->dai offer should not have been retracted: testOffer.daiOffer");
-    assertTrue(mgv.isLive(offer_on_usdc1), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
-    assertTrue(mgv.isLive(offer_on_dai2), "weth->dai offer should not have been retracted: makerOffer.daiOffer");
-    assertTrue(!mgv.isLive(offer_on_usdc2), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
+    Offer offer_on_dai1 = mgv.offers(olKeyWethDai, testOffer.daiOffer);
+    Offer offer_on_usdc1 = mgv.offers(lo, testOffer.usdcOffer);
+    Offer offer_on_dai2 = mgv.offers(olKeyWethDai, makerOffer.daiOffer);
+    Offer offer_on_usdc2 = mgv.offers(lo, makerOffer.usdcOffer);
+    assertTrue(offer_on_dai1.isLive(), "weth->dai offer should not have been retracted: testOffer.daiOffer");
+    assertTrue(offer_on_usdc1.isLive(), "weth->usdc offer should not have been retracted: testOffer.usdcOffer");
+    assertTrue(offer_on_dai2.isLive(), "weth->dai offer should not have been retracted: makerOffer.daiOffer");
+    assertTrue(!offer_on_usdc2.isLive(), "weth->usdc offer should have been retracted: makerOffer.usdcOffer");
   }
 
   function execTraderStratDeprovisionDeadOffers() public {
@@ -406,8 +405,8 @@ contract AmplifierForwarderTest is MangroveTest {
 
     strat.retractOffers(true);
 
-    assertTrue(nativeBalanceBeforeRetract1 < $(this).balance, "provison for this was not returned");
-    assertTrue(nativeBalanceBeforeRetract2 < maker.balance, "provison for maker was not returned");
+    assertTrue(nativeBalanceBeforeRetract1 < $(this).balance, "provision for this was not returned");
+    assertTrue(nativeBalanceBeforeRetract2 < maker.balance, "provision for maker was not returned");
   }
 
   function test_success_partialFill() public {

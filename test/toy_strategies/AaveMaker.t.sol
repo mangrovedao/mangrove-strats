@@ -1,12 +1,12 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import "mgv_test/lib/forks/Polygon.sol";
-import {ICreditDelegationToken, AaveV3Borrower} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
-import {AaveCaller, console} from "mgv_test/lib/agents/AaveCaller.sol";
+import "@mgv-strats/test/lib/StratTest.sol";
+import "@mgv/test/lib/forks/Polygon.sol";
+import {ICreditDelegationToken, AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveCaller, console} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
 
-contract AaveMakerTest is MangroveTest {
+contract AaveMakerTest is StratTest {
   IERC20 weth;
   IERC20 dai;
   IERC20 usdc;

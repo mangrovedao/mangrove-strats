@@ -1,16 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {IERC20} from "mgv_src/MgvLib.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
-import {AbstractRouter} from "./AbstractRouter.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {MonoRouter, AbstractRouter} from "./abstract/MonoRouter.sol";
 
-///@title `SimpleRouter` instances pull (push) liquidity directly from (to) the an offer owner's account
+///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
-contract SimpleRouter is
-  AbstractRouter(70_000) // fails for < 70K with Direct strat
-{
+contract SimpleRouter is MonoRouter(70_000) {
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @param token Token to be transferred
   /// @param owner The account from which the tokens will be transferred.

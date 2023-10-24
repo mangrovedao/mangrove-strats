@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import {Script, console} from "forge-std/Script.sol";
-import {MangroveOrder, IERC20, IMangrove} from "mgv_src/strategies/MangroveOrder.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Script, console} from "@mgv/forge-std/Script.sol";
+import {MangroveOrder, IERC20, IMangrove} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Deploys a MangroveOrder instance
     First test:
@@ -32,13 +32,11 @@ contract MangroveOrderDeployer is Deployer {
     //                 We therefore ensure that this happens.
     uint64 nonce = vm.getNonce(broadcaster());
     broadcast();
-    // test show MangroveOrder can execute resting order using 105K (70K of simple router included)
-    // so setting offer logic's gasreq to 35K is enough
-    // we use 60K here in order to allow partial fills to repost on top of up to 5 identical offers.
+    // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt:salt}(mgv, admin, 60_000);
+      mgvOrder = new MangroveOrder{salt:salt}(mgv, admin, 82000);
     } else {
-      mgvOrder = new MangroveOrder(mgv, admin, 60_000);
+      mgvOrder = new MangroveOrder(mgv, admin, 82000);
     }
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
