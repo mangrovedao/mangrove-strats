@@ -79,8 +79,6 @@ contract KandelSower is Deployer, MangroveTest {
     }
   }
 
-  event ReserveUsedAsCollateralEnabled(address, address);
-
   function smokeTest(GeometricKandel kdl, bool onAave, IERC20 base, IERC20 quote) internal {
     require(kdl.admin() == broadcaster(), "Incorrect admin for Kandel");
     require(onAave || address(kdl.router()) == address(0), "Incorrect router");
