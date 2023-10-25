@@ -19,9 +19,8 @@ contract PolygonKandelSeederDeployer is Deployer {
     return new KandelSeederDeployer().innerRun({
       mgv: IMangrove(fork.get("Mangrove")),
       addressesProvider: fork.get("AaveAddressProvider"),
-      aaveKandelGasreq: 200_000,
-      kandelGasreq: 200_000,
-      aaveRouterGasreq: 380_000,
+      aaveKandelGasreq: 628_000,
+      kandelGasreq: 128_000,
       deployKandel:true,
       deployAaveKandel:true,
       testBase: IERC20(fork.get("WETH")),

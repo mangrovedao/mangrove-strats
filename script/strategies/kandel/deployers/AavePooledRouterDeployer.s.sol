@@ -8,15 +8,12 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 ///@title  AavePooledRouter deployer
 contract AavePooledRouterDeployer is Deployer {
   function run() public {
-    innerRun({
-      addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
-      overhead: vm.envUint("GASREQ")
-    });
+    innerRun({addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")});
   }
 
-  function innerRun(address addressProvider, uint overhead) public {
+  function innerRun(address addressProvider) public {
     broadcast();
-    AavePooledRouter router = new AavePooledRouter(addressProvider, overhead);
+    AavePooledRouter router = new AavePooledRouter(addressProvider);
 
     smokeTest(router);
   }

@@ -982,7 +982,7 @@ abstract contract CoreKandelTest is KandelTest {
     console.log("makerExecute: %d, posthook: %d, deltaGasForNew", makerExecuteCost, posthookCost, deltaGasForNew);
     console.log(
       "Strat gasreq (%d), mockup (%d)",
-      kdl.offerGasreq() + local.offer_gasbase(),
+      gasreq() + local.offer_gasbase(),
       makerExecuteCost + posthookCost + deltaGasForNew
     );
     //assertTrue(makerExecuteCost + posthookCost <= kdl.offerGasreq() + local.offer_gasbase(), "Strat is spending more gas");
@@ -1001,8 +1001,7 @@ abstract contract CoreKandelTest is KandelTest {
     TransferLib.approveToken(quote, address(otherKandel), type(uint).max);
 
     uint totalProvision = (
-      reader.getProvision(olKey, otherKandel.offerGasreq(), bufferedGasprice)
-        + reader.getProvision(lo, otherKandel.offerGasreq(), bufferedGasprice)
+      reader.getProvision(olKey, gasreq(), bufferedGasprice) + reader.getProvision(lo, gasreq(), bufferedGasprice)
     ) * 10 ether;
 
     deal(otherMaker, totalProvision);
@@ -1291,8 +1290,8 @@ abstract contract CoreKandelTest is KandelTest {
     vm.prank(maker);
     kdl.retractOffers(0, 10);
 
-    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
-    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
+    uint provAsk = reader.getProvision(olKey, gasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, gasreq(), bufferedGasprice);
 
     GeometricKandel.Params memory params;
 
@@ -1334,7 +1333,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.MGV();
     kdl.NO_ROUTER();
     kdl.QUOTE();
-    kdl.CONSTANT_GASREQ();
     kdl.RESERVE_ID();
     kdl.TICK_SPACING();
     kdl.admin();
@@ -1343,8 +1341,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
     kdl.offerIdOfIndex(Ask, 0);
-    kdl.offerGasreq();
-    kdl.offerGasreq(IERC20(address(0)), address(0));
     kdl.offeredVolume(Ask);
     kdl.params();
     kdl.pending(Ask);

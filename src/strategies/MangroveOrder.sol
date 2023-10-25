@@ -24,8 +24,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param deployer The address of the admin of `this` at the end of deployment
-  ///@param gasreq The gas required for `this` to execute `makerExecute` and `makerPosthook` when called by mangrove for a resting order.
-  constructor(IMangrove mgv, address deployer, uint gasreq) Forwarder(mgv, new SimpleRouter(), gasreq) {
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter()) {
     // adding `this` contract to authorized makers of the router before setting admin rights of the router to deployer
     router().bind(address(this));
     router().setAdmin(deployer);
@@ -48,8 +47,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@param olKey the offer list key.
   ///@param tick the tick
   ///@param gives new amount of `olKey.outbound_tkn` offer owner gives
+  ///@param gasreq new gas req for the restingOrder
   ///@param offerId the id of the offer to be updated
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId)
+  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, uint offerId)
     external
     payable
     onlyOwner(olKey.hash(), offerId)
@@ -57,11 +57,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     OfferArgs memory args;
 
     // funds to compute new gasprice is msg.value. Will use old gasprice if no funds are given
-    args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
+    args.fund = msg.value;
     args.olKey = olKey;
     args.tick = tick;
     args.gives = gives;
-    args.gasreq = offerGasreq();
+    args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
     _updateOffer(args, offerId);
   }
@@ -253,7 +253,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       olKey: olKey,
       tick: residualTick,
       gives: residualGives,
-      gasreq: offerGasreq(), // using default gasreq of the strat
+      gasreq: tko.restingOrderGasreq,
       gasprice: 0, // ignored
       fund: fund,
       noRevert: true // returns 0 when MGV reverts

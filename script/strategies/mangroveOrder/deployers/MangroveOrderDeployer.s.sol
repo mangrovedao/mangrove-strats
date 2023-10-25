@@ -34,9 +34,9 @@ contract MangroveOrderDeployer is Deployer {
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt:salt}(mgv, admin, 82000);
+      mgvOrder = new MangroveOrder{salt:salt}(mgv, admin);
     } else {
-      mgvOrder = new MangroveOrder(mgv, admin, 82000);
+      mgvOrder = new MangroveOrder(mgv, admin);
     }
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {

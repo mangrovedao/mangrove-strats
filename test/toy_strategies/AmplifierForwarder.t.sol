@@ -20,6 +20,7 @@ contract AmplifierForwarderTest is StratTest {
   address payable maker;
   AmplifierForwarder strat;
   OLKey olKeyWethDai;
+  uint internal constant GASREQ = 450_000;
 
   receive() external payable virtual {}
 
@@ -107,7 +108,8 @@ contract AmplifierForwarderTest is StratTest {
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
         fund1: prov1,
-        fund2: prov2
+        fund2: prov2,
+        gasreq: GASREQ
       })
     );
   }
@@ -314,8 +316,8 @@ contract AmplifierForwarderTest is StratTest {
     (testOffer.daiOffer, testOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
     //Find missing provision for both markets
-    uint prov1Tester = reader.getProvision(lo, strat.offerGasreq(), 0);
-    uint prov2Tester = reader.getProvision(olKeyWethDai, strat.offerGasreq(), 0);
+    uint prov1Tester = reader.getProvision(lo, GASREQ, 0);
+    uint prov2Tester = reader.getProvision(olKeyWethDai, GASREQ, 0);
 
     vm.expectRevert("AmplifierForwarder/offer1AlreadyActive");
 
@@ -325,7 +327,8 @@ contract AmplifierForwarderTest is StratTest {
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
         fund1: prov1Tester,
-        fund2: prov2Tester
+        fund2: prov2Tester,
+        gasreq: GASREQ
       })
     );
 
@@ -338,8 +341,8 @@ contract AmplifierForwarderTest is StratTest {
 
     strat.retractOffer(lo, makerOffer.usdcOffer, false);
 
-    uint prov1Maker = reader.getProvision(lo, strat.offerGasreq(), 0);
-    uint prov2Maker = reader.getProvision(olKeyWethDai, strat.offerGasreq(), 0);
+    uint prov1Maker = reader.getProvision(lo, GASREQ, 0);
+    uint prov2Maker = reader.getProvision(olKeyWethDai, GASREQ, 0);
 
     vm.expectRevert("AmplifierForwarder/offer2AlreadyActive");
 
@@ -349,7 +352,8 @@ contract AmplifierForwarderTest is StratTest {
         wants1: makerWantsAmountUSDC, // USDC
         wants2: makerWantsAmountDAI, // DAI
         fund1: prov1Maker,
-        fund2: prov2Maker
+        fund2: prov2Maker,
+        gasreq: GASREQ
       })
     );
     vm.stopPrank();

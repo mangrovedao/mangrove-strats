@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {AbstractRouter, MonoRouter} from "../abstract/MonoRouter.sol";
+import {AbstractRouter} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
@@ -19,7 +19,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 ///    * `__pull__`  checks whether local balance of token is below required amount. If so it pulls all its funds from AAVE (this includes funds that do not belong to the owner of the calling contract) and sends to caller all the owner's reserve (according to the shares attributed to the owner - except in case of liquidity sharing where only requested amount is transferred). This router then decreases owner's shares accordingly. (note that if AAVE has no liquidity crisis, then the owner's shares will be temporarily 0)
 ///    * `__push__` transfers the requested amount of tokens from the calling maker contract and increases owner's shares, but does not supply on AAVE
 
-contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
+contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@notice the manager which controls which pools are allowed.
   address public aaveManager;
 
@@ -63,8 +63,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, MonoRouter {
 
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
-  ///@param overhead is the amount of gas that is required for this router to be able to perform a `pull` and a `push`.
-  constructor(address addressesProvider, uint overhead) HasAaveBalanceMemoizer(addressesProvider) MonoRouter(overhead) {
+  constructor(address addressesProvider) HasAaveBalanceMemoizer(addressesProvider) AbstractRouter() {
     setAaveManager(msg.sender);
   }
 

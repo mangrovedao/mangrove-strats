@@ -19,9 +19,8 @@ contract MumbaiKandelSeederDeployer is Deployer {
     return new KandelSeederDeployer().innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       addressesProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
-      aaveKandelGasreq: 200_000,
-      kandelGasreq: 200_000,
-      aaveRouterGasreq: 380_000,
+      aaveKandelGasreq: 628_000,
+      kandelGasreq: 128_000,
       deployAaveKandel: true,
       deployKandel:true,
       testBase: IERC20(fork.get("CRV")), // make sure to use an AAVE faucet 

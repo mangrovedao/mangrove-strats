@@ -34,9 +34,8 @@ contract KandelSeederDeployer is Deployer {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       addressesProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
-      aaveKandelGasreq: 200_000,
-      kandelGasreq: 200_000,
-      aaveRouterGasreq: 380_000,
+      aaveKandelGasreq: 628_000,
+      kandelGasreq: 128_000,
       deployAaveKandel: deployAaveKandel,
       deployKandel: deployKandel,
       testBase: IERC20(envAddressOrName("TEST_BASE")),
@@ -48,7 +47,6 @@ contract KandelSeederDeployer is Deployer {
   function innerRun(
     IMangrove mgv,
     address addressesProvider,
-    uint aaveRouterGasreq,
     uint aaveKandelGasreq,
     uint kandelGasreq,
     bool deployAaveKandel,
@@ -77,7 +75,7 @@ contract KandelSeederDeployer is Deployer {
       //                 We therefore ensure that this happens.
       uint64 nonce = vm.getNonce(broadcaster());
       broadcast();
-      aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveRouterGasreq, aaveKandelGasreq);
+      aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveKandelGasreq);
       // Bug workaround: See comment above `nonce` further up
       if (nonce == vm.getNonce(broadcaster())) {
         vm.setNonce(broadcaster(), nonce + 1);
@@ -88,7 +86,7 @@ contract KandelSeederDeployer is Deployer {
       console.log("Deploying AaveKandel instance for code verification...");
       prettyLog("Deploying AaveKandel instance...");
       broadcast();
-      new AaveKandel(mgv, olKeyBaseQuote, 1, address(0));
+      new AaveKandel(mgv, olKeyBaseQuote, address(0));
       smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
     }
 

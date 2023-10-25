@@ -19,10 +19,9 @@ contract AaveKandel is GeometricKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
-  ///@param gasreq the gasreq to use for offers
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
-    GeometricKandel(mgv, olKeyBaseQuote, gasreq, reserveId)
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, address reserveId)
+    GeometricKandel(mgv, olKeyBaseQuote, reserveId)
   {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router
@@ -52,12 +51,13 @@ contract AaveKandel is GeometricKandel {
 
   ///@notice Sets the AaveRouter as router and activates router for base and quote
   ///@param router_ the Aave router to use.
-  function initialize(AavePooledRouter router_) external onlyAdmin {
+  ///@param gasreq the gas required to execute an offer of this Kandel strat
+  function initialize(AavePooledRouter router_, uint gasreq) external onlyAdmin {
     setRouter(router_);
     // calls below will fail if router's admin has not bound router to `this`. We call __activate__ instead of activate just to save gas.
     __activate__(BASE);
     __activate__(QUOTE);
-    setGasreq(offerGasreq());
+    setGasreq(gasreq);
   }
 
   ///@notice deposits funds to be available for being offered. Will increase `pending`.

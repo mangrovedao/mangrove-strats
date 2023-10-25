@@ -12,6 +12,7 @@ contract AmplifierForwarder is Forwarder {
   uint public immutable TICK_SPACING1;
   IERC20 public immutable STABLE2;
   uint public immutable TICK_SPACING2;
+  uint public immutable GASREQ;
 
   struct OfferPair {
     uint id1;
@@ -29,13 +30,14 @@ contract AmplifierForwarder is Forwarder {
     uint tickSpacing2,
     address deployer,
     uint gasreq
-  ) Forwarder(mgv, new SimpleRouter(), gasreq) {
+  ) Forwarder(mgv, new SimpleRouter()) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     TICK_SPACING1 = tickSpacing1;
     TICK_SPACING2 = tickSpacing2;
     STABLE2 = stable2;
     BASE = base;
+    GASREQ = gasreq;
 
     AbstractRouter router_ = router();
     router_.bind(address(this));
@@ -59,6 +61,7 @@ contract AmplifierForwarder is Forwarder {
     uint wants2;
     uint fund1;
     uint fund2;
+    uint gasreq;
   }
 
   function newAmplifiedOffers(NewOffersArgs memory args) external payable returns (uint, uint) {
@@ -89,7 +92,7 @@ contract AmplifierForwarder is Forwarder {
         olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
         tick: tick,
         gives: args.gives,
-        gasreq: offerGasreq(), // SimpleRouter is a MonoRouter
+        gasreq: args.gasreq, // SimpleRouter is a MonoRouter
         gasprice: 0, // ignored
         fund: args.fund1,
         noRevert: false
@@ -107,7 +110,7 @@ contract AmplifierForwarder is Forwarder {
         olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
         tick: tick,
         gives: args.gives,
-        gasreq: offerGasreq(),
+        gasreq: GASREQ,
         gasprice: 0, // ignored
         fund: args.fund2,
         noRevert: false

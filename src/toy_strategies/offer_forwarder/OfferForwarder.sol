@@ -8,7 +8,7 @@ import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter(), 30_000) {
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter()) {
     AbstractRouter router_ = router();
     router_.bind(address(this));
     if (deployer != msg.sender) {
@@ -38,10 +38,6 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     );
   }
 
-  function newOffer(OLKey memory olKey, Tick tick, uint gives) public payable returns (uint offerId) {
-    return newOffer(olKey, tick, gives, offerGasreq());
-  }
-
   ///@inheritdoc ILiquidityProvider
   ///@dev the `gasprice` argument is always ignored in `Forwarder` logic, since it has to be derived from `msg.value` of the call (see `_newOffer`).
   function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId, uint gasreq)
@@ -63,12 +59,6 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     args.noRevert = false; // will throw if Mangrove reverts
     // weiBalance is used to provision offer
     _updateOffer(args, offerId);
-  }
-
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint offerId) public payable {
-    address owner = ownerOf(olKey.hash(), offerId);
-    require(owner == msg.sender, "OfferForwarder/unauthorized");
-    updateOffer(olKey, tick, gives, offerId, offerGasreq());
   }
 
   ///@inheritdoc ILiquidityProvider

@@ -75,6 +75,10 @@ abstract contract KandelTest is StratTest {
     return "/out/Kandel.sol/Kandel.json";
   }
 
+  function gasreq() internal view returns (uint gasreq_) {
+    (, gasreq_,,) = kdl.params();
+  }
+
   function setUp() public virtual override {
     /// sets base, quote, opens a market (base,quote) on Mangrove
     __setForkEnvironment__();
@@ -101,8 +105,8 @@ abstract contract KandelTest is StratTest {
     kdl = __deployKandel__(maker, maker);
 
     // funding Kandel on Mangrove
-    uint provAsk = reader.getProvision(olKey, kdl.offerGasreq(), bufferedGasprice);
-    uint provBid = reader.getProvision(lo, kdl.offerGasreq(), bufferedGasprice);
+    uint provAsk = reader.getProvision(olKey, gasreq(), bufferedGasprice);
+    uint provBid = reader.getProvision(lo, gasreq(), bufferedGasprice);
     deal(maker, (provAsk + provBid) * 10 ether);
 
     // maker approves Kandel to be able to deposit funds on it
@@ -182,12 +186,12 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint32 gasprice, uint24 gasreq, uint88 stepSize, uint112 pricePoints) = aKandel.params();
+    (uint32 gasprice_, uint24 gasreq_, uint88 stepSize_, uint112 pricePoints_) = aKandel.params();
 
-    params.gasprice = gasprice;
-    params.gasreq = gasreq;
-    params.stepSize = stepSize;
-    params.pricePoints = pricePoints;
+    params.gasprice = gasprice_;
+    params.gasreq = gasreq_;
+    params.stepSize = stepSize_;
+    params.pricePoints = pricePoints_;
   }
 
   enum OfferStatus {

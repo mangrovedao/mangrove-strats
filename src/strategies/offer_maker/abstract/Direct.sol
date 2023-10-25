@@ -24,9 +24,8 @@ abstract contract Direct is MangroveOffer {
   ///@notice `Direct`'s constructor.
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   ///@param router_ the router that this contract will use to pull/push liquidity from offer maker's reserve. This can be `NO_ROUTER`.
-  ///@param gasreq Gas requirement when posting offers via this strategy, excluding router requirement.
   ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, AbstractRouter router_, uint gasreq, address reserveId) MangroveOffer(mgv, gasreq) {
+  constructor(IMangrove mgv, AbstractRouter router_, address reserveId) MangroveOffer(mgv) {
     if (router_ != NO_ROUTER) {
       setRouter(router_);
     }
