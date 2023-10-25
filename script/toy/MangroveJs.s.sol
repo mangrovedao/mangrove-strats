@@ -15,6 +15,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
 /* 
 This script prepares a local server for testing by mangrove.js.
@@ -116,7 +117,7 @@ contract MangroveJsDeploy is Deployer {
     ActivateMarket activateMarket = new ActivateMarket();
 
     //FIXME: what tick spacing?
-    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e9, 3 * 1e9, 0);
+    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e9, 3 * 1e9, 250);
     activateMarket.innerRun(mgv, mgvReader, Market(dai, usdc, 1), 1e9 / 1000, 1e9 / 1000, 0);
     activateMarket.innerRun(mgv, mgvReader, Market(weth, dai, 1), 1e9, 1e9 / 1000, 0);
     activateMarket.innerRun(mgv, mgvReader, Market(weth, usdc, 1), 1e9, 1e9 / 1000, 0);
@@ -133,7 +134,11 @@ contract MangroveJsDeploy is Deployer {
       mgv: IMangrove(payable(mgv)),
       addressesProvider: aaveAddressProvider,
       aaveKandelGasreq: 629000, // see CoreKandelGasreqBaseTest
-      kandelGasreq: 126000 // see CoreKandelGasreqBaseTest
+      kandelGasreq: 126000, // see CoreKandelGasreqBaseTest
+      deployKandel: true,
+      deployAaveKandel: true,
+      testBase: IERC20(fork.get("WETH")),
+      testQuote: IERC20(fork.get("DAI"))
     });
   }
 }

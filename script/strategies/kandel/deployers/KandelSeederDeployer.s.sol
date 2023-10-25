@@ -23,54 +23,72 @@ import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 contract KandelSeederDeployer is Deployer {
   function run() public {
+    bool deployAaveKandel = true;
+    bool deployKandel = true;
+    try vm.envBool("DEPLOY_AAVE_KANDEL") returns (bool deployAaveKandel_) {
+      deployAaveKandel = deployAaveKandel_;
+    } catch {}
+    try vm.envBool("DEPLOY_KANDEL") returns (bool deployKandel_) {
+      deployKandel = deployKandel_;
+    } catch {}
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      addressesProvider: envAddressOrName("AAVE", "Aave"),
+      addressesProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
       aaveKandelGasreq: 628_000,
-      kandelGasreq: 128_000
+      kandelGasreq: 128_000,
+      deployAaveKandel: deployAaveKandel,
+      deployKandel: deployKandel,
+      testBase: IERC20(envAddressOrName("TEST_BASE")),
+      testQuote: IERC20(envAddressOrName("TEST_QUOTE"))
     });
     outputDeployment();
   }
 
-  function innerRun(IMangrove mgv, address addressesProvider, uint aaveKandelGasreq, uint kandelGasreq)
-    public
-    returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder)
-  {
-    prettyLog("Deploying Kandel seeder...");
-    broadcast();
-    seeder = new KandelSeeder(mgv, kandelGasreq);
-    fork.set("KandelSeeder", address(seeder));
-
-    prettyLog("Deploying AaveKandel seeder...");
-    // Bug workaround: Foundry has a bug where the nonce is not incremented when AaveKandelSeeder is deployed.
-    //                 We therefore ensure that this happens.
-    uint64 nonce = vm.getNonce(broadcaster());
-    broadcast();
-    aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveKandelGasreq);
-    // Bug workaround: See comment above `nonce` further up
-    if (nonce == vm.getNonce(broadcaster())) {
-      vm.setNonce(broadcaster(), nonce + 1);
-    }
-    fork.set("AaveKandelSeeder", address(aaveSeeder));
-    fork.set("AavePooledRouter", address(aaveSeeder.AAVE_ROUTER()));
-
-    console.log("Deploying Kandel instances for code verification...");
-    IERC20 weth = IERC20(fork.get("WETH"));
-    IERC20 dai = IERC20(fork.get("DAI"));
+  function innerRun(
+    IMangrove mgv,
+    address addressesProvider,
+    uint aaveKandelGasreq,
+    uint kandelGasreq,
+    bool deployAaveKandel,
+    bool deployKandel,
+    IERC20 testBase,
+    IERC20 testQuote
+  ) public returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) {
     //FIXME: what tick spacing? Why do we assume an open market?
     uint tickSpacing = 1;
-    OLKey memory olKeyBaseQuote = OLKey(address(weth), address(dai), tickSpacing);
+    OLKey memory olKeyBaseQuote = OLKey(address(testBase), address(testQuote), tickSpacing);
 
-    prettyLog("Deploying Kandel instance...");
-    broadcast();
-    new Kandel(mgv, olKeyBaseQuote, 200_000, address(0));
+    if (deployKandel) {
+      prettyLog("Deploying Kandel seeder...");
+      broadcast();
+      seeder = new KandelSeeder(mgv, kandelGasreq);
+      fork.set("KandelSeeder", address(seeder));
 
-    prettyLog("Deploying AaveKandel instance...");
-    broadcast();
-    new AaveKandel(mgv, olKeyBaseQuote, address(0));
+      console.log("Deploying Kandel instance for code verification...");
+      broadcast();
+      new Kandel(mgv, olKeyBaseQuote, 1, address(0));
+      smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
+    }
+    if (deployAaveKandel) {
+      prettyLog("Deploying AaveKandel seeder...");
+      // Bug workaround: Foundry has a bug where the nonce is not incremented when AaveKandelSeeder is deployed.
+      //                 We therefore ensure that this happens.
+      uint64 nonce = vm.getNonce(broadcaster());
+      broadcast();
+      aaveSeeder = new AaveKandelSeeder(mgv, addressesProvider, aaveKandelGasreq);
+      // Bug workaround: See comment above `nonce` further up
+      if (nonce == vm.getNonce(broadcaster())) {
+        vm.setNonce(broadcaster(), nonce + 1);
+      }
+      fork.set("AaveKandelSeeder", address(aaveSeeder));
+      fork.set("AavePooledRouter", address(aaveSeeder.AAVE_ROUTER()));
 
-    smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
-    smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
+      console.log("Deploying AaveKandel instance for code verification...");
+      prettyLog("Deploying AaveKandel instance...");
+      broadcast();
+      new AaveKandel(mgv, olKeyBaseQuote, address(0));
+      smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
+    }
 
     console.log("Deployed!");
   }
