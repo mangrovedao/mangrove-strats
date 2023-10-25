@@ -117,7 +117,7 @@ contract MangroveJsDeploy is Deployer {
     ActivateMarket activateMarket = new ActivateMarket();
 
     //FIXME: what tick spacing?
-    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e9, 3 * 1e9, 0);
+    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e9, 3 * 1e9, 250);
     activateMarket.innerRun(mgv, mgvReader, Market(dai, usdc, 1), 1e9 / 1000, 1e9 / 1000, 0);
     activateMarket.innerRun(mgv, mgvReader, Market(weth, dai, 1), 1e9, 1e9 / 1000, 0);
     activateMarket.innerRun(mgv, mgvReader, Market(weth, usdc, 1), 1e9, 1e9 / 1000, 0);
