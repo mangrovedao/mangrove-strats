@@ -57,7 +57,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     OfferArgs memory args;
 
     // funds to compute new gasprice is msg.value. Will use old gasprice if no funds are given
-    args.fund = msg.value; // if inside a hook (Mangrove is `msg.sender`) this will be 0
+    args.fund = msg.value;
     args.olKey = olKey;
     args.tick = tick;
     args.gives = gives;
@@ -253,7 +253,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       olKey: olKey,
       tick: residualTick,
       gives: residualGives,
-      gasreq: tko.restingOrderGasreq, // using default gasreq of the strat
+      gasreq: tko.restingOrderGasreq,
       gasprice: 0, // ignored
       fund: fund,
       noRevert: true // returns 0 when MGV reverts

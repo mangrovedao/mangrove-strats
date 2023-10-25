@@ -12,8 +12,8 @@ Changes since Audit March 2023:
   - `gasprice` is now 26 bits in Mwei.
 - Strat library
   - MangroveOffer: `residualGives` and `residualWants` removed. Replaced with `residualValues` which by default keeps price (`tick`) and calculates remaining `gives` like before.
+  - Default gasreq for routers and offer logics has been removed. Gasreq has to be passed to `_newOffer` and `_updateOffer` explicitely.
   - TransferLib moved to core.
-  - SimpleRouter now inherits from a MonoRouter to specify that it only has a single-sourcing perspective.
 - Mangrove Order strategy
   - `(gives, wants)` changed to `(fillVolume, tick)` in taker perspective given by `TakerOrder`.
   - Manipulation of `gives` and the implicit `wants` follows the same pattern as the core protocol during a market order.
