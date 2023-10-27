@@ -186,7 +186,7 @@ abstract contract KandelTest is StratTest {
   }
 
   function getParams(GeometricKandel aKandel) internal view returns (GeometricKandel.Params memory params) {
-    (uint32 gasprice_, uint24 gasreq_, uint88 stepSize_, uint112 pricePoints_) = aKandel.params();
+    (uint32 gasprice_, uint24 gasreq_, uint32 stepSize_, uint32 pricePoints_) = aKandel.params();
 
     params.gasprice = gasprice_;
     params.gasreq = gasreq_;
@@ -399,8 +399,8 @@ abstract contract KandelTest is StratTest {
       vm.expectRevert(expectRevert);
     }
     GeometricKandel.Params memory params;
-    params.pricePoints = uint112(pricePoints);
-    params.stepSize = uint88(stepSize);
+    params.pricePoints = uint32(pricePoints);
+    params.stepSize = uint32(stepSize);
 
     kandel.populate{value: 0.1 ether}(distribution, params, 0, 0);
   }
