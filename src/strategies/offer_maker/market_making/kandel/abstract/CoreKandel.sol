@@ -48,8 +48,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   struct Params {
     uint32 gasprice;
     uint24 gasreq;
-    uint88 stepSize;
-    uint112 pricePoints;
+    uint32 stepSize;
+    uint32 pricePoints;
   }
 
   ///@notice Storage of the parameters for the strat.
@@ -58,7 +58,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice sets the step size
   ///@param stepSize the step size.
   function setStepSize(uint stepSize) public onlyAdmin {
-    uint88 stepSize_ = uint88(stepSize);
+    uint32 stepSize_ = uint32(stepSize);
     require(stepSize > 0, "Kandel/stepSizeTooLow");
     require(stepSize_ == stepSize && stepSize < params.pricePoints, "Kandel/stepSizeTooHigh");
     params.stepSize = stepSize_;
@@ -88,7 +88,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory oldParams = params;
 
     if (oldParams.pricePoints != newParams.pricePoints) {
-      uint112 pricePoints_ = uint112(newParams.pricePoints);
+      uint32 pricePoints_ = uint32(newParams.pricePoints);
       require(pricePoints_ == newParams.pricePoints && pricePoints_ >= 2, "Kandel/invalidPricePoints");
       setLength(pricePoints_);
       params.pricePoints = pricePoints_;

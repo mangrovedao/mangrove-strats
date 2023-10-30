@@ -722,7 +722,7 @@ abstract contract CoreKandelTest is KandelTest {
 
   function test_populate_throws_on_invalid_pricePoints_high() public {
     GeometricKandel.Params memory params;
-    params.pricePoints = uint112(uint(2 ** 112));
+    params.pricePoints = uint32(uint(2 ** 32));
     params.stepSize = 1;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidPricePoints");
