@@ -1,5 +1,7 @@
 # Next version
 
+# 0.0.2-1
+
 - Upgraded to new major version of mangrove-core.
 - `(gives, wants)` changed to `(gives, tick)` in maker perspective (MangroveOrder and Kandel)
 - `(gives, wants)` changed to `(fillVolume, tick)` in taker perspective given by `TakerOrder`.
