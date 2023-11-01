@@ -51,9 +51,6 @@ contract AmplifierForwarder is Forwarder {
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
    * @param wants2 in STABLE2 decimals
-   * @return (offerid for STABLE1, offerid for STABLE2)
-   * @dev these offer's provision must be in msg.value
-   * @dev `reserve()` must have approved base for `this` contract transfer prior to calling this function
    */
   struct NewOffersArgs {
     uint gives;
@@ -64,6 +61,12 @@ contract AmplifierForwarder is Forwarder {
     uint gasreq;
   }
 
+  /**
+   * @param args the arguments struct to avoid stack too deep
+   * @return (offerid for STABLE1, offerid for STABLE2)
+   * @dev these offer's provision must be in msg.value
+   * @dev `reserve()` must have approved base for `this` contract transfer prior to calling this function
+   */
   function newAmplifiedOffers(NewOffersArgs memory args) external payable returns (uint, uint) {
     // there is a cost of being paternalistic here, we read MGV storage
     // an offer can be in 4 states:
