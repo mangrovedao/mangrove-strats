@@ -1,6 +1,6 @@
 {
   "name": "@mangrovedao/mangrove-strats",
-  "version": "0.0.2-2",
+  "version": "0.0.2-3",
   "author": "Mangrove DAO",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
@@ -49,5 +49,6 @@
     "typescript": "^5.2.2",
     "yargs": "^17.7.2"
   },
-  "packageManager": "yarn@3.5.0"
+  "packageManager": "yarn@3.5.0",
+  "stableVersion": "0.0.2-2"
 }
