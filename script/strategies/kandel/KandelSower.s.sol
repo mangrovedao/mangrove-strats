@@ -60,7 +60,7 @@ contract KandelSower is Deployer, MangroveTest {
       fork.set(kandelName, address(kdl));
     }
 
-    smokeTest(kdl, onAave, base, quote);
+    smokeTest(kdl, onAave, olKeyBaseQuote);
   }
 
   function getName(string memory name, OLKey memory olKeyBaseQuote, bool onAave) public view returns (string memory) {
@@ -79,9 +79,13 @@ contract KandelSower is Deployer, MangroveTest {
     }
   }
 
-  function smokeTest(GeometricKandel kdl, bool onAave, IERC20 base, IERC20 quote) internal {
+  function smokeTest(GeometricKandel kdl, bool onAave, OLKey memory olKeyBaseQuote) internal {
     require(kdl.admin() == broadcaster(), "Incorrect admin for Kandel");
     require(onAave || address(kdl.router()) == address(0), "Incorrect router");
+
+    IERC20 base = IERC20(olKeyBaseQuote.outbound_tkn);
+    IERC20 quote = IERC20(olKeyBaseQuote.inbound_tkn);
+
     if (onAave) {
       prettyLog("Verifying Aave interaction");
       deal(address(base), address(this), 1000);

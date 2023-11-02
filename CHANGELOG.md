@@ -1,5 +1,9 @@
 # Next version
 
+# 0.0.2-3
+
+- deploy new, full testnet setup to Mumbai
+
 # 0.0.2-2
 
 - Fix Natspec issues that broke solidity-docgen in Hardhat
