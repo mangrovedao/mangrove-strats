@@ -53,9 +53,7 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
-  constructor(address addressesProvider, uint referralCode, uint interestRateMode)
-    AaveV3Borrower(addressesProvider, referralCode, interestRateMode)
-  {}
+  constructor(address addressesProvider, uint interestRateMode) AaveV3Borrower(addressesProvider, 0, interestRateMode) {}
 
   ///@notice fetches and memoizes the reserve data of a particular asset on AAVE
   ///@param token the asset whose reserve data is needed
