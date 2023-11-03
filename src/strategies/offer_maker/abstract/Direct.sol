@@ -102,7 +102,8 @@ abstract contract Direct is MangroveOffer {
       return amount_;
     } else {
       // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled = router_.pull(IERC20(order.olKey.outbound_tkn), RESERVE_ID, amount_, RESERVE_ID != address(this));
+      uint pulled =
+        router_.pull(IERC20(order.olKey.outbound_tkn), amount_, abi.encode(RESERVE_ID != address(this), RESERVE_ID));
       return pulled >= amount_ ? 0 : amount_ - pulled;
     }
   }
@@ -120,7 +121,7 @@ abstract contract Direct is MangroveOffer {
       IERC20[] memory tokens = new IERC20[](2);
       tokens[0] = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
       tokens[1] = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
-      router_.flush(tokens, RESERVE_ID);
+      router_.flush(tokens, abi.encode(RESERVE_ID));
     }
     // reposting offer residual if any
     return super.__posthookSuccess__(order, makerData);
@@ -131,7 +132,7 @@ abstract contract Direct is MangroveOffer {
   function __checkList__(IERC20 token) internal view virtual override {
     super.__checkList__(token);
     if (router() != NO_ROUTER) {
-      router().checkList(token, RESERVE_ID);
+      router().checkList(token, abi.encode(RESERVE_ID));
     }
   }
 }

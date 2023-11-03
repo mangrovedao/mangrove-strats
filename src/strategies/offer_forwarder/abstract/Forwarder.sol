@@ -257,7 +257,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     address owner = ownerOf(order.olKey.hash(), order.offerId);
-    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), owner, amount);
+    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), amount, abi.encode(owner));
     return amount - pushed;
   }
 
@@ -268,7 +268,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // telling router one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
-    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), owner, amount, true);
+    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), amount, abi.encode(true, owner));
     return amount - pulled; // this will make trade fail if `amount != pulled`
   }
 
@@ -303,6 +303,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   function __checkList__(IERC20 token) internal view virtual override {
     super.__checkList__(token);
     AbstractRouter router_ = router();
-    router_.checkList(token, msg.sender);
+    router_.checkList(token, abi.encode(msg.sender));
   }
 }

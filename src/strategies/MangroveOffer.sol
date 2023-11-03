@@ -159,7 +159,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       require(TransferLib.approveToken(token, address(router_), type(uint).max), "mgvOffer/approveRouterFail");
       // letting router performs additional necessary approvals (if any)
       // this will only work if `this` is an authorized maker of the router (i.e. `router.bind(address(this))` has been called by router's admin).
-      router_.activate(token);
+      router_.activate(token, bytes(""));
     }
   }
 

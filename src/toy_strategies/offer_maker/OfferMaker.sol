@@ -79,6 +79,7 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
 
   function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
     AbstractRouter router_ = router();
-    return router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, reserveId);
+    return
+      router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, abi.encode(reserveId));
   }
 }

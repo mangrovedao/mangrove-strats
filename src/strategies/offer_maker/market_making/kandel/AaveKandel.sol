@@ -83,7 +83,7 @@ contract AaveKandel is GeometricKandel {
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     IERC20 token = outboundOfOfferType(ba);
-    return pooledRouter().balanceOfReserve(token, RESERVE_ID) + super.reserveBalance(ba);
+    return pooledRouter().balanceOfReserve(token, abi.encode(RESERVE_ID)) + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds on AAVE

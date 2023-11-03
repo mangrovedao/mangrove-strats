@@ -24,9 +24,9 @@ contract AavePooledRouterDeployer is Deployer {
 
     vm.startPrank(broadcaster());
     router.bind(address(this));
-    router.activate(usdc);
+    router.activate(usdc, bytes(""));
     vm.stopPrank();
 
-    router.checkList(usdc, address(router));
+    router.checkList(usdc, abi.encode(router));
   }
 }

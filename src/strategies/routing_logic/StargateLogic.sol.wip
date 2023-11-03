@@ -1,15 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.20;
 
-import {DispatcherRouter} from "@mgv-strats/src/strategies/routers/DispatcherRouter.sol";
+import {SmartRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {VaultLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/VaultLogic.sol";
 import {IStargateRouter} from "@mgv-strats/src/strategies/vendor/stargate/IStargateRouter.sol";
 import {IFactory} from "@mgv-strats/src/strategies/vendor/stargate/IFactory.sol";
 import {IPool} from "@mgv-strats/src/strategies/vendor/stargate/IPool.sol";
 
 /// @title StargateLogic
-contract StargateLogic is VaultLogic {
+contract StargateLogic is AbstractRouter {
   /// @notice The StargateRouter contract
   IStargateRouter public immutable STARGATE_ROUTER;
 

@@ -43,46 +43,46 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param token is the ERC20 managing the pulled asset
   ///@param amount of `token` the maker contract wishes to pull from its reserve
-  ///@param pullData is a bytes array that can be used to pass arbitrary data to the router.
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pulled the amount that was successfully pulled.
-  function pull(IERC20 token, uint amount, bytes calldata pullData) external onlyBound returns (uint pulled) {
-    pulled = __pull__({token: token, amount: amount, pullData: pullData});
+  function pull(IERC20 token, uint amount, bytes calldata data) external onlyBound returns (uint pulled) {
+    pulled = __pull__({token: token, amount: amount, data: data});
   }
 
   ///@notice router-dependent implementation of the `pull` function
   ///@param token Token to be transferred
   ///@param amount The amount of tokens to be transferred
-  ///@param pullData is a bytes array that can be used to pass arbitrary data to the router.
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pulled The amount pulled if successful; otherwise, 0.
-  function __pull__(IERC20 token, uint amount, bytes memory pullData) internal virtual returns (uint);
+  function __pull__(IERC20 token, uint amount, bytes memory data) internal virtual returns (uint);
 
   ///@notice pushes assets from calling's maker contract to a reserve
   ///@param token is the asset the maker is pushing
   ///@param amount is the amount of asset that should be transferred from the calling maker contract
-  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pushed fraction of `amount` that was successfully pushed to reserve.
-  function push(IERC20 token, uint amount, bytes calldata pushData) external onlyBound returns (uint pushed) {
+  function push(IERC20 token, uint amount, bytes calldata data) external onlyBound returns (uint pushed) {
     if (amount == 0) {
       return 0;
     }
-    pushed = __push__({token: token, amount: amount, pushData: pushData});
+    pushed = __push__({token: token, amount: amount, data: data});
   }
 
   ///@notice router-dependent implementation of the `push` function
   ///@param token Token to be transferred
   ///@param amount The amount of tokens to be transferred
-  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
   ///@return pushed The amount pushed if successful; otherwise, 0.
-  function __push__(IERC20 token, uint amount, bytes memory pushData) internal virtual returns (uint pushed);
+  function __push__(IERC20 token, uint amount, bytes memory data) internal virtual returns (uint pushed);
 
   ///@notice iterative `push` for the whole balance in a single call
   ///@param tokens to flush
-  ///@param pushData is a bytes array that can be used to pass arbitrary data to the router.
-  function flush(IERC20[] calldata tokens, bytes calldata pushData) external onlyBound {
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  function flush(IERC20[] calldata tokens, bytes calldata data) external onlyBound {
     for (uint i = 0; i < tokens.length; ++i) {
       uint amount = tokens[i].balanceOf(msg.sender);
       if (amount > 0) {
-        require(__push__(tokens[i], amount, pushData) == amount, "router/pushFailed");
+        require(__push__(tokens[i], amount, data) == amount, "router/pushFailed");
       }
     }
   }
@@ -116,29 +116,38 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice allows a makerContract to verify it is ready to use `this` router for a particular reserve
   ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
   ///@param token is the asset (and possibly its overlyings) whose approval must be checked
-  ///@param reserveId of the tokens that are being pulled
-  function checkList(IERC20 token, address reserveId) external view {
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  function checkList(IERC20 token, bytes calldata data) external view {
     require(isBound(msg.sender), "Router/callerIsNotBoundToRouter");
     // checking maker contract has approved this for token transfer (in order to push to reserve)
     require(token.allowance(msg.sender, address(this)) > 0, "Router/NotApprovedByMakerContract");
     // pulling on behalf of `reserveId` might require a special approval (e.g if `reserveId` is some account on a protocol).
-    __checkList__(token, reserveId);
+    __checkList__(token, data);
   }
 
   ///@notice router-dependent additional checks
   ///@param token is the asset (and possibly its overlyings) whose approval must be checked
-  ///@param reserveId of the tokens that are being pulled
-  function __checkList__(IERC20 token, address reserveId) internal view virtual;
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  function __checkList__(IERC20 token, bytes calldata data) internal view virtual;
 
   ///@notice performs necessary approval to activate router function on a particular asset
   ///@param token the asset one wishes to use the router for
-  function activate(IERC20 token) external boundOrAdmin {
-    __activate__(token);
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  function activate(IERC20 token, bytes calldata data) external boundOrAdmin {
+    __activate__(token, data);
   }
 
   ///@notice router-dependent implementation of the `activate` function
   ///@param token the asset one wishes to use the router for
-  function __activate__(IERC20 token) internal virtual {
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  function __activate__(IERC20 token, bytes calldata data) internal virtual {
     token; //ssh
+    data;
   }
+
+  ///@notice Balance of a reserve
+  ///@param token the asset one wishes to know the balance of
+  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  ///@return balance that is accessible to the router for the given `token`
+  function balanceOfReserve(IERC20 token, bytes calldata data) public view virtual returns (uint balance);
 }

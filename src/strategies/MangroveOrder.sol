@@ -1,5 +1,5 @@
 // SPDX-License-Identifier:	BSD-2-Clause
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
@@ -122,7 +122,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s reserve
     // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
     uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), msg.sender, takerGives, true);
+    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), takerGives, abi.encode(true, msg.sender));
     require(pulled == takerGives, "mgvOrder/transferInFail");
 
     // POST:
@@ -145,13 +145,15 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
       require(
-        router().push(IERC20(tko.olKey.outbound_tkn), msg.sender, res.takerGot) == res.takerGot, "mgvOrder/pushFailed"
+        router().push(IERC20(tko.olKey.outbound_tkn), res.takerGot, abi.encode(msg.sender)) == res.takerGot,
+        "mgvOrder/pushFailed"
       );
     }
     uint inboundLeft = takerGives - res.takerGave;
     if (inboundLeft > 0) {
       require(
-        router().push(IERC20(tko.olKey.inbound_tkn), msg.sender, inboundLeft) == inboundLeft, "mgvOrder/pushFailed"
+        router().push(IERC20(tko.olKey.inbound_tkn), inboundLeft, abi.encode(msg.sender)) == inboundLeft,
+        "mgvOrder/pushFailed"
       );
     }
     // POST:

@@ -823,13 +823,13 @@ contract MangroveOrder_Test is StratTest {
 
     vm.prank($(mgo));
     uint g = gasleft();
-    uint pushed = router.push(quote, address(this), 1);
+    uint pushed = router.push(quote, 1, abi.encode(this));
     uint push_cost = g - gasleft();
     assertEq(pushed, 1, "Push failed");
 
     vm.prank($(mgo));
     g = gasleft();
-    uint pulled = router.pull(base, address(this), 1, true);
+    uint pulled = router.pull(base, 1, abi.encode(true, this));
     uint pull_cost = g - gasleft();
     assertEq(pulled, 1, "Pull failed");
 
