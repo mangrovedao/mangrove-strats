@@ -722,7 +722,7 @@ abstract contract CoreKandelTest is KandelTest {
 
   function test_populate_throws_on_invalid_pricePoints_high() public {
     GeometricKandel.Params memory params;
-    params.pricePoints = uint112(uint(2 ** 112));
+    params.pricePoints = uint32(uint(2 ** 32));
     params.stepSize = 1;
     vm.prank(maker);
     vm.expectRevert("Kandel/invalidPricePoints");
@@ -894,6 +894,28 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(quote.balanceOf(address(this)), quoteAmount, "Incorrect quote withdrawal");
   }
 
+  function test_withdrawFundsWithLocal(uint96 baseAmount, uint96 quoteAmount) public {
+    vm.assume(baseAmount < type(uint96).max / 2);
+    vm.assume(quoteAmount < type(uint96).max / 2);
+
+    deal($(base), address(this), baseAmount);
+    deal($(quote), address(this), quoteAmount);
+
+    deal($(base), address(kdl), baseAmount);
+    deal($(quote), address(kdl), quoteAmount);
+
+    TransferLib.approveToken(base, $(kdl), baseAmount);
+    TransferLib.approveToken(quote, $(kdl), quoteAmount);
+    kdl.depositFunds(baseAmount, quoteAmount);
+
+    vm.prank(maker);
+    kdl.withdrawFunds(2 * baseAmount, 2 * quoteAmount, address(this));
+    assertEq(base.balanceOf(address(this)), 2 * baseAmount, "Incorrect base withdrawal");
+    assertEq(quote.balanceOf(address(this)), 2 * quoteAmount, "Incorrect quote withdrawal");
+    assertEq(base.balanceOf(address(kdl)), 0, "Kandel should no longer have base");
+    assertEq(quote.balanceOf(address(kdl)), 0, "Kandel should no longer have quote");
+  }
+
   function test_withdrawAll() public {
     deal($(base), address(this), 1 ether);
     deal($(quote), address(this), 100 * 10 ** 6);
@@ -908,6 +930,23 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.withdrawFunds(type(uint).max, type(uint).max, address(this));
     assertEq(base.balanceOf(address(this)), baseBalance, "Incorrect base withdrawal");
     assertEq(quote.balanceOf(address(this)), quoteBalance, "Incorrect quote withdrawal");
+  }
+
+  function test_withdrawAllWithLocal() public {
+    deal($(base), address(this), 1 ether);
+    deal($(quote), address(this), 100 * 10 ** 6);
+    TransferLib.approveToken(base, $(kdl), 0.5 ether);
+    TransferLib.approveToken(quote, $(kdl), 50 * 10 ** 6);
+
+    kdl.depositFunds(0.5 ether, 50 * 10 ** 6);
+    uint quoteBalance = kdl.reserveBalance(Bid);
+    uint baseBalance = kdl.reserveBalance(Ask);
+
+    address recipient = freshAddress();
+    vm.prank(maker);
+    kdl.withdrawFunds(type(uint).max, type(uint).max, recipient);
+    assertEq(base.balanceOf(recipient), baseBalance, "Incorrect base withdrawal");
+    assertEq(quote.balanceOf(recipient), quoteBalance, "Incorrect quote withdrawal");
   }
 
   function test_marketOrder_dualOfferUpdate_expectedGasreq() public {

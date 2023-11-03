@@ -5,7 +5,9 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 
-///@title SimpleRouter - routes liquidity to and from owner which must be encoded and passed to pull and push function
+///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
+///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
+/// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is AbstractRouter {
   /// @notice transfers an amount of tokens from the reserve to the maker.
   /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.

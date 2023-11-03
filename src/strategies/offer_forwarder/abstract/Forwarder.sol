@@ -162,8 +162,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     }
   }
 
-  ///@notice Internal `updateOffer`, using arguments and variables on memory to avoid stack too deep.
-  ///@return reason is either REPOST_SUCCESS or Mangrove's revert reason if update was rejected by Mangrove and `args.noRevert` is `true`.
   struct UpdateOfferVars {
     uint leftover;
     Global global;
@@ -172,7 +170,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   }
 
   ///@inheritdoc MangroveOffer
-  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32) {
+  ///@notice Internal `updateOffer`, using arguments and variables on memory to avoid stack too deep.
+  ///@return reason Either REPOST_SUCCESS or Mangrove's revert reason if update was rejected by Mangrove and `args.noRevert` is `true`.
+  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 reason) {
     unchecked {
       UpdateOfferVars memory vars;
       (vars.global, vars.local) = MGV.config(args.olKey);
@@ -205,9 +205,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
         args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId
       ) {
         return REPOST_SUCCESS;
-      } catch Error(string memory reason) {
-        require(args.noRevert, reason);
-        return bytes32(bytes(reason));
+      } catch Error(string memory _reason) {
+        require(args.noRevert, _reason);
+        return bytes32(bytes(_reason));
       }
     }
   }

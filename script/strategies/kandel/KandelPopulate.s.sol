@@ -37,9 +37,9 @@ contract KandelPopulate is Deployer {
       tickOffset = uint24(uint(int(_tickOffset)));
       require(tickOffset == uint(_tickOffset), "Invalid ratio");
     }
-    params.pricePoints = uint112(vm.envUint("PRICE_POINTS"));
+    params.pricePoints = uint32(vm.envUint("PRICE_POINTS"));
     require(params.pricePoints == vm.envUint("PRICE_POINTS"), "Invalid PRICE_POINTS");
-    params.stepSize = uint88(vm.envUint("STEP_SIZE"));
+    params.stepSize = uint32(vm.envUint("STEP_SIZE"));
     require(params.stepSize == vm.envUint("STEP_SIZE"), "Invalid STEP_SIZE");
 
     innerRun(

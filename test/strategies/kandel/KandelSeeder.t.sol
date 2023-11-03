@@ -22,8 +22,16 @@ contract KandelSeederTest is StratTest {
   AbstractKandelSeeder internal aaveSeeder;
   AavePooledRouter internal aaveRouter;
 
-  event NewAaveKandel(address indexed owner, bytes32 indexed olKeyHash, address aaveKandel, address reserveId);
-  event NewKandel(address indexed owner, bytes32 indexed olKeyHash, address kandel);
+  event NewAaveKandel(
+    address indexed owner,
+    bytes32 indexed baseQuoteOlKeyHash,
+    bytes32 indexed quoteBaseOlKeyHash,
+    address aaveKandel,
+    address reserveId
+  );
+  event NewKandel(
+    address indexed owner, bytes32 indexed baseQuoteOlKeyHash, bytes32 indexed quoteBaseOlKeyHash, address kandel
+  );
 
   function sow(bool sharing) internal returns (GeometricKandel) {
     return seeder.sow({olKeyBaseQuote: olKey, liquiditySharing: sharing});
@@ -55,7 +63,7 @@ contract KandelSeederTest is StratTest {
 
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
       mgv:IMangrove($(mgv)), 
-      addressesProvider: fork.get("Aave"), 
+      addressesProvider: fork.get("AaveAddressProvider"), 
       aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;
@@ -79,7 +87,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_aaveKandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(aaveSeeder));
-    emit NewAaveKandel(maker, olKey.hash(), 0x9f92659F6b974ce0c1C144F57dbE5981bCdFa515, maker);
+    emit NewAaveKandel(maker, olKey.hash(), olKey.flipped().hash(), 0x9f92659F6b974ce0c1C144F57dbE5981bCdFa515, maker);
     vm.prank(maker);
     sowAave(true);
   }
@@ -87,7 +95,7 @@ contract KandelSeederTest is StratTest {
   function test_logs_new_kandel() public {
     address maker = freshAddress("Maker");
     expectFrom(address(seeder));
-    emit NewKandel(maker, olKey.hash(), 0x42add52666C78960A219b157a1F4DbF806CbF703);
+    emit NewKandel(maker, olKey.hash(), olKey.flipped().hash(), 0x42add52666C78960A219b157a1F4DbF806CbF703);
     vm.prank(maker);
     sow(true);
   }

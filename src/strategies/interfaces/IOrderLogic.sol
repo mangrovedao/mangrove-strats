@@ -13,6 +13,7 @@ interface IOrderLogic {
   ///@param fillVolume the volume to fill
   ///@param fillWants if true (usually when `TakerOrder` implements a "buy" on a market), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
   ///@param restingOrder whether the complement of the partial fill (if any) should be posted as a resting limit order.
+  ///@param restingOrderGasreq the gas requirement for executing a resting order
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
   ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
   struct TakerOrder {

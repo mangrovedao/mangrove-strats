@@ -32,7 +32,7 @@ contract OfferForwarderTest is OfferLogicTest {
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
-    gasreq = 80_000;
+    gasreq = 150_000;
     owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);
 
@@ -170,10 +170,10 @@ contract OfferForwarderTest is OfferLogicTest {
   }
 
   function test_provision_too_high_reverts() public {
-    vm.deal(owner, 20 ether);
+    vm.deal(owner, 30 ether);
     vm.expectRevert("Forwarder/provisionTooHigh");
     vm.prank(owner);
-    makerContract.newOfferByVolume{value: 20 ether}({
+    makerContract.newOfferByVolume{value: 30 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
