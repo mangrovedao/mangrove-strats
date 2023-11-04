@@ -106,7 +106,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@return available funds for the reserve
   function balanceOfReserve(IERC20 token, bytes calldata packedReserveId) public view override returns (uint) {
     BalanceMemoizer memory memoizer;
-    (, address reserveId) = abi.decode(packedReserveId, (bool, address));
+    address reserveId = abi.decode(packedReserveId, (address));
     return _balanceOfReserve(token, reserveId, memoizer);
   }
 
