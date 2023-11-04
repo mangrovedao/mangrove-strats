@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import {SmartRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {AaveLogicStorage} from "./AaveLogicStorage.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title AaveLogic
 /// @notice Routing logic for Aave
@@ -17,10 +19,6 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// * If the user has no debt, this number will be ignored
   uint8 internal immutable MAX_CREDIT_LINE = 100;
 
-  /// TODO we need to randomize access to this storage as this contract will be calls delegator
-  /// @notice The Credit line decrease
-  mapping(IERC20 token => uint8) private credit_line_decrease;
-
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
@@ -31,7 +29,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// @return credit_line The maximum amount of underlying that can be redeemed in percentage
   function creditLineOf(IERC20 token) public view returns (uint8 credit_line) {
     credit_line = MAX_CREDIT_LINE;
-    uint8 decrease = credit_line_decrease[token];
+    uint8 decrease = AaveLogicStorage.getStorage().credit_line_decrease[token];
     if (decrease > 0) {
       credit_line -= decrease;
     }
@@ -42,7 +40,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// @param token The token to set the credit line for
   function setMaxCreditLine(uint8 creditLine, IERC20 token) public onlyAdmin {
     require(creditLine <= MAX_CREDIT_LINE, "AaveLogic/InvalidCreditLine");
-    credit_line_decrease[token] = MAX_CREDIT_LINE - creditLine;
+    AaveLogicStorage.getStorage().credit_line_decrease[token] = MAX_CREDIT_LINE - creditLine;
   }
 
   /// @inheritdoc AbstractRouter
@@ -63,11 +61,14 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
       toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
     } else {
       // else redeem the max amount
-      uint balance = overlying(token, m).balanceOf(admin());
+      uint balance = overlyingBalanceOf(token, m, admin());
       toWithdraw = amount > balance ? balance : amount;
     }
-    // TODO replace with transferFrom
-    // to get the overlying tokens
+    // transfer the IOU tokens from admin's wallet
+    require(
+      TransferLib.transferTokenFrom(overlying(token, m), admin(), address(this), toWithdraw),
+      "AaveLogic/OverlyingTransferFail"
+    );
 
     // since this contract will be delegate called, msg.sender is maker contract
     uint redeemed = _redeem(token, toWithdraw, msg.sender);
@@ -99,9 +100,10 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
     // verifying that `this` router can withdraw tokens from owner (required for `withdrawToken` and `pull`)
     IERC20 aToken = overlying(token);
     require(address(aToken) != address(0), "AaveLogic/TokenNotSupportedByPool");
+    // needs to pull aTokens from admin's account
     require(aToken.allowance(admin(), address(this)) > 0, "AaveLogic/CannotPullOverlying");
-    require( // required to supply or withdraw token on pool
-    token.allowance(address(this), address(POOL)) > 0, "AaveLogic/PoolCannotPullUnderlying");
+    // POOL needs to pull underlying from this when supplying to the pool
+    require(token.allowance(address(this), address(POOL)) > 0, "AaveLogic/PoolCannotPullUnderlying");
   }
 
   ///@inheritdoc AbstractRouter
