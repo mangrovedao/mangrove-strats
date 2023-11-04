@@ -242,7 +242,6 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     // The local buffer of token to transfer in case funds have already been redeemed or due to a donation.
     uint buffer = balanceOf(token, memoizer);
     (bool strict, address reserveId) = abi.decode(packedStrictReserveId, (bool, address));
-
     uint reserveBalance = _balanceOfReserve(token, reserveId, memoizer);
     if (buffer < amount) {
       // this pull is the first of the market order (that requires funds from AAVE) so we redeem all the reserve from AAVE
@@ -256,8 +255,13 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
       // toRedeem = 0
       amount_ = strict ? amount : (buffer > reserveBalance ? reserveBalance : buffer);
     }
-    redeemAndTransfer(token, reserveId, amount_, toRedeem, memoizer);
-    return amount_;
+    if (amount_ == 0) {
+      // redeemAndTransfer would try to burn 0 shares and revert
+      return 0;
+    } else {
+      redeemAndTransfer(token, reserveId, amount_, toRedeem, memoizer);
+      return amount_;
+    }
   }
 
   ///@notice redeems some funds from AAVE pool and transfer some amount to msg.sender.
