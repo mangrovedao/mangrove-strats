@@ -116,7 +116,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice allows a makerContract to verify it is ready to use `this` router for a particular reserve
   ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
   ///@param token is the asset (and possibly its overlyings) whose approval must be checked
-  ///@param data is a bytes array that can be used to pass arbitrary data to the router.
+  ///@param data is a bytes array that can be used to pass arbitrary data to a specific router instance.
   function checkList(IERC20 token, bytes calldata data) external view {
     require(isBound(msg.sender), "Router/callerIsNotBoundToRouter");
     // checking maker contract has approved this for token transfer (in order to push to reserve)

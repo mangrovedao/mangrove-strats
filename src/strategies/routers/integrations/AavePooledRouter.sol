@@ -170,7 +170,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
 
   ///@notice Deposit funds on this router from the calling maker contract
   ///@dev no transfer to AAVE is done at that moment.
-  ///@dev data is a bytes array that holds the reserveId.
+  ///@dev data must encode an address for reserveId.
   ///@inheritdoc AbstractRouter
   function __push__(IERC20 token, uint amount, bytes memory packedReserveId) internal override returns (uint) {
     BalanceMemoizer memory memoizer;

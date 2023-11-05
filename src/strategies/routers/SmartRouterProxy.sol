@@ -15,6 +15,7 @@ contract SmartRouterProxy is AccessControlled(msg.sender), Proxy {
 
   receive() external payable virtual {}
 
+  ///@inheritdoc Proxy
   function _implementation() internal view override returns (address) {
     return address(IMPLEMENTATION);
   }
