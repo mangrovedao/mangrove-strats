@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {MangroveTest} from "@mgv/test/lib/MangroveTest.sol";
 import {SmartRouterProxy} from "@mgv-strats/src/strategies/routers/SmartRouterProxy.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {SmartRouterLib} from "@mgv-strats/src/strategies/routers/SmartRouterLib.sol";
 import {console} from "@mgv/lib/Debug.sol";
 
 contract DeploySmartRouterProxy is MangroveTest {
@@ -13,7 +14,7 @@ contract DeploySmartRouterProxy is MangroveTest {
     SmartRouter impl = SmartRouter(address(0));
 
     uint gas = gasleft();
-    SmartRouterProxy proxy = new SmartRouterProxy{salt:bytes32("")}(impl);
+    SmartRouterLib.deploy(impl, owner);
     gas = gas - gasleft();
 
     console.log("gas used: %d", gas);

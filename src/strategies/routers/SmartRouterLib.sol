@@ -22,8 +22,7 @@ library SmartRouterLib {
   }
 
   function deploy(SmartRouter smartRouter, address owner) internal returns (SmartRouterProxy proxy) {
-    proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(smartRouter);
-    AccessControlled(address(proxy)).setAdmin(owner);
+    proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(smartRouter, owner);
   }
 
   function deployIfNeeded(SmartRouter smartRouter, address owner) internal returns (SmartRouterProxy proxy) {

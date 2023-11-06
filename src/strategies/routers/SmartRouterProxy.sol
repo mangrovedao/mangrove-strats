@@ -16,11 +16,11 @@ contract SmartRouterProxy is Proxy {
   /// @notice contract constructor
   /// @dev sets the caller (sender) at the 0x00 storage slot setting the admin field to the caller
   /// @param implementation The implementation address of the proxy
-  constructor(SmartRouter implementation) {
+  constructor(SmartRouter implementation, address owner) {
     IMPLEMENTATION = implementation;
     // stores the caller address in storage slot 0x0 => this is the admin field
     assembly {
-      sstore(0x0, caller())
+      sstore(0x0, owner)
     }
   }
 
