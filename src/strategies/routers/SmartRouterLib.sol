@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {SmartRouterProxy, SmartRouter} from "./SmartRouterProxy.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 ///@title Mangrove Smart Router lib
 ///@dev adapted from forge-std/StdUtils.sol
@@ -22,12 +23,12 @@ library SmartRouterLib {
 
   function deploy(SmartRouter smartRouter, address owner) internal returns (SmartRouterProxy proxy) {
     proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(smartRouter);
-    proxy.setAdmin(owner);
+    AccessControlled(address(proxy)).setAdmin(owner);
   }
 
   function deployIfNeeded(SmartRouter smartRouter, address owner) internal returns (SmartRouterProxy proxy) {
-    proxy = computeProxyAddress(smartRouter, owner, address(this));
-    try proxy.admin() returns (address admin) {
+    proxy = SmartRouterProxy(payable(computeProxyAddress(smartRouter, owner, address(this))));
+    try AccessControlled(address(proxy)).admin() returns (address admin) {
       require(owner == admin, "SmartRouterLib/InconsistentAdmin");
     } catch {
       return deploy(smartRouter, owner);
