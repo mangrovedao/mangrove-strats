@@ -17,8 +17,10 @@ library SmartRouterLib {
     return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xff), deployer, salt, initcodeHash)));
   }
 
-  function addressFromLast20Bytes(bytes32 bytesValue) private pure returns (address) {
-    return address(uint160(uint(bytesValue)));
+  function addressFromLast20Bytes(bytes32 bytesValue) private pure returns (address a) {
+    assembly {
+      a := and(bytesValue, 0xffffffffffffffffffffffffffffffffffffffff)
+    }
   }
 
   function deploy(SmartRouter smartRouter, address owner) internal returns (SmartRouterProxy proxy) {
