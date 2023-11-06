@@ -8,7 +8,7 @@ import {SmartRouter} from "./SmartRouter.sol";
 contract SmartRouterProxy is Proxy {
   SmartRouter public immutable IMPLEMENTATION;
 
-  constructor(SmartRouter implementation) Proxy() {
+  constructor(SmartRouter implementation) {
     IMPLEMENTATION = implementation;
     // stores the caller address in storage slot 0x0 => this is the admin field
     assembly {
