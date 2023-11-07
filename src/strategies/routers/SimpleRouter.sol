@@ -3,25 +3,17 @@ pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {AbstractRouter} from "./abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "./abstract/AbstractRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
 ///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is AbstractRouter {
-  /// @notice transfers an amount of tokens from the reserve to the maker.
-  /// @dev pulldData is a bytes array that holds the owner address and a boolean indicating if the pull should be strict.
   /// @inheritdoc AbstractRouter
-  function __pull__(IERC20 token, uint amount, bytes memory packedStrictOwner)
-    internal
-    virtual
-    override
-    returns (uint pulled)
-  {
+  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint pulled) {
     // if not strict, pulling all available tokens from reserve
-    (bool strict, address owner) = abi.decode(packedStrictOwner, (bool, address));
-    amount = strict ? amount : token.balanceOf(owner);
-    if (TransferLib.transferTokenFrom(token, owner, msg.sender, amount)) {
+    uint amount = strict ? routingOrder.amount : routingOrder.token.balanceOf(routingOrder.reserveId);
+    if (TransferLib.transferTokenFrom(routingOrder.token, routingOrder.reserveId, msg.sender, amount)) {
       return amount;
     } else {
       return 0;
@@ -31,21 +23,21 @@ contract SimpleRouter is AbstractRouter {
   /// @notice transfers an amount of tokens from the maker to the reserve.
   /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
-  function __push__(IERC20 token, uint amount, bytes memory encodedOwner) internal override returns (uint) {
-    address owner = abi.decode(encodedOwner, (address));
-    bool success = TransferLib.transferTokenFrom(token, msg.sender, owner, amount);
-    return success ? amount : 0;
+  function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
+    bool success =
+      TransferLib.transferTokenFrom(routingOrder.token, msg.sender, routingOrder.reserveId, routingOrder.amount);
+    return success ? routingOrder.amount : 0;
   }
 
   ///@inheritdoc AbstractRouter
-  ///@notice verifies all required approval involving `this` router (either as a spender or owner)
-  function __checkList__(IERC20 token, bytes calldata encodedOwner) internal view override {
+  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual override {
     // verifying that `this` router can withdraw tokens from owner (required for `withdrawToken` and `pull`)
-    require(token.allowance(abi.decode(encodedOwner, (address)), address(this)) > 0, "SimpleRouter/NotApprovedByOwner");
+    uint allowance = routingOrder.token.allowance(routingOrder.reserveId, address(this));
+    require(allowance >= type(uint96).max || allowance >= routingOrder.amount, "SimpleRouter/InsufficientlyApproved");
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(IERC20 token, bytes calldata encodedOwner) public view override returns (uint balance) {
-    balance = token.balanceOf(abi.decode(encodedOwner, (address)));
+  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
+    balance = routingOrder.token.balanceOf(routingOrder.reserveId);
   }
 }

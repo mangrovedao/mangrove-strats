@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder, RL} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {IERC20, OLKey, Offer} from "@mgv/src/core/MgvLib.sol";
@@ -33,7 +33,11 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
     mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
-    mangroveOrder.activate(dynamic([IERC20(base), IERC20(quote)]));
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(base);
+    routingOrders[1] = RL.createOrder(quote);
+
+    mangroveOrder.activate(routingOrders);
 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver

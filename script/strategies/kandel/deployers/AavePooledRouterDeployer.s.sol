@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {AavePooledRouter, IERC20} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {AavePooledRouter, IERC20, RL} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 ///@title  AavePooledRouter deployer
@@ -24,9 +24,10 @@ contract AavePooledRouterDeployer is Deployer {
 
     vm.startPrank(broadcaster());
     router.bind(address(this));
-    router.activate(usdc, bytes(""));
+    router.activate(RL.createOrder({token: usdc, amount: 1}));
     vm.stopPrank();
 
-    router.checkList(usdc, abi.encode(router));
+    // call below should not revert
+    router.checkList(RL.createOrder({token: usdc, amount: 1, reserveId: address(this)}));
   }
 }

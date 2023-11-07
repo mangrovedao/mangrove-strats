@@ -5,7 +5,7 @@ import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
 import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
 import {ITesterContract as ITester} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -66,8 +66,13 @@ contract OfferLogicTest is StratTest {
     // instantiates makerContract
     setupMakerContract();
     setupLiquidityRouting();
+
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(usdc, type(uint).max);
+    routingOrders[1] = RL.createOrder(weth, type(uint).max);
+
     vm.prank(deployer);
-    makerContract.activate(dynamic([IERC20(weth), usdc]));
+    makerContract.activate(routingOrders);
     fundStrat();
   }
 
@@ -98,8 +103,11 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_checkList() public {
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(usdc, type(uint).max, owner);
+    routingOrders[1] = RL.createOrder(weth, type(uint).max, owner);
     vm.prank(owner);
-    makerContract.checkList(dynamic([IERC20(weth), usdc]));
+    makerContract.checkList(routingOrders);
   }
 
   function test_maker_can_post_newOffer() public {

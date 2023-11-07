@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.20;
 
-import {SmartRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {SmartRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {AaveLogicStorage} from "./AaveLogicStorage.sol";
@@ -46,75 +46,76 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// @inheritdoc AbstractRouter
   /// @dev will only transfer up to the maximum defined credit line
   /// * if no debt, will transfer the full amount anyway
-  function __pull__(IERC20 token, uint amount, bytes memory) internal virtual override returns (uint) {
+  /// TODO check strict boolean and transfer more than amount only if true
+  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
     Memoizer memory m;
 
     // gets account info
-    (uint maxWithdraw,) = maxGettableUnderlying(token, m, admin(), amount);
-    Account memory account = userAccountData(m, admin());
+    (uint maxWithdraw,) = maxGettableUnderlying(routingOrder.token, m, routingOrder.reserveId, routingOrder.amount);
+    Account memory account = userAccountData(m, routingOrder.reserveId);
     uint toWithdraw;
 
     if (account.debt > 0) {
       // if there is no debt, we can withdraw the full amount
-      uint creditLine = creditLineOf(token);
+      uint creditLine = creditLineOf(routingOrder.token);
       uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
-      toWithdraw = amount > maxCreditLine ? maxCreditLine : amount;
+      toWithdraw = routingOrder.amount > maxCreditLine ? maxCreditLine : routingOrder.amount;
     } else {
       // else redeem the max amount
-      uint balance = overlyingBalanceOf(token, m, admin());
-      toWithdraw = amount > balance ? balance : amount;
+      uint balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.reserveId);
+      toWithdraw = routingOrder.amount > balance ? balance : routingOrder.amount;
     }
-    // transfer the IOU tokens from admin's wallet
+    // transfer the IOU tokens from reserveId
     require(
-      TransferLib.transferTokenFrom(overlying(token, m), admin(), address(this), toWithdraw),
+      TransferLib.transferTokenFrom(overlying(routingOrder.token, m), routingOrder.reserveId, address(this), toWithdraw),
       "AaveLogic/OverlyingTransferFail"
     );
 
     // since this contract will be delegate called, msg.sender is maker contract
-    uint redeemed = _redeem(token, toWithdraw, msg.sender);
+    uint redeemed = _redeem(routingOrder.token, toWithdraw, msg.sender);
     return redeemed;
   }
 
   /// @inheritdoc AbstractRouter
   /// @dev tries to repay existing debt first and then supplies the rest
-  function __push__(IERC20 token, uint amount, bytes memory) internal virtual override returns (uint) {
+  function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
     Memoizer memory m;
-    uint leftToPush = amount;
+    uint leftToPush = routingOrder.amount;
 
     // tries to repay existing debt
-    if (debtBalanceOf(token, m, admin()) > 0) {
-      uint repaid = _repay(token, leftToPush, admin());
+    if (debtBalanceOf(routingOrder.token, m, routingOrder.reserveId) > 0) {
+      uint repaid = _repay(routingOrder.token, leftToPush, routingOrder.reserveId);
       leftToPush -= repaid;
     }
     // supplies the rest
     if (leftToPush > 0) {
-      bytes32 reason = _supply(token, leftToPush, admin(), true);
+      bytes32 reason = _supply(routingOrder.token, leftToPush, routingOrder.reserveId, true);
       require(reason == bytes32(0), "AaveLogic/SupplyFailed");
     }
-    return amount;
+    return routingOrder.amount;
   }
 
   ///@inheritdoc AbstractRouter
   ///@notice verifies all required approval involving `this` router (either as a spender or owner)
-  function __checkList__(IERC20 token, bytes calldata) internal view virtual override {
+  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual override {
     // verifying that `this` router can withdraw tokens from owner (required for `withdrawToken` and `pull`)
-    IERC20 aToken = overlying(token);
+    IERC20 aToken = overlying(routingOrder.token);
     require(address(aToken) != address(0), "AaveLogic/TokenNotSupportedByPool");
-    // needs to pull aTokens from admin's account
-    require(aToken.allowance(admin(), address(this)) > 0, "AaveLogic/CannotPullOverlying");
+    // needs to pull aTokens from reserve Id
+    require(aToken.allowance(routingOrder.reserveId, address(this)) > 0, "AaveLogic/CannotPullOverlying");
     // POOL needs to pull underlying from this when supplying to the pool
-    require(token.allowance(address(this), address(POOL)) > 0, "AaveLogic/PoolCannotPullUnderlying");
+    require(routingOrder.token.allowance(address(this), address(POOL)) > 0, "AaveLogic/PoolCannotPullUnderlying");
   }
 
   ///@inheritdoc AbstractRouter
-  function __activate__(IERC20 token, bytes calldata) internal virtual override {
-    _approveLender(token, type(uint).max);
+  function __activate__(RL.RoutingOrder calldata routingOrder) internal virtual override {
+    _approveLender(routingOrder.token, routingOrder.amount);
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(IERC20 token, bytes calldata) public view virtual override returns (uint balance) {
+  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
     Memoizer memory m;
-    balance = overlyingBalanceOf(token, m, admin());
-    balance += balanceOf(token, m, admin());
+    balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.reserveId);
+    balance += balanceOf(routingOrder.token, m, routingOrder.reserveId);
   }
 }

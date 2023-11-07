@@ -6,7 +6,7 @@ import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
@@ -80,6 +80,6 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
   function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
     AbstractRouter router_ = router();
     return
-      router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, abi.encode(reserveId));
+      router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(RL.createOrder(token, reserveId));
   }
 }

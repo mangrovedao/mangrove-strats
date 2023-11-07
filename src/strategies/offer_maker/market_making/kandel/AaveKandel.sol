@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 import {IATokenIsh} from "@mgv-strats/src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
@@ -55,8 +56,8 @@ contract AaveKandel is GeometricKandel {
   function initialize(AavePooledRouter router_, uint gasreq) external onlyAdmin {
     setRouter(router_);
     // calls below will fail if router's admin has not bound router to `this`. We call __activate__ instead of activate just to save gas.
-    __activate__(BASE);
-    __activate__(QUOTE);
+    __activate__(RL.createOrder({token: BASE}));
+    __activate__(RL.createOrder({token: QUOTE}));
     setGasreq(gasreq);
   }
 
@@ -89,8 +90,8 @@ contract AaveKandel is GeometricKandel {
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
-    IERC20 token = outboundOfOfferType(ba);
-    return pooledRouter().balanceOfReserve(token, abi.encode(RESERVE_ID)) + super.reserveBalance(ba);
+    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), reserveId: RESERVE_ID}))
+      + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds on AAVE

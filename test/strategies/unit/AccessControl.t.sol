@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 
 import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
@@ -33,8 +33,12 @@ contract AccessControlTest is StratTest {
       router_: AbstractRouter(address(0)),
       deployer: admin
     });
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(weth);
+    routingOrders[1] = RL.createOrder(usdc);
+
     vm.startPrank(admin);
-    makerContract.activate(dynamic([IERC20(weth), usdc]));
+    makerContract.activate(routingOrders);
     weth.approve(address(makerContract), type(uint).max);
     usdc.approve(address(makerContract), type(uint).max);
     vm.stopPrank();

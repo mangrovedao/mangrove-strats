@@ -5,7 +5,7 @@ import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlle
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
@@ -133,41 +133,51 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function activate(IERC20[] calldata tokens) external override onlyAdmin {
-    for (uint i = 0; i < tokens.length; ++i) {
-      __activate__(tokens[i]);
+  function activate(RL.RoutingOrder[] calldata activateOrders) external override onlyAdmin {
+    for (uint i = 0; i < activateOrders.length; ++i) {
+      __activate__(activateOrders[i]);
     }
   }
 
   ///@notice verifies that Mangrove is allowed to pull tokens from this contract.
   ///@inheritdoc IOfferLogic
-  function checkList(IERC20[] calldata tokens) external view override {
-    for (uint i = 0; i < tokens.length; ++i) {
-      __checkList__(tokens[i]);
+  function checkList(RL.RoutingOrder[] calldata routingOrders) external view override {
+    for (uint i = 0; i < routingOrders.length; ++i) {
+      __checkList__(routingOrders[i]);
     }
   }
 
   ///@notice override conservatively to define strat-specific additional activation steps.
-  ///@param token the ERC20 one wishes this contract to trade on.
+  ///@param activateOrder the routing order with the necessary details for the activation of the strat. Must contain at least 'token' and 'amount'.
   ///@custom:hook overrides of this hook should be conservative and call `super.__activate__(token)`
-  function __activate__(IERC20 token) internal virtual {
+  function __activate__(RL.RoutingOrder memory activateOrder) internal virtual {
     AbstractRouter router_ = router();
     // all strat require `this` to approve Mangrove for pulling `token` at the end of `makerExecute`
-    require(TransferLib.approveToken(token, address(MGV), type(uint).max), "mgvOffer/approveMangrove/Fail");
+    require(
+      TransferLib.approveToken(activateOrder.token, address(MGV), activateOrder.amount), "mgvOffer/approveMangrove/Fail"
+    );
     if (router_ != NO_ROUTER) {
       // allowing router to pull `token` from this contract (for the `push` function of the router)
-      require(TransferLib.approveToken(token, address(router_), type(uint).max), "mgvOffer/approveRouterFail");
+      require(
+        TransferLib.approveToken(activateOrder.token, address(router_), activateOrder.amount),
+        "mgvOffer/approveRouterFail"
+      );
       // letting router performs additional necessary approvals (if any)
       // this will only work if `this` is an authorized maker of the router (i.e. `router.bind(address(this))` has been called by router's admin).
-      router_.activate(token, bytes(""));
+      router_.activate(activateOrder);
     }
   }
 
   ///@notice verifies that Mangrove is allowed to pull tokens from this contract and other strat specific verifications.
-  ///@param token a token that is traded by this contract
-  ///@custom:hook overrides of this hook should be conservative and call `super.__checkList__(token)`
-  function __checkList__(IERC20 token) internal view virtual {
-    require(token.allowance(address(this), address(MGV)) > 0, "mgvOffer/LogicMustApproveMangrove");
+  ///@param routingOrder the routing order to be executed
+  ///@custom:hook overrides of this hook should be conservative and call `super.__checkList__(routingOrder)`
+  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual {
+    uint allowance = routingOrder.token.allowance(address(this), address(MGV));
+    require(allowance >= type(uint96).max || allowance >= routingOrder.amount, "mgvOffer/LogicMustApproveMangrove");
+    AbstractRouter router_ = router();
+    if (router_ != NO_ROUTER) {
+      router_.checkList(routingOrder);
+    }
   }
 
   /// @inheritdoc IOfferLogic

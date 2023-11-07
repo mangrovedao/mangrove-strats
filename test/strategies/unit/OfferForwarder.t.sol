@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {SimpleRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {OfferLogicTest} from "@mgv-strats/test/strategies/unit/OfferLogic.t.sol";
 import {
   ForwarderTester,
@@ -50,9 +50,12 @@ contract OfferForwarderTest is OfferLogicTest {
   }
 
   function test_checkList_fails_if_caller_has_not_approved_router() public {
-    vm.expectRevert("SimpleRouter/NotApprovedByOwner");
-    vm.prank(freshAddress());
-    makerContract.checkList(dynamic([IERC20(usdc), weth]));
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(weth, 1, freshAddress());
+    routingOrders[1] = RL.createOrder(usdc, 1, freshAddress());
+
+    vm.expectRevert("SimpleRouter/InsufficientlyApproved");
+    makerContract.checkList(routingOrders);
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {

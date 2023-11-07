@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IForwarder} from "@mgv-strats/src/strategies/interfaces/IForwarder.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
@@ -256,20 +256,37 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound_tkn` and `order.olKey.outbound_tkn`) at the end of `makerExecute`.
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    address owner = ownerOf(order.olKey.hash(), order.offerId);
-    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), amount, abi.encode(owner));
-    return amount - pushed;
+    bytes32 olKeyHash = order.olKey.hash();
+    return amount
+      - router().push(
+        RL.RoutingOrder({
+          reserveId: ownerOf(olKeyHash, order.offerId),
+          amount: amount,
+          olKeyHash: olKeyHash,
+          offerId: order.offerId,
+          token: IERC20(order.olKey.inbound_tkn)
+        })
+      );
   }
 
   ///@dev get outbound tokens from offer owner reserve
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    address owner = ownerOf(order.olKey.hash(), order.offerId);
+    bytes32 olKeyHash = order.olKey.hash();
     // telling router one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
-    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), amount, abi.encode(true, owner));
-    return amount - pulled; // this will make trade fail if `amount != pulled`
+    return amount
+      - router().pull(
+        RL.RoutingOrder({
+          reserveId: ownerOf(olKeyHash, order.offerId),
+          amount: amount,
+          olKeyHash: olKeyHash,
+          token: IERC20(order.olKey.outbound_tkn),
+          offerId: order.offerId
+        }),
+        true
+      ); // this will make trade fail if `amount != pulled` and this `get` is not nested in another `get` in descendant of this class.
   }
 
   ///@dev if offer failed to execute, Mangrove retracts and deprovisions it after the posthook call.
@@ -296,13 +313,5 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // storing the portion of this contract's balance on Mangrove that should be attributed back to the failing offer's owner
     // those free WEIs can be retrieved by offer owner, by calling `retractOffer` with the `deprovision` flag.
     semiBookOwnerData[order.offerId].weiBalance += uint96(approxReturnedProvision);
-  }
-
-  ///@inheritdoc MangroveOffer
-  ///@notice verifies that msg.sender is an allowed reserve id to trade tokens with this contract
-  function __checkList__(IERC20 token) internal view virtual override {
-    super.__checkList__(token);
-    AbstractRouter router_ = router();
-    router_.checkList(token, abi.encode(msg.sender));
   }
 }

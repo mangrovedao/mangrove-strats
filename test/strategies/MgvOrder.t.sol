@@ -5,6 +5,8 @@ import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MangroveOrder as MgvOrder, SimpleRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
@@ -95,10 +97,10 @@ contract MangroveOrder_Test is StratTest {
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    mgo.activate(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(base);
+    routingOrders[1] = RL.createOrder(quote);
+    mgo.activate(routingOrders);
 
     // `this` contract will act as `MgvOrder` user
     deal($(base), $(this), 10 ether);
@@ -823,13 +825,13 @@ contract MangroveOrder_Test is StratTest {
 
     vm.prank($(mgo));
     uint g = gasleft();
-    uint pushed = router.push(quote, 1, abi.encode(this));
+    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, reserveId: address(this)}));
     uint push_cost = g - gasleft();
     assertEq(pushed, 1, "Push failed");
 
     vm.prank($(mgo));
     g = gasleft();
-    uint pulled = router.pull(base, 1, abi.encode(true, this));
+    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, reserveId: address(this)}), true);
     uint pull_cost = g - gasleft();
     assertEq(pulled, 1, "Pull failed");
 

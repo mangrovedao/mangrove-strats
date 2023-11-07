@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {OfferForwarder, IMangrove, AbstractRouter} from "./OfferForwarder.sol";
+import {OfferForwarder, IMangrove, AbstractRouter, RL} from "./OfferForwarder.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
@@ -12,7 +12,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
 
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
     AbstractRouter router_ = router();
-    return router_.balanceOfReserve(token, abi.encode(owner));
+    return router_.balanceOfReserve(RL.createOrder({token: token, reserveId: owner}));
   }
 
   function internal_addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) external {

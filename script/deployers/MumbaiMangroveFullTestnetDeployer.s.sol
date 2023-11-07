@@ -24,6 +24,7 @@ import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPri
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 /**
  * Deploy and configure a complete Mangrove testnet deployment:
@@ -139,17 +140,17 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     }
 
     // Activate MangroveOrder on markets
-    IERC20[] memory iercs = new IERC20[](7);
-    iercs[0] = tokens.dai.token;
-    iercs[1] = tokens.crv.token;
-    iercs[2] = tokens.wbtc.token;
-    iercs[3] = tokens.usdc.token;
-    iercs[4] = tokens.usdt.token;
-    iercs[5] = tokens.weth.token;
-    iercs[6] = tokens.wmatic.token;
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](7);
+    routingOrders[0] = RL.createOrder(tokens.dai.token);
+    routingOrders[1] = RL.createOrder(tokens.crv.token);
+    routingOrders[2] = RL.createOrder(tokens.wbtc.token);
+    routingOrders[3] = RL.createOrder(tokens.usdc.token);
+    routingOrders[4] = RL.createOrder(tokens.usdt.token);
+    routingOrders[5] = RL.createOrder(tokens.weth.token);
+    routingOrders[6] = RL.createOrder(tokens.wmatic.token);
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      iercs: iercs
+      activateOrders: routingOrders
     });
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified

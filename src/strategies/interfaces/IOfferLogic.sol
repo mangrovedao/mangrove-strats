@@ -3,7 +3,7 @@ pragma solidity >=0.8.10;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20, IMaker, OLKey} from "@mgv/src/core/MgvLib.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title IOfferLogic interface for offer management
@@ -42,14 +42,14 @@ interface IOfferLogic is IMaker {
   ///@return provision the amount of native tokens that can be redeemed when deprovisioning the offer
   function provisionOf(OLKey memory olKey, uint offerId) external view returns (uint provision);
 
-  ///@notice verifies that this contract's current state is ready to be used to post offers on Mangrove
-  ///@param tokens the list of tokens that are traded by this contract
+  ///@notice verifies that this contract's current state is ready to be used execute a given list of routing orders.
+  ///@param routingOrders the routingOrders one wishes to check
   ///@dev throws with a reason if something (e.g. an approval) is missing.
-  function checkList(IERC20[] calldata tokens) external view;
+  function checkList(RL.RoutingOrder[] calldata routingOrders) external view;
 
   /// @notice performs the required approvals so as to allow `this` to interact with Mangrove on a set of assets.
-  /// @param tokens the ERC20 `this` will approve to be able to trade on Mangrove's corresponding markets.
-  function activate(IERC20[] calldata tokens) external;
+  /// @param activateOrders routing orders containing at least the token to activate and the amount.
+  function activate(RL.RoutingOrder[] calldata activateOrders) external;
 
   ///@notice withdraws native tokens from `this` balance on Mangrove.
   ///@param amount the amount of WEI one wishes to withdraw.

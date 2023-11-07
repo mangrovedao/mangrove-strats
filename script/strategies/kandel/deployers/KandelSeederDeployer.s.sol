@@ -14,7 +14,7 @@ import {AbstractKandelSeeder} from
 import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
@@ -114,9 +114,18 @@ contract KandelSeederDeployer is Deployer {
     } else {
       require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
     }
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = IERC20(olKeyBaseQuote.outbound_tkn);
-    tokens[1] = IERC20(olKeyBaseQuote.inbound_tkn);
-    kandel.checkList(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder({
+      token: IERC20(olKeyBaseQuote.outbound_tkn),
+      amount: type(uint).max,
+      reserveId: kandel.RESERVE_ID()
+    });
+
+    routingOrders[1] = RL.createOrder({
+      token: IERC20(olKeyBaseQuote.inbound_tkn),
+      amount: type(uint).max,
+      reserveId: kandel.RESERVE_ID()
+    });
+    kandel.checkList(routingOrders);
   }
 }

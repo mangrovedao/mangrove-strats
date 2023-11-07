@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -17,8 +17,8 @@ contract Kandel is GeometricKandel {
     GeometricKandel(mgv, olKeyBaseQuote, reserveId)
   {
     // since we won't add a router later, we can activate the strat now.  We call __activate__ instead of activate just to save gas.
-    __activate__(BASE);
-    __activate__(QUOTE);
+    __activate__(RL.createOrder(BASE));
+    __activate__(RL.createOrder(QUOTE));
     setGasreq(gasreq);
   }
 

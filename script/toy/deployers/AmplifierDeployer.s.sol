@@ -2,7 +2,8 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {Amplifier, AbstractRouter, IMangrove} from "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
+import {Amplifier, IMangrove} from "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
@@ -65,17 +66,20 @@ contract AmplifierDeployer is Deployer {
     outputDeployment();
     console.log("Deployed!", address(amplifier));
     console.log("Activating Amplifier");
-    IERC20[] memory tokens = new IERC20[](3);
-    tokens[0] = base;
-    tokens[1] = stable1;
-    tokens[2] = stable2;
+    RL.RoutingOrder[] memory activateOrders = new RL.RoutingOrder[](3);
+    activateOrders[0] = RL.createOrder(base);
+    activateOrders[1] = RL.createOrder(stable1);
+    activateOrders[2] = RL.createOrder(stable2);
+
     broadcast();
-    amplifier.activate(tokens);
+    amplifier.activate(activateOrders);
     AbstractRouter router = amplifier.router();
+
     broadcast();
     base.approve(address(router), type(uint).max);
-    IERC20[] memory tokens2 = new IERC20[](1);
-    tokens2[0] = base;
-    amplifier.checkList(tokens2);
+
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder({token: base, amount: 1, reserveId: amplifier.RESERVE_ID()});
+    amplifier.checkList(routingOrders);
   }
 }

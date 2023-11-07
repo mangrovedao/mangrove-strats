@@ -21,6 +21,21 @@ library SmartRouterStorage {
     }
   }
 
+  /**
+   * @notice intermediate function to allow a call to be delagated to IMPLEMENTATION while preserving the a `view` attribute.
+   * @dev scheme is as follows: for some `view` function `f` of IMPLEMENTATION, one does `staticcall(_staticdelegatecall(f))` which will retain for the `view` attribute
+   */
+  function _staticdelegatecall(address impl, bytes calldata data) external {
+    require(msg.sender == address(this), "SmartRouterStorage/internalOnly");
+    (bool success, bytes memory retdata) = impl.delegatecall(data);
+    if (!success) {
+      revertWithData(retdata);
+    }
+    assembly ("memory-safe") {
+      return(add(retdata, 32), returndatasize())
+    }
+  }
+
   ///@notice propagates revert occurring during a delegatecall
   ///@param retdata the return data of the delegatecall
   function revertWithData(bytes memory retdata) internal pure {

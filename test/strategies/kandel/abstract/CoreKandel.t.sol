@@ -14,6 +14,7 @@ import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/k
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import "@mgv/lib/Debug.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {
@@ -1336,7 +1337,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.RESERVE_ID();
     kdl.TICK_SPACING();
     kdl.admin();
-    kdl.checkList(new IERC20[](0));
+    kdl.checkList(new RL.RoutingOrder[](0));
     kdl.depositFunds(0, 0);
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
@@ -1357,10 +1358,11 @@ abstract contract CoreKandelTest is KandelTest {
     args.callee = $(kdl);
     args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
     args.revertMessage = "AccessControlled/Invalid";
-
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](0);
     // Only admin
     args.allowed = dynamic([address(maker)]);
-    checkAuth(args, abi.encodeCall(kdl.activate, dynamic([IERC20(base)])));
+
+    checkAuth(args, abi.encodeCall(kdl.activate, routingOrders));
     checkAuth(args, abi.encodeCall(kdl.approve, (base, taker, 42)));
     checkAuth(args, abi.encodeCall(kdl.setAdmin, (maker)));
     checkAuth(args, abi.encodeCall(kdl.retractAndWithdraw, (0, 0, 0, 0, 0, maker)));

@@ -5,6 +5,8 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
+
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
@@ -120,10 +122,13 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
     // Pulling funds from `msg.sender`'s reserve
-    // `takerGives` is derived via same function as in `execute` of core protocol to ensure same behavior.
-    uint takerGives = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    uint pulled = router().pull(IERC20(tko.olKey.inbound_tkn), takerGives, abi.encode(true, msg.sender));
-    require(pulled == takerGives, "mgvOrder/transferInFail");
+    // `routingOrder.amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
+    RL.RoutingOrder memory pullOrder = RL.createOrder({
+      amount: tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume,
+      reserveId: msg.sender,
+      token: IERC20(tko.olKey.inbound_tkn)
+    });
+    require(router().pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -145,14 +150,18 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
       require(
-        router().push(IERC20(tko.olKey.outbound_tkn), res.takerGot, abi.encode(msg.sender)) == res.takerGot,
+        router().push(
+          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, reserveId: msg.sender})
+        ) == res.takerGot,
         "mgvOrder/pushFailed"
       );
     }
-    uint inboundLeft = takerGives - res.takerGave;
+    uint inboundLeft = pullOrder.amount - res.takerGave;
     if (inboundLeft > 0) {
       require(
-        router().push(IERC20(tko.olKey.inbound_tkn), inboundLeft, abi.encode(msg.sender)) == inboundLeft,
+        router().push(
+          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, reserveId: msg.sender})
+        ) == inboundLeft,
         "mgvOrder/pushFailed"
       );
     }

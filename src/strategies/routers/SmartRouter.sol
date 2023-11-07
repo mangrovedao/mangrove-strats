@@ -3,9 +3,10 @@ pragma solidity ^0.8.18;
 
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {SmartRouterStorage, AbstractRouter, IERC20} from "./SmartRouterStorage.sol";
+import {SimpleRouter, RL} from "./SimpleRouter.sol";
 
 ///@title Mangrove Smart Router implementation
-contract SmartRouter is AbstractRouter {
+contract SmartRouter is SimpleRouter {
   ///@notice logs new setting of routing logic for a specific offer
   ///@param token the asset whose route is being set
   ///@param olKeyHash the hash of the offer list
@@ -13,82 +14,103 @@ contract SmartRouter is AbstractRouter {
   ///@param logic the contract implementing the pull and push function for that specific route
   event SetRouteLogic(IERC20 indexed token, bytes32 indexed olKeyHash, uint offerId, AbstractRouter logic);
 
-  struct OfferCoordinates {
-    bytes32 olKeyHash; // (with offerId), offer specific route
-    uint offerId;
-  }
-
   ///@notice This function is used to set the routing strategy for a given offer.
   ///@param token the asset for which the routing logic should be set.
-  ///@param oc Offer & market identifier
+  ///@param olKeyHash market identifier
+  ///@param offerId offer identifier
   ///@param logic the loggic to use for the given offer.
-  function setLogic(IERC20 token, OfferCoordinates calldata oc, AbstractRouter logic) external onlyAdmin {
-    SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId] = logic;
-    emit SetRouteLogic(token, oc.olKeyHash, oc.offerId, logic);
+  function setLogic(IERC20 token, bytes32 olKeyHash, uint offerId, AbstractRouter logic) external onlyAdmin {
+    SmartRouterStorage.getStorage().routeLogics[token][olKeyHash][offerId] = logic;
+    emit SetRouteLogic(token, olKeyHash, offerId, logic);
   }
 
   /// @inheritdoc AbstractRouter
   /// @dev pulls liquidity using the logic specified by offer owner
-  /// @dev data must encode OfferCoordinates
-  function __pull__(IERC20 token, uint amount, bytes memory data) internal virtual override returns (uint) {
-    OfferCoordinates memory oc = abi.decode(data, (OfferCoordinates));
-    AbstractRouter logic = SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId];
+  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
+    AbstractRouter logic =
+      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
     if (address(logic) != address(0)) {
       // delegating routing to the specific chosen route
       (bool success, bytes memory retdata) =
-        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.pull.selector, token, amount, bytes("")));
+        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.pull.selector, routingOrder, strict));
       if (!success) {
         SmartRouterStorage.revertWithData(retdata);
       }
-      require(abi.decode(retdata, (uint)) == amount, "SmartRouter/partialPullNotAllowed");
+      return (abi.decode(retdata, (uint)));
     } else {
-      // default route
-      require(TransferLib.transferTokenFrom(token, admin(), msg.sender, amount), "SmartRouter/DefaultPullFailed");
+      // default route is to pull funds directly from `routingOrder.reserveId`
+      return super.__pull__(routingOrder, strict);
     }
-    return amount;
   }
 
   /// @inheritdoc AbstractRouter
   /// @dev pushes liquidity using the logic specified by offer owner
-  /// @dev data must encode OfferCoordinates
-  function __push__(IERC20 token, uint amount, bytes memory data) internal virtual override returns (uint pushed) {
-    OfferCoordinates memory oc = abi.decode(data, (OfferCoordinates));
-    AbstractRouter logic = SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId];
+  function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
+    AbstractRouter logic =
+      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
     if (address(logic) != address(0)) {
       (bool success, bytes memory retdata) =
-        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.push.selector, token, amount, bytes("")));
+        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.push.selector, routingOrder));
       if (!success) {
         SmartRouterStorage.revertWithData(retdata);
       }
-      require(abi.decode(retdata, (uint)) == amount, "SmartRouter/partialPushNotAllowed");
+      return (abi.decode(retdata, (uint)));
     } else {
-      require(TransferLib.transferTokenFrom(token, msg.sender, admin(), amount), "SmartRouter/DefaultPushFailed");
+      return super.__push__(routingOrder);
     }
-    return amount;
   }
 
   ///@inheritdoc AbstractRouter
-  ///@dev data must encode OfferCoordinates
-  function balanceOfReserve(IERC20 token, bytes calldata data) public view override returns (uint) {
-    OfferCoordinates memory oc = abi.decode(data, (OfferCoordinates));
-    AbstractRouter logic = SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId];
-    return logic.balanceOfReserve(token, bytes(""));
+  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
+    AbstractRouter logic =
+      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
+    if (address(logic) != address(0)) {
+      (bool success, bytes memory retdata) = address(this).staticcall(
+        abi.encodeWithSelector(
+          SmartRouterStorage._staticdelegatecall.selector,
+          abi.encodeWithSelector(AbstractRouter.balanceOfReserve.selector, routingOrder)
+        )
+      );
+      if (!success) {
+        SmartRouterStorage.revertWithData(retdata);
+      }
+      return (abi.decode(retdata, (uint)));
+    } else {
+      return super.balanceOfReserve(routingOrder);
+    }
   }
 
   ///@inheritdoc AbstractRouter
-  ///@dev data must encode OfferCoordinates
-  function __checkList__(IERC20 token, bytes calldata data) internal view override {
-    OfferCoordinates memory oc = abi.decode(data, (OfferCoordinates));
-    require(token.allowance(admin(), address(this)) > 0, "SmartRouter/NotApprovedByOwner");
-    AbstractRouter logic = SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId];
-    return logic.checkList(token, bytes(""));
+  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
+    AbstractRouter logic =
+      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
+    if (address(logic) != address(0)) {
+      (bool success, bytes memory retdata) = address(this).staticcall(
+        abi.encodeWithSelector(
+          SmartRouterStorage._staticdelegatecall.selector,
+          abi.encodeWithSelector(AbstractRouter.checkList.selector, routingOrder)
+        )
+      );
+      if (!success) {
+        SmartRouterStorage.revertWithData(retdata);
+      }
+    } else {
+      super.__checkList__(routingOrder);
+    }
   }
 
   ///@inheritdoc AbstractRouter
-  ///@dev data must encode OfferCoordinates
-  function __activate__(IERC20 token, bytes calldata data) internal override {
-    OfferCoordinates memory oc = abi.decode(data, (OfferCoordinates));
-    AbstractRouter logic = SmartRouterStorage.getStorage().routeLogics[token][oc.olKeyHash][oc.offerId];
-    return logic.activate(token, bytes(""));
+  function __activate__(RL.RoutingOrder calldata routingOrder) internal override {
+    AbstractRouter logic =
+      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
+    if (address(logic) != address(0)) {
+      (bool success, bytes memory retdata) =
+        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.activate.selector, routingOrder));
+      if (!success) {
+        SmartRouterStorage.revertWithData(retdata);
+      }
+    } else {
+      super.__activate__(routingOrder);
+    }
   }
 }

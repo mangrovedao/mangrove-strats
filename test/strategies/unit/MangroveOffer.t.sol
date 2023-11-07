@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
 import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
-import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 
 contract MangroveOfferTest is StratTest {
@@ -47,8 +47,12 @@ contract MangroveOfferTest is StratTest {
   }
 
   function testCannot_activate_if_not_admin() public {
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
+    routingOrders[1] = RL.createOrder(usdc, type(uint).max, address(this));
+
     vm.expectRevert("AccessControlled/Invalid");
-    makerContract.activate(dynamic([IERC20(weth), usdc]));
+    makerContract.activate(routingOrders);
   }
 
   function test_a_checkList_with_router() public {
@@ -57,9 +61,11 @@ contract MangroveOfferTest is StratTest {
     makerContract.setRouter(router);
     vm.stopPrank();
 
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
+
     vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    makerContract.checkList(tokens);
+    makerContract.checkList(routingOrders);
   }
 
   function test_b_checkList_router_not_bound() public {
@@ -70,9 +76,10 @@ contract MangroveOfferTest is StratTest {
     makerContract.approve(weth, $(mgv), type(uint).max);
     vm.stopPrank();
 
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
     vm.expectRevert("Router/callerIsNotBoundToRouter");
-    makerContract.checkList(tokens);
+    makerContract.checkList(routingOrders);
   }
 
   function test_c_checkList_router_not_approved() public {
@@ -85,9 +92,11 @@ contract MangroveOfferTest is StratTest {
     router.bind(address(makerContract));
     vm.stopPrank();
 
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
+
     vm.expectRevert("Router/NotApprovedByMakerContract");
-    makerContract.checkList(tokens);
+    makerContract.checkList(routingOrders);
   }
 
   function test_d_checkList_router_not_approved_by_reserve() public {
@@ -102,9 +111,11 @@ contract MangroveOfferTest is StratTest {
     makerContract.approve(weth, address(makerContract.router()), type(uint).max);
     vm.stopPrank();
 
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("SimpleRouter/NotApprovedByOwner");
-    makerContract.checkList(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
+
+    vm.expectRevert("SimpleRouter/InsufficientlyApproved");
+    makerContract.checkList(routingOrders);
   }
 
   function test_e_checkList_completes() public {
@@ -121,13 +132,14 @@ contract MangroveOfferTest is StratTest {
     weth.approve(address(makerContract.router()), type(uint).max);
     vm.stopPrank();
 
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    makerContract.checkList(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, deployer);
+
+    makerContract.checkList(routingOrders);
     // ^^ should not throw
   }
 
   function test_activate_completes_checkList_for_deployer() public {
-    IERC20[] memory tokens = dynamic([IERC20(weth), usdc]);
     // reserve approves router for weth transfer
     address toApprove =
       makerContract.router() == makerContract.NO_ROUTER() ? address(makerContract) : address(makerContract.router());
@@ -136,8 +148,12 @@ contract MangroveOfferTest is StratTest {
     weth.approve(toApprove, type(uint).max);
     usdc.approve(toApprove, type(uint).max);
 
-    makerContract.activate(tokens);
-    makerContract.checkList(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max, deployer);
+    routingOrders[1] = RL.createOrder(usdc, type(uint).max, deployer);
+
+    makerContract.activate(routingOrders);
+    makerContract.checkList(routingOrders);
     vm.stopPrank();
   }
 
@@ -145,8 +161,12 @@ contract MangroveOfferTest is StratTest {
     // asks weth contract to return false to approve and transfer calls
     weth.failSoftly(true);
     vm.expectRevert("mgvOffer/approveMangrove/Fail");
+
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
+    routingOrders[0] = RL.createOrder(weth, type(uint).max);
+
     vm.prank(deployer);
-    makerContract.activate(dynamic([IERC20(weth)]));
+    makerContract.activate(routingOrders);
   }
 
   // makerExecute and makerPosthook guards

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
@@ -102,8 +102,16 @@ abstract contract Direct is MangroveOffer {
       return amount_;
     } else {
       // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled =
-        router_.pull(IERC20(order.olKey.outbound_tkn), amount_, abi.encode(RESERVE_ID != address(this), RESERVE_ID));
+      uint pulled = router_.pull(
+        RL.RoutingOrder({
+          token: IERC20(order.olKey.outbound_tkn),
+          amount: amount_,
+          reserveId: RESERVE_ID,
+          olKeyHash: order.olKey.hash(),
+          offerId: order.offerId
+        }),
+        RESERVE_ID != address(this)
+      );
       return pulled >= amount_ ? 0 : amount_ - pulled;
     }
   }
@@ -118,21 +126,14 @@ abstract contract Direct is MangroveOffer {
   {
     AbstractRouter router_ = router();
     if (router_ != NO_ROUTER) {
-      IERC20[] memory tokens = new IERC20[](2);
-      tokens[0] = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-      tokens[1] = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
-      router_.flush(tokens, abi.encode(RESERVE_ID));
+      RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+      routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
+      routingOrders[0].reserveId = RESERVE_ID;
+      routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
+      routingOrders[1].reserveId = RESERVE_ID;
+      router_.flush(routingOrders);
     }
     // reposting offer residual if any
     return super.__posthookSuccess__(order, makerData);
-  }
-
-  ///@notice if strat has a router, verifies that the router is ready to pull/push on behalf of reserve id
-  ///@inheritdoc MangroveOffer
-  function __checkList__(IERC20 token) internal view virtual override {
-    super.__checkList__(token);
-    if (router() != NO_ROUTER) {
-      router().checkList(token, abi.encode(RESERVE_ID));
-    }
   }
 }

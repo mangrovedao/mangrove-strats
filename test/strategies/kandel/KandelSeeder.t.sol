@@ -14,7 +14,7 @@ import {
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract KandelSeederTest is StratTest {
   PinnedPolygonFork internal fork;
@@ -109,10 +109,11 @@ contract KandelSeederTest is StratTest {
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), kdl.admin(), "Incorrect owner");
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(base, type(uint).max, address(this));
+    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(this));
+    kdl.checkList(routingOrders);
   }
 
   function test_maker_deploys_private_aaveKandel() public {
@@ -125,10 +126,11 @@ contract KandelSeederTest is StratTest {
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
 
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(base, type(uint).max, address(kdl));
+    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(kdl));
+
+    kdl.checkList(routingOrders);
   }
 
   function test_maker_deploys_kandel() public {
@@ -139,9 +141,11 @@ contract KandelSeederTest is StratTest {
     assertEq(address(kdl.router()), address(kdl.NO_ROUTER()), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(base, type(uint).max, address(this));
+    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(this));
+
+    kdl.checkList(routingOrders);
   }
 }

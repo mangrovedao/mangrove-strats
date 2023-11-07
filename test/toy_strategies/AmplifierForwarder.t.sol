@@ -6,6 +6,7 @@ import "@mgv/test/lib/forks/Polygon.sol";
 import "@mgv-strats/src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
 import {Local} from "@mgv/src/core/MgvLib.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
+import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 //import {console} from "@mgv/forge-std/console.sol";
 
@@ -83,15 +84,15 @@ contract AmplifierForwarderTest is StratTest {
     // However, to employ actual amplified liquidity it is simply a matter of
     // setting up a more refined router.
     // check that we actually need to activate for the two 'wants' tokens
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = dai;
-    tokens[1] = usdc;
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = RL.createOrder(dai, type(uint).max, address(this));
+    routingOrders[1] = RL.createOrder(usdc, type(uint).max, address(this));
 
     vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    strat.checkList(tokens);
+    strat.checkList(routingOrders);
 
     // and now activate them
-    strat.activate(tokens);
+    strat.activate(routingOrders);
   }
 
   function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC)
