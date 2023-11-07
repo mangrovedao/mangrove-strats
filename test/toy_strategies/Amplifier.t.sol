@@ -107,7 +107,7 @@ contract AmplifierTest is StratTest {
     RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](3);
     routingOrders[0] = RL.createOrder(dai, type(uint).max, address(this));
     routingOrders[1] = RL.createOrder(usdc, type(uint).max, address(this));
-    routingOrders[3] = RL.createOrder(weth, type(uint).max, address(this));
+    routingOrders[2] = RL.createOrder(weth, type(uint).max, address(this));
 
     vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
     strat.checkList(routingOrders);
