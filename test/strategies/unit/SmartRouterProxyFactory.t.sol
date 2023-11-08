@@ -13,7 +13,7 @@ contract SmartRouterProxyFactoryTest is StratTest {
   address private owner;
 
   function setUp() public virtual override {
-    proxyFactory = SmartRouterProxyFactory(freshAddress("SmartRouterImpl"));
+    proxyFactory = new SmartRouterProxyFactory(new SmartRouter());
     owner = freshAddress("Owner");
   }
 
