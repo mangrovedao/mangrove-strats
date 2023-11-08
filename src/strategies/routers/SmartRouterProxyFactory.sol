@@ -7,20 +7,22 @@ import {SmartRouterProxy, SmartRouter} from "./SmartRouterProxy.sol";
 ///@title Mangrove Smart Router deployment functions
 ///@dev mostly taken from "forge-std/StdUtils.sol"
 contract SmartRouterProxyFactory {
+  SmartRouter public immutable IMPLEMENTATION;
+
+  event ProxyDeployed(address indexed owner, address indexed implementation);
+
+  constructor(SmartRouter implementation) {
+    IMPLEMENTATION = implementation;
+  }
+
   /// @notice returns the address of the proxy that would be deployed with CREATE2
-  /// @param smartRouter the deployed smart router implementation
   /// @param owner the owner of the proxy contract
-  /// @param deployer the address of the contract that deployed the smartRouter
-  function computeProxyAddress(SmartRouter smartRouter, address owner, address deployer)
-    public
-    pure
-    returns (address payable)
-  {
+  function computeProxyAddress(address owner) public view returns (address payable) {
     bytes memory creationCode = type(SmartRouterProxy).creationCode;
-    bytes memory args = abi.encode(smartRouter);
+    bytes memory args = abi.encode(IMPLEMENTATION);
     bytes32 initcodeHash = keccak256(abi.encodePacked(creationCode, args));
     bytes32 salt = keccak256(abi.encode(owner));
-    return extractAddress(keccak256(abi.encodePacked(bytes1(0xff), deployer, salt, initcodeHash)));
+    return extractAddress(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initcodeHash)));
   }
 
   ///@notice removes left 0 padding of an address into a bytes32
@@ -31,20 +33,19 @@ contract SmartRouterProxyFactory {
   }
 
   ///@notice Proxy deployer
-  ///@param smartRouter the deployed smart router implementation
   ///@param owner the address to be used for proxy owner
-  function deploy(SmartRouter smartRouter, address owner) public returns (SmartRouterProxy proxy) {
-    proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(smartRouter);
+  function deploy(address owner) public returns (SmartRouterProxy proxy) {
+    proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(IMPLEMENTATION);
     proxy.setAdmin(owner);
+    emit ProxyDeployed(owner, address(IMPLEMENTATION));
   }
 
   ///@notice Proxy deployer if not already deployed
-  ///@param smartRouter the deployed smart router implementation
   ///@param owner the address to be used for proxy owner
-  function deployIfNeeded(SmartRouter smartRouter, address owner) public returns (SmartRouterProxy proxy, bool created) {
-    proxy = SmartRouterProxy(computeProxyAddress(smartRouter, owner, address(this)));
+  function deployIfNeeded(address owner) public returns (SmartRouterProxy proxy, bool created) {
+    proxy = SmartRouterProxy(computeProxyAddress(owner));
     if (address(proxy).code.length == 0) {
-      require(deploy(smartRouter, owner) == proxy, "Deployed via create2 failed");
+      require(deploy(owner) == proxy, "Deployed via create2 failed");
       created = true;
     }
   }
