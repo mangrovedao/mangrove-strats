@@ -8,25 +8,30 @@ import {
   SmartRouterProxy
 } from "@mgv-strats/src/strategies/routers/SmartRouterProxyFactory.sol";
 
-contract SmartRouterProxyFactoryTest is StratTest, SmartRouterProxyFactory {
-  SmartRouter router = SmartRouter(freshAddress());
-  address owner = freshAddress();
+contract SmartRouterProxyFactoryTest is StratTest {
+  SmartRouterProxyFactory private proxyFactory;
+  address private owner;
+
+  function setUp() public virtual override {
+    proxyFactory = SmartRouterProxyFactory(freshAddress("SmartRouterImpl"));
+    owner = freshAddress("Owner");
+  }
 
   function test_computeProxyAddress() public {
-    address proxy = computeProxyAddress(router, owner, address(this));
-    SmartRouterProxy proxy_ = deploy(router, owner);
+    address proxy = proxyFactory.computeProxyAddress(owner);
+    SmartRouterProxy proxy_ = proxyFactory.deploy(owner);
     assertEq(proxy, address(proxy_), "Computed address is incorrect");
   }
 
   event SetAdmin(address);
 
   function test_deployIfNeeded() public {
-    address proxy = computeProxyAddress(router, owner, address(this));
+    address proxy = proxyFactory.computeProxyAddress(owner);
     expectFrom(address(proxy));
     emit SetAdmin(owner);
-    (, bool created) = deployIfNeeded(router, owner);
+    (, bool created) = proxyFactory.deployIfNeeded(owner);
     assertTrue(created, "Proxy was not created");
-    (, created) = deployIfNeeded(router, owner);
+    (, created) = proxyFactory.deployIfNeeded(owner);
     assertTrue(!created, "Proxy should not be deployed again");
   }
 }
