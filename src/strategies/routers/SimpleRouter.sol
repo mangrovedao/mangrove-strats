@@ -6,7 +6,7 @@ import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AbstractRouter, RL} from "./abstract/AbstractRouter.sol";
 
 ///@title `SimpleRouter` instances have a unique sourcing strategy: pull (push) liquidity directly from (to) the an offer owner's account
-///@dev Maker contracts using this router must make sure that the reserve approves the router for all asset that will be pulled (outbound tokens)
+///@dev Maker contracts using this router must make sure that the `routingOrder.reserveId` approves the router for all asset that will be pulled (outbound tokens)
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is AbstractRouter {
   /// @inheritdoc AbstractRouter
@@ -20,8 +20,6 @@ contract SimpleRouter is AbstractRouter {
     }
   }
 
-  /// @notice transfers an amount of tokens from the maker to the reserve.
-  /// @dev pushData is a bytes array that holds the owner address.
   /// @inheritdoc AbstractRouter
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
     bool success =
