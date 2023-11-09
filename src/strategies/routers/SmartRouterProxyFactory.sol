@@ -32,18 +32,21 @@ contract SmartRouterProxyFactory {
     return payable(address(uint160(uint(zeroPaddedAddress))));
   }
 
-  ///@notice Proxy deployer
+  ///@notice Proxy deployer. Binds the proxy to the this contract and sets admin of the proxy to `owner`
   ///@param owner the address to be used for proxy owner
-  function deploy(address owner) public returns (SmartRouterProxy proxy) {
-    proxy = new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(IMPLEMENTATION);
+  ///@dev beware that anyone can call this function on behalf of owner. But `owner` will be admin.
+  function deploy(address owner) public returns (SmartRouter proxy) {
+    proxy = SmartRouter(address(new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(IMPLEMENTATION)));
+    SmartRouter(address(proxy)).bind(address(this));
     proxy.setAdmin(owner);
     emit ProxyDeployed(owner, address(IMPLEMENTATION));
   }
 
   ///@notice Proxy deployer if not already deployed
   ///@param owner the address to be used for proxy owner
-  function deployIfNeeded(address owner) public returns (SmartRouterProxy proxy, bool created) {
-    proxy = SmartRouterProxy(computeProxyAddress(owner));
+  ///@dev beware that anyone can call this function on behalf of owner. But `owner` will be admin.
+  function deployIfNeeded(address owner) public returns (SmartRouter proxy, bool created) {
+    proxy = SmartRouter(computeProxyAddress(owner));
     if (address(proxy).code.length == 0) {
       require(deploy(owner) == proxy, "Deployed via create2 failed");
       created = true;
