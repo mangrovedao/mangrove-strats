@@ -18,16 +18,6 @@ interface IOfferLogic is IMaker {
   ///@notice By emitting this data, an indexer can keep track of what incidents has happened.
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
-  ///@notice Logging change of router address
-  ///@param router the new router address.
-  ///@notice By emitting this an indexer can keep track of what router is used.
-  event SetRouter(AbstractRouter router);
-
-  ///@notice sets a new router to pull outbound tokens from contract's reserve to `this` and push inbound tokens to reserve.
-  ///@param router_ the new router contract that this contract should use. Use `NO_ROUTER` for no router.
-  ///@dev new router needs to be approved by `this` to push funds to reserve (see `activate` function). It also needs to be approved by reserve to pull from it.
-  function setRouter(AbstractRouter router_) external;
-
   ///@notice Approves a spender to transfer a certain amount of tokens on behalf of `this`.
   ///@param token the ERC20 token contract
   ///@param spender the approved spender

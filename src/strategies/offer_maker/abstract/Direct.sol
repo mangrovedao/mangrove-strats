@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -21,6 +21,12 @@ abstract contract Direct is MangroveOffer {
   ///@dev a safe value for `RESERVE_ID` is `address(this)` in which case the funds will never be shared with another maker contract.
   address public immutable RESERVE_ID;
 
+  ///@notice constant for no router
+  AbstractRouter public constant NO_ROUTER = AbstractRouter(address(0));
+
+  ///@notice router for liquidity sourcing.
+  AbstractRouter public router;
+
   ///@notice `Direct`'s constructor.
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   ///@param router_ the router that this contract will use to pull/push liquidity from offer maker's reserve. This can be `NO_ROUTER`.
@@ -32,6 +38,38 @@ abstract contract Direct is MangroveOffer {
     address reserveId_ = reserveId == address(0) ? address(this) : reserveId;
     RESERVE_ID = reserveId_;
     emit SetReserveId(reserveId_);
+  }
+
+  ///@notice router setter
+  ///@param router_ the router contract to be used by this strat
+  function setRouter(AbstractRouter router_) public override onlyAdmin {
+    router = router_;
+    emit SetRouter(router_);
+  }
+
+  ///@inheritdoc MangroveOffer
+  function __activate__(RL.RoutingOrder memory activateOrder) internal override {
+    super.__activate__(activateOrder);
+    AbstractRouter router_ = router;
+    if (router_ != NO_ROUTER) {
+      // allowing router to pull `token` from this contract (for the `push` function of the router)
+      require(
+        TransferLib.approveToken(activateOrder.token, address(router_), activateOrder.amount),
+        "mgvOffer/approveRouterFail"
+      );
+      // letting router performs additional necessary approvals (if any)
+      // this will only work if `this` is an authorized maker of the router (i.e. `router.bind(address(this))` has been called by router's admin).
+      router_.activate(activateOrder);
+    }
+  }
+
+  ///@inheritdoc MangroveOffer
+  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
+    super.__checkList__(routingOrder);
+    AbstractRouter router_ = router;
+    if (router_ != NO_ROUTER) {
+      router_.checkList(routingOrder);
+    }
   }
 
   /// @notice Inserts a new offer in Mangrove Offer List.
@@ -97,7 +135,7 @@ abstract contract Direct is MangroveOffer {
       return 0;
     }
     amount_ = amount - amount_;
-    AbstractRouter router_ = router();
+    AbstractRouter router_ = router;
     if (router_ == NO_ROUTER) {
       return amount_;
     } else {
@@ -124,7 +162,7 @@ abstract contract Direct is MangroveOffer {
     override
     returns (bytes32)
   {
-    AbstractRouter router_ = router();
+    AbstractRouter router_ = router;
     if (router_ != NO_ROUTER) {
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
