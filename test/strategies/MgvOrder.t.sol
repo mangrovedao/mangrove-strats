@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder as MgvOrder, SimpleRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder as MgvOrder, SmartRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
@@ -819,7 +819,9 @@ contract MangroveOrder_Test is StratTest {
   //////////////////////////////
 
   function test_mockup_routing_gas_cost() public {
-    SimpleRouter router = SimpleRouter(address(mgo.router()));
+    SmartRouter router = mgo.deploy(address(this));
+    router.activate(RL.createOrder({token: quote, amount: type(uint).max, reserveId: address(this)}));
+
     // making quote balance hot to mock taker's transfer
     quote.transfer($(mgo), 1);
 
