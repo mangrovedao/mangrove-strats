@@ -103,8 +103,8 @@ contract MgvOrder_Test is StratTest {
     deal($(quote), $(this), 10_000 ether);
 
     // activating MangroveOrder for quote and base
-    mgo.approve(base, $(mgv), type(uint).max);
-    mgo.approve(quote, $(mgv), type(uint).max);
+    mgo.activate(base);
+    mgo.activate(quote);
 
     // user approves `mgo` to pull quote or base when doing a market order
     require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
