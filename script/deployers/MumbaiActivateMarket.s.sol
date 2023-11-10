@@ -70,13 +70,13 @@ contract MumbaiActivateMarket is Deployer {
       tkn2_in_Mwei: toMweiOfMatic(price1),
       fee: 0
     });
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(IERC20(market.tkn0));
-    routingOrders[1] = RL.createOrder(IERC20(market.tkn1));
+    IERC20[] memory tokens = new IERC20[](2);
+    tokens[0] = IERC20(market.tkn0);
+    tokens[1] = IERC20(market.tkn1);
 
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      activateOrders: routingOrders
+      tokens: tokens
     });
   }
 

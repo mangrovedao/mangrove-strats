@@ -80,8 +80,9 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// @dev tries to repay existing debt first and then supplies the rest
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
     Memoizer memory m;
+    // just in time approval of the POOL in order to be able to deposit funds
+    _approveLender(routingOrder.token, routingOrder.amount);
     uint leftToPush = routingOrder.amount;
-
     // tries to repay existing debt
     if (debtBalanceOf(routingOrder.token, m, routingOrder.reserveId) > 0) {
       uint repaid = _repay(routingOrder.token, leftToPush, routingOrder.reserveId);
@@ -102,14 +103,8 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
     IERC20 aToken = overlying(routingOrder.token);
     require(address(aToken) != address(0), "AaveLogic/TokenNotSupportedByPool");
     // needs to pull aTokens from reserve Id
-    require(aToken.allowance(routingOrder.reserveId, address(this)) > 0, "AaveLogic/CannotPullOverlying");
-    // POOL needs to pull underlying from this when supplying to the pool
-    require(routingOrder.token.allowance(address(this), address(POOL)) > 0, "AaveLogic/PoolCannotPullUnderlying");
-  }
-
-  ///@inheritdoc AbstractRouter
-  function __activate__(RL.RoutingOrder calldata routingOrder) internal virtual override {
-    _approveLender(routingOrder.token, routingOrder.amount);
+    uint allowance = aToken.allowance(routingOrder.reserveId, address(this));
+    require(allowance >= type(uint96).max || allowance >= routingOrder.amount, "AaveLogic/CannotPullOverlying");
   }
 
   ///@inheritdoc AbstractRouter

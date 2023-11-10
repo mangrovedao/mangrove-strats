@@ -22,12 +22,10 @@ contract AavePooledRouterDeployer is Deployer {
     IERC20 usdc = IERC20(fork.get("USDC"));
     usdc.approve(address(router), 1);
 
-    vm.startPrank(broadcaster());
+    vm.prank(broadcaster());
     router.bind(address(this));
-    router.activate(RL.createOrder({token: usdc, amount: 1}));
-    vm.stopPrank();
 
     // call below should not revert
-    router.checkList(RL.createOrder({token: usdc, amount: 1, reserveId: address(this)}));
+    router.checkList(RL.createOrder({token: usdc, amount: 1, reserveId: address(this)}), address(this));
   }
 }

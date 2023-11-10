@@ -140,17 +140,17 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     }
 
     // Activate MangroveOrder on markets
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](7);
-    routingOrders[0] = RL.createOrder(tokens.dai.token);
-    routingOrders[1] = RL.createOrder(tokens.crv.token);
-    routingOrders[2] = RL.createOrder(tokens.wbtc.token);
-    routingOrders[3] = RL.createOrder(tokens.usdc.token);
-    routingOrders[4] = RL.createOrder(tokens.usdt.token);
-    routingOrders[5] = RL.createOrder(tokens.weth.token);
-    routingOrders[6] = RL.createOrder(tokens.wmatic.token);
+    IERC20[] memory tkns = new IERC20[](7);
+    tkns[0] = tokens.dai.token;
+    tkns[1] = tokens.crv.token;
+    tkns[2] = tokens.wbtc.token;
+    tkns[3] = tokens.usdc.token;
+    tkns[4] = tokens.usdt.token;
+    tkns[5] = tokens.weth.token;
+    tkns[6] = tokens.wmatic.token;
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      activateOrders: routingOrders
+      tokens: tkns
     });
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified

@@ -2,7 +2,9 @@
 pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {
+  Forwarder, MangroveOffer, TransferLib
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
@@ -119,7 +121,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       reserveId: msg.sender,
       token: IERC20(tko.olKey.inbound_tkn)
     });
-    require(router(msg.sender).pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
+    (SmartRouter userRouter,) = deployRouterIfNeeded(msg.sender);
+    require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -140,8 +143,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
+      TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       require(
-        router(msg.sender).push(
+        userRouter.push(
           RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, reserveId: msg.sender})
         ) == res.takerGot,
         "mgvOrder/pushFailed"
@@ -149,8 +153,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
     uint inboundLeft = pullOrder.amount - res.takerGave;
     if (inboundLeft > 0) {
+      TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
       require(
-        router(msg.sender).push(
+        userRouter.push(
           RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, reserveId: msg.sender})
         ) == inboundLeft,
         "mgvOrder/pushFailed"

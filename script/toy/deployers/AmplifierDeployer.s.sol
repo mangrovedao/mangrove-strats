@@ -66,20 +66,13 @@ contract AmplifierDeployer is Deployer {
     outputDeployment();
     console.log("Deployed!", address(amplifier));
     console.log("Activating Amplifier");
-    RL.RoutingOrder[] memory activateOrders = new RL.RoutingOrder[](3);
-    activateOrders[0] = RL.createOrder(base);
-    activateOrders[1] = RL.createOrder(stable1);
-    activateOrders[2] = RL.createOrder(stable2);
-
-    broadcast();
-    amplifier.activate(activateOrders);
     AbstractRouter router = amplifier.router();
 
     broadcast();
     base.approve(address(router), type(uint).max);
 
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder({token: base, amount: 1, reserveId: amplifier.RESERVE_ID()});
-    amplifier.checkList(routingOrders);
+    amplifier.router().checkList(
+      RL.createOrder({token: base, amount: 1, reserveId: amplifier.RESERVE_ID()}), address(amplifier)
+    );
   }
 }

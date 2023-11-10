@@ -26,20 +26,16 @@ interface IOfferLogic is IMaker {
   ///@dev admin may use this function to revoke specific approvals of `this` that are set after a call to `activate`.
   function approve(IERC20 token, address spender, uint amount) external returns (bool);
 
+  ///@notice Performs approval that are necessary to trade a given asset
+  ///@param token the traded asset
+  ///@dev anyone can call since only max approval can be set
+  function activate(IERC20 token) external;
+
   ///@notice computes the amount of native tokens that can be redeemed when deprovisioning a given offer.
   ///@param olKey the offer list key.
   ///@param offerId the identifier of the offer in the offer list
   ///@return provision the amount of native tokens that can be redeemed when deprovisioning the offer
   function provisionOf(OLKey memory olKey, uint offerId) external view returns (uint provision);
-
-  ///@notice verifies that this contract's current state is ready to be used execute a given list of routing orders.
-  ///@param routingOrders the routingOrders one wishes to check
-  ///@dev throws with a reason if something (e.g. an approval) is missing.
-  function checkList(RL.RoutingOrder[] calldata routingOrders) external view;
-
-  /// @notice performs the required approvals so as to allow `this` to interact with Mangrove on a set of assets.
-  /// @param activateOrders routing orders containing at least the token to activate and the amount.
-  function activate(RL.RoutingOrder[] calldata activateOrders) external;
 
   ///@notice withdraws native tokens from `this` balance on Mangrove.
   ///@param amount the amount of WEI one wishes to withdraw.
@@ -66,11 +62,6 @@ interface IOfferLogic is IMaker {
     uint fund;
     bool noRevert;
   }
-
-  /// @notice Contract's router getter.
-  /// @return the router.
-  /// @dev if contract has a no router, function returns `NO_ROUTER`.
-  function router() external view returns (AbstractRouter);
 
   /// @notice Contract's Mangrove getter
   /// @return the Mangrove contract.

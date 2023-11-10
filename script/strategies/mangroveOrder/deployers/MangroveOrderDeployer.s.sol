@@ -44,7 +44,7 @@ contract MangroveOrderDeployer is Deployer {
     }
 
     fork.set("MangroveOrder", address(mgvOrder));
-    fork.set("MangroveOrder-Router", address(mgvOrder.router()));
+    fork.set("MangroveOrder-Router", address(mgvOrder.ROUTER_IMPLEMENTATION()));
     smokeTest(mgvOrder, mgv);
   }
 

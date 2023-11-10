@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IForwarder} from "@mgv-strats/src/strategies/interfaces/IForwarder.sol";
 import {RL, AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {
@@ -115,21 +115,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     return AbstractRouter(computeProxyAddress(owner));
   }
 
-  ///@inheritdoc MangroveOffer
-  ///@notice additional checklist in case a router is used
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual override {
-    super.__checkList__(routingOrder);
-    require((computeProxyAddress(routingOrder.reserveId)).code.length != 0, "Forwarder/OwnerMustDeployRouter");
-    router(routingOrder.reserveId).checkList(routingOrder);
-  }
-
   ///@notice approves a proxy for transfering funds from this contract
-  function approveProxy(RL.RoutingOrder memory pushOrder) internal {
-    super.__activate__(pushOrder);
-    require(
-      approve(pushOrder.token, computeProxyAddress(pushOrder.reserveId), pushOrder.amount),
-      "Forwarder/ProxyApprovaFailed"
-    );
+  function _approveProxy(IERC20 token, SmartRouter proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "Forwarder/ProxyApprovaFailed");
   }
 
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.
@@ -169,7 +157,10 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
   function _newOffer(OfferArgs memory args, address owner) internal returns (uint offerId, bytes32 status) {
     // convention for default gasreq value
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
-    deployIfNeeded(owner);
+
+    // todo remove from here and push to ForwarderTester
+    deployRouterIfNeeded(owner);
+
     // the call below cannot revert for lack of provision (by design)
     // it may still revert if `args.fund` yields a gasprice that is too high (Mangrove's gasprice must hold on 26 bits)
     // or if `args.gives` is below density (dust)
@@ -284,6 +275,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     bytes32 olKeyHash = order.olKey.hash();
     address owner = ownerOf(olKeyHash, order.offerId);
     SmartRouter proxy = SmartRouter(computeProxyAddress(owner));
+    // exact transfer approval in order to be able to push funds to the router
+    _approveProxy(IERC20(order.olKey.inbound_tkn), proxy, amount);
+
     RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
       reserveId: ownerOf(olKeyHash, order.offerId),
       amount: amount,
@@ -291,14 +285,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
       offerId: order.offerId,
       token: IERC20(order.olKey.inbound_tkn)
     });
-    // exact transfer approval in order to be able to push funds to the router
-    approveProxy(pushOrder);
     return amount - proxy.push(pushOrder);
   }
 
   ///@dev get outbound tokens from offer owner reserve
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
+    uint missing = super.__get__(amount, order);
+
     bytes32 olKeyHash = order.olKey.hash();
     address owner = ownerOf(olKeyHash, order.offerId);
     SmartRouter proxy = SmartRouter(computeProxyAddress(owner));
@@ -308,17 +302,17 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     // note we assume here that:
     // 1. proxy has been deployed during the _newOffer call that posted this offer
     // 2. offer owner has approved proxy for outbound token transfer (this may be done prior to proxy deployment thanks to deterministic address of the proxy)
-    return amount
+    return missing
       - proxy.pull(
         RL.RoutingOrder({
           reserveId: ownerOf(olKeyHash, order.offerId),
-          amount: amount,
+          amount: missing,
           olKeyHash: olKeyHash,
           token: IERC20(order.olKey.outbound_tkn),
           offerId: order.offerId
         }),
         true
-      ); // this will make trade fail if `amount != pulled` and this `get` is not nested in another `get` in descendant of this class.
+      ); // this will make trade fail if `missing > pulled` and this `get` is not nested in another `get` in descendant of this class.
   }
 
   ///@dev if offer failed to execute, Mangrove retracts and deprovisions it after the posthook call.

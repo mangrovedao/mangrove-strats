@@ -20,25 +20,22 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 contract ActivateMangroveOrder is Deployer {
   function run() public {
     string[] memory tkns = vm.envString("TKNS", ",");
-    RL.RoutingOrder[] memory activateOrders = new RL.RoutingOrder[](tkns.length);
+    IERC20[] memory tokens = new IERC20[](tkns.length);
     for (uint i = 0; i < tkns.length; ++i) {
-      activateOrders[i] = RL.createOrder(IERC20(fork.get(tkns[i])));
+      tokens[i] = IERC20(fork.get(tkns[i]));
     }
 
-    innerRun({
-      mgvOrder: MangroveOrder(envAddressOrName("MANGROVE_ORDER", "MangroveOrder")),
-      activateOrders: activateOrders
-    });
+    innerRun({mgvOrder: MangroveOrder(envAddressOrName("MANGROVE_ORDER", "MangroveOrder")), tokens: tokens});
   }
 
-  function innerRun(MangroveOrder mgvOrder, RL.RoutingOrder[] memory activateOrders) public {
+  function innerRun(MangroveOrder mgvOrder, IERC20[] memory tokens) public {
     console.log("MangroveOrder (%s) is acting of Mangrove (%s)", address(mgvOrder), address(mgvOrder.MGV()));
     console.log("Activating tokens...");
-    for (uint i = 0; i < activateOrders.length; ++i) {
-      console.log("%s (%s)", activateOrders[i].token.symbol(), address(activateOrders[i].token));
+    for (uint i = 0; i < tokens.length; ++i) {
+      console.log("%s (%s)", tokens[i].symbol(), address(tokens[i]));
+      broadcast();
+      mgvOrder.activate(tokens[i]);
     }
-    broadcast();
-    mgvOrder.activate(activateOrders);
     console.log("done!");
   }
 }

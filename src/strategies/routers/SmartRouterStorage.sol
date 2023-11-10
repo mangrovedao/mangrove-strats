@@ -7,9 +7,9 @@ import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 ///@title Mangrove Smart Router storage (randomized access)
 library SmartRouterStorage {
   bytes32 private constant OFFSET = keccak256("MangroveStrats.SmartRouterStorage.Layout");
-  ///@notice Storage layout
 
-  ///@notice routeLogics logics approved by admin in order to pull/push liquidity in an offer specific manner
+  ///@notice Storage layout
+  ///@param routeLogics logics approved by admin in order to pull/push liquidity in an offer specific manner
   struct Layout {
     mapping(IERC20 token => mapping(bytes32 olKeyHash => mapping(uint offerId => AbstractRouter logic))) routeLogics;
   }
