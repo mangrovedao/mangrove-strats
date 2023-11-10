@@ -113,18 +113,22 @@ contract KandelSeederDeployer is Deployer {
       require(kandel.RESERVE_ID() == address(kandel), "Incorrect id");
     } else {
       require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
+      kandel.router().checkList(
+        RL.createOrder({
+          token: IERC20(olKeyBaseQuote.outbound_tkn),
+          amount: type(uint).max,
+          reserveId: kandel.RESERVE_ID()
+        }),
+        address(kandel)
+      );
+      kandel.router().checkList(
+        RL.createOrder({
+          token: IERC20(olKeyBaseQuote.inbound_tkn),
+          amount: type(uint).max,
+          reserveId: kandel.RESERVE_ID()
+        }),
+        address(kandel)
+      );
     }
-    kandel.router().checkList(
-      RL.createOrder({
-        token: IERC20(olKeyBaseQuote.outbound_tkn),
-        amount: type(uint).max,
-        reserveId: kandel.RESERVE_ID()
-      }),
-      address(kandel)
-    );
-    kandel.router().checkList(
-      RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), amount: type(uint).max, reserveId: kandel.RESERVE_ID()}),
-      address(kandel)
-    );
   }
 }
