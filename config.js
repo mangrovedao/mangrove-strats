@@ -58,3 +58,12 @@ exports.coreDeploymentVersionRangePattern = `^${mangroveCoreVersion}`;
 // or the latest of either (undefined) versions of the core contracts.
 // Default is the latest regardless of their release status.
 exports.coreDeploymentVersionReleasedFilter = undefined;
+
+//////////////////////////////////
+// context-addresses configuration
+
+// Whether to fetch deployments from context-addresses.
+// Setting this to false allows manually specifying the addresses to use
+// by writing them to the JSON files in the addresses/context directory.
+// Default is true.
+exports.copyContextAddresses = true;
