@@ -269,7 +269,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
   /// However one would then need to pay attention to the following fact:
   /// if `order.olKey.inbound_tkn` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.olKey.inbound_tkn` balance of this contract would then contain
   /// the sum of all payments of offers managed by `this` that are in a better position in the offer list (because posthook is called in the call stack order).
-  /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound_tkn` and `order.olKey.outbound_tkn`) at the end of `makerExecute`.
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     bytes32 olKeyHash = order.olKey.hash();
