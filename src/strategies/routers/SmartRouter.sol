@@ -16,8 +16,8 @@ contract SmartRouter is SimpleRouter {
 
   ///@notice This function is used to set the routing strategy for a given offer.
   ///@param token the asset for which the routing logic should be set.
-  ///@param olKeyHash market identifier
-  ///@param offerId offer identifier
+  ///@param olKeyHash market identifier. Use bytes32(0) to use a custom logic outside a market order
+  ///@param offerId offer identifier. Use 0 to use a custom logic outside a market order.
   ///@param logic the loggic to use for the given offer.
   function setLogic(IERC20 token, bytes32 olKeyHash, uint offerId, AbstractRouter logic) external onlyAdmin {
     SmartRouterStorage.getStorage().routeLogics[token][olKeyHash][offerId] = logic;

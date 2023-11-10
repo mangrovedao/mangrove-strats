@@ -150,14 +150,10 @@ abstract contract Direct is MangroveOffer {
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
       routingOrders[0].reserveId = RESERVE_ID;
       routingOrders[0].amount = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
-      // just in time approval
-      TransferLib.approveToken(IERC20(order.olKey.outbound_tkn), address(router_), routingOrders[0].amount);
 
       routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
       routingOrders[1].reserveId = RESERVE_ID;
       routingOrders[1].amount = IERC20(order.olKey.inbound_tkn).balanceOf(address(this));
-      // just in time approval
-      TransferLib.approveToken(IERC20(order.olKey.inbound_tkn), address(router_), routingOrders[1].amount);
 
       router_.flush(routingOrders);
     }
