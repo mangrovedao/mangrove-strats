@@ -28,11 +28,13 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
-  uint GASREQ = 200_000; // simple resting order gasreq cf discussion above
+  uint GASREQ = 220_000; // simple resting order gasreq cf discussion above
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
     mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
+    mangroveOrder.activate(base);
+    mangroveOrder.activate(quote);
 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver
