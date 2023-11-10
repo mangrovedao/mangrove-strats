@@ -46,8 +46,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   /// @inheritdoc AbstractRouter
   /// @dev will only transfer up to the maximum defined credit line
   /// * if no debt, will transfer the full amount anyway
-  /// TODO check strict boolean and transfer more than amount only if true
-  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
+  function __pull__(RL.RoutingOrder memory routingOrder, bool) internal virtual override returns (uint) {
     Memoizer memory m;
 
     // gets account info

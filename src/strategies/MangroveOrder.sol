@@ -116,7 +116,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // * User balances: (NAT_USER -`msg.value`, OUT_USER, IN_USER)
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
-    // Pulling funds from `msg.sender`'s reserve
+    // Pulling funds from `msg.sender`'s routing policy
     // `routingOrder.amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
     RL.RoutingOrder memory pullOrder = RL.createOrder({
       amount: tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume,
