@@ -28,7 +28,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {}
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {
+    setAdmin(deployer);
+  }
 
   ///@inheritdoc IOrderLogic
   ///@dev We also allow Mangrove to call this so that it can part of an offer logic.
