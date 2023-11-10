@@ -98,19 +98,4 @@ contract SmartRouter is SimpleRouter {
       super.__checkList__(routingOrder);
     }
   }
-
-  ///@inheritdoc AbstractRouter
-  function __activate__(RL.RoutingOrder calldata routingOrder) internal override {
-    AbstractRouter logic =
-      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
-    if (address(logic) != address(0)) {
-      (bool success, bytes memory retdata) =
-        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.activate.selector, routingOrder));
-      if (!success) {
-        SmartRouterStorage.revertWithData(retdata);
-      }
-    } else {
-      super.__activate__(routingOrder);
-    }
-  }
 }

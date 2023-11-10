@@ -184,7 +184,9 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@param noRevert does not revert if supplies throws
   ///@return reason for revert from Aave.
   function flushBuffer(IERC20 token, bool noRevert) public boundOrAdmin returns (bytes32 reason) {
-    return _supply(token, token.balanceOf(address(this)), address(this), noRevert);
+    uint amount = token.balanceOf(address(this));
+    _approveLender(token, amount);
+    return _supply(token, amount, address(this), noRevert);
   }
 
   ///@notice pushes each given token from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
@@ -299,21 +301,6 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
     // we check that `token` is listed on AAVE
     require(checkAsset(routingOrder.token), "AavePooledRouter/tokenNotLendableOnAave");
-    // checking that allowance is either "large enough" or the amount required.
-    uint allowance = routingOrder.token.allowance(address(this), address(POOL));
-    require( // required to supply or withdraw token on pool
-    allowance >= type(uint96).max || allowance >= routingOrder.amount, "AavePooledRouter/insufficientPoolApproval");
-  }
-
-  ///@inheritdoc AbstractRouter
-  function __activate__(RL.RoutingOrder calldata routingOrder) internal virtual override {
-    _approveLender(routingOrder.token, routingOrder.amount);
-  }
-
-  ///@notice revokes pool approval for a certain asset. This router will no longer be able to deposit on AAVE Pool
-  ///@param token the address of the asset whose approval must be revoked.
-  function revokeLenderApproval(IERC20 token) external onlyCaller(aaveManager) {
-    _approveLender(token, 0);
   }
 
   ///@notice prevents AAVE from using a certain asset as collateral for lending

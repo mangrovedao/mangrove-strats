@@ -2,9 +2,11 @@
 pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {Forwarder, MangroveOffer} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {
+  Forwarder, MangroveOffer, TransferLib
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
-import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -26,15 +28,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter()) {
-    // adding `this` contract to authorized makers of the router before setting admin rights of the router to deployer
-    router().bind(address(this));
-    router().setAdmin(deployer);
-    // if `msg.sender` is not `deployer`, setting admin of `this` to `deployer`.
-    // `deployer` will thus be able to call `activate` on `this` to enable trading on particular assets.
-    if (msg.sender != deployer) {
-      setAdmin(deployer);
-    }
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {
+    setAdmin(deployer);
   }
 
   ///@inheritdoc IOrderLogic
@@ -128,7 +123,8 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       reserveId: msg.sender,
       token: IERC20(tko.olKey.inbound_tkn)
     });
-    require(router().pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
+    (SmartRouter userRouter,) = deployRouterIfNeeded(msg.sender);
+    require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -149,8 +145,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     if (res.takerGot > 0) {
+      TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       require(
-        router().push(
+        userRouter.push(
           RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, reserveId: msg.sender})
         ) == res.takerGot,
         "mgvOrder/pushFailed"
@@ -158,8 +155,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     }
     uint inboundLeft = pullOrder.amount - res.takerGave;
     if (inboundLeft > 0) {
+      TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
       require(
-        router().push(
+        userRouter.push(
           RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, reserveId: msg.sender})
         ) == inboundLeft,
         "mgvOrder/pushFailed"

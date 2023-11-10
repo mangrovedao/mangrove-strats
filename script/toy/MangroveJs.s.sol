@@ -17,6 +17,7 @@ import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
+import {console} from "@mgv/forge-std/console.sol";
 /* 
 This script prepares a local server for testing by mangrove.js.
 

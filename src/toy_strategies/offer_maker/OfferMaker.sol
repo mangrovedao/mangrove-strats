@@ -7,10 +7,9 @@ import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
-contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
+contract OfferMaker is ILiquidityProvider, Direct {
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
   constructor(IMangrove mgv, AbstractRouter router_, address deployer, address owner) Direct(mgv, router_, owner) {
@@ -77,8 +76,8 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 
-  function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
-    AbstractRouter router_ = router();
+  function tokenBalance(IERC20 token, address reserveId) external view returns (uint) {
+    AbstractRouter router_ = router;
     return
       router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(RL.createOrder(token, reserveId));
   }

@@ -16,10 +16,9 @@ contract Kandel is GeometricKandel {
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
     GeometricKandel(mgv, olKeyBaseQuote, reserveId)
   {
-    // since we won't add a router later, we can activate the strat now.  We call __activate__ instead of activate just to save gas.
-    __activate__(RL.createOrder(BASE));
-    __activate__(RL.createOrder(QUOTE));
     setGasreq(gasreq);
+    activate(BASE);
+    activate(QUOTE);
   }
 
   ///@inheritdoc MangroveOffer

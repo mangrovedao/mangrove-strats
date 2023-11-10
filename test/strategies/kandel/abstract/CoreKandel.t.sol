@@ -1337,7 +1337,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.RESERVE_ID();
     kdl.TICK_SPACING();
     kdl.admin();
-    kdl.checkList(new RL.RoutingOrder[](0));
     kdl.depositFunds(0, 0);
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
@@ -1350,6 +1349,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.router();
     kdl.baseQuoteTickOffset();
     kdl.createDistribution(0, 0, Tick.wrap(0), 0, 0, 0, 0, 0, 0);
+    kdl.activate(IERC20(address(0)));
 
     CoreKandel.Distribution memory dist;
     GeometricKandel.Params memory params = getParams(kdl);
@@ -1358,11 +1358,10 @@ abstract contract CoreKandelTest is KandelTest {
     args.callee = $(kdl);
     args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
     args.revertMessage = "AccessControlled/Invalid";
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](0);
+
     // Only admin
     args.allowed = dynamic([address(maker)]);
 
-    checkAuth(args, abi.encodeCall(kdl.activate, routingOrders));
     checkAuth(args, abi.encodeCall(kdl.approve, (base, taker, 42)));
     checkAuth(args, abi.encodeCall(kdl.setAdmin, (maker)));
     checkAuth(args, abi.encodeCall(kdl.retractAndWithdraw, (0, 0, 0, 0, 0, maker)));

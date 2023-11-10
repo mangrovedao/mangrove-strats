@@ -19,10 +19,6 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
-  ///@notice constant for no router
-  AbstractRouter public constant NO_ROUTER = AbstractRouter(address(0));
-  ///@notice The router to use for this strategy.
-  AbstractRouter private __router;
 
   ///@notice The offer was successfully reposted.
   bytes32 internal constant REPOST_SUCCESS = "offer/updated";
@@ -49,11 +45,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   constructor(IMangrove mgv) AccessControlled(msg.sender) {
     MGV = mgv;
     emit Mgv(mgv);
-  }
-
-  /// @inheritdoc IOfferLogic
-  function router() public view override returns (AbstractRouter) {
-    return __router;
   }
 
   ///*****************************
@@ -121,63 +112,9 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function setRouter(AbstractRouter router_) public override onlyAdmin {
-    __router = router_;
-    emit SetRouter(router_);
-  }
-
-  /// @inheritdoc IOfferLogic
   function approve(IERC20 token, address spender, uint amount) public override onlyAdmin returns (bool) {
     require(TransferLib.approveToken(token, spender, amount), "mgvOffer/approve/failed");
     return true;
-  }
-
-  /// @inheritdoc IOfferLogic
-  function activate(RL.RoutingOrder[] calldata activateOrders) external override onlyAdmin {
-    for (uint i = 0; i < activateOrders.length; ++i) {
-      __activate__(activateOrders[i]);
-    }
-  }
-
-  ///@notice verifies that Mangrove is allowed to pull tokens from this contract.
-  ///@inheritdoc IOfferLogic
-  function checkList(RL.RoutingOrder[] calldata routingOrders) external view override {
-    for (uint i = 0; i < routingOrders.length; ++i) {
-      __checkList__(routingOrders[i]);
-    }
-  }
-
-  ///@notice override conservatively to define strat-specific additional activation steps.
-  ///@param activateOrder the routing order with the necessary details for the activation of the strat. Must contain at least 'token' and 'amount'.
-  ///@custom:hook overrides of this hook should be conservative and call `super.__activate__(token)`
-  function __activate__(RL.RoutingOrder memory activateOrder) internal virtual {
-    AbstractRouter router_ = router();
-    // all strat require `this` to approve Mangrove for pulling `token` at the end of `makerExecute`
-    require(
-      TransferLib.approveToken(activateOrder.token, address(MGV), activateOrder.amount), "mgvOffer/approveMangrove/Fail"
-    );
-    if (router_ != NO_ROUTER) {
-      // allowing router to pull `token` from this contract (for the `push` function of the router)
-      require(
-        TransferLib.approveToken(activateOrder.token, address(router_), activateOrder.amount),
-        "mgvOffer/approveRouterFail"
-      );
-      // letting router performs additional necessary approvals (if any)
-      // this will only work if `this` is an authorized maker of the router (i.e. `router.bind(address(this))` has been called by router's admin).
-      router_.activate(activateOrder);
-    }
-  }
-
-  ///@notice verifies that Mangrove is allowed to pull tokens from this contract and other strat specific verifications.
-  ///@param routingOrder the routing order to be executed
-  ///@custom:hook overrides of this hook should be conservative and call `super.__checkList__(routingOrder)`
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual {
-    uint allowance = routingOrder.token.allowance(address(this), address(MGV));
-    require(allowance >= type(uint96).max || allowance >= routingOrder.amount, "mgvOffer/LogicMustApproveMangrove");
-    AbstractRouter router_ = router();
-    if (router_ != NO_ROUTER) {
-      router_.checkList(routingOrder);
-    }
   }
 
   /// @inheritdoc IOfferLogic
@@ -206,7 +143,10 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@return missingGet (<=`amount`), which is the amount of `outbound` tokens still need to be fetched at the end of this function
   ///@dev if the last nested call to `__get__` returns a non zero value, trade execution will revert
   ///@custom:hook overrides of this hook should be conservative and call `super.__get__(missing, order)`
-  function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual returns (uint missingGet);
+  function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual returns (uint missingGet) {
+    uint amount_ = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
+    return (amount_ >= amount ? 0 : amount - amount_);
+  }
 
   /// @notice Hook that implements a last look check during Taker Order's execution.
   /// @param order is a recall of the taker order that is at the origin of the current trade.
@@ -216,6 +156,11 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   function __lastLook__(MgvLib.SingleOrder calldata order) internal virtual returns (bytes32 data) {
     order; //shh
     data = bytes32(0);
+  }
+
+  /// @inheritdoc IOfferLogic
+  function activate(IERC20 token) public virtual override {
+    require(TransferLib.approveToken(token, address(MGV), type(uint).max), "MgvOffer/ActivationFailed");
   }
 
   ///@notice Post-hook that implements fallback behavior when Taker Order's execution failed unexpectedly.

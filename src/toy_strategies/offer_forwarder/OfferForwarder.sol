@@ -3,19 +3,12 @@ pragma solidity ^0.8.10;
 
 import {Forwarder, IMangrove, IERC20} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
-import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {SmartRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter()) {
-    AbstractRouter router_ = router();
-    router_.bind(address(this));
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-      router_.setAdmin(deployer);
-    }
-  }
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {}
 
   /// @inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)

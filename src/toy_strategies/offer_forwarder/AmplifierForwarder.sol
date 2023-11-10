@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {MgvLib, Offer} from "@mgv/src/core/MgvLib.sol";
 import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
 
@@ -28,9 +28,8 @@ contract AmplifierForwarder is Forwarder {
     IERC20 stable2,
     uint tickSpacing1,
     uint tickSpacing2,
-    address deployer,
     uint gasreq
-  ) Forwarder(mgv, new SimpleRouter()) {
+  ) Forwarder(mgv, new SmartRouter()) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     TICK_SPACING1 = tickSpacing1;
@@ -38,13 +37,9 @@ contract AmplifierForwarder is Forwarder {
     STABLE2 = stable2;
     BASE = base;
     GASREQ = gasreq;
-
-    AbstractRouter router_ = router();
-    router_.bind(address(this));
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-      router_.setAdmin(deployer);
-    }
+    activate(base);
+    activate(stable1);
+    activate(stable2);
   }
 
   /**

@@ -47,7 +47,7 @@ contract AaveKandel is GeometricKandel {
   ///@notice returns the router as an Aave router
   ///@return The aave router.
   function pooledRouter() private view returns (AavePooledRouter) {
-    return AavePooledRouter(address(router()));
+    return AavePooledRouter(address(router));
   }
 
   ///@notice Sets the AaveRouter as router and activates router for base and quote
@@ -55,10 +55,9 @@ contract AaveKandel is GeometricKandel {
   ///@param gasreq the gas required to execute an offer of this Kandel strat
   function initialize(AavePooledRouter router_, uint gasreq) external onlyAdmin {
     setRouter(router_);
-    // calls below will fail if router's admin has not bound router to `this`. We call __activate__ instead of activate just to save gas.
-    __activate__(RL.createOrder({token: BASE}));
-    __activate__(RL.createOrder({token: QUOTE}));
     setGasreq(gasreq);
+    activate(BASE);
+    activate(QUOTE);
   }
 
   ///@notice deposits funds to be available for being offered. Will increase `pending`.
@@ -99,7 +98,7 @@ contract AaveKandel is GeometricKandel {
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
     bytes32 makerData = super.__lastLook__(order);
     return
-      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router())) < order.takerWants) ? IS_FIRST_PULLER : makerData;
+      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router)) < order.takerWants) ? IS_FIRST_PULLER : makerData;
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push and supply on AAVE with a single call when offer logic is the first to pull funds from AAVE

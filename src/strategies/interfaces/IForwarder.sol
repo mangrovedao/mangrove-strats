@@ -1,6 +1,8 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity >=0.8.10;
 
+import {RL, AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+
 ///@title IForwarder
 ///@notice Interface for contracts that manage liquidity on Mangrove on behalf of multiple offer makers
 interface IForwarder {
@@ -27,4 +29,6 @@ interface IForwarder {
   /// @return owner the offer maker that can manage the offer.
   /// @dev `ownerOf(in,out,id)` is equivalent to `offerOwners(in, out, [id])` but more gas efficient.
   function ownerOf(bytes32 olKeyHash, uint offerId) external view returns (address owner);
+
+  function router(address) external view returns (AbstractRouter);
 }
