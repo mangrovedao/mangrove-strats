@@ -1,19 +1,21 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {SimpleRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {AbstractRouter, SimpleRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {OfferLogicTest} from "@mgv-strats/test/strategies/unit/OfferLogic.t.sol";
 import {
-  ForwarderTester,
-  ITesterContract as ITester
-} from "@mgv-strats/src/toy_strategies/offer_forwarder/ForwarderTester.sol";
-import {IForwarder, IMangrove, IERC20} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+  IForwarder,
+  IMangrove,
+  IERC20,
+  MangroveOffer
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {ForwarderTester, ITesterContract} from "@mgv-strats/src/toy_strategies/offer_forwarder/ForwarderTester.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {TestSender} from "@mgv/test/lib/agents/TestSender.sol";
 import "@mgv/lib/Debug.sol";
 
 contract OfferForwarderTest is OfferLogicTest {
-  IForwarder forwarder;
+  ForwarderTester forwarder;
 
   function setUp() public virtual override {
     deployer = freshAddress("deployer");
@@ -32,15 +34,22 @@ contract OfferForwarderTest is OfferLogicTest {
       mgv: IMangrove($(mgv)),
       deployer: deployer
     });
-    gasreq = 150_000;
+    gasreq = 160_000;
     owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);
 
-    makerContract = ITester(address(forwarder)); // to use for all non `IForwarder` specific tests.
-    // reserve (which is maker here) approves contract's router
+    makerContract = ITesterContract(address(forwarder)); // to use for all non `IForwarder` specific tests.
+    // for all tests that check router behavior w/o posting new offers
+    forwarder.deployRouter(owner);
+
+    vm.prank(deployer);
+    forwarder.approve(usdc, $(mgv), type(uint).max);
+    vm.prank(deployer);
+    forwarder.approve(weth, $(mgv), type(uint).max);
+
     vm.startPrank(owner);
-    usdc.approve(address(makerContract.router()), type(uint).max);
-    weth.approve(address(makerContract.router()), type(uint).max);
+    usdc.approve(address(forwarder.router(owner)), type(uint).max);
+    weth.approve(address(forwarder.router(owner)), type(uint).max);
     vm.stopPrank();
   }
 
@@ -49,13 +58,31 @@ contract OfferForwarderTest is OfferLogicTest {
     deal($(usdc), owner, cash(usdc, 2000));
   }
 
-  function test_checkList_fails_if_caller_has_not_approved_router() public {
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(weth, 1, freshAddress());
-    routingOrders[1] = RL.createOrder(usdc, 1, freshAddress());
+  event MakerBind(address indexed maker);
+  event MakerUnbind(address indexed maker);
 
+  function test_admin_can_unbind() public {
+    AbstractRouter router = forwarder.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
+    vm.prank(owner);
+    router.unbind(address(makerContract));
+  }
+
+  function test_maker_can_unbind() public {
+    AbstractRouter router = forwarder.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
+    vm.prank(address(makerContract));
+    router.unbind();
+  }
+
+  function test_checkList_fails_if_caller_has_not_approved_router() public {
+    AbstractRouter router = forwarder.router(owner);
     vm.expectRevert("SimpleRouter/InsufficientlyApproved");
-    makerContract.checkList(routingOrders);
+    router.checkList(RL.createOrder(weth, 1, freshAddress()), address(makerContract));
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {
@@ -265,7 +292,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gives: 1 ether,
       gasreq: gasreq
     });
-    usdc.approve($(makerContract.router()), 0);
+    usdc.approve($(forwarder.router(owner)), 0);
     vm.stopPrank();
 
     order.olKey = olKey;

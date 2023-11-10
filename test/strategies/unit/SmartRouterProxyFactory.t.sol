@@ -19,7 +19,7 @@ contract SmartRouterProxyFactoryTest is StratTest {
 
   function test_computeProxyAddress() public {
     address proxy = proxyFactory.computeProxyAddress(owner);
-    SmartRouter proxy_ = proxyFactory.deploy(owner);
+    SmartRouter proxy_ = proxyFactory.deployRouter(owner);
     assertEq(proxy, address(proxy_), "Computed address is incorrect");
   }
 
@@ -29,9 +29,9 @@ contract SmartRouterProxyFactoryTest is StratTest {
     address proxy = proxyFactory.computeProxyAddress(owner);
     expectFrom(address(proxy));
     emit SetAdmin(owner);
-    (, bool created) = proxyFactory.deployIfNeeded(owner);
+    (, bool created) = proxyFactory.deployRouterIfNeeded(owner);
     assertTrue(created, "Proxy was not created");
-    (, created) = proxyFactory.deployIfNeeded(owner);
+    (, created) = proxyFactory.deployRouterIfNeeded(owner);
     assertTrue(!created, "Proxy should not be deployed again");
   }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title Interface for testing Forwarder and Direct maker contracts with reserve setters.
 interface ITesterContract is ILiquidityProvider {

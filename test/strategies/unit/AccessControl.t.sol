@@ -33,12 +33,8 @@ contract AccessControlTest is StratTest {
       router_: AbstractRouter(address(0)),
       deployer: admin
     });
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(weth);
-    routingOrders[1] = RL.createOrder(usdc);
 
     vm.startPrank(admin);
-    makerContract.activate(routingOrders);
     weth.approve(address(makerContract), type(uint).max);
     usdc.approve(address(makerContract), type(uint).max);
     vm.stopPrank();

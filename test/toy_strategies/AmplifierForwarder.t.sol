@@ -1,14 +1,12 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import "@mgv-strats/test/lib/StratTest.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import "@mgv/test/lib/forks/Polygon.sol";
 import "@mgv-strats/src/toy_strategies/offer_forwarder/AmplifierForwarder.sol";
 import {Local} from "@mgv/src/core/MgvLib.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-
-//import {console} from "@mgv/forge-std/console.sol";
 
 contract AmplifierForwarderTest is StratTest {
   IERC20 weth;
@@ -68,31 +66,13 @@ contract AmplifierForwarderTest is StratTest {
       stable2: dai,
       tickSpacing1: olKey.tickSpacing,
       tickSpacing2: olKeyWethDai.tickSpacing,
-      deployer: $(this),
       gasreq: 450000
       });
+    address router = address(strat.router(address(this)));
 
-    // allow (the router to) pull of WETH from Amplifier (i.e., strat) to Mangrove
-    strat.approve(weth, $(mgv), type(uint).max);
-
-    // The test address need to approve the router to use the base token
-    weth.approve($(strat.router()), type(uint).max);
-
-    // NOTE:
-    // For this test, we're locking base, ie WETH, in the vault of the contract
-    // - so Amplifier is not really used for amplified liquidity, in this example.
-    // However, to employ actual amplified liquidity it is simply a matter of
-    // setting up a more refined router.
-    // check that we actually need to activate for the two 'wants' tokens
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(dai, type(uint).max, address(this));
-    routingOrders[1] = RL.createOrder(usdc, type(uint).max, address(this));
-
-    vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    strat.checkList(routingOrders);
-
-    // and now activate them
-    strat.activate(routingOrders);
+    weth.approve(router, type(uint).max);
+    //  usdc.approve(router, type(uint).max);
+    //  dai.approve(router, type(uint).max);
   }
 
   function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC)
@@ -153,7 +133,7 @@ contract AmplifierForwarderTest is StratTest {
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
 
     vm.startPrank(maker);
-    weth.approve($(strat.router()), type(uint).max);
+    weth.approve($(strat.router(maker)), type(uint).max);
     offerPair memory makerOffer;
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
@@ -213,7 +193,7 @@ contract AmplifierForwarderTest is StratTest {
 
     // post offers with Amplifier liquidity with test account
     vm.startPrank(maker);
-    weth.approve($(strat.router()), type(uint).max);
+    weth.approve($(strat.router(maker)), type(uint).max);
     offerPair memory makerOffer;
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
@@ -335,7 +315,7 @@ contract AmplifierForwarderTest is StratTest {
 
     // post offers with Amplifier liquidity with test account
     vm.startPrank(maker);
-    weth.approve($(strat.router()), type(uint).max);
+    weth.approve($(strat.router(maker)), type(uint).max);
     offerPair memory makerOffer;
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);
@@ -385,7 +365,7 @@ contract AmplifierForwarderTest is StratTest {
 
     // post offers with Amplifier liquidity with test account
     vm.startPrank(maker);
-    weth.approve($(strat.router()), type(uint).max);
+    weth.approve($(strat.router(maker)), type(uint).max);
     offerPair memory makerOffer;
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);

@@ -110,10 +110,8 @@ contract KandelSeederTest is StratTest {
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), kdl.admin(), "Incorrect owner");
 
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(base, type(uint).max, address(this));
-    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(this));
-    kdl.checkList(routingOrders);
+    kdl.router().checkList(RL.createOrder(base, type(uint).max, address(this)), address(kdl));
+    kdl.router().checkList(RL.createOrder(quote, type(uint).max, address(this)), address(kdl));
   }
 
   function test_maker_deploys_private_aaveKandel() public {
@@ -126,11 +124,9 @@ contract KandelSeederTest is StratTest {
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
 
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(base, type(uint).max, address(kdl));
-    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(kdl));
-
-    kdl.checkList(routingOrders);
+    // checking router is ready to be used
+    kdl.router().checkList(RL.createOrder(base, type(uint).max, address(kdl)), address(kdl));
+    kdl.router().checkList(RL.createOrder(quote, type(uint).max, address(kdl)), address(kdl));
   }
 
   function test_maker_deploys_kandel() public {
@@ -138,14 +134,9 @@ contract KandelSeederTest is StratTest {
     address maker = freshAddress("Maker");
     vm.prank(maker);
     kdl = sow(false);
+
     assertEq(address(kdl.router()), address(kdl.NO_ROUTER()), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(base, type(uint).max, address(this));
-    routingOrders[1] = RL.createOrder(quote, type(uint).max, address(this));
-
-    kdl.checkList(routingOrders);
   }
 }

@@ -44,6 +44,9 @@ contract Amplifier is Direct {
     // adding `this` to the allowed makers of `router_` to pull/push liquidity
     // Note: `admin` needs to approve `this.router()` for base token transfer
     router_.bind(address(this));
+    activate(stable1);
+    activate(stable2);
+    activate(base);
     router_.setAdmin(admin);
     setAdmin(admin);
   }

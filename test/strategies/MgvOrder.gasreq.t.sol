@@ -33,19 +33,14 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
     mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(base);
-    routingOrders[1] = RL.createOrder(quote);
-
-    mangroveOrder.activate(routingOrders);
 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver
     deal($(quote), $(this), 10 ether);
-    TransferLib.approveToken(quote, $(mangroveOrder.router()), 1.5 ether);
+    TransferLib.approveToken(quote, $(mangroveOrder.router(address(this))), 1.5 ether);
 
     deal($(base), $(this), 10 ether);
-    TransferLib.approveToken(base, $(mangroveOrder.router()), 1.5 ether);
+    TransferLib.approveToken(base, $(mangroveOrder.router(address(this))), 1.5 ether);
 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({

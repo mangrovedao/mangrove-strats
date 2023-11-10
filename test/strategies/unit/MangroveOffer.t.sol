@@ -17,7 +17,7 @@ contract MangroveOfferTest is StratTest {
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   event SetAdmin(address);
-  event SetRouter(address);
+  event SetRouter(address router);
 
   function setUp() public override {
     options.base.symbol = "WETH";
@@ -44,129 +44,6 @@ contract MangroveOfferTest is StratTest {
 
   function test_Admin_is_deployer() public {
     assertEq(makerContract.admin(), deployer, "Incorrect admin");
-  }
-
-  function testCannot_activate_if_not_admin() public {
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
-    routingOrders[1] = RL.createOrder(usdc, type(uint).max, address(this));
-
-    vm.expectRevert("AccessControlled/Invalid");
-    makerContract.activate(routingOrders);
-  }
-
-  function test_a_checkList_with_router() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    vm.stopPrank();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
-
-    vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    makerContract.checkList(routingOrders);
-  }
-
-  function test_b_checkList_router_not_bound() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    vm.stopPrank();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
-    vm.expectRevert("Router/callerIsNotBoundToRouter");
-    makerContract.checkList(routingOrders);
-  }
-
-  function test_c_checkList_router_not_approved() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    vm.stopPrank();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
-
-    vm.expectRevert("Router/NotApprovedByMakerContract");
-    makerContract.checkList(routingOrders);
-  }
-
-  function test_d_checkList_router_not_approved_by_reserve() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    // passes c
-    makerContract.approve(weth, address(makerContract.router()), type(uint).max);
-    vm.stopPrank();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, address(this));
-
-    vm.expectRevert("SimpleRouter/InsufficientlyApproved");
-    makerContract.checkList(routingOrders);
-  }
-
-  function test_e_checkList_completes() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    // passes c
-    makerContract.approve(weth, address(makerContract.router()), type(uint).max);
-    // passes d
-    weth.approve(address(makerContract.router()), type(uint).max);
-    vm.stopPrank();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, deployer);
-
-    makerContract.checkList(routingOrders);
-    // ^^ should not throw
-  }
-
-  function test_activate_completes_checkList_for_deployer() public {
-    // reserve approves router for weth transfer
-    address toApprove =
-      makerContract.router() == makerContract.NO_ROUTER() ? address(makerContract) : address(makerContract.router());
-
-    vm.startPrank(deployer);
-    weth.approve(toApprove, type(uint).max);
-    usdc.approve(toApprove, type(uint).max);
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max, deployer);
-    routingOrders[1] = RL.createOrder(usdc, type(uint).max, deployer);
-
-    makerContract.activate(routingOrders);
-    makerContract.checkList(routingOrders);
-    vm.stopPrank();
-  }
-
-  function test_activate_throws_if_approve_mangrove_fails() public {
-    // asks weth contract to return false to approve and transfer calls
-    weth.failSoftly(true);
-    vm.expectRevert("mgvOffer/approveMangrove/Fail");
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](1);
-    routingOrders[0] = RL.createOrder(weth, type(uint).max);
-
-    vm.prank(deployer);
-    makerContract.activate(routingOrders);
   }
 
   // makerExecute and makerPosthook guards

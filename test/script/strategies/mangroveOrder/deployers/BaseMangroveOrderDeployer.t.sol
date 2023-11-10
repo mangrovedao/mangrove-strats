@@ -33,6 +33,6 @@ abstract contract BaseMangroveOrderDeployerTest is Deployer, Test2 {
 
     assertEq(mgoe.admin(), chief);
     assertEq(address(mgoe.MGV()), mgv);
-    assertEq(address(mgoe.router()), mgvOrderRouter);
+    assertEq(address(mgoe.ROUTER_IMPLEMENTATION()), mgvOrderRouter);
   }
 }

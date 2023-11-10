@@ -23,10 +23,10 @@ library TickNegator {
   }
 }
 
-contract MangroveOrder_Test is StratTest {
+contract MgvOrder_Test is StratTest {
   using TickNegator for Tick;
 
-  uint constant GASREQ = 150_000; // see MangroveOrderGasreqBaseTest
+  uint constant GASREQ = 200_000; // see MangroveOrderGasreqBaseTest
   uint constant MID_PRICE = 2000e18;
   // to check ERC20 logging
 
@@ -97,18 +97,18 @@ contract MangroveOrder_Test is StratTest {
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(base);
-    routingOrders[1] = RL.createOrder(quote);
-    mgo.activate(routingOrders);
 
     // `this` contract will act as `MgvOrder` user
     deal($(base), $(this), 10 ether);
     deal($(quote), $(this), 10_000 ether);
 
+    // activating MangroveOrder for quote and base
+    mgo.approve(base, $(mgv), type(uint).max);
+    mgo.approve(quote, $(mgv), type(uint).max);
+
     // user approves `mgo` to pull quote or base when doing a market order
-    TransferLib.approveToken(quote, $(mgo.router()), 10_000 ether);
-    TransferLib.approveToken(base, $(mgo.router()), 10 ether);
+    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
+    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker(olKey, "sell-taker");
@@ -189,8 +189,8 @@ contract MangroveOrder_Test is StratTest {
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
     vm.startPrank(fresh_taker);
-    quote.approve(address(mgo.router()), type(uint).max);
-    base.approve(address(mgo.router()), type(uint).max);
+    quote.approve(address(mgo.router(fresh_taker)), type(uint).max);
+    base.approve(address(mgo.router(fresh_taker)), type(uint).max);
     vm.stopPrank();
   }
 
@@ -411,7 +411,7 @@ contract MangroveOrder_Test is StratTest {
     buyOrder.offerId = cold_buyResult.offerId;
     buyOrder.restingOrder = true;
 
-    address router = $(mgo.router());
+    address router = $(mgo.router($(sell_taker)));
     vm.prank($(sell_taker));
     TransferLib.approveToken(quote, router, takerGives(buyOrder) + makerGives(buyOrder));
     deal($(quote), $(sell_taker), takerGives(buyOrder) + makerGives(buyOrder));
@@ -686,7 +686,7 @@ contract MangroveOrder_Test is StratTest {
     sender.refuseNative();
 
     vm.startPrank($(sender));
-    TransferLib.approveToken(base, $(mgo.router()), type(uint).max);
+    TransferLib.approveToken(base, $(mgo.router($(sender))), type(uint).max);
     vm.stopPrank();
     // mocking MangroveOrder failure to post resting offer
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
@@ -727,7 +727,7 @@ contract MangroveOrder_Test is StratTest {
   function test_resting_buy_offer_can_be_fully_consumed_at_minimum_approval() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.restingOrder = true;
-    TransferLib.approveToken(quote, $(mgo.router()), takerGives(buyOrder) + makerGives(buyOrder));
+    TransferLib.approveToken(quote, $(mgo.router(address(this))), takerGives(buyOrder) + makerGives(buyOrder));
     IOrderLogic.TakerOrderResult memory buyResult = mgo.take{value: 0.1 ether}(buyOrder);
 
     assertTrue(buyResult.offerId > 0, "Resting order should succeed");
@@ -819,15 +819,17 @@ contract MangroveOrder_Test is StratTest {
   //////////////////////////////
 
   function test_mockup_routing_gas_cost() public {
-    SmartRouter router = mgo.deploy(address(this));
-    router.activate(RL.createOrder({token: quote, amount: type(uint).max, reserveId: address(this)}));
+    AbstractRouter router = mgo.router(address(this));
 
     // making quote balance hot to mock taker's transfer
     quote.transfer($(mgo), 1);
 
-    vm.prank($(mgo));
     uint g = gasleft();
+    vm.startPrank($(mgo));
+    quote.approve($(router), 1);
     uint pushed = router.push(RL.createOrder({token: quote, amount: 1, reserveId: address(this)}));
+    vm.stopPrank();
+
     uint push_cost = g - gasleft();
     assertEq(pushed, 1, "Push failed");
 

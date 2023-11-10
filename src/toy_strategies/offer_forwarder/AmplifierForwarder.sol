@@ -28,7 +28,6 @@ contract AmplifierForwarder is Forwarder {
     IERC20 stable2,
     uint tickSpacing1,
     uint tickSpacing2,
-    address deployer,
     uint gasreq
   ) Forwarder(mgv, new SmartRouter()) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
@@ -38,6 +37,9 @@ contract AmplifierForwarder is Forwarder {
     STABLE2 = stable2;
     BASE = base;
     GASREQ = gasreq;
+    activate(base);
+    activate(stable1);
+    activate(stable2);
   }
 
   /**

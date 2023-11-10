@@ -3,8 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
-import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
-import {ITesterContract as ITester} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
@@ -14,17 +13,18 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
-contract OfferLogicTest is StratTest {
+abstract contract OfferLogicTest is StratTest {
   TestToken weth;
   TestToken usdc;
   address payable taker;
   address payable deployer; // admin of makerContract
   address payable owner; // owner of the offers (==deployer for Direct strats)
 
-  ITester makerContract; // can be either OfferMaker or OfferForwarder
+  ITesterContract makerContract; // can be either OfferMaker or OfferForwarder
   uint gasreq;
 
   GenericFork fork;
@@ -66,33 +66,11 @@ contract OfferLogicTest is StratTest {
     // instantiates makerContract
     setupMakerContract();
     setupLiquidityRouting();
-
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(usdc, type(uint).max);
-    routingOrders[1] = RL.createOrder(weth, type(uint).max);
-
-    vm.prank(deployer);
-    makerContract.activate(routingOrders);
     fundStrat();
   }
 
   // override this to use Forwarder strats
-  function setupMakerContract() internal virtual {
-    deployer = payable(address(new TestSender()));
-    vm.deal(deployer, 1 ether);
-    gasreq = 50_000; // cost for no router, override gasreq for specific strats
-
-    vm.startPrank(deployer);
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)),
-      deployer: deployer
-    });
-    weth.approve(address(makerContract), type(uint).max);
-    usdc.approve(address(makerContract), type(uint).max);
-    vm.stopPrank();
-    owner = deployer;
-  }
+  function setupMakerContract() internal virtual;
 
   // override this function to use a specific router for the strat
   function setupLiquidityRouting() internal virtual {}
@@ -100,14 +78,6 @@ contract OfferLogicTest is StratTest {
   function fundStrat() internal virtual {
     deal($(weth), address(makerContract), 1 ether);
     deal($(usdc), address(makerContract), cash(usdc, 2000));
-  }
-
-  function test_checkList() public {
-    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
-    routingOrders[0] = RL.createOrder(usdc, type(uint).max, owner);
-    routingOrders[1] = RL.createOrder(weth, type(uint).max, owner);
-    vm.prank(owner);
-    makerContract.checkList(routingOrders);
   }
 
   function test_maker_can_post_newOffer() public {
