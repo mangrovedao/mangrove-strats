@@ -36,8 +36,8 @@ contract AaveKandelTest is CoreKandelTest {
       options.defaultFee = 30;
       mgv = setupMangrove();
       reader = new MgvReader($(mgv));
-      base = TestToken(fork.get("WETH"));
-      quote = TestToken(fork.get("USDC"));
+      base = TestToken(fork.get("WETH.e"));
+      quote = TestToken(fork.get("USDC.e"));
       olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
       lo = olKey.flipped();
       setupMarket(olKey);
@@ -298,7 +298,7 @@ contract AaveKandelTest is CoreKandelTest {
 
   function test_liquidity_borrow_clean_attack() public {
     // base is weth and has a borrow cap, so trying the attack on quote
-    address dai = fork.get("DAI");
+    address dai = fork.get("DAI.e");
     AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
     deal($(base), address(this), 1 ether);
     base.approve({spender: address(mgv), amount: type(uint).max});
@@ -334,7 +334,7 @@ contract AaveKandelTest is CoreKandelTest {
     deployOtherKandel(0.1 ether, 100 * 10 ** 6, 100, otherParams);
     //printOrderBook($(quote), $(base));
     // base is weth and has a borrow cap, so trying the attack on quote
-    address dai = fork.get("DAI");
+    address dai = fork.get("DAI.e");
     AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
     deal($(base), address(this), 1 ether);
     base.approve({spender: address(mgv), amount: type(uint).max});

@@ -92,14 +92,14 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     // Activate markets
     Tokens memory tokens;
     // AAVE tokens:
-    tokens.dai.token = IERC20(fork.get("DAI"));
-    tokens.crv.token = IERC20(fork.get("CRV"));
-    tokens.wbtc.token = IERC20(fork.get("WBTC"));
+    tokens.dai.token = IERC20(fork.get("DAI/AAVEv3."));
+    tokens.crv.token = IERC20(fork.get("CRV/AAVEv3."));
+    tokens.wbtc.token = IERC20(fork.get("WBTC/AAVEv3."));
     // Mangrove deployed tokens:
-    tokens.usdc.token = IERC20(fork.get("USDC"));
-    tokens.usdt.token = IERC20(fork.get("USDT"));
-    tokens.weth.token = IERC20(fork.get("WETH"));
-    tokens.wmatic.token = IERC20(fork.get("WMATIC"));
+    tokens.usdc.token = IERC20(fork.get("USDC/MGV."));
+    tokens.usdt.token = IERC20(fork.get("USDT/MGV."));
+    tokens.weth.token = IERC20(fork.get("WETH/MGV."));
+    tokens.wmatic.token = IERC20(fork.get("WMATIC/MGV."));
 
     // Get prices for AAVE tokens
     uint[] memory prices = priceOracle.getAssetsPrices(

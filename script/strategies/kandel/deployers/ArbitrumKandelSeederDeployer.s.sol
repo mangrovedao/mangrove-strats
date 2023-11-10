@@ -22,8 +22,8 @@ contract ArbitrumKandelSeederDeployer is Deployer {
       kandelGasreq: 200_000,
       deployKandel:true,
       deployAaveKandel:true,
-      testBase: IERC20(fork.get("WETH")),
-      testQuote: IERC20(fork.get("DAI"))
+      testBase: IERC20(fork.get("WETH.e")),
+      testQuote: IERC20(fork.get("DAI.e"))
     });
   }
 }

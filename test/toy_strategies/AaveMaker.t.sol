@@ -25,9 +25,9 @@ contract AaveMakerTest is StratTest {
     fork = new PinnedPolygonFork(39880000); // use polygon fork to use dai, usdc and weth addresses
     fork.setUp();
 
-    dai = IERC20(fork.get("DAI"));
-    weth = IERC20(fork.get("WETH"));
-    usdc = IERC20(fork.get("USDC"));
+    dai = IERC20(fork.get("DAI.e"));
+    weth = IERC20(fork.get("WETH.e"));
+    usdc = IERC20(fork.get("USDC.e"));
     v_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
     s_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 1);
     lender = new AaveCaller(fork.get("AaveAddressProvider"), 2);
