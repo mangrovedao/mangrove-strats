@@ -10,6 +10,8 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
 contract AccessControlTest is StratTest {
+  event SetAdmin(address admin);
+
   TestToken weth;
   TestToken usdc;
   address payable admin;
@@ -28,6 +30,8 @@ contract AccessControlTest is StratTest {
 
     admin = freshAddress("admin");
     deal(admin, 1 ether);
+    vm.expectEmit(true, true, true, true);
+    emit SetAdmin($(this));
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
       router_: AbstractRouter(address(0)),
@@ -47,6 +51,8 @@ contract AccessControlTest is StratTest {
 
   function test_admin_can_set_admin() public {
     address newAdmin = freshAddress("newAdmin");
+    expectFrom($(makerContract));
+    emit SetAdmin(newAdmin);
     vm.prank(admin);
     makerContract.setAdmin(newAdmin);
     assertEq(makerContract.admin(), newAdmin, "Incorrect admin");

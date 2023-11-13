@@ -24,6 +24,7 @@ contract AccessControlled {
   constructor(address admin_) {
     require(admin_ != address(0), "AccessControlled/0xAdmin");
     _admin = admin_;
+    emit SetAdmin(admin_);
   }
 
   /**
