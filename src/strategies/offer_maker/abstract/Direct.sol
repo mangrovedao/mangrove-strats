@@ -16,7 +16,6 @@ abstract contract Direct is MangroveOffer {
   event SetReserveId(address indexed reserveId);
 
   ///@notice identifier of this contract's reserve when using a router
-  ///@dev RESERVE_ID==address(0) will pass address(this) to the router for the id field.
   ///@dev two contracts using the same RESERVE_ID will share funds, therefore strat builder must make sure this contract is allowed to pull into the given reserve Id.
   ///@dev a safe value for `RESERVE_ID` is `address(this)` in which case the funds will never be shared with another maker contract.
   address public immutable RESERVE_ID;
@@ -25,6 +24,7 @@ abstract contract Direct is MangroveOffer {
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   ///@param router_ the router that this contract will use to pull/push liquidity from offer maker's reserve. This can be `NO_ROUTER`.
   ///@param reserveId identifier of this contract's reserve when using a router.
+  ///@dev reserveId==address(0) will set RESERVE_ID to address(this).
   constructor(IMangrove mgv, AbstractRouter router_, address reserveId) MangroveOffer(mgv) {
     if (router_ != NO_ROUTER) {
       setRouter(router_);
