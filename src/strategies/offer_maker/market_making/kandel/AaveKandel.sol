@@ -20,13 +20,9 @@ contract AaveKandel is GeometricKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
-  ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, address reserveId)
-    GeometricKandel(
-      mgv,
-      olKeyBaseQuote,
-      RouterParams({routerImplementation: aavePooledRouter, proxyOwner: reserveId, strict: false})
-    )
+  ///@param routerParams routing policy parameters for this contract
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, RouterParams memory routerParams)
+    GeometricKandel(mgv, olKeyBaseQuote, routerParams)
   {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router
@@ -36,6 +32,9 @@ contract AaveKandel is GeometricKandel {
       !isOverlying(olKeyBaseQuote.outbound_tkn) && !isOverlying(olKeyBaseQuote.inbound_tkn),
       "AaveKandel/cannotTradeAToken"
     );
+    setGasreq(gasreq);
+    activate(BASE);
+    activate(QUOTE);
   }
 
   /// @notice Verifies that token is not an official AAVE overlying.
@@ -51,17 +50,7 @@ contract AaveKandel is GeometricKandel {
   ///@notice returns the router as an Aave router
   ///@return The aave router.
   function pooledRouter() private view returns (AavePooledRouter) {
-    return AavePooledRouter(address(router));
-  }
-
-  ///@notice Sets the AaveRouter as router and activates router for base and quote
-  ///@param router_ the Aave router to use.
-  ///@param gasreq the gas required to execute an offer of this Kandel strat
-  function initialize(uint gasreq) external onlyAdmin {
-    setRouter(router_);
-    setGasreq(gasreq);
-    activate(BASE);
-    activate(QUOTE);
+    return AavePooledRouter(router(address(0)));
   }
 
   ///@notice deposits funds to be available for being offered. Will increase `pending`.
@@ -93,7 +82,7 @@ contract AaveKandel is GeometricKandel {
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
-    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), reserveId: PROXY_OWNER}))
+    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), PROXY_OWNER: PROXY_OWNER}))
       + super.reserveBalance(ba);
   }
 

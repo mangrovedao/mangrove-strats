@@ -3,11 +3,16 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  Forwarder, MangroveOffer, TransferLib
+  Forwarder,
+  MangroveOffer,
+  TransferLib,
+  RouterProxyFactory,
+  AbstractRouter,
+  RL
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
-import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
+//import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
@@ -28,7 +33,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {
+  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer) Forwarder(mgv, factory, new SmartRouter()) {
     setAdmin(deployer);
   }
 
@@ -120,11 +125,11 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // `routingOrder.amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
     RL.RoutingOrder memory pullOrder = RL.createOrder({
       amount: tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume,
-      reserveId: msg.sender,
+      PROXY_OWNER: msg.sender,
       token: IERC20(tko.olKey.inbound_tkn)
     });
-    (SmartRouter userRouter,) = deployRouterIfNeeded(msg.sender);
-    userRouter.setLogic(pullOrder, tko.takerGivesLogic);
+    (AbstractRouter userRouter,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
+    SmartRouter(userRouter).setLogic(pullOrder, tko.takerGivesLogic);
     require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:
@@ -149,7 +154,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       require(
         userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, reserveId: msg.sender})
+          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, PROXY_OWNER: msg.sender})
         ) == res.takerGot,
         "mgvOrder/pushFailed"
       );
@@ -159,7 +164,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
       require(
         userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, reserveId: msg.sender})
+          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, PROXY_OWNER: msg.sender})
         ) == inboundLeft,
         "mgvOrder/pushFailed"
       );

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer, TransferLib, SmartRouterProxy} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {
+  MangroveOffer, TransferLib, RouterProxy, RouterProxyFactory
+} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -11,7 +13,7 @@ import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
   /// @notice router proxy contract (can be 0x if this contract does not user liquidity routing)
-  SmartRouterProxy public immutable ROUTER_PROXY;
+  RouterProxy public immutable ROUTER_PROXY;
 
   ///@notice address of the proxy owner (that determines router proxy's address if routing is required).
   address public immutable PROXY_OWNER;
@@ -20,6 +22,7 @@ abstract contract Direct is MangroveOffer {
   bool public immutable STRICT_PULLING;
 
   struct RouterParams {
+    RouterProxyFactory factory;
     AbstractRouter routerImplementation;
     address proxyOwner;
     bool strict;
@@ -32,37 +35,40 @@ abstract contract Direct is MangroveOffer {
   ///@param strict whether routing pull order are required to provide at most pull amount (ignored if `routerImplementation == address(0)`).
   ///@dev if `proxyOwner` already has a router proxy deployed, it must bind it to this contract at the end of that constructor.
   constructor(IMangrove mgv, RouterParams memory routerParams) MangroveOffer(mgv, routerParams.routerImplementation) {
-    // proxyOwner != this ==> routerImpl != 0x
+    // proxyOwner != this ==> routerImpl != 0x --cannot route liquidity to an external account without a router
     require(
       routerParams.proxyOwner == address(this) || address(routerParams.routerImplementation) != address(0),
       "Direct/0xRouterImplementation"
     );
-    // proxyOwner == 0x => routerImpl == 0x
+    // proxyOwner == 0x => routerImpl == 0x --cannot deploy a router proxy to the 0x owner
     require(
       routerParams.proxyOwner != address(0) || address(routerParams.routerImplementation) == address(0),
       "Direct/0xProxyOwner"
     );
     if (routerParams.routerImplementation != AbstractRouter(address(0))) {
-      (ROUTER_PROXY,) = deployRouterIfNeeded(routerParams.proxyOwner);
-      PROXY_OWNER = routerParams.proxyOwner;
-      STRICT_PULLING = routerParams.strict;
+      // deploys a router proxy for `routerImplementation` and binds it to this contract if not already deployed.
+      (ROUTER_PROXY,) = routerParams.factory.instantiate(routerParams.proxyOwner, routerParams.routerImplementation);
     } else {
-      ROUTER_PROXY = SmartRouterProxy(address(0));
+      ROUTER_PROXY = RouterProxy(address(0));
     }
+    PROXY_OWNER = routerParams.proxyOwner;
+    STRICT_PULLING = routerParams.strict;
   }
 
-  ///@notice whether this contract has enabled liquidity routing
-  function isRouting() public view returns (bool) {
-    address(ROUTER_PROXY).code.length > 0;
-  }
-
+  ///@notice convenience function to get an empty RouterParams struct
   function noRouter() internal pure returns (RouterParams memory) {}
+
+  ///@inheritdoc IOfferLogic
+  ///@dev saves gas
+  function router(address) public view override returns (AbstractRouter) {
+    return AbstractRouter(address(ROUTER_PROXY));
+  }
 
   ///@inheritdoc IOfferLogic
   ///@notice activates asset exchange with router
   function activate(IERC20 token) public virtual override {
     super.activate(token);
-    if (isRouting()) {
+    if (_isRouting()) {
       require(TransferLib.approveToken(token, address(ROUTER_PROXY), type(uint).max), "Direct/RouterActivationFailed");
     }
   }
@@ -125,8 +131,9 @@ abstract contract Direct is MangroveOffer {
   /// otherwise the function simply returns what's missing in the local balance
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint missing = super.__get__(amount, order);
-    if (!isRouting()) {
+    uint balance = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
+    uint missing = balance >= amount ? 0 : amount - balance;
+    if (!_isRouting()) {
       return missing;
     } else {
       uint pulled = AbstractRouter(address(ROUTER_PROXY)).pull(
@@ -151,15 +158,15 @@ abstract contract Direct is MangroveOffer {
     override
     returns (bytes32)
   {
-    if (isRouting()) {
+    if (_isRouting()) {
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
       routingOrders[0].amount = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
-      routingOrders[0].reserveId = PROXY_OWNER;
+      routingOrders[0].PROXY_OWNER = PROXY_OWNER;
 
       routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
       routingOrders[1].amount = IERC20(order.olKey.inbound_tkn).balanceOf(address(this));
-      routingOrders[1].reserveId = PROXY_OWNER;
+      routingOrders[1].PROXY_OWNER = PROXY_OWNER;
 
       AbstractRouter(address(ROUTER_PROXY)).flush(routingOrders);
     }

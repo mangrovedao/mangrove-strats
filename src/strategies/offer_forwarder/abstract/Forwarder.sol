@@ -4,11 +4,7 @@ pragma solidity ^0.8.10;
 import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IForwarder} from "@mgv-strats/src/strategies/interfaces/IForwarder.sol";
 import {RL, AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {
-  SmartRouterProxyFactory,
-  SmartRouterProxy,
-  SmartRouter
-} from "@mgv-strats/src/strategies/routers/SmartRouterProxyFactory.sol";
+import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
@@ -52,7 +48,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@notice Forwarder constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
   ///@param impl the deployed SmartRouter contract used to generate proxys for offer owners
-  constructor(IMangrove mgv, SmartRouter impl) MangroveOffer(mgv, impl) {}
+  constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
+    MangroveOffer(mgv, factory, routerImplementation)
+  {}
 
   ///@inheritdoc IForwarder
   function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
@@ -260,9 +258,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     bytes32 olKeyHash = order.olKey.hash();
     address owner = ownerOf(olKeyHash, order.offerId);
-    SmartRouterProxy proxy = SmartRouterProxy(computeProxyAddress(owner));
+    AbstractRouter ownerRouter = router(owner);
     // exact transfer approval in order to be able to push funds to the router
-    _approveProxy(IERC20(order.olKey.inbound_tkn), proxy, amount);
+    _approveProxy(IERC20(order.olKey.inbound_tkn), RouterProxy(address(ownerRouter)), amount);
 
     RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
       amount: amount,
@@ -271,27 +269,25 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       token: IERC20(order.olKey.inbound_tkn),
       reserveId: owner
     });
-    return amount - SmartRouter(address(proxy)).push(pushOrder);
+    return amount - ownerRouter.push(pushOrder);
   }
 
   ///@dev get outbound tokens from offer owner reserve
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint missing = super.__get__(amount, order);
-
     bytes32 olKeyHash = order.olKey.hash();
     address owner = ownerOf(olKeyHash, order.offerId);
-    SmartRouter proxy = SmartRouter(computeProxyAddress(owner));
+    AbstractRouter ownerRouter = router(owner);
     // telling proxy one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
     // note we assume here that:
     // 1. proxy has been previously deployed
     // 2. offer owner has approved proxy for outbound token transfer (this may be done prior to proxy deployment thanks to deterministic address of the proxy)
-    return missing
-      - proxy.pull(
+    return amount
+      - ownerRouter.pull(
         RL.RoutingOrder({
-          amount: missing,
+          amount: amount,
           olKeyHash: olKeyHash,
           token: IERC20(order.olKey.outbound_tkn),
           offerId: order.offerId,

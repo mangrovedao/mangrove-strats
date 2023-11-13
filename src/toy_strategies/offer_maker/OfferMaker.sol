@@ -78,7 +78,6 @@ contract OfferMaker is ILiquidityProvider, Direct {
 
   function tokenBalance(IERC20 token, address reserveId) external view returns (uint) {
     AbstractRouter router_ = router;
-    return
-      router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(RL.createOrder(token, reserveId));
+    return _isRouting() ? router_.balanceOfReserve(RL.createOrder(token, reserveId)) : token.balanceOf(address(this));
   }
 }

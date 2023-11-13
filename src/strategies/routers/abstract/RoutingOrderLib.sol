@@ -27,11 +27,11 @@ library RoutingOrderLib {
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates.
   ///@param token the asset to be routed
   ///@param amount of token to be routed
-  ///@param proxyOwner the owner of the calling router proxy
+  ///@param PROXY_OWNER the owner of the calling router proxy
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, address proxyOwner, uint amount) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, address PROXY_OWNER, uint amount) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
-    ro.PROXY_OWNER = proxyOwner;
+    ro.PROXY_OWNER = PROXY_OWNER;
     ro.amount = amount;
   }
 
@@ -39,9 +39,9 @@ library RoutingOrderLib {
   ///@param token the asset to be routed
   ///@param proxyOwner the owner of the calling router proxy
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, address proxyOwner) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, address PROXY_OWNER) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
-    ro.PROXY_OWNER = proxyOwner;
+    ro.PROXY_OWNER = PROXY_OWNER;
   }
 
   ///@notice the bound maker contracts which are allowed to call this router.
