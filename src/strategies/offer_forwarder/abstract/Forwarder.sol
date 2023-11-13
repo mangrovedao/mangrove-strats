@@ -48,8 +48,13 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
   ///@param router the router that this contract will use to pull/push liquidity from offer maker's reserve. This must not be `NO_ROUTER`.
   constructor(IMangrove mgv, AbstractRouter router) MangroveOffer(mgv) {
-    require(router != NO_ROUTER, "Forwarder logics must have a router");
     setRouter(router);
+  }
+
+  /// @inheritdoc IOfferLogic
+  function setRouter(AbstractRouter router) public virtual override {
+    require(router != NO_ROUTER, "Forwarder/noRouter");
+    super.setRouter(router);
   }
 
   ///@inheritdoc IForwarder

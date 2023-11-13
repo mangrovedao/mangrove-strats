@@ -121,7 +121,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   /// @inheritdoc IOfferLogic
-  function setRouter(AbstractRouter router_) public override onlyAdmin {
+  function setRouter(AbstractRouter router_) public virtual override onlyAdmin {
     __router = router_;
     emit SetRouter(router_);
   }

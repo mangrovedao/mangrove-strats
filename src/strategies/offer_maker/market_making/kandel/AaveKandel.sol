@@ -7,9 +7,11 @@ import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/
 import {IATokenIsh} from "@mgv-strats/src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds on AAVE to generate yield.
 contract AaveKandel is GeometricKandel {
@@ -58,6 +60,12 @@ contract AaveKandel is GeometricKandel {
     __activate__(BASE);
     __activate__(QUOTE);
     setGasreq(gasreq);
+  }
+
+  /// @inheritdoc IOfferLogic
+  function setRouter(AbstractRouter router) public virtual override {
+    require(router != NO_ROUTER, "AaveKandel/noRouter");
+    super.setRouter(router);
   }
 
   ///@notice deposits funds to be available for being offered. Will increase `pending`.

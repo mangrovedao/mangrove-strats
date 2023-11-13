@@ -14,6 +14,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
@@ -882,5 +883,10 @@ contract MangroveOrder_Test is StratTest {
     mgv.marketOrderByTick(_olKey, tick, 0.5 ether, true);
     gas_();
     assertTrue(mgv.offers(lo, cold_buyResult.offerId).gives() > 0, "Update failed");
+  }
+
+  function test_setRouter_no_router() public {
+    vm.expectRevert("Forwarder/noRouter");
+    mgo.setRouter(AbstractRouter(address(0)));
   }
 }
