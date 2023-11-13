@@ -14,33 +14,34 @@ library RoutingOrderLib {
   ///@param olKeyHash the id of the market that triggered the calling offer logic. Is bytes32(0) when routing is done outside offer logic.
   ///@param offerId the id of the offer that triggered the calling offer logic. Is uint(0) when routing is done outsider offer logic.
   ///@param amount of token that needs to be routed
-  ///@param reserveId address of the account holding the funds to be routed
+  ///@param PROXY_OWNER the owner of the calling router proxy.
+  ///@dev PROXY_OWNER is capitalized to highlight the fact that is the address that was used to derive router proxy's address. It is passed here to minimize gas cost.
   struct RoutingOrder {
     IERC20 token;
     bytes32 olKeyHash;
     uint offerId;
     uint amount;
-    address reserveId;
+    address PROXY_OWNER;
   }
 
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates.
   ///@param token the asset to be routed
   ///@param amount of token to be routed
-  ///@param reserveId reserve identifier of the token
+  ///@param proxyOwner the owner of the calling router proxy
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, uint amount, address reserveId) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, address proxyOwner, uint amount) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
+    ro.PROXY_OWNER = proxyOwner;
     ro.amount = amount;
-    ro.reserveId = reserveId;
   }
 
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates and amount.
   ///@param token the asset to be routed
-  ///@param reserveId reserve identifier of the token
+  ///@param proxyOwner the owner of the calling router proxy
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, address reserveId) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, address proxyOwner) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
-    ro.reserveId = reserveId;
+    ro.PROXY_OWNER = proxyOwner;
   }
 
   ///@notice the bound maker contracts which are allowed to call this router.

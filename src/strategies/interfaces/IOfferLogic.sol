@@ -66,4 +66,9 @@ interface IOfferLogic is IMaker {
   /// @notice Contract's Mangrove getter
   /// @return the Mangrove contract.
   function MGV() external view returns (IMangrove);
+
+  ///@notice returns the router proxy of a user
+  ///@param owner the owner of the proxy
+  ///@return router contract's address
+  function router(address owner) external view returns (AbstractRouter router);
 }

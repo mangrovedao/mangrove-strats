@@ -3,6 +3,7 @@ pragma solidity >=0.8.10;
 
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title Interface for resting orders functionality.
 interface IOrderLogic {
@@ -16,6 +17,8 @@ interface IOrderLogic {
   ///@param restingOrderGasreq the gas requirement for executing a resting order
   ///@param expiryDate timestamp (expressed in seconds since unix epoch) beyond which the order is no longer valid, 0 means forever
   ///@param offerId the id of an existing, dead offer owned by the taker to re-use for the resting order, 0 means no re-use.
+  ///@param takerGivesLogic custom contract implementing routing logic for the tokens that are given by the taker order.
+  ///@param takerWantsLogic custom contract implementing routing logic for the tokens that are wanted by the taker order.
   struct TakerOrder {
     OLKey olKey;
     bool fillOrKill;
@@ -26,6 +29,8 @@ interface IOrderLogic {
     uint expiryDate;
     uint offerId;
     uint restingOrderGasreq;
+    AbstractRouter takerGivesLogic;
+    AbstractRouter takerWantsLogic;
   }
 
   ///@notice Result of an order from the takers side.
@@ -52,7 +57,9 @@ interface IOrderLogic {
   ///@param fillWants if true (buying), the market order stops when `fillVolume` units of `olKey.outbound_tkn` have been obtained (fee included); otherwise (selling), the market order stops when `fillVolume` units of `olKey.inbound_tkn` have been sold.
   ///@param restingOrder The restingOrder boolean take was called with.
   ///@param offerId The optional offerId take was called with, 0 if not passed. This is not needed for an indexer. It is only emitted for RPC calls.
-  ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters was use to start the order.
+  ///@param takerGivesLogic custom contract implementing routing logic for the tokens that are given by the taker order.
+  ///@param takerWantsLogic custom contract implementing routing logic for the tokens that are wanted by the taker order.
+  ///@notice By emitting this data, an indexer will be able to tell that we are in the context of an mangroveOrder and keep track of what parameters were used to start the order.
   event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
@@ -61,7 +68,9 @@ interface IOrderLogic {
     uint fillVolume,
     bool fillWants,
     bool restingOrder,
-    uint offerId
+    uint offerId,
+    AbstractRouter takerGivesLogic,
+    AbstractRouter takerWantsLogic
   );
 
   ///@notice Indicates that the MangroveOrder has been completed.

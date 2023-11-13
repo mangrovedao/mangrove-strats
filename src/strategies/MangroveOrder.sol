@@ -124,6 +124,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       token: IERC20(tko.olKey.inbound_tkn)
     });
     (SmartRouter userRouter,) = deployRouterIfNeeded(msg.sender);
+    userRouter.setLogic(pullOrder, tko.takerGivesLogic);
     require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:

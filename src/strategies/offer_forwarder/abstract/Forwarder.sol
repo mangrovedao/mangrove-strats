@@ -17,7 +17,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 ///@notice Each offer posted via this contract are managed by their offer maker, not by this contract's admin.
 ///@notice This class implements IForwarder, which contains specific Forwarder logic functions in additions to IOfferLogic interface.
 
-abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactory {
+abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@notice approx of amount of gas units required to complete `__posthookFallback__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
 
@@ -52,7 +52,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
   ///@notice Forwarder constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
   ///@param impl the deployed SmartRouter contract used to generate proxys for offer owners
-  constructor(IMangrove mgv, SmartRouter impl) MangroveOffer(mgv) SmartRouterProxyFactory(impl) {}
+  constructor(IMangrove mgv, SmartRouter impl) MangroveOffer(mgv, impl) {}
 
   ///@inheritdoc IForwarder
   function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
@@ -110,19 +110,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     require(owner != address(0), "Forwarder/unknownOffer");
   }
 
-  /// @inheritdoc IForwarder
-  function router(address owner) public view override returns (AbstractRouter) {
-    return AbstractRouter(computeProxyAddress(owner));
-  }
-
-  ///@notice approves a router proxy for transfering funds from this contract
-  ///@param token the IERC20 whose approval is required
-  ///@param proxy the router proxy contract
-  ///@param amount the approval quantity.
-  function _approveProxy(IERC20 token, SmartRouterProxy proxy, uint amount) internal {
-    require(TransferLib.approveToken(token, address(proxy), amount), "Forwarder/ProxyApprovaFailed");
-  }
-
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.
   /// @param args function's arguments in memory
   /// @return gasprice the gas price that is covered by `provision` - `leftover`.
@@ -139,7 +126,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     require(gasprice >= global.gasprice(), "mgv/insufficientProvision");
   }
 
-  /// @notice Inserts a new offer on a Mangrove Offer List and deploys a router proxy for offer owner if needed.
+  /// @notice Inserts a new offer on a Mangrove Offer List
   /// @dev If inside a hook, one should call `_newOffer` to create a new offer and not directly `MGV.newOffer` to make sure one is correctly dealing with:
   /// * offer ownership
   /// * offer provisions and gasprice
@@ -160,9 +147,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
   function _newOffer(OfferArgs memory args, address owner) internal returns (uint offerId, bytes32 status) {
     // convention for default gasreq value
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
-
-    // todo remove from here and push to ForwarderTester
-    deployRouterIfNeeded(owner);
 
     // the call below cannot revert for lack of provision (by design)
     // it may still revert if `args.fund` yields a gasprice that is too high (Mangrove's gasprice must hold on 26 bits)
@@ -281,11 +265,11 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     _approveProxy(IERC20(order.olKey.inbound_tkn), proxy, amount);
 
     RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
-      reserveId: ownerOf(olKeyHash, order.offerId),
       amount: amount,
       olKeyHash: olKeyHash,
       offerId: order.offerId,
-      token: IERC20(order.olKey.inbound_tkn)
+      token: IERC20(order.olKey.inbound_tkn),
+      reserveId: owner
     });
     return amount - SmartRouter(address(proxy)).push(pushOrder);
   }
@@ -302,16 +286,16 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
     // note we assume here that:
-    // 1. proxy has been deployed during the _newOffer call that posted this offer
+    // 1. proxy has been previously deployed
     // 2. offer owner has approved proxy for outbound token transfer (this may be done prior to proxy deployment thanks to deterministic address of the proxy)
     return missing
       - proxy.pull(
         RL.RoutingOrder({
-          reserveId: ownerOf(olKeyHash, order.offerId),
           amount: missing,
           olKeyHash: olKeyHash,
           token: IERC20(order.olKey.outbound_tkn),
-          offerId: order.offerId
+          offerId: order.offerId,
+          reserveId: owner
         }),
         true
       ); // this will make trade fail if `missing > pulled` and this `get` is not nested in another `get` in descendant of this class.

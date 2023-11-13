@@ -12,10 +12,7 @@ contract Kandel is GeometricKandel {
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gasreq to use for offers
-  ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, address reserveId)
-    GeometricKandel(mgv, olKeyBaseQuote, reserveId)
-  {
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq) GeometricKandel(mgv, olKeyBaseQuote, noRouter()) {
     setGasreq(gasreq);
     activate(BASE);
     activate(QUOTE);

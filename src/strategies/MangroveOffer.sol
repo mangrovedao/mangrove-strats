@@ -5,6 +5,11 @@ import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlle
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {
+  SmartRouterProxyFactory,
+  SmartRouter,
+  SmartRouterProxy
+} from "@mgv-strats/src/strategies/routers/smartRouterProxyFactory.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
@@ -16,7 +21,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 /// `_f() internal`: descendant of this contract should provide a public wrapper for this function, with necessary guards.
 /// `__f__() virtual internal`: descendant of this contract should override this function to specialize it to the needs of the strat.
 
-abstract contract MangroveOffer is AccessControlled, IOfferLogic {
+abstract contract MangroveOffer is AccessControlled, SmartRouterProxyFactory, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
 
@@ -42,7 +47,10 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
    * @notice `MangroveOffer`'s constructor
    * @param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
    */
-  constructor(IMangrove mgv) AccessControlled(msg.sender) {
+  constructor(IMangrove mgv, SmartRouter routerImplementation)
+    AccessControlled(msg.sender)
+    SmartRouterProxyFactory(routerImplementation)
+  {
     MGV = mgv;
     emit Mgv(mgv);
   }
@@ -93,6 +101,19 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
     }
+  }
+
+  /// @inheritdoc IOfferLogic
+  function router(address proxyOwner) public view override returns (AbstractRouter) {
+    return AbstractRouter(computeProxyAddress(proxyOwner));
+  }
+
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, SmartRouterProxy proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
   }
 
   ///@notice takes care of status for reposting residual offer in case of a partial fill and logging of potential issues.

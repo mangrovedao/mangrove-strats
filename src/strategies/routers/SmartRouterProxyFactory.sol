@@ -12,7 +12,7 @@ contract SmartRouterProxyFactory {
   SmartRouter public immutable ROUTER_IMPLEMENTATION;
 
   /// @notice Emitted when a new proxy is deployed through this factory.
-  /// @param owner The address which will be the admin of the newly deployed proxy.
+  /// @param owner The address which will be the admin and immutable owner of the newly deployed proxy.
   /// @param implementation The address of the SmartRouter implementation used by the proxy.
   event ProxyDeployed(address indexed owner, address indexed implementation);
 
@@ -42,18 +42,20 @@ contract SmartRouterProxyFactory {
   }
 
   /// @notice Deploys a new SmartRouterProxy for a given owner and binds it to this factory.
-  /// @param owner The address to be set as the admin and initial owner of the proxy.
+  /// @param owner The address to be set as initial admin and immutable owner of the proxy.
   /// @return proxy The address of the newly deployed SmartRouterProxy.
   /// @dev Emits a ProxyDeployed event upon successful deployment.
   ///      Note that the deployment can be initiated by any caller, on behalf of `owner`.
   function deployRouter(address owner) public returns (SmartRouter proxy) {
     proxy = SmartRouter(address(new SmartRouterProxy{salt:keccak256(abi.encode(owner))}(ROUTER_IMPLEMENTATION)));
     SmartRouter(address(proxy)).bind(address(this));
+    // sets the admin *after* binding this contract to the router
+    SmartRouter(address(proxy)).setAdmin(owner);
     emit ProxyDeployed(owner, address(ROUTER_IMPLEMENTATION));
   }
 
   /// @notice Deploys a SmartRouterProxy for a given owner if one has not already been deployed.
-  /// @param owner The address to be set as the admin and initial owner of the proxy.
+  /// @param owner The address to be set as initial admin and immutable owner of the proxy.
   /// @return proxy The address of the SmartRouterProxy.
   /// @return created A boolean indicating if the proxy was created during this call.
   /// @dev If the proxy already exists at the computed address, the function will not redeploy it.
