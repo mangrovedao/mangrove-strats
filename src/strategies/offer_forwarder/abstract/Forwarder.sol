@@ -115,8 +115,11 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
     return AbstractRouter(computeProxyAddress(owner));
   }
 
-  ///@notice approves a proxy for transfering funds from this contract
-  function _approveProxy(IERC20 token, SmartRouter proxy, uint amount) internal {
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, SmartRouterProxy proxy, uint amount) internal {
     require(TransferLib.approveToken(token, address(proxy), amount), "Forwarder/ProxyApprovaFailed");
   }
 
@@ -273,7 +276,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
     bytes32 olKeyHash = order.olKey.hash();
     address owner = ownerOf(olKeyHash, order.offerId);
-    SmartRouter proxy = SmartRouter(computeProxyAddress(owner));
+    SmartRouterProxy proxy = SmartRouterProxy(computeProxyAddress(owner));
     // exact transfer approval in order to be able to push funds to the router
     _approveProxy(IERC20(order.olKey.inbound_tkn), proxy, amount);
 
@@ -284,7 +287,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer, SmartRouterProxyFactor
       offerId: order.offerId,
       token: IERC20(order.olKey.inbound_tkn)
     });
-    return amount - proxy.push(pushOrder);
+    return amount - SmartRouter(address(proxy)).push(pushOrder);
   }
 
   ///@dev get outbound tokens from offer owner reserve

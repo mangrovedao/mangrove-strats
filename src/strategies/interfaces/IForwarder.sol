@@ -32,5 +32,6 @@ interface IForwarder {
 
   ///@notice returns the router proxy of a user
   ///@param owner a user maker of the Forwarder strat
-  function router(address owner) external view returns (AbstractRouter);
+  ///@return router contract's address
+  function router(address owner) external view returns (AbstractRouter router);
 }

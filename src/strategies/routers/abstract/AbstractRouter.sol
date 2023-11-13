@@ -40,6 +40,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param routingOrder the arguments of the pull order
+  ///@param strict if false the router may pull at more than `routingOrder.amount` to msg.sender. Otherwise it pulls at least `routingOrder.amount`.
   ///@return pulled the amount of `routingOrder.token` that has been sent to `msg.sender`
   function pull(RL.RoutingOrder calldata routingOrder, bool strict) external onlyBound returns (uint pulled) {
     if (strict && routingOrder.amount == 0) {
@@ -50,10 +51,11 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
 
   ///@notice router dependent hook to customize pull orders.
   ///@param routingOrder the arguments of the pull order
+  ///@param strict if false the router may pull at more than `routingOrder.amount` to msg.sender. Otherwise it pulls at least `routingOrder.amount`.
   ///@return pulled the amount of `routingOrder.token` that has been sent to `msg.sender`
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual returns (uint);
 
-  ////@notice pushes liquidity from msg.sender to the reserve
+  ///@notice pushes liquidity from msg.sender to the reserve
   ///@param routingOrder the arguments of the push order
   ///@return pushed the amount of `routingOrder.token` that has been taken from `msg.sender`
   function push(RL.RoutingOrder calldata routingOrder) external onlyBound returns (uint pushed) {
@@ -68,7 +70,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@return pushed the amount of `routingOrder.token` that has been sent to `msg.sender`
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual returns (uint pushed);
 
-  ///@notice iterative `push` routing orders for the whole balance
+  ///@notice iterative `push` to minimize external calls in case several assets needs to be pushed via the router.
   ///@param routingOrders to be executed
   function flush(RL.RoutingOrder[] memory routingOrders) external onlyBound {
     for (uint i = 0; i < routingOrders.length; ++i) {
@@ -104,9 +106,10 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
     _unbind(makerContract);
   }
 
-  ///@notice verifies whether a routing order is executable on the current state
+  ///@notice dry runs a routing order and reverts if a condition for success is not satisfied.
   ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
   ///@param routingOrder to be checked
+  ///@param caller impersonates `msg.sender`
   function checkList(RL.RoutingOrder calldata routingOrder, address caller) external view {
     require(isBound(caller), "AbstractRouter/CallerNotBound");
     __checkList__(routingOrder);

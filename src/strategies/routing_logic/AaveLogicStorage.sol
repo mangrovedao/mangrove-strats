@@ -5,14 +5,15 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 
 ///@title Mangrove Smart Router storage (randomized access)
 library AaveLogicStorage {
+  /// @notice pointer to first storage slot used for randomized access
   bytes32 private constant OFFSET = keccak256("MangroveStrats.AaveLogicStorage.Layout");
-  ///@notice Storage layout
 
-  ///@notice routeLogics logics approved by admin in order to pull/push liquidity in an offer specific manner
   struct Layout {
-    mapping(IERC20 token => uint8) credit_line_decrease;
+    mapping(IERC20 token => uint8 percentage) credit_line_decrease;
   }
 
+  ///@notice access to storage layout at OFFSET
+  ///@return st storage pointer
   function getStorage() internal pure returns (Layout storage st) {
     bytes32 offset = OFFSET;
     assembly ("memory-safe") {

@@ -6,6 +6,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 /// @title Library to obtain Routing orders of various kind
 
 library RoutingOrderLib {
+  ///@notice pointer to first storage slot used for randomized access
   bytes32 private constant OFFSET = keccak256("MangroveStrats.RoutingOrderLib.Layout");
 
   ///@notice Argument to pull/push
@@ -22,12 +23,21 @@ library RoutingOrderLib {
     address reserveId;
   }
 
+  ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates.
+  ///@param token the asset to be routed
+  ///@param amount of token to be routed
+  ///@param reserveId reserve identifier of the token
+  ///@return ro the routing order struct
   function createOrder(IERC20 token, uint amount, address reserveId) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
     ro.amount = amount;
     ro.reserveId = reserveId;
   }
 
+  ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates and amount.
+  ///@param token the asset to be routed
+  ///@param reserveId reserve identifier of the token
+  ///@return ro the routing order struct
   function createOrder(IERC20 token, address reserveId) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
     ro.reserveId = reserveId;
@@ -38,6 +48,8 @@ library RoutingOrderLib {
     mapping(address => bool) boundMakerContracts;
   }
 
+  ///@notice allowed pullers/pushers for this router
+  ///@return bound contracts to this router, in the form of a storage mapping
   function boundMakerContracts() internal view returns (mapping(address => bool) storage) {
     bytes32 offset = OFFSET;
     Layout storage st;
