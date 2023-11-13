@@ -103,7 +103,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
       // computing amount of native tokens that are not going to be locked on Mangrove
       // this amount should still be recoverable by offer maker when retracting the offer
-      leftover = provision - (gasprice * 1e6 * (offerGasbase + gasreq));
+      leftover = provision - (gasprice * num);
     }
   }
 
