@@ -47,7 +47,8 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
   ///@notice Forwarder constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
-  ///@param impl the deployed SmartRouter contract used to generate proxys for offer owners
+  ///@param factory the router proxy factory contract
+  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
     MangroveOffer(mgv, factory, routerImplementation)
   {}
@@ -260,14 +261,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     address owner = ownerOf(olKeyHash, order.offerId);
     AbstractRouter ownerRouter = router(owner);
     // exact transfer approval in order to be able to push funds to the router
-    _approveProxy(IERC20(order.olKey.inbound_tkn), RouterProxy(address(ownerRouter)), amount);
+    _approveProxy(IERC20(order.olKey.inbound_tkn), RouterProxy(payable(address(ownerRouter))), amount);
 
     RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
       amount: amount,
       olKeyHash: olKeyHash,
       offerId: order.offerId,
       token: IERC20(order.olKey.inbound_tkn),
-      reserveId: owner
+      fundOwner: owner
     });
     return amount - ownerRouter.push(pushOrder);
   }
@@ -291,7 +292,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
           olKeyHash: olKeyHash,
           token: IERC20(order.olKey.outbound_tkn),
           offerId: order.offerId,
-          reserveId: owner
+          fundOwner: owner
         }),
         true
       ); // this will make trade fail if `missing > pulled` and this `get` is not nested in another `get` in descendant of this class.

@@ -50,7 +50,7 @@ contract AaveKandel is GeometricKandel {
   ///@notice returns the router as an Aave router
   ///@return The aave router.
   function pooledRouter() private view returns (AavePooledRouter) {
-    return AavePooledRouter(router(address(0)));
+    return AavePooledRouter(address(router()));
   }
 
   ///@notice deposits funds to be available for being offered. Will increase `pending`.
@@ -60,7 +60,7 @@ contract AaveKandel is GeometricKandel {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
     // push funds on the router (and supply on AAVE)
-    pooledRouter().pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, PROXY_OWNER);
+    pooledRouter().pushAndSupply(BASE, baseAmount, QUOTE, quoteAmount, FUND_OWNER);
   }
 
   ///@inheritdoc CoreKandel
@@ -73,7 +73,7 @@ contract AaveKandel is GeometricKandel {
     uint amount_ = amount == type(uint).max ? amount : localBalance > amount ? 0 : amount - localBalance;
 
     if (amount_ != 0) {
-      pooledRouter().withdraw(token, PROXY_OWNER, amount_);
+      pooledRouter().withdraw(token, FUND_OWNER, amount_);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
@@ -82,7 +82,7 @@ contract AaveKandel is GeometricKandel {
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
-    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), PROXY_OWNER: PROXY_OWNER}))
+    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), fundOwner: FUND_OWNER}))
       + super.reserveBalance(ba);
   }
 
@@ -91,7 +91,7 @@ contract AaveKandel is GeometricKandel {
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
     bytes32 makerData = super.__lastLook__(order);
     return
-      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router)) < order.takerWants) ? IS_FIRST_PULLER : makerData;
+      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router())) < order.takerWants) ? IS_FIRST_PULLER : makerData;
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push and supply on AAVE with a single call when offer logic is the first to pull funds from AAVE
@@ -108,7 +108,7 @@ contract AaveKandel is GeometricKandel {
     if (makerData == IS_FIRST_PULLER) {
       // if first puller, then router should deposit liquidity on AAVE
       pooledRouter().pushAndSupply(
-        BASE, BASE.balanceOf(address(this)), QUOTE, QUOTE.balanceOf(address(this)), PROXY_OWNER
+        BASE, BASE.balanceOf(address(this)), QUOTE, QUOTE.balanceOf(address(this)), FUND_OWNER
       );
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
       repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);

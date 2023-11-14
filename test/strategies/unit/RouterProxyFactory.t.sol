@@ -17,7 +17,7 @@ contract RouterProxyFactoryTest is StratTest {
   }
 
   function test_computeProxyAddress() public {
-    RouterProxy proxy = proxyFactory.computeProxyAddress(owner, routerImpl);
+    RouterProxy proxy = RouterProxy(proxyFactory.computeProxyAddress(owner, routerImpl));
     RouterProxy proxy_ = proxyFactory.deployProxy(owner, routerImpl);
     assertEq(address(proxy), address(proxy_), "Computed address is incorrect");
   }
@@ -25,7 +25,7 @@ contract RouterProxyFactoryTest is StratTest {
   event SetAdmin(address);
 
   function test_instantiate() public {
-    RouterProxy proxy = proxyFactory.computeProxyAddress(owner, routerImpl);
+    RouterProxy proxy = RouterProxy(proxyFactory.computeProxyAddress(owner, routerImpl));
     expectFrom(address(proxy));
     emit SetAdmin(owner);
     (, bool created) = proxyFactory.instantiate(owner, routerImpl);
@@ -36,7 +36,7 @@ contract RouterProxyFactoryTest is StratTest {
 
   function test_bindsAndSetsAdmin() public {
     RouterProxy proxy = proxyFactory.deployProxy(owner, routerImpl);
-    assertEq(AbstractRouter(address(proxy)).getAdmin(), owner, "Incorrect admin");
+    assertEq(AbstractRouter(address(proxy)).admin(), owner, "Incorrect admin");
     assertTrue(AbstractRouter(address(proxy)).isBound(address(this)), "Caller is not bound");
   }
 }

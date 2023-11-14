@@ -16,7 +16,7 @@ contract RouterProxy is AccessControlled, Proxy {
   /// @notice Deploys a Proxy for the SmartRouter that handles incoming transactions and delegates them to the implementation.
   /// @param implementation The address of the deployed SmartRouter contract to which calls will be delegated.
   /// @dev Initializes the contract with an AccessControlled base to set up access control.
-  constructor(AbstractRouter implementation, address owner) AccessControlled(msg.sender) Proxy() {
+  constructor(AbstractRouter implementation) AccessControlled(msg.sender) Proxy() {
     IMPLEMENTATION = implementation;
   }
 

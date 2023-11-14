@@ -106,19 +106,6 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
     _unbind(makerContract);
   }
 
-  ///@notice dry runs a routing order and reverts if a condition for success is not satisfied.
-  ///@dev `checkList` returns normally if all needed approval are strictly positive. It reverts otherwise with a reason.
-  ///@param routingOrder to be checked
-  ///@param caller impersonates `msg.sender`
-  function checkList(RL.RoutingOrder calldata routingOrder, address caller) external view {
-    require(isBound(caller), "AbstractRouter/CallerNotBound");
-    __checkList__(routingOrder);
-  }
-
-  ///@notice router-dependent additional checks
-  ///@param routingOrder to be checked
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view virtual;
-
   ///@notice Computes how much funds are available for a given pull routing order
   ///@param routingOrder the pull order
   ///@return balance that is accessible to the router for `routingOrder.token`

@@ -4,7 +4,9 @@ pragma solidity ^0.8.10;
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder as MgvOrder, SmartRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {
+  MangroveOrder as MgvOrder, SmartRouter, RouterProxyFactory
+} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
@@ -94,8 +96,10 @@ contract MgvOrder_Test is StratTest {
     lo = olKey.flipped();
     setupMarket(olKey);
 
+    RouterProxyFactory factory = new RouterProxyFactory();
+
     // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), $(this));
+    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
     // `this` contract will act as `MgvOrder` user
@@ -209,7 +213,9 @@ contract MgvOrder_Test is StratTest {
       restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
   }
 
@@ -245,6 +251,7 @@ contract MgvOrder_Test is StratTest {
 
   function createSellOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
+
     order = IOrderLogic.TakerOrder({
       olKey: lo,
       fillOrKill: false,
@@ -254,7 +261,9 @@ contract MgvOrder_Test is StratTest {
       restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
   }
 
@@ -827,7 +836,7 @@ contract MgvOrder_Test is StratTest {
     uint g = gasleft();
     vm.startPrank($(mgo));
     quote.approve($(router), 1);
-    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, reserveId: address(this)}));
+    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, fundOwner: address(this)}));
     vm.stopPrank();
 
     uint push_cost = g - gasleft();
@@ -835,7 +844,7 @@ contract MgvOrder_Test is StratTest {
 
     vm.prank($(mgo));
     g = gasleft();
-    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, reserveId: address(this)}), true);
+    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, fundOwner: address(this)}), true);
     uint pull_cost = g - gasleft();
     assertEq(pulled, 1, "Pull failed");
 

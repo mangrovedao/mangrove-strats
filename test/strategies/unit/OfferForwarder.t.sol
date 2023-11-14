@@ -40,7 +40,7 @@ contract OfferForwarderTest is OfferLogicTest {
 
     makerContract = ITesterContract(address(forwarder)); // to use for all non `IForwarder` specific tests.
     // for all tests that check router behavior w/o posting new offers
-    forwarder.deployRouter(owner);
+    forwarder.ROUTER_FACTORY().instantiate(owner, forwarder.ROUTER_IMPLEMENTATION());
 
     vm.prank(deployer);
     forwarder.approve(usdc, $(mgv), type(uint).max);
@@ -77,12 +77,6 @@ contract OfferForwarderTest is OfferLogicTest {
     emit MakerUnbind(address(makerContract));
     vm.prank(address(makerContract));
     router.unbind();
-  }
-
-  function test_checkList_fails_if_caller_has_not_approved_router() public {
-    AbstractRouter router = forwarder.router(owner);
-    vm.expectRevert("SimpleRouter/InsufficientlyApproved");
-    router.checkList(RL.createOrder(weth, 1, freshAddress()), address(makerContract));
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {

@@ -4,9 +4,10 @@ pragma solidity ^0.8.13;
 import {Script, console} from "@mgv/forge-std/Script.sol";
 import {AavePooledRouter, IERC20, RL} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {Test2} from "@mgv/lib/Test2.sol";
 
 ///@title  AavePooledRouter deployer
-contract AavePooledRouterDeployer is Deployer {
+contract AavePooledRouterDeployer is Deployer, Test2 {
   function run() public {
     innerRun({addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")});
   }
@@ -20,12 +21,15 @@ contract AavePooledRouterDeployer is Deployer {
 
   function smokeTest(AavePooledRouter router) internal {
     IERC20 usdc = IERC20(fork.get("USDC"));
-    usdc.approve(address(router), 1);
+    usdc.approve(address(router), 10);
+    deal(address(this), address(usdc), 10);
 
-    vm.prank(broadcaster());
+    vm.startPrank(broadcaster());
     router.bind(address(this));
+    router.pushAndSupply(usdc, 10, usdc, 0, address(this));
+    vm.stopPrank();
 
     // call below should not revert
-    router.checkList(RL.createOrder({token: usdc, amount: 1, reserveId: address(this)}), address(this));
+    require(5 == router.pull(RL.createOrder({token: usdc, amount: 5, fundOwner: address(this)}), true), "pull failed!");
   }
 }

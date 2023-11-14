@@ -8,6 +8,7 @@ import {
   TransferLib,
   RouterProxyFactory,
   AbstractRouter,
+  RouterProxy,
   RL
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
@@ -125,11 +126,14 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     // `routingOrder.amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
     RL.RoutingOrder memory pullOrder = RL.createOrder({
       amount: tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume,
-      PROXY_OWNER: msg.sender,
+      fundOwner: msg.sender,
       token: IERC20(tko.olKey.inbound_tkn)
     });
-    (AbstractRouter userRouter,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
-    SmartRouter(userRouter).setLogic(pullOrder, tko.takerGivesLogic);
+    (RouterProxy proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
+    SmartRouter userRouter = SmartRouter(address(proxy));
+    if (tko.takerGivesLogic != AbstractRouter(address(0))) {
+      userRouter.setLogic(pullOrder, tko.takerGivesLogic);
+    }
     require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
 
     // POST:
@@ -154,7 +158,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       require(
         userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, PROXY_OWNER: msg.sender})
+          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, fundOwner: msg.sender})
         ) == res.takerGot,
         "mgvOrder/pushFailed"
       );
@@ -164,7 +168,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
       require(
         userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, PROXY_OWNER: msg.sender})
+          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, fundOwner: msg.sender})
         ) == inboundLeft,
         "mgvOrder/pushFailed"
       );
@@ -235,7 +239,9 @@ contract MangroveOrder is Forwarder, IOrderLogic {
       fillVolume: tko.fillVolume,
       fillWants: tko.fillWants,
       restingOrder: tko.restingOrder,
-      offerId: tko.offerId
+      offerId: tko.offerId,
+      takerGivesLogic: tko.takerGivesLogic,
+      takerWantsLogic: tko.takerWantsLogic
     });
   }
 

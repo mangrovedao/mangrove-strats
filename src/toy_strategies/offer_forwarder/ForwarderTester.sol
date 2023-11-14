@@ -11,7 +11,7 @@ contract ForwarderTester is OfferForwarder, ITesterContract {
   constructor(IMangrove mgv, address deployer) OfferForwarder(mgv, deployer) {}
 
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
-    return router(owner).balanceOfReserve(RL.createOrder({token: token, reserveId: owner}));
+    return router(owner).balanceOfReserve(RL.createOrder({token: token, fundOwner: owner}));
   }
 
   function internal_addOwner(bytes32 olKeyHash, uint offerId, address owner, uint leftover) external {

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest, TestSender, IMangrove, ITesterContract} from "./OfferLogic.t.sol";
+import {OfferLogicTest, TestSender, IMangrove, ITesterContract, RouterProxyFactory} from "./OfferLogic.t.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+
 import {
   AavePooledRouter, AbstractRouter, RL
 } from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
@@ -21,7 +23,7 @@ contract AavePooledRouterTest is OfferLogicTest {
   AavePooledRouter internal pooledRouter;
 
   event SetAaveManager(address);
-  event AaveIncident(IERC20 indexed token, address indexed maker, address indexed reserveId, bytes32 aaveReason);
+  event AaveIncident(IERC20 indexed token, address indexed maker, address indexed fundOwner, bytes32 aaveReason);
 
   IERC20 internal dai;
   address internal maker1;
@@ -58,41 +60,46 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.stopPrank();
   }
 
-  function setupLiquidityRouting() internal override {
+  function setupMakerContract() internal override {
+    deployer = payable(address(new TestSender()));
+    vm.deal(deployer, 1 ether);
+
     dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
     address aave = useForkAave
       ? fork.get("AaveAddressProvider")
       : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
 
-    vm.startPrank(deployer);
+    vm.prank(deployer);
     AavePooledRouter router = new AavePooledRouter({
       addressesProvider: aave
     });
-    router.bind(address(makerContract));
-    direct.setRouter(router);
-    makerContract.activate(weth);
-    makerContract.activate(usdc);
-    vm.stopPrank();
-    // although reserve is set to deployer the source remains makerContract since pooledRouter is always the source of funds
-    // having reserve pointing to deployer allows deployer to have multiple strats with the same shares on the router
-    owner = deployer;
-    gasreq = 486_310;
-  }
-
-  function setupMakerContract() internal override {
-    deployer = payable(address(new TestSender()));
-    vm.deal(deployer, 1 ether);
 
     vm.startPrank(deployer);
     direct = new DirectTester({
         mgv: IMangrove($(mgv)),
-        router_: AbstractRouter(address(0)),
-        deployer: deployer
-        });
+        routerParams: Direct.RouterParams({
+          factory: RouterProxyFactory(address(0)), // don't use proxy calls
+          routerImplementation: router,
+          fundOwner: address(0),
+          strict:true
+        })
+      });
+
     makerContract = ITesterContract(address(direct));
     weth.approve(address(makerContract), type(uint).max);
     usdc.approve(address(makerContract), type(uint).max);
     vm.stopPrank();
+
+    vm.startPrank(deployer);
+    router.bind(address(makerContract));
+    makerContract.activate(weth);
+    makerContract.activate(usdc);
+    vm.stopPrank();
+
+    // although reserve is set to deployer the source remains makerContract since pooledRouter is always the source of funds
+    // having reserve pointing to deployer allows deployer to have multiple strats with the same shares on the router
+    owner = deployer;
+    gasreq = 486_310;
   }
 
   function fundStrat() internal virtual override {
@@ -116,12 +123,12 @@ contract AavePooledRouterTest is OfferLogicTest {
     // so that push does not supply to the pool
     deal($(usdc), address(this), 10 ** 6);
     vm.expectRevert("AccessControlled/Invalid");
-    pooledRouter.push(RL.createOrder(usdc, 10 ** 6, address(this)));
+    pooledRouter.push(RL.createOrder({token: usdc, amount: 10 ** 6, fundOwner: address(this)}));
 
     deal($(usdc), deployer, 10 ** 6);
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(deployer);
-    pooledRouter.push(RL.createOrder(usdc, 10 ** 6, deployer));
+    pooledRouter.push(RL.createOrder({token: usdc, amount: 10 ** 6, fundOwner: deployer}));
   }
 
   function test_supply_error_is_logged() public {
@@ -137,7 +144,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     pixieDust.approve($(pooledRouter), type(uint).max);
 
     expectFrom($(pooledRouter));
-    emit AaveIncident({token: pixieDust, maker: address(makerContract), reserveId: owner, aaveReason: "noReason"});
+    emit AaveIncident({token: pixieDust, maker: address(makerContract), fundOwner: owner, aaveReason: "noReason"});
     vm.prank(address(makerContract));
     pooledRouter.pushAndSupply(pixieDust, 1 ether, pixieDust, 0, owner);
     // although aave refused the deposit, funds should be on the router
@@ -430,20 +437,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     }
   }
 
-  function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
-    TestToken tkn = new TestToken(
-      $(this),
-      "wen token",
-      "WEN",
-      42
-    );
-    vm.prank(maker1);
-    tkn.approve({spender: $(pooledRouter), amount: type(uint).max});
-
-    vm.expectRevert("AavePooledRouter/tokenNotLendableOnAave");
-    pooledRouter.checkList(RL.createOrder(IERC20($(tkn)), type(uint).max, maker1), maker1);
-  }
-
   function empty_pool(IERC20 token, address id) internal {
     // empty usdc reserve
     uint bal = pooledRouter.balanceOfReserve(RL.createOrder(token, id));
@@ -498,7 +491,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.push(RL.createOrder(usdc, deposit, maker2));
 
     assertApproxEqRel(
-      deposit, pooledRouter.balanceOfReserve(RL.createOrder({token: usdc, reserveId: maker2})), 10 ** 13
+      deposit, pooledRouter.balanceOfReserve(RL.createOrder({token: usdc, fundOwner: maker2})), 10 ** 13
     ); // error not worth than 10^-7% of the deposit
   }
 
@@ -514,12 +507,12 @@ contract AavePooledRouterTest is OfferLogicTest {
 
     deal($(weth), maker1, donation + 1);
     vm.prank(maker1);
-    pooledRouter.push(RL.createOrder({token: weth, amount: 1, reserveId: maker1}));
+    pooledRouter.push(RL.createOrder({token: weth, amount: 1, fundOwner: maker1}));
 
     vm.prank(maker1);
     weth.transfer($(pooledRouter), donation);
 
-    RL.RoutingOrder memory order = RL.createOrder({token: weth, amount: deposit, reserveId: maker2});
+    RL.RoutingOrder memory order = RL.createOrder({token: weth, amount: deposit, fundOwner: maker2});
 
     deal($(weth), maker2, deposit);
     vm.prank(maker2);
@@ -565,8 +558,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.isBound(maker1);
     pooledRouter.overlying(dai);
 
-    routingOrder.reserveId = maker1;
-    pooledRouter.checkList(routingOrder, maker1);
+    routingOrder.fundOwner = maker1;
 
     CheckAuthArgs memory args;
     args.callee = $(pooledRouter);

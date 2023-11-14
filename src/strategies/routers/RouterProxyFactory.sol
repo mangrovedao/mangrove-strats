@@ -11,7 +11,7 @@ contract RouterProxyFactory {
   /// @notice Emitted when a new proxy is deployed through this factory.
   /// @param owner The address which will be the admin and immutable owner of the newly deployed proxy.
   /// @param implementation The address of the router implementation used by the proxy.
-  event ProxyDeployed(address indexed owner, AbstractRouter indexed implementation);
+  event ProxyDeployed(RouterProxy proxy, address indexed owner, AbstractRouter indexed implementation);
 
   /// @notice Computes the deterministic address of a proxy deployed for a specific owner using CREATE2.
   /// @param owner The prospective admin and owner of the new proxy contract.
@@ -59,7 +59,7 @@ contract RouterProxyFactory {
     public
     returns (RouterProxy proxy, bool created)
   {
-    proxy = RouterProxy(computeProxyAddress(owner));
+    proxy = RouterProxy(computeProxyAddress(owner, routerImplementation));
     if (address(proxy).code.length == 0) {
       require(deployProxy(owner, routerImplementation) == proxy, "Deployed via create2 failed");
       created = true;

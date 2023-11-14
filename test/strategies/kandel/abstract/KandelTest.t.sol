@@ -65,7 +65,7 @@ abstract contract KandelTest is StratTest {
   }
 
   // defines how to deploy a Kandel strat
-  function __deployKandel__(address deployer, address reserveId) internal virtual returns (GeometricKandel kdl_);
+  function __deployKandel__(address deployer, address fundOwner) internal virtual returns (GeometricKandel kdl_);
 
   function precisionForAssert() internal pure virtual returns (uint) {
     return 0;

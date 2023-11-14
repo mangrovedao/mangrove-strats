@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {OfferMaker} from "./OfferMaker.sol";
+import {OfferMaker, Direct} from "./OfferMaker.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
@@ -12,9 +12,7 @@ contract DirectTester is OfferMaker {
 
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer)
-    OfferMaker(mgv, router_, deployer, deployer) // setting reserveId = deployer by default
-  {}
+  constructor(IMangrove mgv, RouterParams memory routerParams) OfferMaker(mgv, routerParams) {}
 
   function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
     return retData;

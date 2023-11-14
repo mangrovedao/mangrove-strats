@@ -12,56 +12,55 @@ import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
-  /// @notice router proxy contract (can be 0x if this contract does not user liquidity routing)
+  /// @notice whether this contract delegates routing to a proxy contract (0x if not).
+  /// note address could be deterministically retrieved using `FUND_OWNER`, but storing it saves gas.
   RouterProxy public immutable ROUTER_PROXY;
 
-  ///@notice address of the proxy owner (that determines router proxy's address if routing is required).
-  address public immutable PROXY_OWNER;
+  ///@notice address of the fund owner. Is used for the proxy owner if strat is using one.
+  address public immutable FUND_OWNER;
 
-  ///@notice whether this contract requires routing pull orders to provide at most routing amount.
+  ///@notice whether this contract requires that routing pull orders provide *at most* the required amount.
   bool public immutable STRICT_PULLING;
 
   struct RouterParams {
-    RouterProxyFactory factory;
-    AbstractRouter routerImplementation;
-    address proxyOwner;
+    RouterProxyFactory factory; // 0x if not delegated
+    AbstractRouter routerImplementation; // 0x if not routing
+    address fundOwner; // address must be controlled by msg.sender
     bool strict;
   }
 
   ///@notice `Direct`'s constructor.
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-  ///@param routerImplementation the router that this contract will use to pull/push liquidity from offer maker's reserve. This can be `address(0)` if no liquidity routing will ever be enabled.
-  ///@param proxyOwner address to be used to determine router proxy address (when one is required) to be used to route liquidity for this contract.
-  ///@param strict whether routing pull order are required to provide at most pull amount (ignored if `routerImplementation == address(0)`).
-  ///@dev if `proxyOwner` already has a router proxy deployed, it must bind it to this contract at the end of that constructor.
-  constructor(IMangrove mgv, RouterParams memory routerParams) MangroveOffer(mgv, routerParams.routerImplementation) {
-    // proxyOwner != this ==> routerImpl != 0x --cannot route liquidity to an external account without a router
-    require(
-      routerParams.proxyOwner == address(this) || address(routerParams.routerImplementation) != address(0),
-      "Direct/0xRouterImplementation"
-    );
-    // proxyOwner == 0x => routerImpl == 0x --cannot deploy a router proxy to the 0x owner
-    require(
-      routerParams.proxyOwner != address(0) || address(routerParams.routerImplementation) == address(0),
-      "Direct/0xProxyOwner"
-    );
-    if (routerParams.routerImplementation != AbstractRouter(address(0))) {
-      // deploys a router proxy for `routerImplementation` and binds it to this contract if not already deployed.
-      (ROUTER_PROXY,) = routerParams.factory.instantiate(routerParams.proxyOwner, routerParams.routerImplementation);
-    } else {
-      ROUTER_PROXY = RouterProxy(address(0));
+  ///@param routerParams routing parameters. Use `noRouter()` to get an empty struct
+  constructor(IMangrove mgv, RouterParams memory routerParams)
+    MangroveOffer(mgv, routerParams.factory, routerParams.routerImplementation)
+  {
+    address fundOwner = routerParams.fundOwner == address(0) ? address(this) : routerParams.fundOwner;
+    RouterProxy proxy;
+    if (routerParams.routerImplementation != AbstractRouter(address(0)) && address(routerParams.factory) != address(0))
+    {
+      // contract is using a router and is delegating
+      (proxy,) = routerParams.factory.instantiate(fundOwner, routerParams.routerImplementation);
     }
-    PROXY_OWNER = routerParams.proxyOwner;
+    ROUTER_PROXY = proxy;
     STRICT_PULLING = routerParams.strict;
+    FUND_OWNER = fundOwner;
   }
 
   ///@notice convenience function to get an empty RouterParams struct
-  function noRouter() internal pure returns (RouterParams memory) {}
+  function noRouter() public pure returns (RouterParams memory) {}
 
   ///@inheritdoc IOfferLogic
-  ///@dev saves gas
+  ///@dev Returns the router to which pull/push calls must be done. It is behind the scene either a proxy or a direct implementation.
+  ///@dev if strat is not routing, the call does not revert but returns a casted `address(0)`
   function router(address) public view override returns (AbstractRouter) {
-    return AbstractRouter(address(ROUTER_PROXY));
+    return address(ROUTER_PROXY) == address(0) ? ROUTER_IMPLEMENTATION : AbstractRouter(address(ROUTER_PROXY));
+  }
+
+  ///@notice convenience function
+  ///@return the router to which pull/push calls must be done.
+  function router() public view returns (AbstractRouter) {
+    return router(address(0));
   }
 
   ///@inheritdoc IOfferLogic
@@ -69,7 +68,7 @@ abstract contract Direct is MangroveOffer {
   function activate(IERC20 token) public virtual override {
     super.activate(token);
     if (_isRouting()) {
-      require(TransferLib.approveToken(token, address(ROUTER_PROXY), type(uint).max), "Direct/RouterActivationFailed");
+      require(TransferLib.approveToken(token, address(router()), type(uint).max), "Direct/RouterActivationFailed");
     }
   }
 
@@ -136,13 +135,13 @@ abstract contract Direct is MangroveOffer {
     if (!_isRouting()) {
       return missing;
     } else {
-      uint pulled = AbstractRouter(address(ROUTER_PROXY)).pull(
+      uint pulled = router().pull(
         RL.RoutingOrder({
           token: IERC20(order.olKey.outbound_tkn),
           amount: missing,
           olKeyHash: order.olKey.hash(),
           offerId: order.offerId,
-          reserveId: PROXY_OWNER
+          fundOwner: FUND_OWNER
         }),
         STRICT_PULLING
       );
@@ -162,13 +161,13 @@ abstract contract Direct is MangroveOffer {
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
       routingOrders[0].amount = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
-      routingOrders[0].PROXY_OWNER = PROXY_OWNER;
+      routingOrders[0].fundOwner = FUND_OWNER;
 
       routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
       routingOrders[1].amount = IERC20(order.olKey.inbound_tkn).balanceOf(address(this));
-      routingOrders[1].PROXY_OWNER = PROXY_OWNER;
+      routingOrders[1].fundOwner = FUND_OWNER;
 
-      AbstractRouter(address(ROUTER_PROXY)).flush(routingOrders);
+      router().flush(routingOrders);
     }
     // reposting offer residual if any
     return super.__posthookSuccess__(order, makerData);

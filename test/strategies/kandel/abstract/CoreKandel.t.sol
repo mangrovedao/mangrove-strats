@@ -1332,9 +1332,11 @@ abstract contract CoreKandelTest is KandelTest {
     // No auth
     kdl.BASE();
     kdl.MGV();
-    kdl.NO_ROUTER();
     kdl.QUOTE();
-    kdl.RESERVE_ID();
+    kdl.FUND_OWNER();
+    kdl.ROUTER_PROXY();
+    kdl.STRICT_PULLING();
+    kdl.ROUTER_IMPLEMENTATION();
     kdl.TICK_SPACING();
     kdl.admin();
     kdl.depositFunds(0, 0);
@@ -1368,7 +1370,6 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setGasprice, (42)));
     checkAuth(args, abi.encodeCall(kdl.setStepSize, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
-    checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteTickOffset, (1)));
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, params, 0, 0)));

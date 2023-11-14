@@ -1,14 +1,19 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {Forwarder, IMangrove, IERC20} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {
+  Forwarder,
+  IMangrove,
+  IERC20,
+  RouterProxyFactory
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
-import {SmartRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SmartRouter()) {}
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, RouterProxyFactory(address(0)), new SimpleRouter()) {}
 
   /// @inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)

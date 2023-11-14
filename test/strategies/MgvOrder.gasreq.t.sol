@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder, RL} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder, AbstractRouter, RL, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {IERC20, OLKey, Offer} from "@mgv/src/core/MgvLib.sol";
@@ -32,7 +32,7 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), $(this));
     mangroveOrder.activate(base);
     mangroveOrder.activate(quote);
 
@@ -54,7 +54,9 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
       restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision
@@ -72,7 +74,9 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
       restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
-      restingOrderGasreq: GASREQ // overestimate
+      restingOrderGasreq: GASREQ, // overestimate
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision

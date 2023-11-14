@@ -31,12 +31,16 @@ contract Amplifier is Direct {
     IERC20 stable2,
     uint tickSpacing1,
     uint tickSpacing2,
-    address admin,
-    RouterProxyFactory factory
+    address admin
   )
     Direct(
       mgv,
-      RouterParams({routerImplementation: new SimpleRouter(), factory: factory, proxyOwner: admin, strict: true})
+      RouterParams({
+        routerImplementation: new SimpleRouter(),
+        factory: RouterProxyFactory(address(0)),
+        fundOwner: admin,
+        strict: true
+      })
     )
   {
     // SimpleRouter takes promised liquidity from admin's address (wallet)

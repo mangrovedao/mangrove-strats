@@ -80,23 +80,4 @@ contract SmartRouter is SimpleRouter {
       return super.balanceOfReserve(routingOrder);
     }
   }
-
-  ///@inheritdoc AbstractRouter
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
-    AbstractRouter logic =
-      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
-    if (address(logic) != address(0)) {
-      (bool success, bytes memory retdata) = address(this).staticcall(
-        abi.encodeWithSelector(
-          SmartRouterStorage._staticdelegatecall.selector,
-          abi.encodeWithSelector(AbstractRouter.checkList.selector, routingOrder)
-        )
-      );
-      if (!success) {
-        SmartRouterStorage.revertWithData(retdata);
-      }
-    } else {
-      super.__checkList__(routingOrder);
-    }
-  }
 }

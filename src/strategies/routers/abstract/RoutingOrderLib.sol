@@ -14,34 +14,33 @@ library RoutingOrderLib {
   ///@param olKeyHash the id of the market that triggered the calling offer logic. Is bytes32(0) when routing is done outside offer logic.
   ///@param offerId the id of the offer that triggered the calling offer logic. Is uint(0) when routing is done outsider offer logic.
   ///@param amount of token that needs to be routed
-  ///@param PROXY_OWNER the owner of the calling router proxy.
-  ///@dev PROXY_OWNER is capitalized to highlight the fact that is the address that was used to derive router proxy's address. It is passed here to minimize gas cost.
+  ///@param fundOwner the owner of the routed funds. If calling router is a proxy, it address is determined by `fundOwner`.
   struct RoutingOrder {
     IERC20 token;
     bytes32 olKeyHash;
     uint offerId;
     uint amount;
-    address PROXY_OWNER;
+    address fundOwner;
   }
 
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates.
   ///@param token the asset to be routed
   ///@param amount of token to be routed
-  ///@param PROXY_OWNER the owner of the calling router proxy
+  ///@param fundOwner the owner of the routed funds
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, address PROXY_OWNER, uint amount) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, uint amount, address fundOwner) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
-    ro.PROXY_OWNER = PROXY_OWNER;
+    ro.fundOwner = fundOwner;
     ro.amount = amount;
   }
 
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates and amount.
   ///@param token the asset to be routed
-  ///@param proxyOwner the owner of the calling router proxy
+  ///@param fundOwner the owner of the routed funds
   ///@return ro the routing order struct
-  function createOrder(IERC20 token, address PROXY_OWNER) internal pure returns (RoutingOrder memory ro) {
+  function createOrder(IERC20 token, address fundOwner) internal pure returns (RoutingOrder memory ro) {
     ro.token = token;
-    ro.PROXY_OWNER = PROXY_OWNER;
+    ro.fundOwner = fundOwner;
   }
 
   ///@notice the bound maker contracts which are allowed to call this router.

@@ -31,19 +31,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The offer was completely filled.
   bytes32 internal constant COMPLETE_FILL = "offer/filled";
 
-  /**
-   * @notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   * @param mgv The Mangrove deployment.
-   * @notice By emitting this event, an indexer will be able to create a mapping from this contract address to the used Mangrove address.
-   */
-  event Mgv(IMangrove mgv);
-
-  /**
-   * @notice The Router factory this contract uses
-   * @param factory the RouterFactory contract
-   */
-  event Factory(RouterProxyFactory factory);
-
   ///@notice Mandatory function to allow `this` to receive native tokens from Mangrove after a call to `MGV.withdraw(...,deprovision:true)`
   ///@dev override this function if `this` contract needs to handle local accounting of user funds.
   receive() external payable virtual {}
@@ -60,8 +47,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     MGV = mgv;
     ROUTER_FACTORY = factory;
     ROUTER_IMPLEMENTATION = routerImplementation;
-    emit Factory(factory);
-    emit Mgv(mgv);
   }
 
   ///*****************************
@@ -120,7 +105,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   ///@notice whether this contract has enabled liquidity routing
   function _isRouting() internal view returns (bool) {
-    address(ROUTER_IMPLEMENTATION) != address(0);
+    return address(ROUTER_IMPLEMENTATION) != address(0);
   }
 
   ///@notice approves a router proxy for transfering funds from this contract

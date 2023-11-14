@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
@@ -65,15 +65,11 @@ abstract contract OfferLogicTest is StratTest {
 
     // instantiates makerContract
     setupMakerContract();
-    setupLiquidityRouting();
     fundStrat();
   }
 
   // override this to use Forwarder strats
   function setupMakerContract() internal virtual;
-
-  // override this function to use a specific router for the strat
-  function setupLiquidityRouting() internal virtual {}
 
   function fundStrat() internal virtual {
     deal($(weth), address(makerContract), 1 ether);

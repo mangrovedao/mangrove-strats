@@ -6,7 +6,7 @@ import {Script, console} from "@mgv/forge-std/Script.sol";
 import {IMangrove, KandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {AaveKandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
-import {KandelSeederDeployer, IERC20} from "./KandelSeederDeployer.s.sol";
+import {RouterProxyFactory, KandelSeederDeployer, IERC20} from "./KandelSeederDeployer.s.sol";
 
 contract ArbitrumKandelSeederDeployer is Deployer {
   function run() public {

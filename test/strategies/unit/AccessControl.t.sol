@@ -28,10 +28,12 @@ contract AccessControlTest is StratTest {
 
     admin = freshAddress("admin");
     deal(admin, 1 ether);
+
+    DirectTester.RouterParams memory noRouter;
+    vm.prank(admin);
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)),
-      deployer: admin
+      routerParams: noRouter
     });
 
     vm.startPrank(admin);
@@ -50,17 +52,5 @@ contract AccessControlTest is StratTest {
     vm.prank(admin);
     makerContract.setAdmin(newAdmin);
     assertEq(makerContract.admin(), newAdmin, "Incorrect admin");
-  }
-
-  function testCannot_setRouter() public {
-    vm.expectRevert("AccessControlled/Invalid");
-    makerContract.setRouter(AbstractRouter(freshAddress()));
-  }
-
-  function test_admin_can_set_router() public {
-    address newRouter = freshAddress("newRouter");
-    vm.prank(admin);
-    makerContract.setRouter(AbstractRouter(newRouter));
-    assertEq(address(makerContract.router()), newRouter, "Incorrect router");
   }
 }

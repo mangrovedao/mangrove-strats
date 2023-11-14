@@ -14,7 +14,8 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {
   MangroveOrderDeployer,
-  MangroveOrder
+  MangroveOrder,
+  RouterProxyFactory
 } from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 
 /**
@@ -27,7 +28,7 @@ abstract contract BaseMangroveOrderDeployerTest is Deployer, Test2 {
   function test_normal_deploy() public {
     // MangroveOrder - verify mgv is used and admin is chief
     address mgv = fork.get("Mangrove");
-    mgoDeployer.innerRun(IMangrove(payable(mgv)), chief);
+    mgoDeployer.innerRun(IMangrove(payable(mgv)), chief, RouterProxyFactory(fork.get("RouterProxyFactory")));
     MangroveOrder mgoe = MangroveOrder(fork.get("MangroveOrder"));
     address mgvOrderRouter = fork.get("MangroveOrder-Router");
 

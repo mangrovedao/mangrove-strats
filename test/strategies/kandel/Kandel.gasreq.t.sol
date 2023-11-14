@@ -14,6 +14,7 @@ import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_mak
 import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import {Direct, RouterProxyFactory} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 
 ///@notice Can be used to test gasreq for Kandel. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing.
@@ -221,8 +222,7 @@ abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     return new Kandel({
         mgv: mgv,
         olKeyBaseQuote: olKey,
-        gasreq: 500_000,
-        reserveId: address(0)
+        gasreq: 500_000
       });
   }
 }
@@ -237,12 +237,15 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     AaveKandel aaveKandel = new AaveKandel({
       mgv: mgv,
       olKeyBaseQuote: olKey,
-      reserveId: $(this)
+      gasreq: 1_000_000,
+      routerParams: Direct.RouterParams({
+        factory:RouterProxyFactory(address(0)), // not delegated
+        routerImplementation: router,
+        fundOwner: address(this),
+        strict: false
+      })
     });
-
     router.bind(address(aaveKandel));
-    aaveKandel.initialize(router, 1_000_000);
-
     return aaveKandel;
   }
 }
