@@ -1,5 +1,8 @@
 # Next version
 
+- Use addresses from mangrove-deployments and context-addresses
+- Bump mangrove-core to 2.0.0-4
+
 # 0.0.2-3
 
 - deploy new, full testnet setup to Mumbai
