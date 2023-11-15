@@ -36,14 +36,13 @@ contract RouterProxyFactory {
     return payable(address(uint160(uint(zeroPaddedAddress))));
   }
 
-  /// @notice Deploys a new RouterProxy for a given owner and binds it to msg.sender.
+  /// @notice Deploys a new RouterProxy for a given owner.
   /// @param owner The address to be set as initial admin and immutable owner of the proxy.
   /// @return proxy The address of the newly deployed RouterProxy.
   /// @dev Emits a ProxyDeployed event upon successful deployment.
   ///      Note that the deployment can be initiated by any caller, on behalf of `owner`.
   function deployProxy(address owner, AbstractRouter routerImplementation) public returns (RouterProxy proxy) {
     proxy = new RouterProxy{salt:keccak256(abi.encode(owner))}(routerImplementation);
-    AbstractRouter(address(proxy)).bind(msg.sender);
     // sets the admin *after* binding this contract to the router
     AbstractRouter(address(proxy)).setAdmin(owner);
     emit ProxyDeployed(proxy, owner, routerImplementation);

@@ -44,9 +44,10 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
     AccessControlled(msg.sender)
   {
+    require(address(mgv) != address(0), "MgvOffer/0xMangrove");
     MGV = mgv;
-    ROUTER_FACTORY = factory;
-    ROUTER_IMPLEMENTATION = routerImplementation;
+    ROUTER_FACTORY = factory; // this may be 0x
+    ROUTER_IMPLEMENTATION = routerImplementation; // this may be 0x
   }
 
   ///*****************************
@@ -99,8 +100,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   /// @inheritdoc IOfferLogic
   /// @dev this is made virtual so that one can skip the external call for strats that have an immutable `proxyOwner`
-  function router(address proxyOwner) public view virtual override returns (AbstractRouter) {
-    return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(proxyOwner, ROUTER_IMPLEMENTATION)));
+  function router(address fundOwner) public view virtual override returns (AbstractRouter) {
+    return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
   }
 
   ///@notice whether this contract has enabled liquidity routing

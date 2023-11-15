@@ -13,7 +13,7 @@ import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, RouterProxyFactory(address(0)), new SimpleRouter()) {}
+  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new RouterProxyFactory(), new SimpleRouter()) {}
 
   /// @inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)

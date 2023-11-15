@@ -51,7 +51,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
     MangroveOffer(mgv, factory, routerImplementation)
-  {}
+  {
+    require(address(factory) != address(0), "Forwarder/0xFactory");
+  }
 
   ///@inheritdoc IForwarder
   function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
