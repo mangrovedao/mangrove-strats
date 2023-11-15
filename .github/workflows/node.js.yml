@@ -51,7 +51,7 @@ jobs:
         MUMBAI_NODE_URL: ${{ secrets.MUMBAI_NODE_URL || 'unused' }}
 
     # For push runs we also create a coverage report
-    - name: Create coverage report for
+    - name: Create coverage report
       if: github.event_name != 'pull_request' 
       run: forge coverage --report lcov
       env:
