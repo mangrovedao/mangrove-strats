@@ -17,6 +17,7 @@ import {AaveCaller} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
 import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract AaveKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -384,5 +385,10 @@ contract AaveKandelTest is CoreKandelTest {
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
       reserveId: address(0)
     });
+  }
+
+  function test_setRouter_no_router() public {
+    vm.expectRevert("AaveKandel/noRouter");
+    kdl.setRouter(AbstractRouter(address(0)));
   }
 }

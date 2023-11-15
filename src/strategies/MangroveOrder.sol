@@ -37,7 +37,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
 
   ///@inheritdoc IOrderLogic
   ///@dev We also allow Mangrove to call this so that it can part of an offer logic.
-  function setExpiry(bytes32 olKeyHash, uint offerId, uint date) public mgvOrOwner(olKeyHash, offerId) {
+  function setExpiry(bytes32 olKeyHash, uint offerId, uint date) public onlyOwner(olKeyHash, offerId) {
     expiring[olKeyHash][offerId] = date;
     emit SetExpiry(olKeyHash, offerId, date);
   }
@@ -75,7 +75,7 @@ contract MangroveOrder is Forwarder, IOrderLogic {
   ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
   function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
-    mgvOrOwner(olKey.hash(), offerId)
+    onlyOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
     return _retractOffer(olKey, offerId, deprovision);
