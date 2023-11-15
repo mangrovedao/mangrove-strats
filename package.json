@@ -10,7 +10,9 @@
     "prepack": "pinst --disable && yarn build",
     "postpack": "pinst --enable",
     "postinstall": "husky install",
-    "build": "forge build && node copyArtifacts && node buildIndex && node checkNatspec",
+    "build": "yarn run copyDeploymentAddresses && yarn run copyContextAddresses && forge build && node copyArtifacts && node buildIndex && node checkNatspec",
+    "copyDeploymentAddresses": "node copyDeploymentAddresses",
+    "copyContextAddresses": "node copyContextAddresses",
     "clean": "forge clean; rimraf index.js dist",
     "test": "forge test -vvv",
     "gas-measurement": "GAS_MATCH_PATH='*.gasreq.*' bash ./node_modules/@mangrovedao/mangrove-core/gas-measurement.sh"
@@ -24,7 +26,6 @@
     "/src",
     "/script",
     "/test/lib/**/*",
-    "/addresses/**/!(*.backup.json)",
     "foundry.toml",
     "remappings.txt",
     "/lib",
@@ -35,6 +36,8 @@
     "@mangrovedao/mangrove-core": "next"
   },
   "devDependencies": {
+    "@mangrovedao/context-addresses": "next",
+    "@mangrovedao/mangrove-deployments": "next",
     "@types/node": "^20.9.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",

@@ -33,9 +33,9 @@ contract AmplifierTest is StratTest {
     reader = new MgvReader($(mgv));
 
     // setup tokens, markets and approve them
-    dai = IERC20(fork.get("DAI"));
-    weth = IERC20(fork.get("WETH"));
-    usdc = IERC20(fork.get("USDC"));
+    dai = IERC20(fork.get("DAI.e"));
+    weth = IERC20(fork.get("WETH.e"));
+    usdc = IERC20(fork.get("USDC.e"));
     olKeyWethDai = OLKey($(weth), $(dai), options.defaultTickSpacing);
     olKey = OLKey($(usdc), $(weth), options.defaultTickSpacing);
     lo = olKey.flipped();

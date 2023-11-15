@@ -86,8 +86,8 @@ contract MangroveOrder_Test is StratTest {
     options.defaultFee = 30;
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
-    base = TestToken(fork.get("WETH"));
-    quote = TestToken(fork.get("DAI"));
+    base = TestToken(fork.get("WETH.e"));
+    quote = TestToken(fork.get("DAI.e"));
     olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
     lo = olKey.flipped();
     setupMarket(olKey);

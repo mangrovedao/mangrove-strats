@@ -56,7 +56,7 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function setupLiquidityRouting() internal override {
-    dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
+    dai = useForkAave ? dai = TestToken(fork.get("DAI.e")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
     address aave = useForkAave
       ? fork.get("AaveAddressProvider")
       : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
