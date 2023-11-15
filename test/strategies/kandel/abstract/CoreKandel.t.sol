@@ -994,7 +994,7 @@ abstract contract CoreKandelTest is KandelTest {
   {
     address otherMaker = freshAddress();
 
-    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker);
+    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker, true);
 
     vm.prank(otherMaker);
     TransferLib.approveToken(base, address(otherKandel), type(uint).max);
@@ -1334,6 +1334,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.MGV();
     kdl.QUOTE();
     kdl.FUND_OWNER();
+    kdl.ROUTER_FACTORY();
     kdl.ROUTER_PROXY();
     kdl.STRICT_PULLING();
     kdl.ROUTER_IMPLEMENTATION();
@@ -1349,6 +1350,8 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.reserveBalance(Ask);
     kdl.provisionOf(olKey, 0);
     kdl.router();
+    kdl.router(address(this));
+    kdl.noRouter();
     kdl.baseQuoteTickOffset();
     kdl.createDistribution(0, 0, Tick.wrap(0), 0, 0, 0, 0, 0, 0);
     kdl.activate(IERC20(address(0)));

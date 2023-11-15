@@ -43,7 +43,6 @@ contract RouterProxyFactory {
   ///      Note that the deployment can be initiated by any caller, on behalf of `owner`.
   function deployProxy(address owner, AbstractRouter routerImplementation) public returns (RouterProxy proxy) {
     proxy = new RouterProxy{salt:keccak256(abi.encode(owner))}(routerImplementation);
-    // sets the admin *after* binding this contract to the router
     AbstractRouter(address(proxy)).setAdmin(owner);
     emit ProxyDeployed(proxy, owner, routerImplementation);
   }

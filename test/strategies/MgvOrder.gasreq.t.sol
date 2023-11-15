@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {StratTest, MangroveOffer} from "@mgv-strats/test/lib/StratTest.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MangroveOrder, AbstractRouter, RL, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
@@ -39,10 +39,9 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver
     deal($(quote), $(this), 10 ether);
-    TransferLib.approveToken(quote, $(mangroveOrder.router(address(this))), 1.5 ether);
-
     deal($(base), $(this), 10 ether);
-    TransferLib.approveToken(base, $(mangroveOrder.router(address(this))), 1.5 ether);
+    activateOwnerRouter(base, MangroveOffer($(mangroveOrder)), address(this));
+    activateOwnerRouter(quote, MangroveOffer($(mangroveOrder)), address(this));
 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
@@ -92,7 +91,7 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     setGasprice(mgv.global().gasprice() + 1);
   }
 
-  function test_gasreq_repost_on_now_empty_offer_list_with_expiry(OLKey memory _olKey, bool failure) internal {
+  function gasreq_repost_on_now_empty_offer_list_with_expiry(OLKey memory _olKey, bool failure) internal {
     // note: we do not test failure in posthook as it is not supposed to fail for MangroveOrder.
     // we take more than approval to make makerExecute fail
     // this is more expensive than expiry which fails earlier.
@@ -114,22 +113,22 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_success() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, false);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, false);
     printDescription(" - Case: base/quote gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_success() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, false);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(lo, false);
     printDescription(" - Case: quote/base gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_failure() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, true);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, true);
     printDescription(" - Case: base/quote gasreq for taking single failing offer on now empty book so not reposted");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_failure() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, true);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(lo, true);
     printDescription(" - Case: quote/base gasreq for taking single failing offer on now empty book so not reposted");
   }
 }

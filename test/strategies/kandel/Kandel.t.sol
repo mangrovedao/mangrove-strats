@@ -12,7 +12,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title Tests for Kandel without a router, and router agnostic functions.
 contract NoRouterKandelTest is CoreKandelTest {
-  function __deployKandel__(address deployer, address) internal override returns (GeometricKandel kdl_) {
+  function __deployKandel__(address deployer, address, bool) internal override returns (GeometricKandel kdl_) {
     uint GASREQ = 170000;
     OLKey memory olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
 

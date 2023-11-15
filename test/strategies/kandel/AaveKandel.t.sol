@@ -53,8 +53,13 @@ contract AaveKandelTest is CoreKandelTest {
     }
   }
 
-  function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
-    uint kandel_gasreq = 700_000;
+  function __deployKandel__(address deployer, address id, bool strict)
+    internal
+    virtual
+    override
+    returns (GeometricKandel)
+  {
+    uint kandel_gasreq = 800_000;
     router = address(router) == address(0) ? new AavePooledRouter(aave) : router;
     AaveKandel aaveKandel_ = new AaveKandel({
       mgv: IMangrove($(mgv)),
@@ -64,7 +69,7 @@ contract AaveKandelTest is CoreKandelTest {
         factory:RouterProxyFactory(address(0)), // not delegated
         routerImplementation: router,
         fundOwner: id,
-        strict: false
+        strict: strict
       })
     });
 
@@ -170,7 +175,7 @@ contract AaveKandelTest is CoreKandelTest {
   function test_sharing_liquidity_between_strats(uint16 baseAmount, uint16 quoteAmount) public {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
     assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     uint baseBalance = kdl.reserveBalance(Ask);
@@ -214,7 +219,7 @@ contract AaveKandelTest is CoreKandelTest {
     bool allBaseOnAave,
     bool allQuoteOnAave
   ) internal {
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
     assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     (, Offer bestAsk) = getBestOffers();
@@ -255,7 +260,7 @@ contract AaveKandelTest is CoreKandelTest {
   {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, address(0));
+    GeometricKandel kdl_ = __deployKandel__(maker, address(0), true);
     assertTrue(kdl_.FUND_OWNER() != kdl.FUND_OWNER(), "Strats should not have the same reserveId");
     vm.prank(maker);
     kdl.depositFunds(baseAmount, quoteAmount);
