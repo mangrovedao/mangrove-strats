@@ -1,5 +1,7 @@
 # Next version
 
+# 0.0.2-4
+
 - Use addresses from mangrove-deployments and context-addresses
 - Bump mangrove-core to 2.0.0-4
 
