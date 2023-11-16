@@ -4,6 +4,8 @@ import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter
 import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
+/// @title SimpleAaveLogic
+/// @notice Routing logic for Aave wihtout credit line
 contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
