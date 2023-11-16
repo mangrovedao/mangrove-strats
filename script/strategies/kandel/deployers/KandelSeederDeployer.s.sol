@@ -66,9 +66,10 @@ contract KandelSeederDeployer is Deployer, Test2 {
       seeder = new KandelSeeder(mgv, kandelGasreq);
       fork.set("KandelSeeder", address(seeder));
 
-      console.log("Deploying Kandel instance for code verification...");
+      console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
       broadcast();
-      new Kandel(mgv, olKeyBaseQuote, 1);
+      Kandel kandel = new Kandel(mgv, olKeyBaseQuote, 1);
+      fork.set("KandelLib", address(kandel));
       smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     }
     if (deployAaveKandel) {

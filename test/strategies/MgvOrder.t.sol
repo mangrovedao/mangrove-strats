@@ -22,6 +22,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
@@ -96,8 +97,8 @@ contract MgvOrder_Test is StratTest {
     options.defaultFee = 30;
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
-    base = TestToken(fork.get("WETH"));
-    quote = TestToken(fork.get("DAI"));
+    base = TestToken(fork.get("WETH.e"));
+    quote = TestToken(fork.get("DAI.e"));
     olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
     lo = olKey.flipped();
     setupMarket(olKey);

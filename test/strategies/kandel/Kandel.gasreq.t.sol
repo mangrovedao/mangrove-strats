@@ -259,14 +259,14 @@ contract NoRouterKandelGasreqBaseTest_Generic_A_B is NoRouterKandelGasreqBaseTes
 contract NoRouterKandelGasreqBaseTest_Polygon_WETH_DAI is NoRouterKandelGasreqBaseTest {
   function setUp() public override {
     super.setUpPolygon();
-    this.setUpTokens("WETH", "DAI");
+    this.setUpTokens("WETH.e", "DAI.e");
   }
 }
 
 contract AaveKandelGasreqBaseTest_Polygon_WETH_DAI is AaveKandelGasreqBaseTest {
   function setUp() public override {
     super.setUpPolygon();
-    this.setUpTokens("WETH", "DAI");
+    this.setUpTokens("WETH.e", "DAI.e");
   }
 }
 

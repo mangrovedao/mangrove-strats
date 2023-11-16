@@ -88,8 +88,8 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     Params memory oldParams = params;
 
     if (oldParams.pricePoints != newParams.pricePoints) {
-      uint32 pricePoints_ = uint32(newParams.pricePoints);
-      require(pricePoints_ == newParams.pricePoints && pricePoints_ >= 2, "Kandel/invalidPricePoints");
+      uint32 pricePoints_ = newParams.pricePoints;
+      require(pricePoints_ >= 2, "Kandel/invalidPricePoints");
       setLength(pricePoints_);
       params.pricePoints = pricePoints_;
     }

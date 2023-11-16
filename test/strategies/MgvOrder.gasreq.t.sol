@@ -143,6 +143,6 @@ contract MangroveOrderGasreqTest_Generic_A_B is MangroveOrderGasreqBaseTest {
 contract MangroveOrderGasreqTest_Polygon_WETH_DAI is MangroveOrderGasreqBaseTest {
   function setUp() public override {
     super.setUpPolygon();
-    this.setUpTokens("WETH", "DAI");
+    this.setUpTokens("WETH.e", "DAI.e");
   }
 }

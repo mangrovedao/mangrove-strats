@@ -1,5 +1,14 @@
 # Next version
 
+# 0.0.2-5
+
+- Add Kandel for contract verification as KandelLib address to use by SDK
+
+# 0.0.2-4
+
+- Use addresses from mangrove-deployments and context-addresses
+- Bump mangrove-core to 2.0.0-4
+
 # 0.0.2-3
 
 - deploy new, full testnet setup to Mumbai

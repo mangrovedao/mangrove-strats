@@ -15,6 +15,6 @@ contract OfferGasBaseTest_Generic_A_B is OfferGasBaseBaseTest {
 contract OfferGasBaseTest_Generic_WETH_DAI is OfferGasBaseBaseTest {
   function setUp() public override {
     super.setUpPolygon();
-    this.setUpTokens("WETH", "DAI");
+    this.setUpTokens("WETH.e", "DAI.e");
   }
 }

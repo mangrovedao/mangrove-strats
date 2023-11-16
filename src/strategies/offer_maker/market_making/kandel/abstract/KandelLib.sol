@@ -35,7 +35,7 @@ library KandelLib {
   ///@notice Creates a distribution of bids and asks given by the parameters. Dual offers are included with gives=0.
   ///@param from populate offers starting from this index (inclusive). Must be at most `pricePoints`.
   ///@param to populate offers until this index (exclusive). Must be at most `pricePoints`.
-  ///@param baseQuoteTickIndex0 the tick of base per quote for the price point at index 0. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
+  ///@param baseQuoteTickIndex0 the tick for the price point at index 0 given as a tick on the `base, quote` offer list, i.e. corresponding to an ask with a quote/base ratio. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
   ///@param _baseQuoteTickOffset the tick offset used for the geometric progression deployment. Must be at least 1. It is recommended that this is a multiple of tickSpacing for the offer lists to avoid rounding.
   ///@param firstAskIndex the (inclusive) index after which offer should be an ask. Must be at most `pricePoints`.
   ///@param bidGives The initial amount of quote to give for all bids. If 0, only book the offer, if type(uint).max then askGives is used as base for bids, and the quote the bid gives is set to according to the price.

@@ -45,7 +45,7 @@ contract Amplifier is Direct {
     activate(stable1);
     activate(stable2);
     activate(base);
-    setAdmin(admin);
+    _setAdmin(admin);
   }
 
   /**

@@ -8,9 +8,11 @@ import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract
 import {IATokenIsh} from "@mgv-strats/src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds on AAVE to generate yield.
 contract AaveKandel is GeometricKandel {
