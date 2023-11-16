@@ -191,6 +191,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
 
   ///@notice pushes given tokens from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
   ///@param token asset to be pushed to this contract
+  ///@param amount the amount of token to be pushed from maker contract to this router
   ///@param fundOwner share owner
   ///@return pushed tokens to this contract
   function _pushAndSupply(IERC20 token, uint amount, address fundOwner) internal returns (uint pushed) {

@@ -34,6 +34,7 @@ abstract contract Direct is MangroveOffer {
   }
 
   ///@notice convenience function to get an empty RouterParams struct
+  ///@return an empty RouterParams struct
   function noRouter() public pure returns (RouterParams memory) {}
 
   ///@inheritdoc IOfferLogic

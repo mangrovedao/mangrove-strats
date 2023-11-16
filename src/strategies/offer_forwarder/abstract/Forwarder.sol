@@ -16,6 +16,8 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@notice approx of amount of gas units required to complete `__posthookFallback__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
+
+  ///@notice the router factory contract that is used to deploy offer owner routers
   RouterProxyFactory public immutable ROUTER_FACTORY;
 
   ///@notice data associated to each offer published on Mangrove by this contract.

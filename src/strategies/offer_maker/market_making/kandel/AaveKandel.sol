@@ -20,6 +20,7 @@ contract AaveKandel is GeometricKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param gasreq the gas required by the strat to execute
   ///@param routerParams routing policy parameters for this contract
   constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, RouterParams memory routerParams)
     GeometricKandel(mgv, olKeyBaseQuote, routerParams)

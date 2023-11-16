@@ -9,12 +9,14 @@ import {RouterProxy, AbstractRouter} from "./RouterProxy.sol";
 /// @dev Utilizes Ethereum's CREATE2 opcode for deploying contracts with predictable addresses.
 contract RouterProxyFactory {
   /// @notice Emitted when a new proxy is deployed through this factory.
+  /// @param proxy the deployed proxy contract
   /// @param owner The address which will be the admin and immutable owner of the newly deployed proxy.
   /// @param implementation The address of the router implementation used by the proxy.
   event ProxyDeployed(RouterProxy proxy, address indexed owner, AbstractRouter indexed implementation);
 
   /// @notice Computes the deterministic address of a proxy deployed for a specific owner using CREATE2.
   /// @param owner The prospective admin and owner of the new proxy contract.
+  /// @param routerImplementation router contract which implements routing functions
   /// @return The address where the proxy will be deployed.
   /// @dev The computed address is determined by the owner's address and the factory's address
   function computeProxyAddress(address owner, AbstractRouter routerImplementation)
@@ -38,6 +40,7 @@ contract RouterProxyFactory {
 
   /// @notice Deploys a new RouterProxy for a given owner.
   /// @param owner The address to be set as initial admin and immutable owner of the proxy.
+  /// @param routerImplementation router contract which implements routing functions
   /// @return proxy The address of the newly deployed RouterProxy.
   /// @dev Emits a ProxyDeployed event upon successful deployment.
   ///      Note that the deployment can be initiated by any caller, on behalf of `owner`.
@@ -49,6 +52,7 @@ contract RouterProxyFactory {
 
   /// @notice Deploys a RouterProxy for a given owner if one has not already been deployed.
   /// @param owner The address to be set as initial admin and immutable owner of the proxy.
+  /// @param routerImplementation router contract which implements routing functions
   /// @return proxy The address of the RouterProxy.
   /// @return created A boolean indicating if the proxy was created during this call.
   /// @dev If the proxy already exists at the computed address, the function will not redeploy it.

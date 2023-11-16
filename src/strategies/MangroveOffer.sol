@@ -21,6 +21,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
 
+  /// @notice router contract which implements routing functions -- this can be 0x in Direct strats
   AbstractRouter public immutable ROUTER_IMPLEMENTATION;
 
   ///@notice The offer was successfully reposted.
@@ -94,6 +95,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   }
 
   ///@notice whether this contract has enabled liquidity routing
+  ///@return true if this contracts routes liquidity using an external router
   function _isRouting() internal view returns (bool) {
     return address(ROUTER_IMPLEMENTATION) != address(0);
   }
