@@ -1,5 +1,7 @@
 # Next version
 
+# 0.0.2-5
+
 - Add Kandel for contract verification as KandelLib address to use by SDK
 
 # 0.0.2-4
