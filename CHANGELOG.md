@@ -1,5 +1,7 @@
 # Next version
 
+- Add Kandel for contract verification as KandelLib address to use by SDK
+
 # 0.0.2-4
 
 - Use addresses from mangrove-deployments and context-addresses
