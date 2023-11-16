@@ -791,10 +791,20 @@ contract MgvOrder_Test is StratTest {
     assertTrue(takerGot > 0, "offer failed");
   }
 
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+
   function test_offer_reneges_when_time_is_expired() public {
     mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp);
     vm.warp(block.timestamp + 1);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
+    expectFrom($(mgo));
+    emit LogIncident({
+      olKeyHash: lo.hash(),
+      offerId: 4,
+      makerData: "ExpirableForwarder/expired",
+      mgvData: "mgv/makerRevert"
+    });
+
     vm.prank($(sell_taker));
     (uint takerGot,,,) = mgv.marketOrderByTick(lo, tick, 1991, true);
     assertTrue(takerGot == 0, "offer should have failed");

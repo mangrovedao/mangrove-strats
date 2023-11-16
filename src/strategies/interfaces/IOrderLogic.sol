@@ -77,26 +77,6 @@ interface IOrderLogic {
   ///@notice We only emit this, so that an indexer can know that the order is completed and can thereby keep a correct context
   event MangroveOrderComplete();
 
-  ///@notice The expiry of the offer has been set
-  ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
-  ///@param offerId the Mangrove offer id.
-  ///@param date in seconds since unix epoch
-  ///@notice By emitting this data, an indexer will be able to keep track of the expiry date of an offer.
-  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
-
-  ///@notice Timestamp beyond which the given `offerId` should renege on trade.
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId The id of the offer to query for expiry for.
-  ///@return res The timestamp beyond which `offerId` on the `olKey` offer list should renege on trade. 0 means no expiry.
-  function expiring(bytes32 olKeyHash, uint offerId) external returns (uint);
-
-  ///@notice Updates the expiry date for a specific offer.
-  ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId The offer id whose expiry date is to be set.
-  ///@param date in seconds since unix epoch
-  ///@dev If new date is in the past of the current block's timestamp, offer will renege on trade.
-  function setExpiry(bytes32 olKeyHash, uint offerId, uint date) external;
-
   ///@notice Implements "Fill or kill" or "Good till cancelled" orders on a given offer list.
   ///@param tko the arguments in memory of the taker order
   ///@return res the result of the taker order. If `offerId==0`, no resting order was posted on `msg.sender`'s behalf.

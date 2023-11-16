@@ -3,14 +3,15 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  Forwarder,
-  MangroveOffer,
+  ExpirableForwarder, MangroveOffer
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/ExpirableForwarder.sol";
+import {
   TransferLib,
   RouterProxyFactory,
   AbstractRouter,
   RouterProxy,
   RL
-} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 //import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
@@ -25,25 +26,15 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
 
-contract MangroveOrder is Forwarder, IOrderLogic {
-  ///@notice `expiring[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
-  ///@notice if the order tx is included after the expiry date, it reverts.
-  ///@dev 0 means no expiry.
-  mapping(bytes32 olKeyHash => mapping(uint offerId => uint expiry)) public expiring;
-
+contract MangroveOrder is ExpirableForwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a simple router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer) Forwarder(mgv, factory, new SmartRouter()) {
+  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
+    ExpirableForwarder(mgv, factory, new SmartRouter())
+  {
     _setAdmin(deployer);
-  }
-
-  ///@inheritdoc IOrderLogic
-  ///@dev We also allow Mangrove to call this so that it can part of an offer logic.
-  function setExpiry(bytes32 olKeyHash, uint offerId, uint date) public onlyOwner(olKeyHash, offerId) {
-    expiring[olKeyHash][offerId] = date;
-    emit SetExpiry(olKeyHash, offerId, date);
   }
 
   ///@notice updates an offer on Mangrove
@@ -83,14 +74,6 @@ contract MangroveOrder is Forwarder, IOrderLogic {
     returns (uint freeWei)
   {
     return _retractOffer(olKey, offerId, deprovision);
-  }
-
-  ///Checks the current timestamps and reneges on trade (by reverting) if the offer has expired.
-  ///@inheritdoc MangroveOffer
-  function __lastLook__(MgvLib.SingleOrder calldata order) internal virtual override returns (bytes32) {
-    uint exp = expiring[order.olKey.hash()][order.offerId];
-    require(exp == 0 || block.timestamp <= exp, "mgvOrder/expired");
-    return super.__lastLook__(order);
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
