@@ -39,6 +39,7 @@ contract Amplifier is Direct {
     TICK_SPACING1 = tickSpacing1;
     TICK_SPACING2 = tickSpacing2;
     BASE = base;
+    ROUTER_IMPLEMENTATION.bind(address(this));
     // adding `this` to the allowed makers of `router_` to pull/push liquidity
     // Note: `admin` needs to approve `this.router(address(0))` for base token transfer
     activate(stable1);

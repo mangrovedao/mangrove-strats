@@ -100,10 +100,11 @@ contract KandelSeederTest is StratTest {
     sow(true);
   }
 
-  function checkList(IERC20 token, GeometricKandel kdl, address fundOwner) internal {
+  function checkListAavePooledRouter(IERC20 token, GeometricKandel kdl, address fundOwner) internal {
     AavePooledRouter router = AavePooledRouter(address(kdl.router()));
+    deal({to: address(kdl), token: address(token), give: 10});
     vm.prank(address(kdl));
-    router.pushAndSupply(token, 10, token, 0, fundOwner);
+    router.pushAndSupply(token, 10, IERC20(address(0)), 0, fundOwner);
 
     vm.prank(address(kdl));
     router.pull(RL.createOrder({token: token, amount: 5, fundOwner: fundOwner}), true);
@@ -119,8 +120,8 @@ contract KandelSeederTest is StratTest {
     assertEq(kdl.admin(), maker, "Incorrect admin");
     assertEq(kdl.FUND_OWNER(), kdl.admin(), "Incorrect owner");
 
-    checkList(base, kdl, address(this));
-    checkList(quote, kdl, address(this));
+    checkListAavePooledRouter(base, kdl, address(this));
+    checkListAavePooledRouter(quote, kdl, address(this));
   }
 
   function test_maker_deploys_private_aaveKandel() public {
@@ -134,8 +135,8 @@ contract KandelSeederTest is StratTest {
     assertEq(kdl.FUND_OWNER(), address(kdl), "Incorrect owner");
 
     // checking router is ready to be used
-    checkList(base, kdl, address(kdl));
-    checkList(quote, kdl, address(kdl));
+    checkListAavePooledRouter(base, kdl, address(kdl));
+    checkListAavePooledRouter(quote, kdl, address(kdl));
   }
 
   function test_maker_deploys_kandel() public {

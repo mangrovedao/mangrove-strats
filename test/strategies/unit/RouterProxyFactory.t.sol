@@ -34,9 +34,8 @@ contract RouterProxyFactoryTest is StratTest {
     assertTrue(!created, "Proxy should not be deployed again");
   }
 
-  function test_bindsAndSetsAdmin() public {
+  function test_deploysSetsAdmin() public {
     RouterProxy proxy = proxyFactory.deployProxy(owner, routerImpl);
     assertEq(AbstractRouter(address(proxy)).admin(), owner, "Incorrect admin");
-    assertTrue(AbstractRouter(address(proxy)).isBound(address(this)), "Caller is not bound");
   }
 }

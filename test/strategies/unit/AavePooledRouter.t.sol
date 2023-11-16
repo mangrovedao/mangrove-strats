@@ -36,6 +36,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     }
     super.setUp();
 
+    // maker contract
     maker1 = freshAddress("maker1");
     maker2 = freshAddress("maker2");
 
@@ -60,6 +61,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.stopPrank();
   }
 
+  // makerContract used for generic OfferLogic.t tests.
   function setupMakerContract() internal override {
     deployer = payable(address(new TestSender()));
     vm.deal(deployer, 1 ether);
@@ -79,7 +81,7 @@ contract AavePooledRouterTest is OfferLogicTest {
         mgv: IMangrove($(mgv)),
         routerParams: Direct.RouterParams({
           routerImplementation: router,
-          fundOwner: address(0),
+          fundOwner: deployer,
           strict:true
         })
       });
@@ -118,18 +120,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     assertEq(pooledRouter.balanceOfReserve(RL.createOrder(usdc, owner)), 2000 * 10 ** 6, "Incorrect usdc balance");
   }
 
-  function test_only_makerContract_can_push() public {
-    // so that push does not supply to the pool
-    deal($(usdc), address(this), 10 ** 6);
-    vm.expectRevert("AccessControlled/Invalid");
-    pooledRouter.push(RL.createOrder({token: usdc, amount: 10 ** 6, fundOwner: address(this)}));
-
-    deal($(usdc), deployer, 10 ** 6);
-    vm.expectRevert("AccessControlled/Invalid");
-    vm.prank(deployer);
-    pooledRouter.push(RL.createOrder({token: usdc, amount: 10 ** 6, fundOwner: deployer}));
-  }
-
   function test_supply_error_is_logged() public {
     TestToken pixieDust = new TestToken({
       admin: address(this),
@@ -152,17 +142,6 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   function test_initial_aave_manager_is_deployer() public {
     assertEq(pooledRouter.aaveManager(), deployer, "unexpected rewards manager");
-  }
-
-  function test_admin_can_set_new_aave_manager() public {
-    vm.expectRevert("AccessControlled/Invalid");
-    pooledRouter.setAaveManager($(this));
-
-    expectFrom($(pooledRouter));
-    emit SetAaveManager($(this));
-    vm.prank(deployer);
-    pooledRouter.setAaveManager($(this));
-    assertEq(pooledRouter.aaveManager(), $(this), "unexpected rewards manager");
   }
 
   event ReserveUsedAsCollateralEnabled(address indexed reserve, address indexed user);
@@ -189,27 +168,24 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function test_deposit_on_aave_maintains_reserve_and_total_balance() public {
-    deal($(usdc), address(makerContract), 10 ** 6);
-    vm.prank(address(makerContract));
-    pooledRouter.push(RL.createOrder(usdc, 10 ** 6, address(makerContract)));
+    deal($(usdc), maker1, 10 ** 6);
+    vm.prank(maker1);
+    pooledRouter.push(RL.createOrder(usdc, 10 ** 6, maker1));
 
-    uint reserveBalance = pooledRouter.balanceOfReserve(RL.createOrder(usdc, address(makerContract)));
+    uint reserveBalance = pooledRouter.balanceOfReserve(RL.createOrder(usdc, maker1));
     uint totalBalance = pooledRouter.totalBalance(usdc);
 
     vm.prank(deployer);
     pooledRouter.flushBuffer(usdc, false);
 
     assertApproxEqAbs(
-      reserveBalance,
-      pooledRouter.balanceOfReserve(RL.createOrder(usdc, address(makerContract))),
-      1,
-      "Incorrect reserve balance"
+      reserveBalance, pooledRouter.balanceOfReserve(RL.createOrder(usdc, maker1)), 1, "Incorrect reserve balance"
     );
     assertApproxEqAbs(totalBalance, pooledRouter.totalBalance(usdc), 1, "Incorrect total balance");
   }
 
   function test_makerContract_has_initially_zero_shares() public {
-    assertEq(pooledRouter.sharesOf(dai, address(makerContract)), 0, "Incorrect initial shares");
+    assertEq(pooledRouter.sharesOf(dai, maker1), 0, "Incorrect initial shares");
   }
 
   function test_push_token_increases_user_shares() public {

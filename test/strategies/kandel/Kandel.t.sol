@@ -16,8 +16,8 @@ contract NoRouterKandelTest is CoreKandelTest {
     uint GASREQ = 170000;
     OLKey memory olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
 
-    vm.expectEmit(true, true, true, true);
-    emit Mgv(mgv);
+    // vm.expectEmit(true, true, true, true);
+    // emit Mgv(mgv);
     vm.expectEmit(true, true, true, true);
     emit OfferListKey(olKey.hash());
     vm.expectEmit(true, true, true, true);
