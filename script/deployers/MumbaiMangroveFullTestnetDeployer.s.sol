@@ -153,13 +153,14 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     });
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
+    // Also write its address so it can be used as a library to call createGeometricDistribution
     new KandelSower().innerRun({
       kandelSeeder: seeder,
       olKeyBaseQuote: OLKey(address(markets[0].tkn1.token), address(markets[0].tkn2.token), markets[0].tickSpacing),
       sharing: false,
       onAave: false,
-      registerNameOnFork: false,
-      name: ""
+      registerNameOnFork: true,
+      name: "KandelLib"
     });
 
     // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
