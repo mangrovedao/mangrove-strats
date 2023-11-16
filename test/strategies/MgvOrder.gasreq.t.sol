@@ -40,8 +40,8 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     // We should approve 2*volume but do not in order to allow failure to deliver
     deal($(quote), $(this), 10 ether);
     deal($(base), $(this), 10 ether);
-    activateOwnerRouter(base, MangroveOffer($(mangroveOrder)), address(this));
-    activateOwnerRouter(quote, MangroveOffer($(mangroveOrder)), address(this));
+    activateOwnerRouter(base, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
+    activateOwnerRouter(quote, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
