@@ -1334,8 +1334,6 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.MGV();
     kdl.QUOTE();
     kdl.FUND_OWNER();
-    kdl.ROUTER_FACTORY();
-    kdl.ROUTER_PROXY();
     kdl.STRICT_PULLING();
     kdl.ROUTER_IMPLEMENTATION();
     kdl.TICK_SPACING();

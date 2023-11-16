@@ -66,7 +66,6 @@ contract AaveKandelTest is CoreKandelTest {
       olKeyBaseQuote: olKey,
       gasreq: kandel_gasreq,
       routerParams: Direct.RouterParams({
-        factory:RouterProxyFactory(address(0)), // not delegated
         routerImplementation: router,
         fundOwner: id,
         strict: strict
@@ -373,7 +372,6 @@ contract AaveKandelTest is CoreKandelTest {
       gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
       routerParams: Direct.RouterParams({
-        factory:RouterProxyFactory(address(0)), // not delegated
         routerImplementation: router,
         fundOwner: address(0),
         strict: false
@@ -390,7 +388,6 @@ contract AaveKandelTest is CoreKandelTest {
       gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
       routerParams: Direct.RouterParams({
-        factory:RouterProxyFactory(address(0)), // not delegated
         routerImplementation: router,
         fundOwner: address(0),
         strict: false

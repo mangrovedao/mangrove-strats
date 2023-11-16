@@ -12,10 +12,6 @@ import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
-  /// @notice whether this contract delegates routing to a proxy contract (0x if not).
-  /// note address could be deterministically retrieved using `FUND_OWNER`, but storing it saves gas.
-  RouterProxy public immutable ROUTER_PROXY;
-
   ///@notice address of the fund owner. Is used for the proxy owner if strat is using one.
   address public immutable FUND_OWNER;
 
@@ -23,7 +19,6 @@ abstract contract Direct is MangroveOffer {
   bool public immutable STRICT_PULLING;
 
   struct RouterParams {
-    RouterProxyFactory factory; // 0x if not delegated
     AbstractRouter routerImplementation; // 0x if not routing
     address fundOwner; // address must be controlled by msg.sender
     bool strict;
@@ -32,17 +27,8 @@ abstract contract Direct is MangroveOffer {
   ///@notice `Direct`'s constructor.
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   ///@param routerParams routing parameters. Use `noRouter()` to get an empty struct
-  constructor(IMangrove mgv, RouterParams memory routerParams)
-    MangroveOffer(mgv, routerParams.factory, routerParams.routerImplementation)
-  {
+  constructor(IMangrove mgv, RouterParams memory routerParams) MangroveOffer(mgv, routerParams.routerImplementation) {
     address fundOwner = routerParams.fundOwner == address(0) ? address(this) : routerParams.fundOwner;
-    RouterProxy proxy;
-    if (routerParams.routerImplementation != AbstractRouter(address(0)) && address(routerParams.factory) != address(0))
-    {
-      // contract is using a router and is delegating
-      (proxy,) = routerParams.factory.instantiate(fundOwner, routerParams.routerImplementation);
-    }
-    ROUTER_PROXY = proxy;
     STRICT_PULLING = routerParams.strict;
     FUND_OWNER = fundOwner;
   }
@@ -51,10 +37,10 @@ abstract contract Direct is MangroveOffer {
   function noRouter() public pure returns (RouterParams memory) {}
 
   ///@inheritdoc IOfferLogic
-  ///@dev Returns the router to which pull/push calls must be done. It is behind the scene either a proxy or a direct implementation.
+  ///@dev Returns the router to which pull/push calls must be done.
   ///@dev if strat is not routing, the call does not revert but returns a casted `address(0)`
   function router(address) public view override returns (AbstractRouter) {
-    return address(ROUTER_PROXY) == address(0) ? ROUTER_IMPLEMENTATION : AbstractRouter(address(ROUTER_PROXY));
+    return ROUTER_IMPLEMENTATION;
   }
 
   ///@notice convenience function

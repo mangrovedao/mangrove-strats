@@ -21,7 +21,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
 
-  RouterProxyFactory public immutable ROUTER_FACTORY;
   AbstractRouter public immutable ROUTER_IMPLEMENTATION;
 
   ///@notice The offer was successfully reposted.
@@ -38,15 +37,11 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /**
    * @notice `MangroveOffer`'s constructor
    * @param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   * @param factory the RouterProxyFactory that can spawn router proxies
    * @param routerImplementation sets the type of router that the router factory can spawn
    */
-  constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
-    AccessControlled(msg.sender)
-  {
+  constructor(IMangrove mgv, AbstractRouter routerImplementation) AccessControlled(msg.sender) {
     require(address(mgv) != address(0), "MgvOffer/0xMangrove");
     MGV = mgv;
-    ROUTER_FACTORY = factory; // this may be 0x
     ROUTER_IMPLEMENTATION = routerImplementation; // this may be 0x
   }
 
@@ -96,12 +91,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
       __posthookFallback__(order, result);
       __handleResidualProvision__(order);
     }
-  }
-
-  /// @inheritdoc IOfferLogic
-  /// @dev this is made virtual so that one can skip the external call for strats that have an immutable `proxyOwner`
-  function router(address fundOwner) public view virtual override returns (AbstractRouter) {
-    return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
   }
 
   ///@notice whether this contract has enabled liquidity routing

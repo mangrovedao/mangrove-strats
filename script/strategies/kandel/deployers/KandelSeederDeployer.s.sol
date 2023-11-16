@@ -91,7 +91,6 @@ contract KandelSeederDeployer is Deployer, Test2 {
       console.log("Seeder's router:", address(router));
       broadcast();
       new AaveKandel(mgv, olKeyBaseQuote, aaveKandelGasreq, Direct.RouterParams({
-        factory: RouterProxyFactory(address(0)),
         routerImplementation: router,
         fundOwner: address(0),
         strict: true

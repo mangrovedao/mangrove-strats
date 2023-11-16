@@ -239,7 +239,6 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
       olKeyBaseQuote: olKey,
       gasreq: 1_000_000,
       routerParams: Direct.RouterParams({
-        factory:RouterProxyFactory(address(0)), // not delegated
         routerImplementation: router,
         fundOwner: address(this),
         strict: false

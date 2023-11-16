@@ -78,7 +78,6 @@ contract AavePooledRouterTest is OfferLogicTest {
     direct = new DirectTester({
         mgv: IMangrove($(mgv)),
         routerParams: Direct.RouterParams({
-          factory: RouterProxyFactory(address(0)), // don't use proxy calls
           routerImplementation: router,
           fundOwner: address(0),
           strict:true

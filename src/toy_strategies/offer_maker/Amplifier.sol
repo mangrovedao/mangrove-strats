@@ -32,17 +32,7 @@ contract Amplifier is Direct {
     uint tickSpacing1,
     uint tickSpacing2,
     address admin
-  )
-    Direct(
-      mgv,
-      RouterParams({
-        routerImplementation: new SimpleRouter(),
-        factory: RouterProxyFactory(address(0)),
-        fundOwner: admin,
-        strict: true
-      })
-    )
-  {
+  ) Direct(mgv, RouterParams({routerImplementation: new SimpleRouter(), fundOwner: admin, strict: true})) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;

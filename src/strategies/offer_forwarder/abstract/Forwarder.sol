@@ -16,6 +16,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@notice approx of amount of gas units required to complete `__posthookFallback__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
+  RouterProxyFactory public immutable ROUTER_FACTORY;
 
   ///@notice data associated to each offer published on Mangrove by this contract.
   ///@param owner address of the account that can manage (update or retract) the offer
@@ -47,12 +48,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
   ///@notice Forwarder constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
-  ///@param factory the router proxy factory contract
-  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners
+  ///@param factory the router proxy factory contract -- cannot be 0x
+  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners -- cannot be 0x
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
-    MangroveOffer(mgv, factory, routerImplementation)
+    MangroveOffer(mgv, routerImplementation)
   {
+    ROUTER_FACTORY = factory;
     require(address(factory) != address(0), "Forwarder/0xFactory");
+    require(address(routerImplementation) != address(0), "Forwarder/0xRouter");
   }
 
   ///@inheritdoc IForwarder
@@ -109,6 +112,11 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   function ownerOf(bytes32 olKeyHash, uint offerId) public view override returns (address owner) {
     owner = ownerData[olKeyHash][offerId].owner;
     require(owner != address(0), "Forwarder/unknownOffer");
+  }
+
+  /// @inheritdoc IOfferLogic
+  function router(address fundOwner) public view override returns (AbstractRouter) {
+    return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
   }
 
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.

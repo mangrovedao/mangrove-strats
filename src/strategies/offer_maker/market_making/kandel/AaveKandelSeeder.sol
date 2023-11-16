@@ -52,7 +52,6 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
     address owner = liquiditySharing ? msg.sender : address(0);
 
     kandel = new AaveKandel(MGV, olKeyBaseQuote, KANDEL_GASREQ, Direct.RouterParams({
-      factory: RouterProxyFactory(address(0)), // not delegating
       routerImplementation: AAVE_ROUTER, // using aave pooled router to source liquidity
       fundOwner: owner,
       strict: liquiditySharing
