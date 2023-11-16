@@ -13,15 +13,17 @@ import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {Test2} from "@mgv/lib/Test2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {RouterProxyFactory, Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
  * @notice deploys a Kandel seeder
  */
 
-contract KandelSeederDeployer is Deployer {
+contract KandelSeederDeployer is Deployer, Test2 {
   function run() public {
     bool deployAaveKandel = true;
     bool deployKandel = true;
@@ -66,7 +68,7 @@ contract KandelSeederDeployer is Deployer {
 
       console.log("Deploying Kandel instance for code verification...");
       broadcast();
-      new Kandel(mgv, olKeyBaseQuote, 1, address(0));
+      new Kandel(mgv, olKeyBaseQuote, 1);
       smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     }
     if (deployAaveKandel) {
@@ -85,8 +87,14 @@ contract KandelSeederDeployer is Deployer {
 
       console.log("Deploying AaveKandel instance for code verification...");
       prettyLog("Deploying AaveKandel instance...");
+      AbstractRouter router = AbstractRouter(address(aaveSeeder.AAVE_ROUTER()));
+      console.log("Seeder's router:", address(router));
       broadcast();
-      new AaveKandel(mgv, olKeyBaseQuote, address(0));
+      new AaveKandel(mgv, olKeyBaseQuote, aaveKandelGasreq, Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: address(0),
+        strict: true
+      }));
       smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
     }
 
@@ -109,26 +117,25 @@ contract KandelSeederDeployer is Deployer {
 
     require(kandel.router() == expectedRouter, "Incorrect router address");
     require(kandel.admin() == address(this), "Incorrect admin");
-    if (expectedRouter == kandel.NO_ROUTER()) {
-      require(kandel.RESERVE_ID() == address(kandel), "Incorrect id");
+    if (address(expectedRouter) == address(0)) {
+      require(kandel.FUND_OWNER() == address(kandel), "Incorrect id");
     } else {
-      require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
-      kandel.router().checkList(
-        RL.createOrder({
-          token: IERC20(olKeyBaseQuote.outbound_tkn),
-          amount: type(uint).max,
-          reserveId: kandel.RESERVE_ID()
-        }),
-        address(kandel)
+      require(kandel.FUND_OWNER() == kandel.admin(), "Incorrect id");
+      // starting smoke test with 10 inbound on Kandel
+      deal({to: address(kandel), token: olKeyBaseQuote.inbound_tkn, give: 10});
+
+      vm.startPrank(address(kandel));
+      // push should take 5 inbound (out of 10) from kandel and send it to router
+      uint pushed = kandel.router().push(
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), amount: 5, fundOwner: kandel.FUND_OWNER()})
       );
-      kandel.router().checkList(
-        RL.createOrder({
-          token: IERC20(olKeyBaseQuote.inbound_tkn),
-          amount: type(uint).max,
-          reserveId: kandel.RESERVE_ID()
-        }),
-        address(kandel)
+      require(pushed == 5, "smoke test: push failed");
+      // pull should take 1 outbound from router and send it to kandel
+      uint pulled = kandel.router().pull(
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), amount: 1, fundOwner: kandel.FUND_OWNER()}), true
       );
+      require(pulled == 1, "smoke test: pull failed");
+      vm.stopPrank();
     }
   }
 }

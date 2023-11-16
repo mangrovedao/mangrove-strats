@@ -38,8 +38,7 @@ contract KandelDeployer is Deployer {
     current = new Kandel(
       mgv,
       olKeyBaseQuote,
-      gasreq,
-      broadcaster()
+      gasreq
     );
 
     string memory kandelName = new KandelSower().getName(name, olKeyBaseQuote, false);

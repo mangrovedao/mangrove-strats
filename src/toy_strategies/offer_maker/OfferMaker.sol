@@ -12,13 +12,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 contract OfferMaker is ILiquidityProvider, Direct {
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer, address owner) Direct(mgv, router_, owner) {
-    // stores total gas requirement of this strat (depends on router gas requirements)
-    // if contract is deployed with static address, then one must set admin to something else than msg.sender
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-    }
-  }
+  constructor(IMangrove mgv, RouterParams memory routerParams) Direct(mgv, routerParams) {}
 
   ///@inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
@@ -76,9 +70,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 
-  function tokenBalance(IERC20 token, address reserveId) external view returns (uint) {
-    AbstractRouter router_ = router;
-    return
-      router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(RL.createOrder(token, reserveId));
+  function tokenBalance(IERC20 token, address) external view returns (uint) {
+    return _isRouting() ? router().balanceOfReserve(RL.createOrder(token, FUND_OWNER)) : token.balanceOf(FUND_OWNER);
   }
 }

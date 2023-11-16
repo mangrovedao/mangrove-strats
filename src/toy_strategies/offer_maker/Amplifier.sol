@@ -32,22 +32,19 @@ contract Amplifier is Direct {
     uint tickSpacing1,
     uint tickSpacing2,
     address admin
-  ) Direct(mgv, NO_ROUTER, admin) {
+  ) Direct(mgv, RouterParams({routerImplementation: new SimpleRouter(), fundOwner: admin, strict: true})) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
     TICK_SPACING1 = tickSpacing1;
     TICK_SPACING2 = tickSpacing2;
     BASE = base;
-    AbstractRouter router_ = new SimpleRouter();
-    setRouter(router_);
+    ROUTER_IMPLEMENTATION.bind(address(this));
     // adding `this` to the allowed makers of `router_` to pull/push liquidity
-    // Note: `admin` needs to approve `this.router()` for base token transfer
-    router_.bind(address(this));
+    // Note: `admin` needs to approve `this.router(address(0))` for base token transfer
     activate(stable1);
     activate(stable2);
     activate(base);
-    router_.setAdmin(admin);
     setAdmin(admin);
   }
 

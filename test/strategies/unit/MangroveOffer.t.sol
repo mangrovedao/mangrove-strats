@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
-import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {DirectTester, Direct} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
 import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 
@@ -33,13 +33,13 @@ contract MangroveOfferTest is StratTest {
     weth = base;
     usdc = quote;
 
+    Direct.RouterParams memory noRouter;
     deployer = payable(new TestSender());
     vm.prank(deployer);
     makerContract = new DirectTester({
       mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)), // no router
-      deployer: deployer
-    });
+      routerParams: noRouter
+      });
   }
 
   function test_Admin_is_deployer() public {
@@ -138,13 +138,6 @@ contract MangroveOfferTest is StratTest {
     vm.expectRevert("mgvOffer/weiTransferFail");
     vm.prank(deployer);
     makerContract.withdrawFromMangrove(0.1 ether, $(this));
-  }
-
-  function test_setRouter_logs_SetRouter() public {
-    vm.expectEmit(true, true, true, false, address(makerContract));
-    emit SetRouter(address(0));
-    vm.startPrank(deployer);
-    makerContract.setRouter(AbstractRouter(address(0)));
   }
 
   function test_setAdmin_logs_SetAdmin() public {

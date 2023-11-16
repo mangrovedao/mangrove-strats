@@ -4,7 +4,13 @@ pragma solidity ^0.8.10;
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder as MgvOrder, SmartRouter} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {
+  MangroveOrder as MgvOrder,
+  SmartRouter,
+  RouterProxyFactory,
+  RouterProxy
+} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
@@ -40,7 +46,9 @@ contract MgvOrder_Test is StratTest {
     uint fillVolume,
     bool fillWants,
     bool restingOrder,
-    uint offerId
+    uint offerId,
+    AbstractRouter takerGivesLogic,
+    AbstractRouter takerWantsLogic
   );
 
   event MangroveOrderComplete();
@@ -94,8 +102,10 @@ contract MgvOrder_Test is StratTest {
     lo = olKey.flipped();
     setupMarket(olKey);
 
+    RouterProxyFactory factory = new RouterProxyFactory();
+
     // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), $(this));
+    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
     // `this` contract will act as `MgvOrder` user
@@ -105,10 +115,6 @@ contract MgvOrder_Test is StratTest {
     // activating MangroveOrder for quote and base
     mgo.activate(base);
     mgo.activate(quote);
-
-    // user approves `mgo` to pull quote or base when doing a market order
-    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
-    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker(olKey, "sell-taker");
@@ -160,6 +166,14 @@ contract MgvOrder_Test is StratTest {
     sellOrder.restingOrder = true;
     sellOrder.expiryDate = block.timestamp + 1;
 
+    // test runner posts limit orders
+    // one cannot bind to the router if not instanciated (altough approval can be done)
+    (RouterProxy testRunnerProxy,) = mgo.ROUTER_FACTORY().instantiate(address(this), mgo.ROUTER_IMPLEMENTATION());
+    AbstractRouter(address(testRunnerProxy)).bind(address(mgo));
+    // user approves `mgo` to pull quote or base when doing a market order
+    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
+    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
+
     cold_buyResult = mgo.take{value: 0.1 ether}(buyOrder);
     cold_sellResult = mgo.take{value: 0.1 ether}(sellOrder);
 
@@ -188,10 +202,8 @@ contract MgvOrder_Test is StratTest {
     deal($(quote), fresh_taker, balQuote);
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
-    vm.startPrank(fresh_taker);
-    quote.approve(address(mgo.router(fresh_taker)), type(uint).max);
-    base.approve(address(mgo.router(fresh_taker)), type(uint).max);
-    vm.stopPrank();
+    activateOwnerRouter(base, MangroveOffer($(mgo)), fresh_taker);
+    activateOwnerRouter(quote, MangroveOffer($(mgo)), fresh_taker);
   }
 
   ////////////////////////
@@ -209,7 +221,9 @@ contract MgvOrder_Test is StratTest {
       restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
   }
 
@@ -245,6 +259,7 @@ contract MgvOrder_Test is StratTest {
 
   function createSellOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
+
     order = IOrderLogic.TakerOrder({
       olKey: lo,
       fillOrKill: false,
@@ -254,7 +269,9 @@ contract MgvOrder_Test is StratTest {
       restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRouter(address(0)),
+      takerWantsLogic: AbstractRouter(address(0))
     });
   }
 
@@ -428,7 +445,16 @@ contract MgvOrder_Test is StratTest {
 
   function logOrderData(address taker, IOrderLogic.TakerOrder memory tko) internal {
     emit MangroveOrderStart(
-      tko.olKey.hash(), taker, tko.fillOrKill, tko.tick, tko.fillVolume, tko.fillWants, tko.restingOrder, tko.offerId
+      tko.olKey.hash(),
+      taker,
+      tko.fillOrKill,
+      tko.tick,
+      tko.fillVolume,
+      tko.fillWants,
+      tko.restingOrder,
+      tko.offerId,
+      tko.takerWantsLogic,
+      tko.takerGivesLogic
     );
   }
 
@@ -684,10 +710,7 @@ contract MgvOrder_Test is StratTest {
 
     deal($(base), $(sender), 2 ether);
     sender.refuseNative();
-
-    vm.startPrank($(sender));
-    TransferLib.approveToken(base, $(mgo.router($(sender))), type(uint).max);
-    vm.stopPrank();
+    activateOwnerRouter(base, MangroveOffer($(mgo)), $(sender));
     // mocking MangroveOrder failure to post resting offer
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
     /// since `sender` throws on `receive()`, this should fail.
@@ -827,7 +850,7 @@ contract MgvOrder_Test is StratTest {
     uint g = gasleft();
     vm.startPrank($(mgo));
     quote.approve($(router), 1);
-    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, reserveId: address(this)}));
+    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, fundOwner: address(this)}));
     vm.stopPrank();
 
     uint push_cost = g - gasleft();
@@ -835,7 +858,7 @@ contract MgvOrder_Test is StratTest {
 
     vm.prank($(mgo));
     g = gasleft();
-    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, reserveId: address(this)}), true);
+    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, fundOwner: address(this)}), true);
     uint pull_cost = g - gasleft();
     assertEq(pulled, 1, "Pull failed");
 

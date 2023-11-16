@@ -5,6 +5,7 @@ import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlle
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
@@ -20,19 +21,14 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
 
+  AbstractRouter public immutable ROUTER_IMPLEMENTATION;
+
   ///@notice The offer was successfully reposted.
   bytes32 internal constant REPOST_SUCCESS = "offer/updated";
   ///@notice New offer successfully created.
   bytes32 internal constant NEW_OFFER_SUCCESS = "offer/created";
   ///@notice The offer was completely filled.
   bytes32 internal constant COMPLETE_FILL = "offer/filled";
-
-  /**
-   * @notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-   * @param mgv The Mangrove deployment.
-   * @notice By emitting this event, an indexer will be able to create a mapping from this contract address to the used Mangrove address.
-   */
-  event Mgv(IMangrove mgv);
 
   ///@notice Mandatory function to allow `this` to receive native tokens from Mangrove after a call to `MGV.withdraw(...,deprovision:true)`
   ///@dev override this function if `this` contract needs to handle local accounting of user funds.
@@ -41,10 +37,12 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   /**
    * @notice `MangroveOffer`'s constructor
    * @param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
+   * @param routerImplementation sets the type of router that the router factory can spawn
    */
-  constructor(IMangrove mgv) AccessControlled(msg.sender) {
+  constructor(IMangrove mgv, AbstractRouter routerImplementation) AccessControlled(msg.sender) {
+    require(address(mgv) != address(0), "MgvOffer/0xMangrove");
     MGV = mgv;
-    emit Mgv(mgv);
+    ROUTER_IMPLEMENTATION = routerImplementation; // this may be 0x
   }
 
   ///*****************************
@@ -95,6 +93,19 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
     }
   }
 
+  ///@notice whether this contract has enabled liquidity routing
+  function _isRouting() internal view returns (bool) {
+    return address(ROUTER_IMPLEMENTATION) != address(0);
+  }
+
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, RouterProxy proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
+  }
+
   ///@notice takes care of status for reposting residual offer in case of a partial fill and logging of potential issues.
   ///@param order a recap of the taker order
   ///@param makerData generated during `makerExecute` so as to log it if necessary
@@ -134,7 +145,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@param order is a recall of the taker order that is at the origin of the current trade.
   ///@return missingPut (<=`amount`) is the amount of `inbound` tokens whose deposit location has not been decided (possibly because of a failure) during this function execution
   ///@dev if the last nested call to `__put__` returns a non zero value, trade execution will revert
-  ///@custom:hook overrides of this hook should be conservative and call `super.__put__(missing, order)`
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual returns (uint missingPut);
 
   ///@notice Hook that implements where the outbound token, which are promised to the taker, should be fetched from, during Taker Order's execution.
@@ -142,11 +152,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@param order is a recall of the taker order that is at the origin of the current trade.
   ///@return missingGet (<=`amount`), which is the amount of `outbound` tokens still need to be fetched at the end of this function
   ///@dev if the last nested call to `__get__` returns a non zero value, trade execution will revert
-  ///@custom:hook overrides of this hook should be conservative and call `super.__get__(missing, order)`
-  function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual returns (uint missingGet) {
-    uint amount_ = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
-    return (amount_ >= amount ? 0 : amount - amount_);
-  }
+  function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual returns (uint missingGet);
 
   /// @notice Hook that implements a last look check during Taker Order's execution.
   /// @param order is a recall of the taker order that is at the origin of the current trade.

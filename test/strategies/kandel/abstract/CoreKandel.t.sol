@@ -994,7 +994,7 @@ abstract contract CoreKandelTest is KandelTest {
   {
     address otherMaker = freshAddress();
 
-    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker);
+    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker, true);
 
     vm.prank(otherMaker);
     TransferLib.approveToken(base, address(otherKandel), type(uint).max);
@@ -1332,9 +1332,10 @@ abstract contract CoreKandelTest is KandelTest {
     // No auth
     kdl.BASE();
     kdl.MGV();
-    kdl.NO_ROUTER();
     kdl.QUOTE();
-    kdl.RESERVE_ID();
+    kdl.FUND_OWNER();
+    kdl.STRICT_PULLING();
+    kdl.ROUTER_IMPLEMENTATION();
     kdl.TICK_SPACING();
     kdl.admin();
     kdl.depositFunds(0, 0);
@@ -1347,6 +1348,8 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.reserveBalance(Ask);
     kdl.provisionOf(olKey, 0);
     kdl.router();
+    kdl.router(address(this));
+    kdl.noRouter();
     kdl.baseQuoteTickOffset();
     kdl.createDistribution(0, 0, Tick.wrap(0), 0, 0, 0, 0, 0, 0);
     kdl.activate(IERC20(address(0)));
@@ -1368,7 +1371,6 @@ abstract contract CoreKandelTest is KandelTest {
     checkAuth(args, abi.encodeCall(kdl.setGasprice, (42)));
     checkAuth(args, abi.encodeCall(kdl.setStepSize, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
-    checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteTickOffset, (1)));
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, params, 0, 0)));

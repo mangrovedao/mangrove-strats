@@ -1,7 +1,9 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {
+  MangroveOffer, TransferLib, RouterProxy, RouterProxyFactory
+} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -10,51 +12,49 @@ import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol
 
 ///@title `Direct` strats is an extension of MangroveOffer that allows contract's admin to manage offers on Mangrove.
 abstract contract Direct is MangroveOffer {
-  ///@notice `reserveId` is set in the constructor
-  ///@param reserveId identifier of this contract's reserve when using a router. This is indexed so that RPC calls can filter on it.
-  ///@notice by emitting this event, an indexer will be able to keep track of what reserve is used.
-  event SetReserveId(address indexed reserveId);
+  ///@notice address of the fund owner. Is used for the proxy owner if strat is using one.
+  address public immutable FUND_OWNER;
 
-  ///@notice logs strat's new router
-  ///@param router of the strat
-  event SetRouter(AbstractRouter router);
+  ///@notice whether this contract requires that routing pull orders provide *at most* the required amount.
+  bool public immutable STRICT_PULLING;
 
-  ///@notice identifier of this contract's reserve when using a router
-  ///@dev RESERVE_ID==address(0) will pass address(this) to the router for the id field.
-  ///@dev two contracts using the same RESERVE_ID will share funds, therefore strat builder must make sure this contract is allowed to pull into the given reserve Id.
-  ///@dev a safe value for `RESERVE_ID` is `address(this)` in which case the funds will never be shared with another maker contract.
-  address public immutable RESERVE_ID;
-
-  ///@notice constant for no router
-  AbstractRouter public constant NO_ROUTER = AbstractRouter(address(0));
-
-  ///@notice router for liquidity sourcing.
-  AbstractRouter public router;
+  struct RouterParams {
+    AbstractRouter routerImplementation; // 0x if not routing
+    address fundOwner; // address must be controlled by msg.sender
+    bool strict;
+  }
 
   ///@notice `Direct`'s constructor.
   ///@param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
-  ///@param router_ the router that this contract will use to pull/push liquidity from offer maker's reserve. This can be `NO_ROUTER`.
-  ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, AbstractRouter router_, address reserveId) MangroveOffer(mgv) {
-    setRouter(router_);
-    address reserveId_ = reserveId == address(0) ? address(this) : reserveId;
-    RESERVE_ID = reserveId_;
-    emit SetReserveId(reserveId_);
+  ///@param routerParams routing parameters. Use `noRouter()` to get an empty struct
+  constructor(IMangrove mgv, RouterParams memory routerParams) MangroveOffer(mgv, routerParams.routerImplementation) {
+    address fundOwner = routerParams.fundOwner == address(0) ? address(this) : routerParams.fundOwner;
+    STRICT_PULLING = routerParams.strict;
+    FUND_OWNER = fundOwner;
   }
 
-  ///@notice router setter
-  ///@param router_ the router contract to be used by this strat
-  function setRouter(AbstractRouter router_) public onlyAdmin {
-    router = router_;
-    emit SetRouter(router_);
+  ///@notice convenience function to get an empty RouterParams struct
+  function noRouter() public pure returns (RouterParams memory) {}
+
+  ///@inheritdoc IOfferLogic
+  ///@dev Returns the router to which pull/push calls must be done.
+  ///@dev if strat is not routing, the call does not revert but returns a casted `address(0)`
+  function router(address) public view override returns (AbstractRouter) {
+    return ROUTER_IMPLEMENTATION;
+  }
+
+  ///@notice convenience function
+  ///@return the router to which pull/push calls must be done.
+  function router() public view returns (AbstractRouter) {
+    return router(address(0));
   }
 
   ///@inheritdoc IOfferLogic
   ///@notice activates asset exchange with router
   function activate(IERC20 token) public virtual override {
     super.activate(token);
-    if (router != NO_ROUTER) {
-      require(TransferLib.approveToken(token, address(router), type(uint).max), "Direct/RouterActivationFailed");
+    if (_isRouting()) {
+      require(TransferLib.approveToken(token, address(router()), type(uint).max), "Direct/RouterActivationFailed");
     }
   }
 
@@ -112,25 +112,24 @@ abstract contract Direct is MangroveOffer {
     return 0;
   }
 
-  ///@notice `__get__` hook for `Direct` is to ask the router to pull liquidity from `reserveId` if strat is using a router
+  ///@notice `__get__` hook for `Direct` is to ask the router to pull liquidity if using a router
   /// otherwise the function simply returns what's missing in the local balance
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    uint missing = super.__get__(amount, order);
-    AbstractRouter router_ = router;
-    if (router_ == NO_ROUTER) {
+    uint balance = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
+    uint missing = balance >= amount ? 0 : amount - balance;
+    if (!_isRouting()) {
       return missing;
     } else {
-      // if RESERVE_ID is potentially shared by other contracts we are forced to pull in a strict fashion (otherwise another contract sharing funds that would be called in the same market order will fail to deliver)
-      uint pulled = router_.pull(
+      uint pulled = router().pull(
         RL.RoutingOrder({
           token: IERC20(order.olKey.outbound_tkn),
           amount: missing,
-          reserveId: RESERVE_ID,
           olKeyHash: order.olKey.hash(),
-          offerId: order.offerId
+          offerId: order.offerId,
+          fundOwner: FUND_OWNER
         }),
-        RESERVE_ID != address(this)
+        STRICT_PULLING
       );
       return pulled >= missing ? 0 : missing - pulled;
     }
@@ -144,18 +143,17 @@ abstract contract Direct is MangroveOffer {
     override
     returns (bytes32)
   {
-    AbstractRouter router_ = router;
-    if (router_ != NO_ROUTER) {
+    if (_isRouting()) {
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-      routingOrders[0].reserveId = RESERVE_ID;
       routingOrders[0].amount = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
+      routingOrders[0].fundOwner = FUND_OWNER;
 
       routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
-      routingOrders[1].reserveId = RESERVE_ID;
       routingOrders[1].amount = IERC20(order.olKey.inbound_tkn).balanceOf(address(this));
+      routingOrders[1].fundOwner = FUND_OWNER;
 
-      router_.flush(routingOrders);
+      router().flush(routingOrders);
     }
     // reposting offer residual if any
     return super.__posthookSuccess__(order, makerData);

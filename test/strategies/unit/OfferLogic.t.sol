@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
@@ -14,6 +14,7 @@ import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
+import {console} from "@mgv/forge-std/console.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
@@ -65,15 +66,11 @@ abstract contract OfferLogicTest is StratTest {
 
     // instantiates makerContract
     setupMakerContract();
-    setupLiquidityRouting();
     fundStrat();
   }
 
   // override this to use Forwarder strats
   function setupMakerContract() internal virtual;
-
-  // override this function to use a specific router for the strat
-  function setupLiquidityRouting() internal virtual {}
 
   function fundStrat() internal virtual {
     deal($(weth), address(makerContract), 1 ether);
@@ -242,6 +239,7 @@ abstract contract OfferLogicTest is StratTest {
     });
   }
 
+  // wants 2000 usd for 1 ether
   function performTrade(bool success) internal returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
@@ -249,7 +247,7 @@ abstract contract OfferLogicTest is StratTest {
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: 2 * gasreq
+      gasreq: gasreq
     });
     vm.stopPrank();
 

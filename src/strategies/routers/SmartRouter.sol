@@ -15,13 +15,14 @@ contract SmartRouter is SimpleRouter {
   event SetRouteLogic(IERC20 indexed token, bytes32 indexed olKeyHash, uint offerId, AbstractRouter logic);
 
   ///@notice This function is used to set the routing strategy for a given offer.
-  ///@param token the asset for which the routing logic should be set.
-  ///@param olKeyHash market identifier. Use bytes32(0) to use a custom logic outside a market order
-  ///@param offerId offer identifier. Use 0 to use a custom logic outside a market order.
+  ///@param routingOrder the routing order template for which a logic should be used
   ///@param logic the loggic to use for the given offer.
-  function setLogic(IERC20 token, bytes32 olKeyHash, uint offerId, AbstractRouter logic) external onlyAdmin {
-    SmartRouterStorage.getStorage().routeLogics[token][olKeyHash][offerId] = logic;
-    emit SetRouteLogic(token, olKeyHash, offerId, logic);
+  ///@dev `routingOrder.amount` is ignored as we do not implement amount dependant logic.
+  ///@dev `routingOrder.reserveId` is ignored as there is a unique mapping in storage per `reserveId`
+  function setLogic(RL.RoutingOrder calldata routingOrder, AbstractRouter logic) external boundOrAdmin {
+    SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId] =
+      logic;
+    emit SetRouteLogic(routingOrder.token, routingOrder.olKeyHash, routingOrder.offerId, logic);
   }
 
   /// @inheritdoc AbstractRouter
@@ -77,25 +78,6 @@ contract SmartRouter is SimpleRouter {
       return (abi.decode(retdata, (uint)));
     } else {
       return super.balanceOfReserve(routingOrder);
-    }
-  }
-
-  ///@inheritdoc AbstractRouter
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
-    AbstractRouter logic =
-      SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
-    if (address(logic) != address(0)) {
-      (bool success, bytes memory retdata) = address(this).staticcall(
-        abi.encodeWithSelector(
-          SmartRouterStorage._staticdelegatecall.selector,
-          abi.encodeWithSelector(AbstractRouter.checkList.selector, routingOrder)
-        )
-      );
-      if (!success) {
-        SmartRouterStorage.revertWithData(retdata);
-      }
-    } else {
-      super.__checkList__(routingOrder);
     }
   }
 }

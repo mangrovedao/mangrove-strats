@@ -11,6 +11,7 @@ import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {Direct, RouterProxyFactory} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {AaveCaller} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
@@ -52,18 +53,27 @@ contract AaveKandelTest is CoreKandelTest {
     }
   }
 
-  function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
-    uint kandel_gasreq = 700_000;
+  function __deployKandel__(address deployer, address id, bool strict)
+    internal
+    virtual
+    override
+    returns (GeometricKandel)
+  {
+    uint kandel_gasreq = 800_000;
     router = address(router) == address(0) ? new AavePooledRouter(aave) : router;
     AaveKandel aaveKandel_ = new AaveKandel({
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
-      reserveId: id
+      gasreq: kandel_gasreq,
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: id,
+        strict: strict
+      })
     });
 
     router.bind(address(aaveKandel_));
     // Setting AaveRouter as Kandel's router and activating router on BASE and QUOTE ERC20
-    aaveKandel_.initialize(router, kandel_gasreq);
     aaveKandel_.setAdmin(deployer);
     return aaveKandel_;
   }
@@ -76,21 +86,10 @@ contract AaveKandelTest is CoreKandelTest {
     return "/out/AaveKandel.sol/AaveKandel.json";
   }
 
-  function test_allExternalFunctions_differentCallers_correctAuth() public override {
-    super.test_allExternalFunctions_differentCallers_correctAuth();
-    CheckAuthArgs memory args;
-    args.callee = $(kdl);
-    args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
-    args.allowed = dynamic([address(maker)]);
-    args.revertMessage = "AccessControlled/Invalid";
-
-    checkAuth(args, abi.encodeCall(AaveKandel($(kdl)).initialize, (AavePooledRouter($(kdl.router())), 10)));
-  }
-
   function test_initialize() public {
     assertEq(address(kdl.router()), address(router), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), maker, "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), maker, "Incorrect owner");
     assertEq(base.balanceOf(address(router)), 0, "Router should start with no base buffer");
     assertEq(quote.balanceOf(address(router)), 0, "Router should start with no quote buffer");
     assertTrue(kdl.reserveBalance(Ask) > 0, "Incorrect initial reserve balance of base");
@@ -175,8 +174,8 @@ contract AaveKandelTest is CoreKandelTest {
   function test_sharing_liquidity_between_strats(uint16 baseAmount, uint16 quoteAmount) public {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
-    assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
+    assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     uint baseBalance = kdl.reserveBalance(Ask);
     uint quoteBalance = kdl.reserveBalance(Bid);
@@ -219,8 +218,8 @@ contract AaveKandelTest is CoreKandelTest {
     bool allBaseOnAave,
     bool allQuoteOnAave
   ) internal {
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
-    assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
+    assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     (, Offer bestAsk) = getBestOffers();
     populateSingle({
@@ -260,8 +259,8 @@ contract AaveKandelTest is CoreKandelTest {
   {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, address(0));
-    assertTrue(kdl_.RESERVE_ID() != kdl.RESERVE_ID(), "Strats should not have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, address(0), true);
+    assertTrue(kdl_.FUND_OWNER() != kdl.FUND_OWNER(), "Strats should not have the same reserveId");
     vm.prank(maker);
     kdl.depositFunds(baseAmount, quoteAmount);
 
@@ -370,8 +369,13 @@ contract AaveKandelTest is CoreKandelTest {
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
+      gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
-      reserveId: address(0)
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: address(0),
+        strict: false
+      })
     });
   }
 
@@ -381,8 +385,13 @@ contract AaveKandelTest is CoreKandelTest {
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
+      gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
-      reserveId: address(0)
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: address(0),
+        strict: false
+      })
     });
   }
 }

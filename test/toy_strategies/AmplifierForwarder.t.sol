@@ -68,11 +68,9 @@ contract AmplifierForwarderTest is StratTest {
       tickSpacing2: olKeyWethDai.tickSpacing,
       gasreq: 450000
       });
-    address router = address(strat.router(address(this)));
 
-    weth.approve(router, type(uint).max);
-    //  usdc.approve(router, type(uint).max);
-    //  dai.approve(router, type(uint).max);
+    activateOwnerRouter(weth, MangroveOffer($(strat)), maker);
+    activateOwnerRouter(weth, MangroveOffer($(strat)), address(this));
   }
 
   function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC)
@@ -315,7 +313,6 @@ contract AmplifierForwarderTest is StratTest {
 
     // post offers with Amplifier liquidity with test account
     vm.startPrank(maker);
-    weth.approve($(strat.router(maker)), type(uint).max);
     offerPair memory makerOffer;
     (makerOffer.daiOffer, makerOffer.usdcOffer) =
       postAndFundOffers(makerGivesAmount, makerWantsAmountDAI, makerWantsAmountUSDC);

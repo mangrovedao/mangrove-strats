@@ -100,6 +100,16 @@ contract KandelSeederTest is StratTest {
     sow(true);
   }
 
+  function checkListAavePooledRouter(IERC20 token, GeometricKandel kdl, address fundOwner) internal {
+    AavePooledRouter router = AavePooledRouter(address(kdl.router()));
+    deal({to: address(kdl), token: address(token), give: 10});
+    vm.prank(address(kdl));
+    router.pushAndSupply(token, 10, IERC20(address(0)), 0, fundOwner);
+
+    vm.prank(address(kdl));
+    router.pull(RL.createOrder({token: token, amount: 5, fundOwner: fundOwner}), true);
+  }
+
   function test_maker_deploys_shared_aaveKandel() public {
     GeometricKandel kdl;
     address maker = freshAddress("Maker");
@@ -108,10 +118,10 @@ contract KandelSeederTest is StratTest {
 
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), kdl.admin(), "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), kdl.admin(), "Incorrect owner");
 
-    kdl.router().checkList(RL.createOrder(base, type(uint).max, address(this)), address(kdl));
-    kdl.router().checkList(RL.createOrder(quote, type(uint).max, address(this)), address(kdl));
+    checkListAavePooledRouter(base, kdl, address(this));
+    checkListAavePooledRouter(quote, kdl, address(this));
   }
 
   function test_maker_deploys_private_aaveKandel() public {
@@ -122,11 +132,11 @@ contract KandelSeederTest is StratTest {
 
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), address(kdl), "Incorrect owner");
 
     // checking router is ready to be used
-    kdl.router().checkList(RL.createOrder(base, type(uint).max, address(kdl)), address(kdl));
-    kdl.router().checkList(RL.createOrder(quote, type(uint).max, address(kdl)), address(kdl));
+    checkListAavePooledRouter(base, kdl, address(kdl));
+    checkListAavePooledRouter(quote, kdl, address(kdl));
   }
 
   function test_maker_deploys_kandel() public {
@@ -135,8 +145,8 @@ contract KandelSeederTest is StratTest {
     vm.prank(maker);
     kdl = sow(false);
 
-    assertEq(address(kdl.router()), address(kdl.NO_ROUTER()), "Incorrect router address");
+    assertEq(address(kdl.router()), address(0), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), address(kdl), "Incorrect owner");
   }
 }

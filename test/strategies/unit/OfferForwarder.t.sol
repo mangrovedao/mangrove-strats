@@ -7,7 +7,8 @@ import {
   IForwarder,
   IMangrove,
   IERC20,
-  MangroveOffer
+  MangroveOffer,
+  RouterProxy
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import {ForwarderTester, ITesterContract} from "@mgv-strats/src/toy_strategies/offer_forwarder/ForwarderTester.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
@@ -39,18 +40,18 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.deal(owner, 10 ether);
 
     makerContract = ITesterContract(address(forwarder)); // to use for all non `IForwarder` specific tests.
-    // for all tests that check router behavior w/o posting new offers
-    forwarder.deployRouter(owner);
+    // making sure owner has a router that is bound to makerContract
+    (RouterProxy ownerProxy,) = forwarder.ROUTER_FACTORY().instantiate(owner, forwarder.ROUTER_IMPLEMENTATION());
+    vm.startPrank(owner);
+    AbstractRouter(address(ownerProxy)).bind(address(makerContract));
+    weth.approve(address(ownerProxy), type(uint).max);
+    usdc.approve(address(ownerProxy), type(uint).max);
+    vm.stopPrank();
 
     vm.prank(deployer);
     forwarder.approve(usdc, $(mgv), type(uint).max);
     vm.prank(deployer);
     forwarder.approve(weth, $(mgv), type(uint).max);
-
-    vm.startPrank(owner);
-    usdc.approve(address(forwarder.router(owner)), type(uint).max);
-    weth.approve(address(forwarder.router(owner)), type(uint).max);
-    vm.stopPrank();
   }
 
   function fundStrat() internal virtual override {
@@ -75,14 +76,9 @@ contract OfferForwarderTest is OfferLogicTest {
 
     expectFrom(address(router));
     emit MakerUnbind(address(makerContract));
+
     vm.prank(address(makerContract));
     router.unbind();
-  }
-
-  function test_checkList_fails_if_caller_has_not_approved_router() public {
-    AbstractRouter router = forwarder.router(owner);
-    vm.expectRevert("SimpleRouter/InsufficientlyApproved");
-    router.checkList(RL.createOrder(weth, 1, freshAddress()), address(makerContract));
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {

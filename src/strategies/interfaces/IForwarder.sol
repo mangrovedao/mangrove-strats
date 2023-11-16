@@ -29,9 +29,4 @@ interface IForwarder {
   /// @return owner the offer maker that can manage the offer.
   /// @dev `ownerOf(in,out,id)` is equivalent to `offerOwners(in, out, [id])` but more gas efficient.
   function ownerOf(bytes32 olKeyHash, uint offerId) external view returns (address owner);
-
-  ///@notice returns the router proxy of a user
-  ///@param owner a user maker of the Forwarder strat
-  ///@return router contract's address
-  function router(address owner) external view returns (AbstractRouter router);
 }

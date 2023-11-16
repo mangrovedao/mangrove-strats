@@ -103,7 +103,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@inheritdoc AbstractRouter
   function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
     BalanceMemoizer memory memoizer;
-    return _balanceOfReserve(routingOrder.token, routingOrder.reserveId, memoizer);
+    return _balanceOfReserve(routingOrder.token, routingOrder.fundOwner, memoizer);
   }
 
   ///@notice `balanceOfReserve` with memoization of balance queries
@@ -170,7 +170,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@inheritdoc AbstractRouter
   function __push__(RL.RoutingOrder memory routingOrder) internal override returns (uint) {
     BalanceMemoizer memory memoizer;
-    _mintShares(routingOrder.token, routingOrder.reserveId, routingOrder.amount, memoizer);
+    _mintShares(routingOrder.token, routingOrder.fundOwner, routingOrder.amount, memoizer);
     // Transfer must occur *after* state updating _mintShares above
     require(
       TransferLib.transferTokenFrom(routingOrder.token, msg.sender, address(this), routingOrder.amount),
@@ -189,40 +189,45 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     return _supply(token, amount, address(this), noRevert);
   }
 
+  ///@notice pushes given tokens from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
+  ///@param token asset to be pushed to this contract
+  ///@param fundOwner share owner
+  ///@return pushed tokens to this contract
+  function _pushAndSupply(IERC20 token, uint amount, address fundOwner) internal returns (uint pushed) {
+    if (amount > 0) {
+      pushed = __push__(RL.createOrder({fundOwner: fundOwner, token: token, amount: amount}));
+    }
+    bytes32 aaveData = flushBuffer(token, true);
+    if (aaveData != bytes32(0)) {
+      emit AaveIncident(token, msg.sender, fundOwner, aaveData);
+    }
+  }
+
   ///@notice pushes each given token from the calling maker contract to this router, then supplies the whole router-local balance to AAVE
   ///@param token0 the first token to deposit
   ///@param amount0 the amount of `token0` to deposit
   ///@param token1 the second token to deposit
   ///@param amount1 the amount of `token1` to deposit
-  ///@param reserveId the reserve whose shares should be increased
+  ///@param fundOwner the reserve whose shares should be increased
   ///@return pushed0 the amount of token0 that were successfully pushed
   ///@return pushed1 the amount of token1 that were successfully pushed
   ///@dev an offer logic should call this instead of `flush` when it is the last posthook to be executed
   ///@dev this can be determined by checking during __lastLook__ whether the logic will trigger a withdraw from AAVE (this is the case if router's balance of token is empty)
   ///@dev this call be performed even for tokens with 0 amount for the offer logic, since the logic can be the first in a chain and router needs to flush all
   ///@dev this function is also to be used when user deposits funds on the maker contract
-  function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1, address reserveId)
+  function pushAndSupply(IERC20 token0, uint amount0, IERC20 token1, uint amount1, address fundOwner)
     external
     onlyBound
     returns (uint pushed0, uint pushed1)
   {
     // Push will fail for amount of 0, but since this function is only called for the first maker contract in a chain
     // it needs to also flush tokens with a contract-local 0 amount.
-    if (amount0 > 0) {
-      pushed0 = __push__(RL.createOrder({reserveId: reserveId, token: token0, amount: amount0}));
+    // token[0/1] can be address(0) if using this function for only one token
+    if (address(token0) != address(0)) {
+      pushed0 = _pushAndSupply(token0, amount0, fundOwner);
     }
-    if (amount1 > 0) {
-      pushed1 = __push__(RL.createOrder({reserveId: reserveId, token: token1, amount: amount1}));
-    }
-    // if AAVE refuses deposit, funds are stored in `this` balance (with no yield)
-    // this may happen because max supply of `token` has been reached, or because `token` is not listed on AAVE (`overlying(token)` returns `IERC20(address(0))`)
-    bytes32 aaveData = flushBuffer(token0, true);
-    if (aaveData != bytes32(0)) {
-      emit AaveIncident(token0, msg.sender, reserveId, aaveData);
-    }
-    aaveData = flushBuffer(token1, true);
-    if (aaveData != bytes32(0)) {
-      emit AaveIncident(token1, msg.sender, reserveId, aaveData);
+    if (address(token1) != address(0)) {
+      pushed1 = _pushAndSupply(token1, amount1, fundOwner);
     }
   }
 
@@ -238,7 +243,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     BalanceMemoizer memory memoizer;
     // The local buffer of token to transfer in case funds have already been redeemed or due to a donation.
     uint buffer = balanceOf(routingOrder.token, memoizer);
-    uint reserveBalance = _balanceOfReserve(routingOrder.token, routingOrder.reserveId, memoizer);
+    uint reserveBalance = _balanceOfReserve(routingOrder.token, routingOrder.fundOwner, memoizer);
     if (buffer < routingOrder.amount) {
       // this pull is the first of the market order (that requires funds from AAVE) so we redeem all the reserve from AAVE
       // note in theory we should check buffer == 0 but donation may have occurred.
@@ -255,7 +260,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
       // redeemAndTransfer would try to burn 0 shares and revert
       return 0;
     } else {
-      redeemAndTransfer(routingOrder.token, routingOrder.reserveId, amount_, toRedeem, memoizer);
+      redeemAndTransfer(routingOrder.token, routingOrder.fundOwner, amount_, toRedeem, memoizer);
       return amount_;
     }
   }
@@ -295,12 +300,6 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     uint buffer = balanceOf(token, memoizer);
     uint toRedeem = buffer > amount ? 0 : amount - buffer;
     redeemAndTransfer(token, reserveId, amount, toRedeem, memoizer);
-  }
-
-  ///@inheritdoc AbstractRouter
-  function __checkList__(RL.RoutingOrder calldata routingOrder) internal view override {
-    // we check that `token` is listed on AAVE
-    require(checkAsset(routingOrder.token), "AavePooledRouter/tokenNotLendableOnAave");
   }
 
   ///@notice prevents AAVE from using a certain asset as collateral for lending
