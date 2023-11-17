@@ -129,6 +129,25 @@ contract MangroveAmplifier is ExpirableForwarder {
     }
   }
 
+  function _retractBundle(
+    IERC20 outbound_tkn,
+    uint offerId,
+    uint[2][] memory ticks_offerIds,
+    IERC20[] memory inbound_tkns,
+    bool deprovision
+  ) internal {
+    for (uint i; i < ticks_offerIds.length; i++) {
+      if (ticks_offerIds[1][i] != offerId) {
+        OLKey memory olKey_i = OLKey({
+          outbound_tkn: address(outbound_tkn),
+          inbound_tkn: address(inbound_tkns[i]),
+          tickSpacing: ticks_offerIds[0][i]
+        });
+        _retractOffer(olKey_i, ticks_offerIds[1][i], deprovision);
+      }
+    }
+  }
+
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint) {
     // this will use user router to pull `amount` to this contract
@@ -149,10 +168,9 @@ contract MangroveAmplifier is ExpirableForwarder {
         order.offer.gives() - order.takerWants
       );
     } else {
-      _retractBundle(IERC20(order.olKey.outbound_tkn), order.offerId, ticks_offerIds, inbound_tkns);
+      // not deprovisionning to save execution gas
+      _retractBundle(IERC20(order.olKey.outbound_tkn), order.offerId, ticks_offerIds, inbound_tkns, false);
     }
     return missing;
   }
-
-  function _retractBundle(IERC20, uint, uint[2][] memory, IERC20[] memory) internal {}
 }
