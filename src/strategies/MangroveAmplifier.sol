@@ -57,6 +57,16 @@ contract MangroveAmplifier is ExpirableForwarder {
     OLKey olKey;
   }
 
+  ///@notice posts bundle of offers on Mangrove so as to amplify outbound token
+  ///@param outbound_tkn the promised asset for all offers of the bundle
+  ///@param outVolume how much assets each offer promise
+  ///@param inboundTkns an array of length `n` such that `inboundTkns[i]` is the inbound of the i^th offer of the bundle
+  ///@param params the offers parameters such that `params[i]=[inVolume, gasreq, provision, tick]` where:
+  /// * `inVolume` is the amount of inbound token the i^th offer of the bundle wants
+  /// * `gasreq` is the gas required by the i^th offer (gas may differ between offer because of different routing strategies)
+  /// * `provision` is the portion of `msg.value` that should be allocated to the provision of the i^th offer
+  /// * `tick` is the tick spacing parameter that charaterizes the offer list to which the offer should be posted.
+  ///@return freshBundleId the bundle identifier
   function newBundle(
     IERC20 outbound_tkn,
     uint outVolume,
@@ -94,18 +104,12 @@ contract MangroveAmplifier is ExpirableForwarder {
     __inboundTknsOfBundleId[freshBundleId] = inboundTkns;
   }
 
-  function _updateOutboundVolume(Offer offer, OfferDetail offerDetail, OLKey memory olKey, uint outboundVolume)
-    internal
-    pure
-    returns (OfferArgs memory args)
-  {
-    args.olKey = olKey;
-    args.tick = offer.tick(); // same price
-    args.gives = outboundVolume; // new volume
-    args.gasreq = offerDetail.gasreq();
-    args.noRevert = true;
-  }
-
+  ///@notice updates a bundle of offer after one of them has be partially filled.
+  ///@param outbound_tkn the outbound token of the bundle
+  ///@param offerId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
+  ///@param ticks_offerIds the array of elements `[tick_i, offerId_i]` where `tick_i` is the tick spacing of the offer list in which `offerId_i` lives.
+  ///@param inbound_tkns the array of inbound tokens of each member of the bundle to update
+  ///@param outboundVolume the new volume that each offer of the bundle should now offer
   function _updateBundle(
     IERC20 outbound_tkn,
     uint offerId,
@@ -123,19 +127,33 @@ contract MangroveAmplifier is ExpirableForwarder {
         });
         Offer offer_i = MGV.offers(olKey_i, ticks_offerIds[1][i]);
         OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, ticks_offerIds[1][i]);
+        // Updating offer_i
+        OfferArgs memory args;
+        args.olKey = olKey_i;
+        args.tick = offer_i.tick(); // same price
+        args.gives = outboundVolume; // new volume
+        args.gasreq = offerDetail_i.gasreq();
+        args.noRevert = true;
         // call below will retract the offer without reverting if update fails (for instance if the density it too low)
-        _updateOffer(_updateOutboundVolume(offer_i, offerDetail_i, olKey_i, outboundVolume), ticks_offerIds[1][i]);
+        _updateOffer(args, ticks_offerIds[1][i]);
       }
     }
   }
 
+  ///@notice retracts a bundle of offers
+  ///@param outbound_tkn the outbound token of the bundle
+  ///@param offerId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
+  ///@param ticks_offerIds the array of elements `[tick_i, offerId_i]` where `tick_i` is the tick spacing of the offer list in which `offerId_i` lives.
+  ///@param inbound_tkns the array of inbound tokens of each member of the bundle to retract
+  ///@param deprovision whether retracting the offer should also deprovision offers on Mangrove
+  ///@return freeWei the amount of native tokens on this contract's balance that should be sent to msg.sender
   function _retractBundle(
     IERC20 outbound_tkn,
     uint offerId,
     uint[2][] memory ticks_offerIds,
     IERC20[] memory inbound_tkns,
     bool deprovision
-  ) internal {
+  ) internal returns (uint freeWei) {
     for (uint i; i < ticks_offerIds.length; i++) {
       if (ticks_offerIds[1][i] != offerId) {
         OLKey memory olKey_i = OLKey({
@@ -143,14 +161,14 @@ contract MangroveAmplifier is ExpirableForwarder {
           inbound_tkn: address(inbound_tkns[i]),
           tickSpacing: ticks_offerIds[0][i]
         });
-        _retractOffer(olKey_i, ticks_offerIds[1][i], deprovision);
+        freeWei += _retractOffer(olKey_i, ticks_offerIds[1][i], deprovision);
       }
     }
   }
 
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint) {
-    // this will use user router to pull `amount` to this contract
+    // this will use offer owner's router to pull `amount` to this contract
     uint missing = super.__get__(amount, order);
 
     // we know take care of updating the other offers that are part of the same bundle

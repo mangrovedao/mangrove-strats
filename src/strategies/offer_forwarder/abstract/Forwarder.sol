@@ -240,7 +240,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param deprovision if set to `true` if offer owner wishes to redeem the offer's provision.
   ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
-  ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
+  ///@dev Calling this function, with the `deprovision` flag, should be accompanied by a native token transfer to offer owner in order not to leave funds on this balance.
   function _retractOffer(OLKey memory olKey, uint offerId, bool deprovision) internal returns (uint freeWei) {
     OwnerData storage od = ownerData[olKey.hash()][offerId];
     freeWei = deprovision ? od.weiBalance : 0; // (a)
@@ -250,15 +250,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
       // resetting pending returned provision
       od.weiBalance = 0;
-      // Griefing issue: the call below could occur nested inside a call to `makerExecute` originating from Mangrove, so `owner` could make the current trade fail.
-      // Here we are safe because callee is offer owner and has no incentive to make current trade fail or waste gas.
-      // w.r.t reentrancy:
-      // * `od.weiBalance` is set to 0 (storage write) prior to this call, so a reentrant call to `retractOffer` would give `freeWei = 0` at (a)
-      // * further call to `MGV.retractOffer` will yield no more WEIs so `freeWei += 0` at (b)
-      // * (a /\ b) imply that the above call to `MGV.withdraw` will be done with `freeWei == 0`.
-      // * `retractOffer` is the only function that allows non admin users to withdraw WEIs from Mangrove.
-      (bool noRevert,) = od.owner.call{value: freeWei}("");
-      require(noRevert, "mgvOffer/weiTransferFail");
     }
   }
 

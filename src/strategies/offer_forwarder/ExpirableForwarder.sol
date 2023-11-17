@@ -93,10 +93,12 @@ contract ExpirableForwarder is Forwarder {
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
   ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
   function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
-    public
+    external
     onlyOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(olKey, offerId, deprovision);
+    freeWei = _retractOffer(olKey, offerId, deprovision);
+    (bool noRevert,) = msg.sender.call{value: freeWei}("");
+    require(noRevert, "ExpirableForwarder/weiTransferFail");
   }
 }
