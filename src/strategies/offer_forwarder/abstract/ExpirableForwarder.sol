@@ -3,8 +3,12 @@ import {MangroveOffer, Forwarder, IMangrove, RouterProxyFactory, AbstractRouter,
 
 pragma solidity ^0.8.10;
 
-///@notice Forwarder than enables expiry dates for the offer it posts.
+///@title Forwarder than enables expiry dates for the offer it posts. Expiry is tested in `__lastLook__` hook and induces a small bounty for offer owner.
 contract ExpirableForwarder is Forwarder {
+  ///@notice Same as Forwarder's constructor
+  ///@param mgv the deployed Mangrove contract on which this contract will post offers.
+  ///@param factory the router proxy factory contract -- cannot be 0x
+  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners -- cannot be 0x
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
     Forwarder(mgv, factory, routerImplementation)
   {}
@@ -24,6 +28,7 @@ contract ExpirableForwarder is Forwarder {
   ///@notice returns expiry date of an offer
   ///@param olKeyHash the identifier of the offer list
   ///@param offerId the offer identifier
+  ///@return expiry date
   function expiring(bytes32 olKeyHash, uint offerId) external view returns (uint) {
     return _expiryMaps[olKeyHash][offerId];
   }
