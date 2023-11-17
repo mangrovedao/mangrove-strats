@@ -3,8 +3,8 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  ExpirableForwarder, MangroveOffer
-} from "@mgv-strats/src/strategies/offer_forwarder/abstract/ExpirableForwarder.sol";
+  ExpirableForwarder, MangroveOffer, Tick
+} from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
 import {
   TransferLib,
   RouterProxyFactory,
@@ -14,10 +14,8 @@ import {
 } from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
-//import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
-import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good till cancelled" (GTC) orders as well as "Fill or kill" (FOK) orders.
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -27,7 +25,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
 
 contract MangroveOrder is ExpirableForwarder, IOrderLogic {
-  ///@notice MangroveOrder is a Forwarder logic with a simple router.
+  ///@notice MangroveOrder is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
@@ -35,45 +33,6 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     ExpirableForwarder(mgv, factory, new SmartRouter())
   {
     _setAdmin(deployer);
-  }
-
-  ///@notice updates an offer on Mangrove
-  ///@dev this can be used to update price of the resting order
-  ///@param olKey the offer list key.
-  ///@param tick the tick
-  ///@param gives new amount of `olKey.outbound_tkn` offer owner gives
-  ///@param gasreq new gas req for the restingOrder
-  ///@param offerId the id of the offer to be updated
-  function updateOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq, uint offerId)
-    external
-    payable
-    onlyOwner(olKey.hash(), offerId)
-  {
-    OfferArgs memory args;
-
-    // funds to compute new gasprice is msg.value. Will use old gasprice if no funds are given
-    args.fund = msg.value;
-    args.olKey = olKey;
-    args.tick = tick;
-    args.gives = gives;
-    args.gasreq = gasreq;
-    args.noRevert = false; // will throw if Mangrove reverts
-    _updateOffer(args, offerId);
-  }
-
-  ///@notice Retracts an offer from an Offer List of Mangrove.
-  ///@param olKey the offer list key.
-  ///@param offerId the identifier of the offer in the offer list
-  ///@param deprovision if set to `true` if offer owner wishes to redeem the offer's provision.
-  ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
-  ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
-  ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
-  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
-    public
-    onlyOwner(olKey.hash(), offerId)
-    returns (uint freeWei)
-  {
-    return _retractOffer(olKey, offerId, deprovision);
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
