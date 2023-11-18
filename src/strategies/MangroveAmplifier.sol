@@ -125,6 +125,28 @@ contract MangroveAmplifier is ExpirableForwarder {
     emit EndBundle();
   }
 
+  ///@notice given a bundle identifier and its outbound token, fetches the inbound tokens, the tick spacings and the offer ids of the offers of that bundle
+  ///@param bundleId the bundle identifier
+  ///@param outbound_tkn the outbound token of the bundle
+  ///@return inboundTkns the inbound tokens of the offers of the bundle
+  ///@return ticks_offerIds the tick spacings and offer Id's of the offers of the bundle
+  ///@return owner the owner of all bundle's offers.
+  function _getBundleMaps(uint bundleId, IERC20 outbound_tkn)
+    internal
+    view
+    returns (IERC20[] memory inboundTkns, uint[2][] memory ticks_offerIds, address owner)
+  {
+    inboundTkns = __inboundTknsOfBundleId[bundleId];
+    ticks_offerIds = __ticks_offerIdsOfBundleId[bundleId];
+    // msg.sender owns the bundle if and only if it owns one of its offers. We check the first offer of the bundle
+    OLKey memory olKey_0 = OLKey({
+      outbound_tkn: address(outbound_tkn),
+      inbound_tkn: address(inboundTkns[0]),
+      tickSpacing: ticks_offerIds[0][0]
+    });
+    owner = ownerOf(olKey_0.hash(), ticks_offerIds[1][0]);
+  }
+
   ///@notice updates a bundle of offers, possibly during the execution of the logic of one of them.
   ///@param outbound_tkn the outbound token of the bundle
   ///@param offerId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
@@ -151,18 +173,21 @@ contract MangroveAmplifier is ExpirableForwarder {
           tickSpacing: ticks_offerIds[0][i]
         });
         Offer offer_i = MGV.offers(olKey_i, ticks_offerIds[1][i]);
-        OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, ticks_offerIds[1][i]);
-        // Updating offer_i
-        OfferArgs memory args;
-        args.olKey = olKey_i;
-        args.tick = offer_i.tick(); // same price
-        args.gives = outboundVolume; // new volume
-        args.gasreq = offerDetail_i.gasreq();
-        args.noRevert = true;
-        // call below will retract the offer without reverting if update fails (for instance if the density it too low)
-        _updateOffer(args, ticks_offerIds[1][i]);
-        if (updateExpiry) {
-          _setExpiry(olKey_i.hash(), ticks_offerIds[1][i], expiryDate);
+        // if offer_i was previously retracted, it should no longer be considered part of the bundle.
+        if (offer_i.gives() != 0) {
+          OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, ticks_offerIds[1][i]);
+          // Updating offer_i
+          OfferArgs memory args;
+          args.olKey = olKey_i;
+          args.tick = offer_i.tick(); // same price
+          args.gives = outboundVolume; // new volume
+          args.gasreq = offerDetail_i.gasreq();
+          args.noRevert = true;
+          // call below will retract the offer without reverting if update fails (for instance if the density it too low)
+          _updateOffer(args, ticks_offerIds[1][i]);
+          if (updateExpiry) {
+            _setExpiry(olKey_i.hash(), ticks_offerIds[1][i], expiryDate);
+          }
         }
       }
     }
@@ -181,15 +206,9 @@ contract MangroveAmplifier is ExpirableForwarder {
     bool updateExpiry,
     uint expiryDate // use only if `updateExpiry` is true
   ) external {
-    IERC20[] memory inboundTkns = __inboundTknsOfBundleId[bundleId];
-    uint[2][] memory ticks_offerIds = __ticks_offerIdsOfBundleId[bundleId];
-    // msg.sender owns the bundle if and only if it owns one of its offers. We check the first offer of the bundle
-    OLKey memory olKey_0 = OLKey({
-      outbound_tkn: address(outbound_tkn),
-      inbound_tkn: address(inboundTkns[0]),
-      tickSpacing: ticks_offerIds[0][0]
-    });
-    require(ownerOf(olKey_0.hash(), ticks_offerIds[1][0]) == msg.sender, "MgvAmplifier/unauthorized");
+    (IERC20[] memory inboundTkns, uint[2][] memory ticks_offerIds, address owner) =
+      _getBundleMaps(bundleId, outbound_tkn);
+    require(owner == msg.sender, "MgvAmplifier/unauthorized");
     _updateBundle(outbound_tkn, 0, ticks_offerIds, inboundTkns, outboundVolume, updateExpiry, expiryDate);
   }
 
@@ -217,6 +236,18 @@ contract MangroveAmplifier is ExpirableForwarder {
         freeWei += _retractOffer(olKey_i, ticks_offerIds[1][i], deprovision);
       }
     }
+  }
+
+  ///@notice public method to retract a bundle of offers
+  ///@param bundleId the bundle identifier
+  ///@param outbound_tkn the outbound token of the bundle
+  function retractBundle(uint bundleId, IERC20 outbound_tkn) external {
+    (IERC20[] memory inboundTkns, uint[2][] memory ticks_offerIds, address owner) =
+      _getBundleMaps(bundleId, outbound_tkn);
+    require(owner == msg.sender, "MgvAmplifier/unauthorized");
+    uint freeWei = _retractBundle(outbound_tkn, 0, ticks_offerIds, inboundTkns, true);
+    (bool noRevert,) = msg.sender.call{value: freeWei}("");
+    require(noRevert, "MgvAmplifier/weiTransferFail");
   }
 
   ///@inheritdoc MangroveOffer
