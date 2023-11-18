@@ -65,10 +65,12 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint offerId;
     OLKey olKey;
     bytes32 olKeyHash;
+    RouterProxy proxy;
+    RL.RoutingOrder routingOrder;
   }
 
-  ///@notice posts bundle of offers on Mangrove so as to amplify outbound token
   ///@param outbound_tkn the promised asset for all offers of the bundle
+  ///@param outboundLogic
   ///@param outVolume how much assets each offer promise
   ///@param expiryDate date of expiration of each offer of the bundle. Use 0 for no expiry.
   ///@param inboundTkns an array of length `n` such that `inboundTkns[i]` is the inbound of the i^th offer of the bundle
@@ -77,50 +79,71 @@ contract MangroveAmplifier is ExpirableForwarder {
   /// * `gasreq` is the gas required by the i^th offer (gas may differ between offer because of different routing strategies)
   /// * `provision` is the portion of `msg.value` that should be allocated to the provision of the i^th offer
   /// * `tick` is the tick spacing parameter that charaterizes the offer list to which the offer should be posted.
+  struct BundleArgs {
+    IERC20 outbound_tkn;
+    uint outVolume;
+    AbstractRouter outboundLogic;
+    uint expiryDate; // 0 for no expiry
+    IERC20[] inboundTkns;
+    uint[4][] params; // params[0]: inVolume, params[1] = gasreq, params[2] = provision, params[3] = tick
+    AbstractRouter[] inboundLogics;
+  }
+
+  ///@notice posts bundle of offers on Mangrove so as to amplify outbound token
+  ///@param args cf struct BundleArgs
   ///@return freshBundleId the bundle identifier
-  function newBundle(
-    IERC20 outbound_tkn,
-    uint outVolume,
-    uint expiryDate, // 0 for no expiry
-    IERC20[] calldata inboundTkns, // `OlKeys[i].outbound_tkn` must be the same for all `i`
-    uint[4][] calldata params // params[0]: inVolume, params[1] = gasreq, params[2] = provision, params[3] = tick
-  ) public payable returns (uint freshBundleId) {
+  function newBundle(BundleArgs calldata args) public payable returns (uint freshBundleId) {
     HeapVarsNewBundle memory vars;
     freshBundleId = __bundleId++;
 
     emit InitBundle(freshBundleId);
 
-    vars.ticks_offerIds = new uint[2][](params.length);
+    vars.ticks_offerIds = new uint[2][](args.params.length);
     vars.availableProvision = msg.value;
-    for (uint i; i < params.length; i++) {
-      require(params[2][i] <= vars.availableProvision, "MgvAmplifier/NotEnoughProvisions");
+    for (uint i; i < args.params.length; i++) {
+      require(args.params[2][i] <= vars.availableProvision, "MgvAmplifier/NotEnoughProvisions");
       // making sure no native token remains in the strat
       // note if `vars.provision` is insufficient to cover `gasreq=params[2][i]` the call below will revert
-      vars.provision = i == params.length - 1 ? vars.availableProvision : params[2][i];
-      vars.olKey =
-        OLKey({outbound_tkn: address(outbound_tkn), inbound_tkn: address(inboundTkns[i]), tickSpacing: params[3][i]});
+      vars.provision = i == args.params.length - 1 ? vars.availableProvision : args.params[2][i];
+      vars.olKey = OLKey({
+        outbound_tkn: address(args.outbound_tkn),
+        inbound_tkn: address(args.inboundTkns[i]),
+        tickSpacing: args.params[3][i]
+      });
+      // posting new offer on Mangove
       (vars.offerId,) = _newOffer(
         OfferArgs({
           olKey: vars.olKey,
-          tick: TickLib.tickFromVolumes(params[0][i], outVolume),
-          gives: outVolume,
-          gasreq: params[1][i],
+          tick: TickLib.tickFromVolumes(args.params[0][i], args.outVolume),
+          gives: args.outVolume,
+          gasreq: args.params[1][i],
           gasprice: 0, // ignored in Forwarder strats
           fund: vars.provision,
           noRevert: false // revert if unable to post
         }),
         msg.sender
       );
+      // Setting logic to push inbound tokens offer
+      (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
+      vars.routingOrder.token = args.inboundTkns[i];
+      vars.routingOrder.olKeyHash = vars.olKeyHash;
+      vars.routingOrder.offerId = vars.offerId;
+      SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder, args.inboundLogics[i]);
+
+      // Setting logic to pull outbount tokens for the same offer
+      vars.routingOrder.token = args.outbound_tkn;
+      SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder, args.outboundLogic);
+
       vars.olKeyHash = vars.olKey.hash();
-      if (expiryDate != 0) {
-        _setExpiry(vars.olKeyHash, vars.offerId, expiryDate);
+      if (args.expiryDate != 0) {
+        _setExpiry(vars.olKeyHash, vars.offerId, args.expiryDate);
       }
-      vars.availableProvision -= params[2][i];
-      vars.ticks_offerIds[i] = [params[3][i], vars.offerId];
+      vars.availableProvision -= args.params[2][i];
+      vars.ticks_offerIds[i] = [args.params[3][i], vars.offerId];
       __bundleIdOfOfferId[vars.olKeyHash][vars.offerId] = freshBundleId;
     }
     __ticks_offerIdsOfBundleId[freshBundleId] = vars.ticks_offerIds;
-    __inboundTknsOfBundleId[freshBundleId] = inboundTkns;
+    __inboundTknsOfBundleId[freshBundleId] = args.inboundTkns;
 
     emit EndBundle();
   }
@@ -199,6 +222,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@param outboundVolume the new volume that each offer of the bundle should now offer
   ///@param updateExpiry whether the update also changes expiry date of the bundle
   ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
+  ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`
   function updateBundle(
     uint bundleId,
     IERC20 outbound_tkn,
@@ -241,6 +265,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice public method to retract a bundle of offers
   ///@param bundleId the bundle identifier
   ///@param outbound_tkn the outbound token of the bundle
+  ///@dev offers can be retracted individually using `super.retractOffer`
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external {
     (IERC20[] memory inboundTkns, uint[2][] memory ticks_offerIds, address owner) =
       _getBundleMaps(bundleId, outbound_tkn);
