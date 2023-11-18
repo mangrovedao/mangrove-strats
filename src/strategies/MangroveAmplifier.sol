@@ -37,7 +37,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   /// 2. `[tick_j, offerId_j] = __ticks_offerIdsOfBundleId[bundleId][j]`
   /// 3. `inbound_j` = __inboundTknsOfBundleId[bundleId][j]`
   /// for all j <= `__ticks_offerIdsOfBundleId[bundleId].length`
-  mapping(bytes32 olKeyHash => mapping(uint => uint)) private __bundleIdOfOfferId;
+  mapping(bytes32 olKeyHash => mapping(uint offerId => uint bundleId)) private __bundleIdOfOfferId;
 
   ///@notice logs beginning of bundle creation
   ///@param bundleId bundle identifier
