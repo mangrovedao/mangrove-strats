@@ -39,6 +39,15 @@ contract MangroveAmplifier is ExpirableForwarder {
   /// for all j <= `__ticks_offerIdsOfBundleId[bundleId].length`
   mapping(bytes32 olKeyHash => mapping(uint => uint)) private __bundleIdOfOfferId;
 
+  ///@notice logs beginning of bundle creation
+  ///@param bundleId bundle identifier
+  event InitBundle(uint indexed bundleId);
+
+  ///@notice logs end of bundle creation
+  ///@dev to know which offer are part of the bundle one needs to track `NewOwnedOffer(olKeyHash, offerId, owner)` emitted in between `InitBundle` and `EndBundle`
+  ///@dev the expiry date of the bundle is given by the logs `SetExpiry(olKeyHash, offerId, expiryDate)` of each offer of the bundle (all dates are the same).
+  event EndBundle();
+
   ///@notice MangroveAmplifier is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
@@ -55,11 +64,13 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint provision;
     uint offerId;
     OLKey olKey;
+    bytes32 olKeyHash;
   }
 
   ///@notice posts bundle of offers on Mangrove so as to amplify outbound token
   ///@param outbound_tkn the promised asset for all offers of the bundle
   ///@param outVolume how much assets each offer promise
+  ///@param expiryDate date of expiration of each offer of the bundle. Use 0 for no expiry.
   ///@param inboundTkns an array of length `n` such that `inboundTkns[i]` is the inbound of the i^th offer of the bundle
   ///@param params the offers parameters such that `params[i]=[inVolume, gasreq, provision, tick]` where:
   /// * `inVolume` is the amount of inbound token the i^th offer of the bundle wants
@@ -70,11 +81,15 @@ contract MangroveAmplifier is ExpirableForwarder {
   function newBundle(
     IERC20 outbound_tkn,
     uint outVolume,
+    uint expiryDate, // 0 for no expiry
     IERC20[] calldata inboundTkns, // `OlKeys[i].outbound_tkn` must be the same for all `i`
     uint[4][] calldata params // params[0]: inVolume, params[1] = gasreq, params[2] = provision, params[3] = tick
   ) public payable returns (uint freshBundleId) {
     HeapVarsNewBundle memory vars;
     freshBundleId = __bundleId++;
+
+    emit InitBundle(freshBundleId);
+
     vars.ticks_offerIds = new uint[2][](params.length);
     vars.availableProvision = msg.value;
     for (uint i; i < params.length; i++) {
@@ -96,26 +111,36 @@ contract MangroveAmplifier is ExpirableForwarder {
         }),
         msg.sender
       );
+      vars.olKeyHash = vars.olKey.hash();
+      if (expiryDate != 0) {
+        _setExpiry(vars.olKeyHash, vars.offerId, expiryDate);
+      }
       vars.availableProvision -= params[2][i];
       vars.ticks_offerIds[i] = [params[3][i], vars.offerId];
-      __bundleIdOfOfferId[vars.olKey.hash()][vars.offerId] = freshBundleId;
+      __bundleIdOfOfferId[vars.olKeyHash][vars.offerId] = freshBundleId;
     }
     __ticks_offerIdsOfBundleId[freshBundleId] = vars.ticks_offerIds;
     __inboundTknsOfBundleId[freshBundleId] = inboundTkns;
+
+    emit EndBundle();
   }
 
-  ///@notice updates a bundle of offer after one of them has be partially filled.
+  ///@notice updates a bundle of offers, possibly during the execution of the logic of one of them.
   ///@param outbound_tkn the outbound token of the bundle
   ///@param offerId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
   ///@param ticks_offerIds the array of elements `[tick_i, offerId_i]` where `tick_i` is the tick spacing of the offer list in which `offerId_i` lives.
   ///@param inbound_tkns the array of inbound tokens of each member of the bundle to update
   ///@param outboundVolume the new volume that each offer of the bundle should now offer
+  ///@param updateExpiry whether the update also changes expiry date of the bundle
+  ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
   function _updateBundle(
     IERC20 outbound_tkn,
     uint offerId,
     uint[2][] memory ticks_offerIds,
     IERC20[] memory inbound_tkns,
-    uint outboundVolume
+    uint outboundVolume,
+    bool updateExpiry,
+    uint expiryDate
   ) internal {
     // updating outbound volume for all offers of the bundle --except the one that is being executed since the offer list is locked
     for (uint i; i < ticks_offerIds.length; i++) {
@@ -136,8 +161,36 @@ contract MangroveAmplifier is ExpirableForwarder {
         args.noRevert = true;
         // call below will retract the offer without reverting if update fails (for instance if the density it too low)
         _updateOffer(args, ticks_offerIds[1][i]);
+        if (updateExpiry) {
+          _setExpiry(olKey_i.hash(), ticks_offerIds[1][i], expiryDate);
+        }
       }
     }
+  }
+
+  ///@notice public function to update a bundle of offers
+  ///@param bundleId the bundle identifier
+  ///@param outbound_tkn the outbound token of the bundle
+  ///@param outboundVolume the new volume that each offer of the bundle should now offer
+  ///@param updateExpiry whether the update also changes expiry date of the bundle
+  ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
+  function updateBundle(
+    uint bundleId,
+    IERC20 outbound_tkn,
+    uint outboundVolume,
+    bool updateExpiry,
+    uint expiryDate // use only if `updateExpiry` is true
+  ) external {
+    IERC20[] memory inboundTkns = __inboundTknsOfBundleId[bundleId];
+    uint[2][] memory ticks_offerIds = __ticks_offerIdsOfBundleId[bundleId];
+    // msg.sender owns the bundle if and only if it owns one of its offers. We check the first offer of the bundle
+    OLKey memory olKey_0 = OLKey({
+      outbound_tkn: address(outbound_tkn),
+      inbound_tkn: address(inboundTkns[0]),
+      tickSpacing: ticks_offerIds[0][0]
+    });
+    require(ownerOf(olKey_0.hash(), ticks_offerIds[1][0]) == msg.sender, "MgvAmplifier/unauthorized");
+    _updateBundle(outbound_tkn, 0, ticks_offerIds, inboundTkns, outboundVolume, updateExpiry, expiryDate);
   }
 
   ///@notice retracts a bundle of offers
@@ -167,6 +220,8 @@ contract MangroveAmplifier is ExpirableForwarder {
   }
 
   ///@inheritdoc MangroveOffer
+  ///@dev updating offer bundle in makerExecute rather than in makerPosthook to avoid griefing: an adversarial offer logic could collect the bounty of the bundle by taking the not yet updated offers during its execution.
+  ///@dev the risk of updating the bundle during makerExecute is that any revert will make the trade revert, so one needs to make sure it does not happen (by catching potential reverts, assuming no "out of gas" is thrown)
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint) {
     // this will use offer owner's router to pull `amount` to this contract
     uint missing = super.__get__(amount, order);
@@ -183,7 +238,9 @@ contract MangroveAmplifier is ExpirableForwarder {
         order.offerId,
         ticks_offerIds,
         inbound_tkns,
-        order.offer.gives() - order.takerWants
+        order.offer.gives() - order.takerWants,
+        false, // no expiry update
+        0
       );
     } else {
       // not deprovisionning to save execution gas

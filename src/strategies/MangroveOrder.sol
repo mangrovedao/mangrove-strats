@@ -252,7 +252,7 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
 
       // setting expiry date for the resting order
       if (tko.expiryDate > 0) {
-        setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
+        _setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
       }
     }
   }

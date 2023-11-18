@@ -43,12 +43,20 @@ contract ExpirableForwarder is Forwarder {
     return _expiryMaps[olKeyHash][offerId];
   }
 
-  ///@notice Updates the expiry date for a specific offer.
+  ///@notice Updates the expiry date for a specific offer if caller is the offer owner.
   ///@param olKeyHash the hash of the offer list key.
   ///@param offerId The offer id whose expiry date is to be set.
-  ///@param expiryDate in seconds since unix epoch
+  ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
   ///@dev If new date is in the past of the current block's timestamp, offer will renege on trade.
-  function setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) public onlyOwner(olKeyHash, offerId) {
+  function setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) external onlyOwner(olKeyHash, offerId) {
+    _setExpiry(olKeyHash, offerId, expiryDate);
+  }
+
+  ///@notice internal version of the above.
+  ///@param olKeyHash the hash of the offer list key.
+  ///@param offerId The offer id whose expiry date is to be set.
+  ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
+  function _setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) internal {
     _expiryMaps[olKeyHash][offerId] = expiryDate;
     emit SetExpiry(olKeyHash, offerId, expiryDate);
   }
