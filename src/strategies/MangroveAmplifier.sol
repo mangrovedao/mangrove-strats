@@ -199,7 +199,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@param ticks_offerIds the array of elements `[tick_i, offerId_i]` where `tick_i` is the tick spacing of the offer list in which `offerId_i` lives.
   ///@param inbound_tkns the array of inbound tokens of each member of the bundle to retract
   ///@param deprovision whether retracting the offer should also deprovision offers on Mangrove
-  ///@return freeWei the amount of native tokens on this contract's balance that should be sent to msg.sender
+  ///@return freeWei the amount of native tokens on this contract's balance that belong to msg.sender
   function _retractBundle(
     IERC20 outbound_tkn,
     uint offerId,
