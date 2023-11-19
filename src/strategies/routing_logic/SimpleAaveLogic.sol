@@ -16,7 +16,7 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
     Memoizer memory m;
 
-    uint amount = strict ? routingOrder.amount : balanceOf(routingOrder.token, m, routingOrder.fundOwner);
+    uint amount = strict ? routingOrder.amount : overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
 
     if (amount == 0) {
       return 0;
@@ -33,20 +33,9 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
 
   ///@inheritdoc AbstractRouter
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint pushed) {
-    Memoizer memory m;
     // just in time approval of the POOL in order to be able to deposit funds
     _approveLender(routingOrder.token, routingOrder.amount);
-    uint leftToPush = routingOrder.amount;
-    // tries to repay existing debt
-    if (debtBalanceOf(routingOrder.token, m, routingOrder.fundOwner) > 0) {
-      uint repaid = _repay(routingOrder.token, leftToPush, routingOrder.fundOwner);
-      leftToPush -= repaid;
-    }
-    // supplies the rest
-    if (leftToPush > 0) {
-      bytes32 reason = _supply(routingOrder.token, leftToPush, routingOrder.fundOwner, true);
-      require(reason == bytes32(0), "AaveLogic/SupplyFailed");
-    }
+    _supply(routingOrder.token, routingOrder.amount, routingOrder.fundOwner, false);
     return routingOrder.amount;
   }
 
@@ -54,6 +43,5 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
     Memoizer memory m;
     balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
-    balance += balanceOf(routingOrder.token, m, routingOrder.fundOwner);
   }
 }
