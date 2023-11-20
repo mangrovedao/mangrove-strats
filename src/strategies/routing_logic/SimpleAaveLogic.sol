@@ -27,7 +27,8 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
       "SimpleAaveLogic/TransferFailed"
     );
 
-    uint redeemed = _redeem(routingOrder.token, amount, msg.sender);
+    (bytes32 reason, uint redeemed) = _redeem(routingOrder.token, amount, msg.sender, true);
+    require(reason == bytes32(0), string(abi.encodePacked(reason)));
     return redeemed;
   }
 
@@ -35,7 +36,8 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint pushed) {
     // just in time approval of the POOL in order to be able to deposit funds
     _approveLender(routingOrder.token, routingOrder.amount);
-    _supply(routingOrder.token, routingOrder.amount, routingOrder.fundOwner, false);
+    bytes32 reason = _supply(routingOrder.token, routingOrder.amount, routingOrder.fundOwner, false);
+    require(reason == bytes32(0), string(abi.encodePacked(reason)));
     return routingOrder.amount;
   }
 
