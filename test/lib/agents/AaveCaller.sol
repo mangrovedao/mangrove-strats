@@ -29,7 +29,7 @@ contract AaveCaller is AaveV3Borrower, StdCheats {
   }
 
   function redeem(IERC20 token, uint amount) public {
-    _redeem(token, amount, address(this));
+    _redeem(token, amount, address(this), false);
   }
 
   function executeOperation(address asset, uint amount, uint premium, address, bytes calldata cd)

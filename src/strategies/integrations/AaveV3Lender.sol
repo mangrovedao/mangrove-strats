@@ -60,6 +60,7 @@ contract AaveV3Lender {
   ///@param token the asset one is trying to redeem
   ///@param amount of assets one wishes to redeem
   ///@param to is the address where the redeemed assets should be transferred
+  ///@param noRevert does not revert if redeem throws
   ///@return reason for revert from Aave.
   ///@return redeemed the amount of asset that were transferred to `to`
   function _redeem(IERC20 token, uint amount, address to, bool noRevert)
