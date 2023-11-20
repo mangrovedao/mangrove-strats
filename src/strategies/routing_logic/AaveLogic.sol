@@ -71,7 +71,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
     );
 
     // since this contract will be delegate called, msg.sender is maker contract
-    uint redeemed = _redeem(routingOrder.token, toWithdraw, msg.sender);
+    (, uint redeemed) = _redeem(routingOrder.token, toWithdraw, msg.sender, false);
     return redeemed;
   }
 

@@ -33,8 +33,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "next",
-    "@openzeppelin/contracts": "^5.0.0"
+    "@mangrovedao/mangrove-core": "next"
   },
   "devDependencies": {
     "@mangrovedao/context-addresses": "next",
