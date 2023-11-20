@@ -66,7 +66,6 @@ contract AaveV3Lender {
     internal
     returns (bytes32 reason, uint redeemed)
   {
-    // redeemed = (amount == 0) ? 0 : POOL.withdraw(address(token), amount, to);
     if (amount != 0) {
       try POOL.withdraw(address(token), amount, to) returns (uint _redeemed) {
         redeemed = _redeemed;
