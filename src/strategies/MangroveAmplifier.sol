@@ -70,7 +70,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   }
 
   ///@param outbound_tkn the promised asset for all offers of the bundle
-  ///@param outboundLogic
+  ///@param outboundLogic the logic to manage liquidity sourcing.  Use `AbstractRouter(address(0))` for simple routing.
   ///@param outVolume how much assets each offer promise
   ///@param expiryDate date of expiration of each offer of the bundle. Use 0 for no expiry.
   ///@param inboundTkns an array of length `n` such that `inboundTkns[i]` is the inbound of the i^th offer of the bundle
@@ -79,17 +79,18 @@ contract MangroveAmplifier is ExpirableForwarder {
   /// * `gasreq` is the gas required by the i^th offer (gas may differ between offer because of different routing strategies)
   /// * `provision` is the portion of `msg.value` that should be allocated to the provision of the i^th offer
   /// * `tick` is the tick spacing parameter that charaterizes the offer list to which the offer should be posted.
+  ///@param inboundLogics the logics to manage liquidity targetting for each offer of the bundle. Use `AbstractRouter(address(0))` for simple routing.
   struct BundleArgs {
     IERC20 outbound_tkn;
     uint outVolume;
-    AbstractRouter outboundLogic;
+    AbstractRouter outboundLogic; // AbstractRouter(address(0)) for SimpleRouter behavior.
     uint expiryDate; // 0 for no expiry
     IERC20[] inboundTkns;
     uint[4][] params; // params[0]: inVolume, params[1] = gasreq, params[2] = provision, params[3] = tick
     AbstractRouter[] inboundLogics;
   }
 
-  ///@notice posts bundle of offers on Mangrove so as to amplify outbound token
+  ///@notice posts bundle of offers on Mangrove so as to amplify a certain volume of outbound tokens
   ///@param args cf struct BundleArgs
   ///@return freshBundleId the bundle identifier
   function newBundle(BundleArgs calldata args) public payable returns (uint freshBundleId) {
