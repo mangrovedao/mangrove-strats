@@ -27,8 +27,7 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
       "SimpleAaveLogic/TransferFailed"
     );
 
-    (bytes32 reason, uint redeemed) = _redeem(routingOrder.token, amount, msg.sender, true);
-    require(reason == bytes32(0), string(abi.encodePacked(reason)));
+    (, uint redeemed) = _redeem(routingOrder.token, amount, msg.sender, false);
     return redeemed;
   }
 
