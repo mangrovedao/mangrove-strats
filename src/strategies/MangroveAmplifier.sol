@@ -93,6 +93,14 @@ contract MangroveAmplifier is ExpirableForwarder {
     return super.__lastLook__(order);
   }
 
+  ///@notice bundle wide expiry date setter
+  ///@param bundleId the id of the bundle whose expiry date is to be set
+  ///@param date the date of expiry (use 0 for no expiry)
+  ///@dev and offer logic will renege if either the offer's expiry date is passed or it belongs to a bundle whose expiry date has passed.
+  function _setBundleExpiry(uint bundleId, uint date) internal {
+    _setExpiry(0, bundleId, date);
+  }
+
   ///@notice posts bundle of offers on Mangrove so as to amplify a certain volume of outbound tokens
   ///@param fx params shared by all offers of the bundle
   ///@param vr array of params for each offer of the bundle
@@ -163,7 +171,7 @@ contract MangroveAmplifier is ExpirableForwarder {
     // Setting bundle expiry date if required
     // olKeyHash = 0 indicates that expiry is for the whole bundle
     if (fx.expiryDate != 0) {
-      _setExpiry(0, freshBundleId, fx.expiryDate);
+      _setBundleExpiry(freshBundleId, fx.expiryDate);
     }
 
     emit EndBundle();
@@ -241,7 +249,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice public function to update a bundle of offers
   ///@param bundleId the bundle identifier
   ///@param outbound_tkn the outbound token of the bundle
-  ///@param outboundVolume the new volume that each offer of the bundle should now offer
+  ///@param outboundVolume the new volume that each offer of the bundle should now offer. Use 0 to skip volume update.
   ///@param updateExpiry whether the update also changes expiry date of the bundle
   ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
   ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`
@@ -258,7 +266,7 @@ contract MangroveAmplifier is ExpirableForwarder {
       _updateBundle(bundle, outbound_tkn, 0, outboundVolume);
     }
     if (updateExpiry) {
-      _setExpiry(0, bundleId, expiryDate);
+      _setBundleExpiry(bundleId, expiryDate);
     }
   }
 
