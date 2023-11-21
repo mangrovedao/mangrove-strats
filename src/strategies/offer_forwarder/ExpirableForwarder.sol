@@ -56,7 +56,7 @@ contract ExpirableForwarder is Forwarder {
   ///@param olKeyHash the hash of the offer list key.
   ///@param offerId The offer id whose expiry date is to be set.
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
-  function _setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) internal {
+  function _setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) internal virtual {
     _expiryMaps[olKeyHash][offerId] = expiryDate;
     emit SetExpiry(olKeyHash, offerId, expiryDate);
   }
