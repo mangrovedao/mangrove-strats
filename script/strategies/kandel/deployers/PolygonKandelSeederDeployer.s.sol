@@ -7,7 +7,7 @@ import {IMangrove, KandelSeeder} from "@mgv-strats/src/strategies/offer_maker/ma
 import {AaveKandelSeeder} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
-import {KandelSeederDeployer, IERC20, RouterProxyFactory} from "./KandelSeederDeployer.s.sol";
+import {KandelSeederDeployer, IERC20} from "./KandelSeederDeployer.s.sol";
 
 contract PolygonKandelSeederDeployer is Deployer {
   function run() public {

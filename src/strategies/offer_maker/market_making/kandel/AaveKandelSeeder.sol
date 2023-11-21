@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {AaveKandel, AavePooledRouter} from "./AaveKandel.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
-import {Direct, RouterProxyFactory} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";

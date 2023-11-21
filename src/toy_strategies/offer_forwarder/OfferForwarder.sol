@@ -65,7 +65,9 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(olKey, offerId, deprovision);
+    freeWei = _retractOffer(olKey, offerId, deprovision);
+    (bool noRevert,) = ownerOf(olKey.hash(), offerId).call{value: freeWei}("");
+    require(noRevert, "mgvOffer/weiTransferFail");
   }
 
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)

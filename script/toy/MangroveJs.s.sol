@@ -6,11 +6,8 @@ import {MangroveDeployer} from "@mgv/script/core/deployers/MangroveDeployer.s.so
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MangroveOrderDeployer} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
-import {
-  KandelSeederDeployer,
-  RouterProxyFactory
-} from "@mgv-strats/script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
-import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {KandelSeederDeployer} from "@mgv-strats/script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
+import {MangroveOrder, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "@mgv/test/lib/agents/TestMaker.sol";
 import {Mangrove} from "@mgv/src/core/Mangrove.sol";

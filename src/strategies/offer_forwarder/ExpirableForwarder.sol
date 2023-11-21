@@ -4,6 +4,7 @@ import {
   Forwarder,
   IMangrove,
   RouterProxyFactory,
+  RouterProxy,
   AbstractRouter,
   MgvLib,
   IERC20,
@@ -65,7 +66,7 @@ contract ExpirableForwarder is Forwarder {
   ///@inheritdoc MangroveOffer
   function __lastLook__(MgvLib.SingleOrder calldata order) internal virtual override returns (bytes32) {
     uint exp = _expiryMaps[order.olKey.hash()][order.offerId];
-    require(exp == 0 || block.timestamp <= exp, "ExpirableForwarder/expired");
+    require(exp == 0 || block.timestamp < exp, "ExpirableForwarder/expired");
     return super.__lastLook__(order);
   }
 
@@ -106,7 +107,9 @@ contract ExpirableForwarder is Forwarder {
     returns (uint freeWei)
   {
     freeWei = _retractOffer(olKey, offerId, deprovision);
-    (bool noRevert,) = msg.sender.call{value: freeWei}("");
-    require(noRevert, "ExpirableForwarder/weiTransferFail");
+    if (freeWei > 0) {
+      (bool noRevert,) = msg.sender.call{value: freeWei}("");
+      require(noRevert, "ExpirableForwarder/weiTransferFail");
+    }
   }
 }

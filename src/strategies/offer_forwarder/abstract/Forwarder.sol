@@ -121,6 +121,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
   }
 
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, RouterProxy proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
+  }
+
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.
   /// @param args function's arguments in memory
   /// @return gasprice the gas price that is covered by `provision` - `leftover`.

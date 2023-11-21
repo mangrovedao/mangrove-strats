@@ -11,7 +11,7 @@ import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {Direct, RouterProxyFactory} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {AaveCaller} from "@mgv-strats/test/lib/agents/AaveCaller.sol";

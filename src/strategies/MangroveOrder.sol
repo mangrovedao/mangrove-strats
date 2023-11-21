@@ -3,15 +3,13 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  ExpirableForwarder, MangroveOffer, Tick
-} from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
-import {
-  TransferLib,
+  ExpirableForwarder,
+  MangroveOffer,
+  Tick,
   RouterProxyFactory,
-  AbstractRouter,
-  RouterProxy,
-  RL
-} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+  RouterProxy
+} from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
+import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
@@ -53,7 +51,7 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
   ///@inheritdoc IOrderLogic
   function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory res) {
     // Checking whether order is expired
-    require(tko.expiryDate == 0 || block.timestamp <= tko.expiryDate, "mgvOrder/expired");
+    require(tko.expiryDate == 0 || block.timestamp < tko.expiryDate, "mgvOrder/expired");
 
     // Notations:
     // NAT_USER: initial value of `msg.sender.balance` (native balance of user)

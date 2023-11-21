@@ -16,7 +16,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {Test2} from "@mgv/lib/Test2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {RouterProxyFactory, Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**

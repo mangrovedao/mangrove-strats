@@ -195,7 +195,9 @@ contract AmplifierForwarder is Forwarder {
     mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(olKey, offerId, deprovision);
+    freeWei = _retractOffer(olKey, offerId, deprovision);
+    (bool noRevert,) = ownerOf(olKey.hash(), offerId).call{value: freeWei}("");
+    require(noRevert, "mgvOffer/weiTransferFail");
   }
 
   function retractOffers(bool deprovision) external {

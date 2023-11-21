@@ -14,7 +14,7 @@ import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_mak
 import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
-import {Direct, RouterProxyFactory} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 
 ///@notice Can be used to test gasreq for Kandel. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing.
