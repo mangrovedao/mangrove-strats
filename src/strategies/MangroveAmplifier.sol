@@ -81,6 +81,18 @@ contract MangroveAmplifier is ExpirableForwarder {
     RL.RoutingOrder routingOrder; // routing order to set the logic
   }
 
+  ///@inheritdoc ExpirableForwarder
+  ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed.
+  ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
+  /// `expiring(0,i)` corresponds to the expiry date of the bundle `i`.
+  /// `expiring(hash, i)` where `hash != bytes32(0)` corresponds to the expiry date of offer `i` in the offer list whose hash is `hash`.
+  function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
+    uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
+    uint bundleExpiryDate = expiring(0, bundleId);
+    require(bundleExpiryDate == 0 || bundleExpiryDate > block.timestamp, "MgvAmplifier/expiredBundle");
+    return super.__lastLook__(order);
+  }
+
   ///@notice posts bundle of offers on Mangrove so as to amplify a certain volume of outbound tokens
   ///@param fx params shared by all offers of the bundle
   ///@param vr array of params for each offer of the bundle
@@ -139,11 +151,6 @@ contract MangroveAmplifier is ExpirableForwarder {
         SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder, fx.outboundLogic);
       }
 
-      // Setting expiry date if required
-      if (fx.expiryDate != 0) {
-        _setExpiry(vars.olKeyHash, vars.bundledOffer.offerId, fx.expiryDate);
-      }
-
       // Updating remaining available native tokens for provisions
       vars.availableProvision -= vars.provision;
 
@@ -153,6 +160,12 @@ contract MangroveAmplifier is ExpirableForwarder {
       __bundleIdOfOfferId[vars.olKeyHash][vars.bundledOffer.offerId] = freshBundleId;
       __bundles[freshBundleId].push(vars.bundledOffer);
     }
+    // Setting bundle expiry date if required
+    // olKeyHash = 0 indicates that expiry is for the whole bundle
+    if (fx.expiryDate != 0) {
+      _setExpiry(0, freshBundleId, fx.expiryDate);
+    }
+
     emit EndBundle();
   }
 
@@ -175,16 +188,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@param outbound_tkn the outbound token of the bundle
   ///@param skipId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
   ///@param outboundVolume the new volume that each offer of the bundle should now offer
-  ///@param updateExpiry whether the update also changes expiry date of the bundle
-  ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
-  function _updateBundle(
-    BundledOffer[] memory bundle,
-    IERC20 outbound_tkn,
-    uint skipId,
-    uint outboundVolume,
-    bool updateExpiry,
-    uint expiryDate
-  ) internal {
+  function _updateBundle(BundledOffer[] memory bundle, IERC20 outbound_tkn, uint skipId, uint outboundVolume) internal {
     // updating outbound volume for all offers of the bundle --except the one that is being executed since the offer list is locked
     for (uint i; i < bundle.length; i++) {
       if (bundle[i].offerId != skipId) {
@@ -227,8 +231,6 @@ contract MangroveAmplifier is ExpirableForwarder {
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
               _retractOffer(olKey_i, bundle[i].offerId, false);
-            } else if (updateExpiry) {
-              _setExpiry(olKey_i.hash(), bundle[i].offerId, expiryDate);
             }
           }
         }
@@ -246,13 +248,18 @@ contract MangroveAmplifier is ExpirableForwarder {
   function updateBundle(
     uint bundleId,
     IERC20 outbound_tkn,
-    uint outboundVolume,
+    uint outboundVolume, // use 0 if only updating expiry
     bool updateExpiry,
     uint expiryDate // use only if `updateExpiry` is true
   ) external {
     BundledOffer[] memory bundle = __bundles[bundleId];
     require(ownerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
-    _updateBundle(bundle, outbound_tkn, 0, outboundVolume, updateExpiry, expiryDate);
+    if (outboundVolume > 0) {
+      _updateBundle(bundle, outbound_tkn, 0, outboundVolume);
+    }
+    if (updateExpiry) {
+      _setExpiry(0, bundleId, expiryDate);
+    }
   }
 
   ///@notice retracts a bundle of offers
@@ -302,14 +309,7 @@ contract MangroveAmplifier is ExpirableForwarder {
     // if funds are missing, the trade will fail and one should retract the bundle
     // otherwise we update the bundle to the new volume
     if (missing == 0) {
-      _updateBundle(
-        bundle,
-        IERC20(order.olKey.outbound_tkn),
-        order.offerId,
-        order.offer.gives() - order.takerWants,
-        false, // no expiry update
-        0
-      );
+      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), order.offerId, order.offer.gives() - order.takerWants);
     } else {
       // not deprovisionning to save execution gas
       _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), order.offerId, false);

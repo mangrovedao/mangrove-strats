@@ -40,7 +40,7 @@ contract ExpirableForwarder is Forwarder {
   ///@param olKeyHash the identifier of the offer list
   ///@param offerId the offer identifier
   ///@return expiry date
-  function expiring(bytes32 olKeyHash, uint offerId) external view returns (uint) {
+  function expiring(bytes32 olKeyHash, uint offerId) public view returns (uint) {
     return _expiryMaps[olKeyHash][offerId];
   }
 
