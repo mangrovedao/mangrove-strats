@@ -122,9 +122,11 @@ contract MangroveAmplifier is ExpirableForwarder {
         msg.sender
       );
 
+      // fetching owner's router
+      (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
+
       // Setting logic to push inbound tokens offer
       if (address(vr[i].inboundLogic) != address(0)) {
-        (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
         vars.routingOrder.token = vr[i].inbound_tkn;
         vars.routingOrder.olKeyHash = vars.olKeyHash;
         vars.routingOrder.offerId = vars.bundledOffer.offerId;
@@ -215,18 +217,17 @@ contract MangroveAmplifier is ExpirableForwarder {
             args.gives = outboundVolume; // new volume
             args.gasreq = offerDetail_i.gasreq();
             args.noRevert = true;
-            // call below might revert if:
+            // call below might fail to update when:
             // - outboundVolume is now below density on the corresponding offer list
             // - offer provision is no longer sufficient to match mangrove's gasprice
-            // - Market is now innactive
+            // - offer list is now inactive
             // - Mangrove is dead
             // we then retract the offer (note the offer list cannot be locked at this stage)
             bytes32 reason = _updateOffer(args, bundle[i].offerId);
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
               _retractOffer(olKey_i, bundle[i].offerId, false);
-            }
-            if (updateExpiry) {
+            } else if (updateExpiry) {
               _setExpiry(olKey_i.hash(), bundle[i].offerId, expiryDate);
             }
           }
