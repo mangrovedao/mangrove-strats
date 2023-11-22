@@ -3,13 +3,13 @@ pragma solidity ^0.8.20;
 
 import {MgvOrder_Test} from "../MgvOrder.t.sol";
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {AaveV3Lender} from "@mgv-strats/src/strategies/integrations/AaveV3Lender.sol";
 
 contract SimpleAaveLogicTest is MgvOrder_Test {
-  IPoolAddressesProvider public aave;
+  AaveV3Lender public aaveLender;
 
   function bootstrapStrats() internal virtual override {
-    aave = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
+    aaveLender = new AaveV3Lender(fork.get("AaveAddressProvider"));
     super.bootstrapStrats();
   }
 }
