@@ -238,7 +238,7 @@ contract MangroveAmplifier is ExpirableForwarder {
             bytes32 reason = _updateOffer(args, bundle[i].offerId);
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
-              _retractOffer(olKey_i, bundle[i].offerId, false);
+              _retractOffer(olKey_i, bundle[i].offerId, false, false);
             }
           }
         }
@@ -287,7 +287,12 @@ contract MangroveAmplifier is ExpirableForwarder {
           inbound_tkn: address(bundle[i].inbound_tkn),
           tickSpacing: bundle[i].tick
         });
-        freeWei += _retractOffer(olKey_i, bundle[i].offerId, deprovision);
+        bytes32 status;
+        (freeWei, status) = _retractOffer(olKey_i, bundle[i].offerId, true, deprovision);
+        if (status != bytes32(0)) {
+          // this only happens if offer `i` of the bundle is in a locked offer list
+          _setExpiry(olKey_i.hash(), bundle[i].offerId, block.timestamp);
+        }
       }
     }
   }

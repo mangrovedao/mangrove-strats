@@ -246,18 +246,30 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param olKey the offer list key.
   ///@param offerId the identifier of the offer in the offer list
   ///@param deprovision if set to `true` if offer owner wishes to redeem the offer's provision.
+  ///@param noRevert whether mangrove revert should bubble up or be caught
   ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
+  ///@return status a bytes32 containing the revert reason if mangrove reverted and `noRevert` is true.
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
   ///@dev Calling this function, with the `deprovision` flag, should be accompanied by a native token transfer to offer owner in order not to leave funds on this balance.
-  function _retractOffer(OLKey memory olKey, uint offerId, bool deprovision) internal returns (uint freeWei) {
+  function _retractOffer(OLKey memory olKey, uint offerId, bool noRevert, bool deprovision)
+    internal
+    returns (uint freeWei, bytes32 status)
+  {
     OwnerData storage od = ownerData[olKey.hash()][offerId];
-    freeWei = deprovision ? od.weiBalance : 0; // (a)
-    freeWei += MGV.retractOffer(olKey, offerId, deprovision); // (b)
-    if (freeWei > 0) {
-      // pulling free wei from Mangrove to `this`
-      require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
-      // resetting pending returned provision
-      od.weiBalance = 0;
+    freeWei = deprovision ? od.weiBalance : 0;
+
+    try MGV.retractOffer(olKey, offerId, deprovision) returns (uint weis) {
+      freeWei += weis;
+      if (freeWei > 0) {
+        // pulling free wei from Mangrove to `this`
+        require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
+        // resetting pending returned provision
+        // calling code must now assign freeWei to owner
+        od.weiBalance = 0;
+      }
+    } catch Error(string memory reason) {
+      require(noRevert, reason);
+      status = bytes32(bytes(reason));
     }
   }
 

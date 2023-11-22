@@ -106,7 +106,7 @@ contract ExpirableForwarder is Forwarder {
     onlyOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    freeWei = _retractOffer(olKey, offerId, deprovision);
+    (freeWei,) = _retractOffer(olKey, offerId, false, deprovision);
     if (freeWei > 0) {
       (bool noRevert,) = msg.sender.call{value: freeWei}("");
       require(noRevert, "ExpirableForwarder/weiTransferFail");
