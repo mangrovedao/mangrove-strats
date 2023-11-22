@@ -16,6 +16,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 
 import {console} from "@mgv/forge-std/console.sol";
 /* 
@@ -133,7 +134,8 @@ contract MangroveJsDeploy is Deployer {
 
     address[] memory underlying = dynamic([address(tokenA), address(tokenB), dai, usdc, weth]);
     broadcast();
-    address aaveAddressProvider = address(new PoolAddressProviderMock(underlying));
+    IPoolAddressesProvider aaveAddressProvider =
+      IPoolAddressesProvider(address(new PoolAddressProviderMock(underlying)));
 
     KandelSeederDeployer kandelSeederDeployer = new KandelSeederDeployer();
     kandelSeederDeployer.innerRun({

@@ -1,7 +1,7 @@
 pragma solidity ^0.8.20;
 
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
-import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {AaveMemoizer, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title SimpleAaveLogic
@@ -10,7 +10,9 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
-  constructor(address addressesProvider, uint interestRateMode) AaveMemoizer(addressesProvider, interestRateMode) {}
+  constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
+    AaveMemoizer(addressesProvider, interestRateMode)
+  {}
 
   ///@inheritdoc AbstractRouter
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {

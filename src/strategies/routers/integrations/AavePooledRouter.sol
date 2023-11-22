@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {HasAaveBalanceMemoizer} from "./HasAaveBalanceMemoizer.sol";
+import {HasAaveBalanceMemoizer, IPoolAddressesProvider} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
 ///@title Router acting as a liquidity reserve on AAVE for multiple depositors (possibly coming from different maker contracts).
@@ -63,7 +63,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
 
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
-  constructor(address addressesProvider) HasAaveBalanceMemoizer(addressesProvider) AbstractRouter() {
+  constructor(IPoolAddressesProvider addressesProvider) HasAaveBalanceMemoizer(addressesProvider) AbstractRouter() {
     setAaveManager(msg.sender);
   }
 

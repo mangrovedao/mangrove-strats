@@ -16,8 +16,8 @@ contract AaveV3Lender {
 
   /// @notice contract's constructor
   /// @param addressesProvider address of AAVE's address provider
-  constructor(address addressesProvider) {
-    ADDRESS_PROVIDER = IPoolAddressesProvider(addressesProvider);
+  constructor(IPoolAddressesProvider addressesProvider) {
+    ADDRESS_PROVIDER = addressesProvider;
 
     address lendingPool = IPoolAddressesProvider(addressesProvider).getPool();
     require(lendingPool != address(0), "AaveV3Lender/0xPool");

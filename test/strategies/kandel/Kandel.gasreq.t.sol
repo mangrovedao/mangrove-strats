@@ -11,7 +11,10 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {
+  AavePooledRouter,
+  IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
@@ -232,7 +235,7 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     description = string.concat(description, " - AaveKandel");
     expectedFirOfferMakerData = "IS_FIRST_PULLER";
 
-    address aave = fork.get("AaveAddressProvider");
+    IPoolAddressesProvider aave = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
     AavePooledRouter router = new AavePooledRouter(aave);
     AaveKandel aaveKandel = new AaveKandel({
       mgv: mgv,

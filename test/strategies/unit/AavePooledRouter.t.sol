@@ -5,7 +5,10 @@ import {OfferLogicTest, TestSender, IMangrove, ITesterContract} from "./OfferLog
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 
 import {
-  AavePooledRouter, AbstractRouter, RL
+  AavePooledRouter,
+  AbstractRouter,
+  RL,
+  IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.sol";
@@ -67,9 +70,11 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.deal(deployer, 1 ether);
 
     dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
-    address aave = useForkAave
-      ? fork.get("AaveAddressProvider")
-      : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
+    IPoolAddressesProvider aave = useForkAave
+      ? IPoolAddressesProvider(fork.get("AaveAddressProvider"))
+      : IPoolAddressesProvider(
+        address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])))
+      );
 
     vm.prank(deployer);
     AavePooledRouter router = new AavePooledRouter({
