@@ -89,6 +89,63 @@ contract MgvOrder_Test is StratTest {
     return order.fillWants ? order.tick.inboundFromOutboundUp(order.fillVolume) : order.fillVolume;
   }
 
+  function fundStrats() internal virtual {
+    // `this` contract will act as `MgvOrder` user
+    deal($(base), $(this), 10 ether);
+    deal($(quote), $(this), 10_000 ether);
+
+    // dealing to makers
+    vm.deal($(ask_maker), 10 ether);
+    vm.deal($(bid_maker), 10 ether);
+
+    deal($(base), $(ask_maker), 10 ether);
+    deal($(quote), $(bid_maker), 10000 ether);
+
+    // dealing to taker
+    deal($(base), $(sell_taker), 10 ether);
+  }
+
+  function bootstrapStrats() internal virtual {
+    // activating MangroveOrder for quote and base
+    mgo.activate(base);
+    mgo.activate(quote);
+
+    sell_taker = setupTaker(olKey, "sell-taker");
+
+    // if seller wants to sell directly on mangrove
+    vm.prank($(sell_taker));
+    TransferLib.approveToken(base, $(mgv), 10 ether);
+    // if seller wants to sell via mgo
+    vm.prank($(sell_taker));
+    TransferLib.approveToken(quote, $(mgv), 10 ether);
+
+    // populating order book with offers
+    ask_maker = setupMaker(olKey, "ask-maker");
+    bid_maker = setupMaker(lo, "bid-maker");
+
+    ask_maker.approveMgv(base, 10 ether);
+    bid_maker.approveMgv(quote, 10000 ether);
+  }
+
+  function populateMarket() internal virtual {
+    // populate asks
+    uint volume = 1 ether;
+    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE), volume, 50_000, 0, 0.1 ether);
+    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 1e18), volume, 50_000, 0, 0.1 ether);
+    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 2e18), volume, 50_000, 0, 0.1 ether);
+
+    // populate bids
+    bid_maker.newOfferByTickWithFunding(
+      lo, tickFromPrice_e18(MID_PRICE - 10e18).negate(), 2000e18, 50_000, 0, 0.1 ether
+    );
+    bid_maker.newOfferByTickWithFunding(
+      lo, tickFromPrice_e18(MID_PRICE - 11e18).negate(), 2000e18, 50_000, 0, 0.1 ether
+    );
+    bid_maker.newOfferByTickWithFunding(
+      lo, tickFromPrice_e18(MID_PRICE - 12e18).negate(), 2000e18, 50_000, 0, 0.1 ether
+    );
+  }
+
   function setUp() public override {
     fork = new PinnedPolygonFork(39880000);
     fork.setUp();
@@ -109,52 +166,11 @@ contract MgvOrder_Test is StratTest {
     mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
-    // `this` contract will act as `MgvOrder` user
-    deal($(base), $(this), 10 ether);
-    deal($(quote), $(this), 10_000 ether);
+    bootstrapStrats();
 
-    // activating MangroveOrder for quote and base
-    mgo.activate(base);
-    mgo.activate(quote);
+    fundStrats();
 
-    // `sell_taker` will take resting bid
-    sell_taker = setupTaker(olKey, "sell-taker");
-    deal($(base), $(sell_taker), 10 ether);
-
-    // if seller wants to sell directly on mangrove
-    vm.prank($(sell_taker));
-    TransferLib.approveToken(base, $(mgv), 10 ether);
-    // if seller wants to sell via mgo
-    vm.prank($(sell_taker));
-    TransferLib.approveToken(quote, $(mgv), 10 ether);
-
-    // populating order book with offers
-    ask_maker = setupMaker(olKey, "ask-maker");
-    vm.deal($(ask_maker), 10 ether);
-
-    bid_maker = setupMaker(lo, "bid-maker");
-    vm.deal($(bid_maker), 10 ether);
-
-    deal($(base), $(ask_maker), 10 ether);
-    deal($(quote), $(bid_maker), 10000 ether);
-
-    // pre populating book with cold maker offers.
-    ask_maker.approveMgv(base, 10 ether);
-    uint volume = 1 ether;
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE), volume, 50_000, 0, 0.1 ether);
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 1e18), volume, 50_000, 0, 0.1 ether);
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 2e18), volume, 50_000, 0, 0.1 ether);
-
-    bid_maker.approveMgv(quote, 10000 ether);
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 10e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 11e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 12e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
+    populateMarket();
 
     IOrderLogic.TakerOrder memory buyOrder;
     IOrderLogic.TakerOrder memory sellOrder;
@@ -211,7 +227,7 @@ contract MgvOrder_Test is StratTest {
   /// Tests taker side ///
   ////////////////////////
 
-  function createBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+  function createBuyOrder() internal view virtual returns (IOrderLogic.TakerOrder memory order) {
     uint fillVolume = 2 ether;
     order = IOrderLogic.TakerOrder({
       olKey: olKey,
