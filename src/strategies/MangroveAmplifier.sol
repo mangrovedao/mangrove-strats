@@ -31,7 +31,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   }
 
   ///@notice maps a `bundleId` to a set of bundled offers
-  mapping(uint bundleId => BundledOffer[]) __bundles;
+  mapping(uint bundleId => BundledOffer[]) private __bundles;
 
   ///@notice maps an offer list key hash and an offerId to the bundle in which this offer is.
   mapping(bytes32 olKeyHash => mapping(uint offerId => uint bundleId)) private __bundleIdOfOfferId;
@@ -173,16 +173,22 @@ contract MangroveAmplifier is ExpirableForwarder {
     if (fx.expiryDate != 0) {
       _setBundleExpiry(freshBundleId, fx.expiryDate);
     }
-
     emit EndBundle();
   }
 
-  ///@notice owner of the offer bundle
+  ///@notice gets the offers that are bundled under the same `bundleId`
+  ///@param bundleId the id of the bundle
+  ///@return bundle of offers
+  function offersOf(uint bundleId) external view returns (BundledOffer[] memory) {
+    return __bundles[bundleId];
+  }
+
+  ///@notice retrieves bundle owner from offer owner
   ///@param bundle of offers whose owner is queried
   ///@param outbound_tkn of the bundle
   ///@return address of the owner of the bundle
   ///@dev call assume bundle has at least one offer.
-  function ownerOf(BundledOffer[] memory bundle, IERC20 outbound_tkn) public view returns (address) {
+  function _extractOwnerOf(BundledOffer[] memory bundle, IERC20 outbound_tkn) internal view returns (address) {
     OLKey memory olKey = OLKey({
       outbound_tkn: address(outbound_tkn),
       inbound_tkn: address(bundle[0].inbound_tkn),
@@ -191,55 +197,64 @@ contract MangroveAmplifier is ExpirableForwarder {
     return (ownerOf(olKey.hash(), bundle[0].offerId));
   }
 
+  ///@notice owner of the bundle (is owner of all its offers)
+  ///@param bundleId the bundle id
+  ///@param outbound_tkn the outbound token of the offer bundle
+  function ownerOf(uint bundleId, IERC20 outbound_tkn) external view returns (address) {
+    return _extractOwnerOf(__bundles[bundleId], outbound_tkn);
+  }
+
   ///@notice updates a bundle of offers, possibly during the execution of the logic of one of them.
   ///@param bundle the offer bundle to update
   ///@param outbound_tkn the outbound token of the bundle
-  ///@param skipId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
+  ///@param skipOlKeyHash skip updating bundle offer if it is on this offer list (hash) -- it is locked for reentrancy
   ///@param outboundVolume the new volume that each offer of the bundle should now offer
-  function _updateBundle(BundledOffer[] memory bundle, IERC20 outbound_tkn, uint skipId, uint outboundVolume) internal {
+  function _updateBundle(BundledOffer[] memory bundle, IERC20 outbound_tkn, bytes32 skipOlKeyHash, uint outboundVolume)
+    internal
+  {
     // updating outbound volume for all offers of the bundle --except the one that is being executed since the offer list is locked
     for (uint i; i < bundle.length; i++) {
-      if (bundle[i].offerId != skipId) {
-        OLKey memory olKey_i = OLKey({
-          outbound_tkn: address(outbound_tkn),
-          inbound_tkn: address(bundle[i].inbound_tkn),
-          tickSpacing: bundle[i].tick
-        });
+      OLKey memory olKey_i = OLKey({
+        outbound_tkn: address(outbound_tkn),
+        inbound_tkn: address(bundle[i].inbound_tkn),
+        tickSpacing: bundle[i].tick
+      });
+      bytes32 olKeyHash_i = olKey_i.hash();
 
-        /// if trying to update an offer that is on a locked offer list, update will fail.
-        /// This could happen if an offer logic from offer list (A,B) is triggering a market order in offer list (A,C) and the offer one is trying to update is in the currently locked offer list (A,B)
-        /// In this case the offer on (A,B) is promising too much A's.
-        /// This is not guarantee to make it fail when taken because the offer could be sourcing liquidity from a pool that has access to more tokens than the amplified volume.
-        /// we cannot retract it as well, so we tell it to renege in order to avoid over delivery.
-        /// note potential griefing could be:
-        /// 1. place a dummy offer on (A,B) that triggers a market order on (A,C) up to an offer that is part of a bundle (A, [B,C])
-        /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
-        /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
-        if (MGV.locked(olKey_i)) {
-          _setExpiry(olKey_i.hash(), bundle[i].offerId, block.timestamp);
-        } else {
-          Offer offer_i = MGV.offers(olKey_i, bundle[i].tick);
-          // if offer_i was previously retracted, it should no longer be considered part of the bundle.
-          if (offer_i.gives() != 0) {
-            OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
-            // Updating offer_i
-            OfferArgs memory args;
-            args.olKey = olKey_i;
-            args.tick = offer_i.tick(); // same price
-            args.gives = outboundVolume; // new volume
-            args.gasreq = offerDetail_i.gasreq();
-            args.noRevert = true;
-            // call below might fail to update when:
-            // - outboundVolume is now below density on the corresponding offer list
-            // - offer provision is no longer sufficient to match mangrove's gasprice
-            // - offer list is now inactive
-            // - Mangrove is dead
-            // we then retract the offer (note the offer list cannot be locked at this stage)
-            bytes32 reason = _updateOffer(args, bundle[i].offerId);
-            if (reason != REPOST_SUCCESS) {
-              // we do not deprovision, owner funds can be retrieved on a pull basis later on
-              _retractOffer(olKey_i, bundle[i].offerId, false, false);
-            }
+      if (skipOlKeyHash != olKeyHash_i) {
+        Offer offer_i = MGV.offers(olKey_i, bundle[i].tick);
+        // if offer_i was previously retracted, it should no longer be considered part of the bundle.
+        if (offer_i.gives() != 0) {
+          OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
+          // Updating offer_i
+          OfferArgs memory args;
+          args.olKey = olKey_i;
+          args.tick = offer_i.tick(); // same price
+          args.gives = outboundVolume; // new volume
+          args.gasreq = offerDetail_i.gasreq();
+          args.noRevert = true;
+          // call below might fail to update when:
+          // - outboundVolume is now below density on the corresponding offer list
+          // - offer provision is no longer sufficient to match mangrove's gasprice
+          // - offer list is now inactive
+          // - Mangrove is dead
+          // - offer list is locked
+          bytes32 reason = _updateOffer(args, bundle[i].offerId);
+          if (reason == "mgv/reentrancyLocked") {
+            /// if trying to update an offer that is on a locked offer list, update will fail.
+            /// Since it is not the offer list whose hash is `skipOlKeyHash` the only scenario is the following:
+            /// an offer logic from offer list (A,B) is triggering a market order in offer list (A,C) and the offer one is trying to update is in the currently locked offer list (A,B)
+            /// In this case the offer on (A,B) is promising too much A's.
+            /// This is not guarantee to make it fail when taken because the offer could be sourcing liquidity from a pool that has access to more tokens than the amplified volume.
+            /// we cannot retract it as well, so we tell it to renege in order to avoid over delivery.
+            /// note potential griefing could be:
+            /// 1. place a dummy offer on (A,B) that triggers a market order on (A,C) up to an offer that is part of a bundle (A, [B,C])
+            /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
+            /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
+            _setExpiry(olKey_i.hash(), bundle[i].offerId, block.timestamp);
+          } else if (reason != REPOST_SUCCESS) {
+            // we do not deprovision, owner funds can be retrieved on a pull basis later on
+            _retractOffer(olKey_i, bundle[i].offerId, false, false);
           }
         }
       }
@@ -261,9 +276,9 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint expiryDate // use only if `updateExpiry` is true
   ) external {
     BundledOffer[] memory bundle = __bundles[bundleId];
-    require(ownerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
+    require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
     if (outboundVolume > 0) {
-      _updateBundle(bundle, outbound_tkn, 0, outboundVolume);
+      _updateBundle(bundle, outbound_tkn, bytes32(0), outboundVolume);
     }
     if (updateExpiry) {
       _setBundleExpiry(bundleId, expiryDate);
@@ -273,25 +288,26 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice retracts a bundle of offers
   ///@param bundle the bundle whose offers need to be retracted
   ///@param outbound_tkn the outbound token of the bundle
-  ///@param skipId the offer identifier that is being executed if the function is called during an offer logic's execution. Is 0 otherwise
+  ///@param skipOlKeyHash skip updating bundle offer if it is on this offer list (hash) -- it is locked for reentrancy
   ///@param deprovision whether retracting the offer should also deprovision offers on Mangrove
   ///@return freeWei the amount of native tokens on this contract's balance that belong to msg.sender
-  function _retractBundle(BundledOffer[] memory bundle, IERC20 outbound_tkn, uint skipId, bool deprovision)
+  function _retractBundle(BundledOffer[] memory bundle, IERC20 outbound_tkn, bytes32 skipOlKeyHash, bool deprovision)
     internal
     returns (uint freeWei)
   {
     for (uint i; i < bundle.length; i++) {
-      if (bundle[i].offerId != skipId) {
-        OLKey memory olKey_i = OLKey({
-          outbound_tkn: address(outbound_tkn),
-          inbound_tkn: address(bundle[i].inbound_tkn),
-          tickSpacing: bundle[i].tick
-        });
+      OLKey memory olKey_i = OLKey({
+        outbound_tkn: address(outbound_tkn),
+        inbound_tkn: address(bundle[i].inbound_tkn),
+        tickSpacing: bundle[i].tick
+      });
+      bytes32 olKeyHash_i = olKey_i.hash();
+      if (skipOlKeyHash != olKeyHash_i) {
         bytes32 status;
         (freeWei, status) = _retractOffer(olKey_i, bundle[i].offerId, true, deprovision);
         if (status != bytes32(0)) {
-          // this only happens if offer `i` of the bundle is in a locked offer list
-          _setExpiry(olKey_i.hash(), bundle[i].offerId, block.timestamp);
+          // this only happens if offer `i` of the bundle is in a locked offer list --see `_updateBundle`
+          _setExpiry(olKeyHash_i, bundle[i].offerId, block.timestamp);
         }
       }
     }
@@ -303,8 +319,8 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@dev offers can be retracted individually using `super.retractOffer`
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external {
     BundledOffer[] memory bundle = __bundles[bundleId];
-    require(ownerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
-    uint freeWei = _retractBundle(bundle, outbound_tkn, 0, true);
+    require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
+    uint freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true);
     (bool noRevert,) = msg.sender.call{value: freeWei}("");
     require(noRevert, "MgvAmplifier/weiTransferFail");
   }
@@ -317,15 +333,16 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint missing = super.__get__(amount, order);
 
     // we know take care of updating the other offers that are part of the same bundle
-    uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
+    bytes32 olKeyHash = order.olKey.hash();
+    uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
     BundledOffer[] memory bundle = __bundles[bundleId];
     // if funds are missing, the trade will fail and one should retract the bundle
     // otherwise we update the bundle to the new volume
     if (missing == 0) {
-      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), order.offerId, order.offer.gives() - order.takerWants);
+      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, order.offer.gives() - order.takerWants);
     } else {
       // not deprovisionning to save execution gas
-      _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), order.offerId, false);
+      _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, false);
     }
     return missing;
   }
