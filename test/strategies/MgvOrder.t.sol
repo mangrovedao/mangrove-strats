@@ -106,12 +106,6 @@ contract MgvOrder_Test is StratTest {
   }
 
   function bootstrapStrats() internal virtual {
-    // activating MangroveOrder for quote and base
-    mgo.activate(base);
-    mgo.activate(quote);
-
-    sell_taker = setupTaker(olKey, "sell-taker");
-
     // if seller wants to sell directly on mangrove
     vm.prank($(sell_taker));
     TransferLib.approveToken(base, $(mgv), 10 ether);
@@ -120,9 +114,6 @@ contract MgvOrder_Test is StratTest {
     TransferLib.approveToken(quote, $(mgv), 10 ether);
 
     // populating order book with offers
-    ask_maker = setupMaker(olKey, "ask-maker");
-    bid_maker = setupMaker(lo, "bid-maker");
-
     ask_maker.approveMgv(base, 10 ether);
     bid_maker.approveMgv(quote, 10000 ether);
   }
@@ -165,6 +156,14 @@ contract MgvOrder_Test is StratTest {
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
+
+    // activating MangroveOrder for quote and base
+    mgo.activate(base);
+    mgo.activate(quote);
+
+    sell_taker = setupTaker(olKey, "sell-taker");
+    ask_maker = setupMaker(olKey, "ask-maker");
+    bid_maker = setupMaker(lo, "bid-maker");
 
     bootstrapStrats();
 
