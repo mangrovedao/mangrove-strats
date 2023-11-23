@@ -137,7 +137,7 @@ contract MgvOrder_Test is StratTest {
     );
   }
 
-  function setUp() public override {
+  function setUp() public virtual override {
     fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
