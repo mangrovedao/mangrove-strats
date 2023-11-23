@@ -6,10 +6,12 @@ import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAa
 import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
 import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-// import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 
 abstract contract SimpleAaveLogic_Test is MgvOrder_Test {
   IPool public aave;
+  SimpleAaveLogic public simpleAaveLogic;
 
   function overlyingOf(address _token) internal view returns (address) {
     return aave.getReserveData(_token).aTokenAddress;
@@ -20,7 +22,7 @@ abstract contract SimpleAaveLogic_Test is MgvOrder_Test {
   }
 
   function _supply(address _token, uint _amount, address _onBehalf) internal {
-    TransferLib.approveToken(IERC20(_token), $(aave), _amount);
+    TransferLib.approveToken(IERC20(_token), address(aave), _amount);
     aave.supply(_token, _amount, _onBehalf, 0);
   }
 
@@ -34,7 +36,9 @@ abstract contract SimpleAaveLogic_Test is MgvOrder_Test {
   }
 
   function setUp() public virtual override {
-    aave = IPoolAddressesProvider(fork.get("AaveAddressProvider")).getPool();
+    IPoolAddressesProvider addressProvider = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
+    aave = IPool(addressProvider.getPool());
+    simpleAaveLogic = new SimpleAaveLogic(address(addressProvider), 2);
     super.setUp();
   }
 }
