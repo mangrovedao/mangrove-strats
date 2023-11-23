@@ -12,13 +12,14 @@ import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/Mangro
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
-import {TickLib} from "@mgv/lib/core/TickLib.sol";
+import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
-///@title MangroveAmplifier. A periphery contract to Mangrove protocol that implements "liquidity amplification". It allows offer owner to post offers on multiple markets with the same collateral.
-/// e.g an amplified offer is of the form:`ampOffer = {makerGives: 1000 USDT, makerWants:(1001 DAI, 0.03 WBTC, 0.5 WETH)` where any trade for `(takerWants:USDT, takerGives:DAI|WBTC|WETH)`
-/// must end up in the following state (suppose `takerGives: n DAI` and `takerWants: k USDT`):
-/// `ampOffer = {makerGives: 1000 - k USDT, makerWants:(1001 - n DAI, (1000 - k) * 0.03/1000 WBTC, (1000 - k)* 0.5/1000 WETH )}` if none of the makerWants field are rounded down to 0
-/// If any of the `makerWants` field becomes 0, the corresponding offer should be retracted.
+///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows offer owner to post offers on multiple markets with the same collateral.
+/// The strat is implemented such that it cannot give more than the total amplified volume even if it is approved to spend more.
+/// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
+/// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
+/// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
+/// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached.
 
 contract MangroveAmplifier is ExpirableForwarder {
   ///@notice offer bundle identifier
@@ -26,7 +27,7 @@ contract MangroveAmplifier is ExpirableForwarder {
 
   struct BundledOffer {
     IERC20 inbound_tkn; // the inbound token of the offer in the bundle
-    uint tick; // the tick spacing of the offer list in which the offer is posted
+    uint tickSpacing; // the tick spacing of the offer list in which the offer is posted
     uint offerId; // the offer of the offer
   }
 
@@ -63,22 +64,22 @@ contract MangroveAmplifier is ExpirableForwarder {
   }
 
   struct VariableBundleParams {
-    uint inVolume; // the amount of inbound token this offer wants
+    Tick tick; // the price tick of the offer
     uint gasreq; // the gas required by this offer (gas may differ between offer because of different routing strategies)
     uint provision; // the portion of `msg.value` that should be allocated to the provision of this offer
-    uint tick; // the tick spacing parameter that charaterizes the offer list to which this offer should be posted.
+    uint tickSpacing; // the tick spacing parameter that charaterizes the offer list to which this offer should be posted.
     AbstractRouter inboundLogic; //the logics to manage liquidity targetting for this offer of the bundle. Use `AbstractRouter(address(0))` for simple routing.
     IERC20 inbound_tkn; // the inbound token this offer expects
   }
 
   struct HeapVarsNewBundle {
-    BundledOffer bundledOffer; // the created bundle
     uint availableProvision; // remaining funds to provision offers of the bundle
-    uint provision; // provision allocated for the current offer
-    OLKey olKey; // olKey for the current offer
-    bytes32 olKeyHash; // hash of the above olKey
     RouterProxy proxy; // address of the offer owner router proxy (to be called when setting routing logics)
-    RL.RoutingOrder routingOrder; // routing order to set the logic
+    uint provision_i; // provision allocated for the current offer
+    OLKey olKey_i; // olKey for the i^th offer
+    bytes32 olKeyHash_i; // hash of the above olKey
+    RL.RoutingOrder routingOrder_i; // routing order to set the logic for the i^th offer
+    BundledOffer bundledOffer_i; // i^th offer of the bundle
   }
 
   ///@inheritdoc ExpirableForwarder
@@ -112,62 +113,61 @@ contract MangroveAmplifier is ExpirableForwarder {
   {
     HeapVarsNewBundle memory vars;
     freshBundleId = __bundleId++;
-
     emit InitBundle(freshBundleId);
 
     vars.availableProvision = msg.value;
-
     // fetching owner's router
     (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
 
     for (uint i; i < vr.length; i++) {
       require(vr[i].provision <= vars.availableProvision, "MgvAmplifier/NotEnoughProvisions");
       // making sure no native token remains in the strat
-      // note if `vars.provision` is insufficient to cover `gasreq=vr[i].gasreq` the call below will revert
-      vars.provision = i == vr.length - 1 ? vars.availableProvision : vr[i].provision;
-      vars.olKey = OLKey({
+      // note if `vars.provision_i` is insufficient to cover `gasreq=vr[i].gasreq` the call below will revert
+      vars.provision_i = i == vr.length - 1 ? vars.availableProvision : vr[i].provision;
+      vars.olKey_i = OLKey({
         outbound_tkn: address(fx.outbound_tkn),
         inbound_tkn: address(vr[i].inbound_tkn),
-        tickSpacing: vr[i].tick
+        tickSpacing: vr[i].tickSpacing
       });
       // memoizing hash
-      vars.olKeyHash = vars.olKey.hash();
+      vars.olKeyHash_i = vars.olKey_i.hash();
       // posting new offer on Mangove
-      (vars.bundledOffer.offerId,) = _newOffer(
+      (vars.bundledOffer_i.offerId,) = _newOffer(
         OfferArgs({
-          olKey: vars.olKey,
-          tick: TickLib.tickFromVolumes(vr[i].inVolume, fx.outVolume),
+          olKey: vars.olKey_i,
+          tick: vr[i].tick,
           gives: fx.outVolume,
           gasreq: vr[i].gasreq,
           gasprice: 0, // ignored in Forwarder strats
-          fund: vars.provision,
+          fund: vars.provision_i,
           noRevert: false // revert if unable to post
         }),
         msg.sender
       );
 
-      // Setting logic to push inbound tokens offer
+      vars.routingOrder_i.olKeyHash = vars.olKeyHash_i;
+      vars.routingOrder_i.offerId = vars.bundledOffer_i.offerId;
+
+      // Setting logic to push inbound tokens of the offer
       if (address(vr[i].inboundLogic) != address(0)) {
-        vars.routingOrder.token = vr[i].inbound_tkn;
-        vars.routingOrder.olKeyHash = vars.olKeyHash;
-        vars.routingOrder.offerId = vars.bundledOffer.offerId;
-        SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder, vr[i].inboundLogic);
+        vars.routingOrder_i.token = vr[i].inbound_tkn;
+        SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder_i, vr[i].inboundLogic);
       }
 
-      // Setting logic to pull outbount tokens for the same offer
+      // Setting logic to pull outbound tokens of the offer
       if (address(fx.outboundLogic) != address(0)) {
-        vars.routingOrder.token = fx.outbound_tkn;
-        SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder, fx.outboundLogic);
+        vars.routingOrder_i.token = fx.outbound_tkn;
+        SmartRouter(address(vars.proxy)).setLogic(vars.routingOrder_i, fx.outboundLogic);
       }
 
       // Updating remaining available native tokens for provisions
-      vars.availableProvision -= vars.provision;
+      vars.availableProvision -= vars.provision_i;
 
       // pushing to storage the new bundle
-      vars.bundledOffer.tick = vr[i].tick;
-      vars.bundledOffer.inbound_tkn = vr[i].inbound_tkn;
-      __bundleIdOfOfferId[vars.olKeyHash][vars.bundledOffer.offerId] = freshBundleId;
-      __bundles[freshBundleId].push(vars.bundledOffer);
+      vars.bundledOffer_i.tickSpacing = vr[i].tickSpacing;
+      vars.bundledOffer_i.inbound_tkn = vr[i].inbound_tkn;
+      __bundleIdOfOfferId[vars.olKeyHash_i][vars.bundledOffer_i.offerId] = freshBundleId;
+      __bundles[freshBundleId].push(vars.bundledOffer_i);
     }
     // Setting bundle expiry date if required
     // olKeyHash = 0 indicates that expiry is for the whole bundle
@@ -193,7 +193,7 @@ contract MangroveAmplifier is ExpirableForwarder {
     OLKey memory olKey = OLKey({
       outbound_tkn: address(outbound_tkn),
       inbound_tkn: address(bundle[0].inbound_tkn),
-      tickSpacing: bundle[0].tick
+      tickSpacing: bundle[0].tickSpacing
     });
     return (ownerOf(olKey.hash(), bundle[0].offerId));
   }
@@ -218,45 +218,44 @@ contract MangroveAmplifier is ExpirableForwarder {
       OLKey memory olKey_i = OLKey({
         outbound_tkn: address(outbound_tkn),
         inbound_tkn: address(bundle[i].inbound_tkn),
-        tickSpacing: bundle[i].tick
+        tickSpacing: bundle[i].tickSpacing
       });
       bytes32 olKeyHash_i = olKey_i.hash();
-
       if (skipOlKeyHash != olKeyHash_i) {
-        Offer offer_i = MGV.offers(olKey_i, bundle[i].tick);
-        // if offer_i was previously retracted, it should no longer be considered part of the bundle.
-        if (offer_i.gives() != 0) {
-          OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
-          // Updating offer_i
-          OfferArgs memory args;
-          args.olKey = olKey_i;
-          args.tick = offer_i.tick(); // same price
-          args.gives = outboundVolume; // new volume
-          args.gasreq = offerDetail_i.gasreq();
-          args.noRevert = true;
-          // call below might fail to update when:
-          // - outboundVolume is now below density on the corresponding offer list
-          // - offer provision is no longer sufficient to match mangrove's gasprice
-          // - offer list is now inactive
-          // - Mangrove is dead
-          // - offer list is locked
-          bytes32 reason = _updateOffer(args, bundle[i].offerId);
-          if (reason == "mgv/reentrancyLocked") {
-            /// if trying to update an offer that is on a locked offer list, update will fail.
-            /// Since it is not the offer list whose hash is `skipOlKeyHash` the only scenario is the following:
-            /// an offer logic from offer list (A,B) is triggering a market order in offer list (A,C) and the offer one is trying to update is in the currently locked offer list (A,B)
-            /// In this case the offer on (A,B) is promising too much A's.
-            /// This is not guarantee to make it fail when taken because the offer could be sourcing liquidity from a pool that has access to more tokens than the amplified volume.
-            /// we cannot retract it as well, so we tell it to renege in order to avoid over delivery.
-            /// note potential griefing could be:
-            /// 1. place a dummy offer on (A,B) that triggers a market order on (A,C) up to an offer that is part of a bundle (A, [B,C])
-            /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
-            /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
-            _setExpiry(olKey_i.hash(), bundle[i].offerId, block.timestamp);
-          } else if (reason != REPOST_SUCCESS) {
-            // we do not deprovision, owner funds can be retrieved on a pull basis later on
-            _retractOffer(olKey_i, bundle[i].offerId, false, false);
+        try MGV.offers(olKey_i, bundle[i].tickSpacing) returns (Offer offer_i) {
+          // if offer_i was previously retracted, it should no longer be considered part of the bundle.
+          if (offer_i.gives() != 0) {
+            OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
+            // Updating offer_i
+            OfferArgs memory args;
+            args.olKey = olKey_i;
+            args.tick = offer_i.tick(); // same price
+            args.gives = outboundVolume; // new volume
+            args.gasreq = offerDetail_i.gasreq();
+            args.noRevert = true;
+            // call below might fail to update when:
+            // - outboundVolume is now below density on the corresponding offer list
+            // - offer provision is no longer sufficient to match mangrove's gasprice
+            // - offer list is now inactive
+            // - Mangrove is dead
+            bytes32 reason = _updateOffer(args, bundle[i].offerId);
+            if (reason != REPOST_SUCCESS) {
+              // we do not deprovision, owner funds can be retrieved on a pull basis later on
+              _retractOffer(olKey_i, bundle[i].offerId, false, false);
+            }
           }
+        } catch {
+          /// if trying to update an offer that is on a locked offer list, call to `mgv.offers` will throw.
+          /// Since it is not the offer list whose hash is `skipOlKeyHash` the only scenario is the following:
+          /// an offer logic from offer list (A,B) is triggering a market order in offer list (A,C) and the offer one is trying to update is in the currently locked offer list (A,B)
+          /// In this case the offer on (A,B) is promising too much A's.
+          /// This is not guarantee to make it fail when taken because the offer could be sourcing liquidity from a pool that has access to more tokens than the amplified volume.
+          /// we cannot retract it as well, so we tell it to renege in order to avoid over delivery.
+          /// note potential griefing could be:
+          /// 1. place a dummy offer on (A,B) that triggers a market order on (A,C) up to an offer that is part of a bundle (A, [B,C])
+          /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
+          /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
+          _setExpiry(olKeyHash_i, bundle[i].offerId, block.timestamp);
         }
       }
     }
@@ -300,7 +299,7 @@ contract MangroveAmplifier is ExpirableForwarder {
       OLKey memory olKey_i = OLKey({
         outbound_tkn: address(outbound_tkn),
         inbound_tkn: address(bundle[i].inbound_tkn),
-        tickSpacing: bundle[i].tick
+        tickSpacing: bundle[i].tickSpacing
       });
       bytes32 olKeyHash_i = olKey_i.hash();
       if (skipOlKeyHash != olKeyHash_i) {
@@ -338,9 +337,11 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
     BundledOffer[] memory bundle = __bundles[bundleId];
     // if funds are missing, the trade will fail and one should retract the bundle
+    // we also retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
     // otherwise we update the bundle to the new volume
-    if (missing == 0) {
-      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, order.offer.gives() - order.takerWants);
+    uint newOutVolume = order.offer.gives() - order.takerWants;
+    if (missing == 0 && newOutVolume > 0) {
+      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, newOutVolume);
     } else {
       // not deprovisionning to save execution gas
       _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, false);
