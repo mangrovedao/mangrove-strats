@@ -116,6 +116,10 @@ contract MangroveAmplifier is ExpirableForwarder {
     emit InitBundle(freshBundleId);
 
     vars.availableProvision = msg.value;
+
+    // fetching owner's router
+    (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
+
     for (uint i; i < vr.length; i++) {
       require(vr[i].provision <= vars.availableProvision, "MgvAmplifier/NotEnoughProvisions");
       // making sure no native token remains in the strat
@@ -141,9 +145,6 @@ contract MangroveAmplifier is ExpirableForwarder {
         }),
         msg.sender
       );
-
-      // fetching owner's router
-      (vars.proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
 
       // Setting logic to push inbound tokens offer
       if (address(vr[i].inboundLogic) != address(0)) {
