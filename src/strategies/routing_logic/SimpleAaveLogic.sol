@@ -19,16 +19,15 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
     Memoizer memory m;
 
     uint amount = strict ? routingOrder.amount : overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
-
     if (amount == 0) {
       return 0;
     }
-
+    // fetching overlyings from owner's account
     require(
-      TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, msg.sender, amount),
+      TransferLib.transferTokenFrom(overlying(routingOrder.token, m), routingOrder.fundOwner, address(this), amount),
       "SimpleAaveLogic/TransferFailed"
     );
-
+    // redeem from the pool and send underlying to calling maker contract
     (, uint redeemed) = _redeem(routingOrder.token, amount, msg.sender, false);
     return redeemed;
   }
