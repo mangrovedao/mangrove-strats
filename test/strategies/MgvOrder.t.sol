@@ -137,6 +137,14 @@ contract MgvOrder_Test is StratTest {
     );
   }
 
+  function instantiateRouters() internal virtual {
+    (RouterProxy testRunnerProxy,) = mgo.ROUTER_FACTORY().instantiate(address(this), mgo.ROUTER_IMPLEMENTATION());
+    AbstractRouter(address(testRunnerProxy)).bind(address(mgo));
+    // user approves `mgo` to pull quote or base when doing a market order
+    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
+    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
+  }
+
   function setUp() public virtual override {
     fork = new PinnedPolygonFork(39880000);
     fork.setUp();

@@ -17,6 +17,7 @@ import "@mgv/lib/Debug.sol";
 
 contract OfferForwarderTest is OfferLogicTest {
   ForwarderTester forwarder;
+  RouterProxy ownerProxy;
 
   function setUp() public virtual override {
     deployer = freshAddress("deployer");
@@ -41,12 +42,9 @@ contract OfferForwarderTest is OfferLogicTest {
 
     makerContract = ITesterContract(address(forwarder)); // to use for all non `IForwarder` specific tests.
     // making sure owner has a router that is bound to makerContract
-    (RouterProxy ownerProxy,) = forwarder.ROUTER_FACTORY().instantiate(owner, forwarder.ROUTER_IMPLEMENTATION());
-    vm.startPrank(owner);
+    (ownerProxy,) = forwarder.ROUTER_FACTORY().instantiate(owner, forwarder.ROUTER_IMPLEMENTATION());
+    vm.prank(owner);
     AbstractRouter(address(ownerProxy)).bind(address(makerContract));
-    weth.approve(address(ownerProxy), type(uint).max);
-    usdc.approve(address(ownerProxy), type(uint).max);
-    vm.stopPrank();
 
     vm.prank(deployer);
     forwarder.approve(usdc, $(mgv), type(uint).max);
@@ -57,6 +55,10 @@ contract OfferForwarderTest is OfferLogicTest {
   function fundStrat() internal virtual override {
     deal($(weth), owner, 1 ether);
     deal($(usdc), owner, cash(usdc, 2000));
+    vm.startPrank(owner);
+    weth.approve(address(ownerProxy), type(uint).max);
+    usdc.approve(address(ownerProxy), type(uint).max);
+    vm.stopPrank();
   }
 
   event MakerBind(address indexed maker);
