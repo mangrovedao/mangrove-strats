@@ -14,6 +14,7 @@ import {ForwarderTester, ITesterContract} from "@mgv-strats/src/toy_strategies/o
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {TestSender} from "@mgv/test/lib/agents/TestSender.sol";
 import "@mgv/lib/Debug.sol";
+import {SmartRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 contract OfferForwarderTest is OfferLogicTest {
   ForwarderTester forwarder;
@@ -64,6 +65,34 @@ contract OfferForwarderTest is OfferLogicTest {
   event MakerBind(address indexed maker);
   event MakerUnbind(address indexed maker);
 
+  function setRouterLogic(uint offerId, AbstractRouter inbound, AbstractRouter outbound) internal {
+    vm.startPrank(owner);
+    SmartRouter(address(ownerProxy)).setLogic(
+      RL.RoutingOrder({
+        token: IERC20(olKey.inbound_tkn),
+        olKeyHash: olKey.hash(),
+        offerId: offerId,
+        amount: 0,
+        fundOwner: address(0)
+      }),
+      inbound
+    );
+    SmartRouter(address(ownerProxy)).setLogic(
+      RL.RoutingOrder({
+        token: IERC20(olKey.outbound_tkn),
+        olKeyHash: olKey.hash(),
+        offerId: offerId,
+        amount: 0,
+        fundOwner: address(0)
+      }),
+      outbound
+    );
+    vm.stopPrank();
+  }
+
+  // default to no logic
+  function chooseLogic(uint offerId) internal virtual {}
+
   function test_admin_can_unbind() public {
     AbstractRouter router = forwarder.router(owner);
 
@@ -90,6 +119,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.prank(owner);
     uint offerId =
       makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
+    chooseLogic(offerId);
     uint derived_gp = mgv.offerDetails(olKey, offerId).gasprice();
     uint gasbase = mgv.offerDetails(olKey, offerId).offer_gasbase();
     uint locked = derived_gp * (gasbase + gasreq) * 1e6;
@@ -107,6 +137,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gives: 1 ether,
       gasreq: gasreq
     });
+    chooseLogic(offerId);
     uint old_gasprice = mgv.offerDetails(olKey, offerId).gasprice();
     vm.prank(owner);
     makerContract.updateOfferByVolume{value: 0.2 ether}({
@@ -129,6 +160,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gives: 1 ether,
       gasreq: gasreq
     });
+    chooseLogic(offerId);
     result.mgvData = "anythingButSuccess";
     result.makerData = "failReason";
     order.offerId = offerId;
@@ -149,6 +181,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.prank(owner);
     uint offerId =
       makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
+    chooseLogic(offerId);
     // revoking Mangrove's approvals to make `offerId` fail
     vm.prank(deployer);
     makerContract.approve(weth, address(mgv), 0);
@@ -171,13 +204,14 @@ contract OfferForwarderTest is OfferLogicTest {
   }
 
   function test_maker_ownership() public {
-    vm.startPrank(owner);
+    vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
       gasreq: gasreq
     });
+    chooseLogic(offerId);
     assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Invalid maker ownership relation");
   }
 
@@ -187,13 +221,14 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.expectEmit(true, true, true, false, address(forwarder));
     emit NewOwnedOffer(olKey.hash(), next_id, owner);
 
-    vm.startPrank(owner);
+    vm.prank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 ether,
       gasreq: gasreq
     });
+    chooseLogic(offerId);
     assertEq(next_id, offerId, "Unexpected offer id");
   }
 
@@ -218,6 +253,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: gasreq
     });
     vm.stopPrank();
+    chooseLogic(offerId);
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
     uint old_gasprice = detail.gasprice();
 
@@ -243,6 +279,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: gasreq
     });
     vm.stopPrank();
+    chooseLogic(offerId);
     OfferDetail detail = mgv.offerDetails(olKey, offerId);
     uint old_gasprice = detail.gasprice();
     vm.startPrank(owner);
@@ -267,6 +304,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: gasreq
     });
     vm.stopPrank();
+    chooseLogic(offerId);
     address new_maker = freshAddress("New maker");
     vm.deal(new_maker, 1 ether);
     vm.startPrank(new_maker);
@@ -292,6 +330,7 @@ contract OfferForwarderTest is OfferLogicTest {
     });
     usdc.approve($(forwarder.router(owner)), 0);
     vm.stopPrank();
+    chooseLogic(offerId);
 
     order.olKey = olKey;
     order.takerGives = 10 ** 6;
