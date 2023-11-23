@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {SmartRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {AaveMemoizer, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {AaveLogicStorage} from "./AaveLogicStorage.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
@@ -22,7 +22,9 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
-  constructor(address addressesProvider, uint interestRateMode) AaveMemoizer(addressesProvider, interestRateMode) {}
+  constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
+    AaveMemoizer(addressesProvider, interestRateMode)
+  {}
 
   /// @notice Gets the maximum amount of underlying that can be redeemed
   /// @param token The token to redeem

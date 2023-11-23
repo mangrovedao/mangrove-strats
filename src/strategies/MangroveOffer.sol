@@ -5,7 +5,6 @@ import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlle
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
@@ -98,14 +97,6 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@return true if this contracts routes liquidity using an external router
   function _isRouting() internal view returns (bool) {
     return address(ROUTER_IMPLEMENTATION) != address(0);
-  }
-
-  ///@notice approves a router proxy for transfering funds from this contract
-  ///@param token the IERC20 whose approval is required
-  ///@param proxy the router proxy contract
-  ///@param amount the approval quantity.
-  function _approveProxy(IERC20 token, RouterProxy proxy, uint amount) internal {
-    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
   }
 
   ///@notice takes care of status for reposting residual offer in case of a partial fill and logging of potential issues.

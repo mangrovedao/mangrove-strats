@@ -7,7 +7,8 @@ import {
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
   AaveKandelSeeder,
-  AaveKandel
+  AaveKandel,
+  IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
@@ -16,7 +17,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {Test2} from "@mgv/lib/Test2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {RouterProxyFactory, Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
@@ -35,7 +36,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
     } catch {}
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      addressesProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
+      addressesProvider: IPoolAddressesProvider(envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")),
       aaveKandelGasreq: 628_000,
       kandelGasreq: 128_000,
       deployAaveKandel: deployAaveKandel,
@@ -48,7 +49,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
 
   function innerRun(
     IMangrove mgv,
-    address addressesProvider,
+    IPoolAddressesProvider addressesProvider,
     uint aaveKandelGasreq,
     uint kandelGasreq,
     bool deployAaveKandel,

@@ -1,7 +1,7 @@
 pragma solidity ^0.8.20;
 
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
-import {AaveMemoizer} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {AaveMemoizer, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title SimpleAaveLogic
@@ -10,23 +10,24 @@ contract SimpleAaveLogic is AbstractRouter, AaveMemoizer {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
-  constructor(address addressesProvider, uint interestRateMode) AaveMemoizer(addressesProvider, interestRateMode) {}
+  constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
+    AaveMemoizer(addressesProvider, interestRateMode)
+  {}
 
   ///@inheritdoc AbstractRouter
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
     Memoizer memory m;
 
     uint amount = strict ? routingOrder.amount : overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
-
     if (amount == 0) {
       return 0;
     }
-
+    // fetching overlyings from owner's account
     require(
-      TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, msg.sender, amount),
+      TransferLib.transferTokenFrom(overlying(routingOrder.token, m), routingOrder.fundOwner, address(this), amount),
       "SimpleAaveLogic/TransferFailed"
     );
-
+    // redeem from the pool and send underlying to calling maker contract
     (, uint redeemed) = _redeem(routingOrder.token, amount, msg.sender, false);
     return redeemed;
   }

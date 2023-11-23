@@ -1,9 +1,7 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {
-  MangroveOffer, TransferLib, RouterProxy, RouterProxyFactory
-} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";

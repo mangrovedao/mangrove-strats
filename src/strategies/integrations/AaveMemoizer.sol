@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveV3Borrower, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
 import {DataTypes} from "@mgv-strats/src/strategies/vendor/aave/v3/DataTypes.sol";
 import {ReserveConfiguration} from "@mgv-strats/src/strategies/vendor/aave/v3/ReserveConfiguration.sol";
 import {ICreditDelegationToken} from "@mgv-strats/src/strategies/vendor/aave/v3/ICreditDelegationToken.sol";
@@ -53,7 +53,9 @@ contract AaveMemoizer is AaveV3Borrower {
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
-  constructor(address addressesProvider, uint interestRateMode) AaveV3Borrower(addressesProvider, 0, interestRateMode) {}
+  constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
+    AaveV3Borrower(addressesProvider, 0, interestRateMode)
+  {}
 
   ///@notice fetches and memoizes the reserve data of a particular asset on AAVE
   ///@param token the asset whose reserve data is needed

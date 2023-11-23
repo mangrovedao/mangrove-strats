@@ -2,17 +2,22 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {AavePooledRouter, IERC20, RL} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {
+  AavePooledRouter,
+  IERC20,
+  RL,
+  IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {Test2} from "@mgv/lib/Test2.sol";
 
 ///@title  AavePooledRouter deployer
 contract AavePooledRouterDeployer is Deployer, Test2 {
   function run() public {
-    innerRun({addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")});
+    innerRun({addressProvider: IPoolAddressesProvider(envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"))});
   }
 
-  function innerRun(address addressProvider) public {
+  function innerRun(IPoolAddressesProvider addressProvider) public {
     broadcast();
     AavePooledRouter router = new AavePooledRouter(addressProvider);
 

@@ -9,7 +9,8 @@ import {
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
   AaveKandelSeeder,
-  AavePooledRouter
+  AavePooledRouter,
+  IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
@@ -63,7 +64,7 @@ contract KandelSeederTest is StratTest {
 
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
       mgv:IMangrove($(mgv)), 
-      addressesProvider: fork.get("AaveAddressProvider"), 
+      addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")), 
       aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;

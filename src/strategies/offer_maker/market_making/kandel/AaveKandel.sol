@@ -3,7 +3,10 @@ pragma solidity ^0.8.10;
 
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
-import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {
+  AavePooledRouter,
+  IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 import {IATokenIsh} from "@mgv-strats/src/strategies/vendor/aave/v3/IATokenIsh.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";

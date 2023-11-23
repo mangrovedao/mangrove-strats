@@ -12,8 +12,11 @@ contract StratTest is MangroveTest {
     return payable(address(t));
   }
 
-  function activateOwnerRouter(IERC20 token, MangroveOffer makerContract, address owner, uint amount) internal {
-    AbstractRouter ownerRouter = makerContract.router(owner);
+  function activateOwnerRouter(IERC20 token, MangroveOffer makerContract, address owner, uint amount)
+    internal
+    returns (AbstractRouter ownerRouter)
+  {
+    ownerRouter = makerContract.router(owner);
     if (address(ownerRouter).code.length == 0) {
       // in this case, we must be dealing with a Forwarder strat and owner router is not deployed yet.
       // the following call should deploy `ownerRouter` at the correct address.
@@ -26,7 +29,10 @@ contract StratTest is MangroveTest {
     vm.stopPrank();
   }
 
-  function activateOwnerRouter(IERC20 token, MangroveOffer makerContract, address owner) internal {
-    activateOwnerRouter(token, makerContract, owner, type(uint).max);
+  function activateOwnerRouter(IERC20 token, MangroveOffer makerContract, address owner)
+    internal
+    returns (AbstractRouter ownerRouter)
+  {
+    ownerRouter = activateOwnerRouter(token, makerContract, owner, type(uint).max);
   }
 }

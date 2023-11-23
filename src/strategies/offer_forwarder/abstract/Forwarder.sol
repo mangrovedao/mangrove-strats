@@ -121,6 +121,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
   }
 
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, RouterProxy proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
+  }
+
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.
   /// @param args function's arguments in memory
   /// @return gasprice the gas price that is covered by `provision` - `leftover`.
@@ -238,27 +246,30 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param olKey the offer list key.
   ///@param offerId the identifier of the offer in the offer list
   ///@param deprovision if set to `true` if offer owner wishes to redeem the offer's provision.
+  ///@param noRevert whether mangrove revert should bubble up or be caught
   ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
+  ///@return status a bytes32 containing the revert reason if mangrove reverted and `noRevert` is true.
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
-  ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
-  function _retractOffer(OLKey memory olKey, uint offerId, bool deprovision) internal returns (uint freeWei) {
+  ///@dev Calling this function, with the `deprovision` flag, should be accompanied by a native token transfer to offer owner in order not to leave funds on this balance.
+  function _retractOffer(OLKey memory olKey, uint offerId, bool noRevert, bool deprovision)
+    internal
+    returns (uint freeWei, bytes32 status)
+  {
     OwnerData storage od = ownerData[olKey.hash()][offerId];
-    freeWei = deprovision ? od.weiBalance : 0; // (a)
-    freeWei += MGV.retractOffer(olKey, offerId, deprovision); // (b)
-    if (freeWei > 0) {
-      // pulling free wei from Mangrove to `this`
-      require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
-      // resetting pending returned provision
-      od.weiBalance = 0;
-      // Griefing issue: the call below could occur nested inside a call to `makerExecute` originating from Mangrove, so `owner` could make the current trade fail.
-      // Here we are safe because callee is offer owner and has no incentive to make current trade fail or waste gas.
-      // w.r.t reentrancy:
-      // * `od.weiBalance` is set to 0 (storage write) prior to this call, so a reentrant call to `retractOffer` would give `freeWei = 0` at (a)
-      // * further call to `MGV.retractOffer` will yield no more WEIs so `freeWei += 0` at (b)
-      // * (a /\ b) imply that the above call to `MGV.withdraw` will be done with `freeWei == 0`.
-      // * `retractOffer` is the only function that allows non admin users to withdraw WEIs from Mangrove.
-      (bool noRevert,) = od.owner.call{value: freeWei}("");
-      require(noRevert, "mgvOffer/weiTransferFail");
+    freeWei = deprovision ? od.weiBalance : 0;
+
+    try MGV.retractOffer(olKey, offerId, deprovision) returns (uint weis) {
+      freeWei += weis;
+      if (freeWei > 0) {
+        // pulling free wei from Mangrove to `this`
+        require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
+        // resetting pending returned provision
+        // calling code must now assign freeWei to owner
+        od.weiBalance = 0;
+      }
+    } catch Error(string memory reason) {
+      require(noRevert, reason);
+      status = bytes32(bytes(reason));
     }
   }
 

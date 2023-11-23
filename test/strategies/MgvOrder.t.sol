@@ -316,10 +316,10 @@ contract MgvOrder_Test is StratTest {
     mgo.take{value: 0.1 ether}(buyOrder);
   }
 
-  function test_order_reverts_when_expiry_date_is_in_the_past() public {
+  function test_order_reverts_when_expiry_date_is_reached() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
     buyOrder.fillOrKill = true;
-    buyOrder.expiryDate = block.timestamp - 1;
+    buyOrder.expiryDate = block.timestamp;
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
     vm.prank(fresh_taker);
     vm.expectRevert("mgvOrder/expired");
