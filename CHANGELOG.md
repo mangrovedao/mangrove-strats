@@ -1,5 +1,7 @@
 # Next version
 
+- Export CoreKandel abi
+
 # 0.0.2-6
 
 # 0.0.2-5

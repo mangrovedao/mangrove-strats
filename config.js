@@ -10,6 +10,7 @@ exports.abi_exports = [
   "IOfferLogic",
   "AccessControlled",
   "GeometricKandel",
+  "CoreKandel",
   "Kandel",
   "AaveKandel",
   "AbstractKandelSeeder",
