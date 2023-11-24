@@ -88,7 +88,7 @@ contract AaveKandel is GeometricKandel {
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
-    return pooledRouter().balanceOfReserve(RL.createOrder({token: outboundOfOfferType(ba), fundOwner: FUND_OWNER}))
+    return pooledRouter().tokenBalanceOf(RL.createOrder({token: outboundOfOfferType(ba), fundOwner: FUND_OWNER}))
       + super.reserveBalance(ba);
   }
 

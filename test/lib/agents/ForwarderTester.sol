@@ -13,7 +13,9 @@ import {MgvLib, OLKey, Tick, TickLib} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract ForwarderTester is ITesterContract, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new RouterProxyFactory(), new SimpleRouter()) {}
+  constructor(IMangrove mgv, AbstractRouter routerImplementation)
+    Forwarder(mgv, new RouterProxyFactory(), routerImplementation)
+  {}
 
   /// @inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
@@ -86,7 +88,7 @@ contract ForwarderTester is ITesterContract, Forwarder {
 
   ///@inheritdoc ITesterContract
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
-    return router(owner).balanceOfReserve(RL.createOrder({token: token, fundOwner: owner}));
+    return router(owner).tokenBalanceOf(RL.createOrder({token: token, fundOwner: owner}));
   }
 
   ///@inheritdoc ITesterContract

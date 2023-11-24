@@ -28,7 +28,7 @@ contract SimpleRouter is AbstractRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
     balance = routingOrder.token.balanceOf(routingOrder.fundOwner);
   }
 }

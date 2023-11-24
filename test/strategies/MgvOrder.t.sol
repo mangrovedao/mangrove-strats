@@ -22,7 +22,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
@@ -48,8 +48,8 @@ contract MgvOrder_Test is StratTest {
     bool fillWants,
     bool restingOrder,
     uint offerId,
-    AbstractRouter takerGivesLogic,
-    AbstractRouter takerWantsLogic
+    AbstractRoutingLogic takerGivesLogic,
+    AbstractRoutingLogic takerWantsLogic
   );
 
   event MangroveOrderComplete();
@@ -223,8 +223,8 @@ contract MgvOrder_Test is StratTest {
       expiryDate: 0, //NA
       offerId: 0,
       restingOrderGasreq: GASREQ,
-      takerGivesLogic: AbstractRouter(address(0)),
-      takerWantsLogic: AbstractRouter(address(0))
+      takerGivesLogic: AbstractRoutingLogic(address(0)),
+      takerWantsLogic: AbstractRoutingLogic(address(0))
     });
   }
 
@@ -271,8 +271,8 @@ contract MgvOrder_Test is StratTest {
       expiryDate: 0, //NA
       offerId: 0,
       restingOrderGasreq: GASREQ,
-      takerGivesLogic: AbstractRouter(address(0)),
-      takerWantsLogic: AbstractRouter(address(0))
+      takerGivesLogic: AbstractRoutingLogic(address(0)),
+      takerWantsLogic: AbstractRoutingLogic(address(0))
     });
   }
 

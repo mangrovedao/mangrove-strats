@@ -93,6 +93,6 @@ contract DirectTester is Direct, ITesterContract {
 
   ///@inheritdoc ITesterContract
   function tokenBalance(IERC20 token, address) external view returns (uint) {
-    return _isRouting() ? router().balanceOfReserve(RL.createOrder(token, FUND_OWNER)) : token.balanceOf(FUND_OWNER);
+    return _isRouting() ? router().tokenBalanceOf(RL.createOrder(token, FUND_OWNER)) : token.balanceOf(FUND_OWNER);
   }
 }

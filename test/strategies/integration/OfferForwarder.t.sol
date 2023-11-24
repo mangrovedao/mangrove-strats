@@ -19,7 +19,6 @@ contract OfferForwarderTest is OfferLogicTest {
   ForwarderTester forwarder;
 
   function setUp() public virtual override {
-    deployer = freshAddress("deployer");
     vm.deal(deployer, 10 ether);
     super.setUp();
   }
@@ -27,16 +26,15 @@ contract OfferForwarderTest is OfferLogicTest {
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
 
   function setupMakerContract() internal virtual override {
-    deployer = freshAddress("deployer");
     vm.deal(deployer, 10 ether);
 
-    vm.prank(deployer);
+    vm.startPrank(deployer);
     forwarder = new ForwarderTester({
       mgv: IMangrove($(mgv)),
-      deployer: deployer
+      routerImplementation: new SimpleRouter()
     });
+    vm.stopPrank();
     gasreq = 160_000;
-    owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);
 
     makerContract = ITesterContract(address(forwarder)); // to use for all non `IForwarder` specific tests.
@@ -47,11 +45,6 @@ contract OfferForwarderTest is OfferLogicTest {
     weth.approve(address(ownerProxy), type(uint).max);
     usdc.approve(address(ownerProxy), type(uint).max);
     vm.stopPrank();
-
-    vm.prank(deployer);
-    forwarder.approve(usdc, $(mgv), type(uint).max);
-    vm.prank(deployer);
-    forwarder.approve(weth, $(mgv), type(uint).max);
   }
 
   function fundStrat() internal virtual override {

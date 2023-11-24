@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {SmartRouterStorage, AbstractRouter, IERC20} from "./SmartRouterStorage.sol";
-import {SimpleRouter, RL} from "./SimpleRouter.sol";
+import {SmartRouterStorage, AbstractRoutingLogic, IERC20} from "./SmartRouterStorage.sol";
+import {AbstractRouter, SimpleRouter, RL} from "./SimpleRouter.sol";
 
 ///@title Mangrove Smart Router implementation
 contract SmartRouter is SimpleRouter {
@@ -12,14 +12,14 @@ contract SmartRouter is SimpleRouter {
   ///@param olKeyHash the hash of the offer list
   ///@param offerId the offer identifier for which the routing is set
   ///@param logic the contract implementing the pull and push function for that specific route
-  event SetRouteLogic(IERC20 indexed token, bytes32 indexed olKeyHash, uint offerId, AbstractRouter logic);
+  event SetRouteLogic(IERC20 indexed token, bytes32 indexed olKeyHash, uint offerId, AbstractRoutingLogic logic);
 
   ///@notice This function is used to set the routing strategy for a given offer.
   ///@param routingOrder the routing order template for which a logic should be used
-  ///@param logic the loggic to use for the given offer.
+  ///@param logic the logic to use for the given offer.xw
   ///@dev `routingOrder.amount` is ignored as we do not implement amount dependant logic.
   ///@dev `routingOrder.reserveId` is ignored as there is a unique mapping in storage per `reserveId`
-  function setLogic(RL.RoutingOrder calldata routingOrder, AbstractRouter logic) external boundOrAdmin {
+  function setLogic(RL.RoutingOrder calldata routingOrder, AbstractRoutingLogic logic) external boundOrAdmin {
     SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId] =
       logic;
     emit SetRouteLogic(routingOrder.token, routingOrder.olKeyHash, routingOrder.offerId, logic);
@@ -28,18 +28,25 @@ contract SmartRouter is SimpleRouter {
   /// @inheritdoc AbstractRouter
   /// @dev pulls liquidity using the logic specified by offer owner
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {
-    AbstractRouter logic =
+    AbstractRoutingLogic logic =
       SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
     if (address(logic) != address(0)) {
       // delegating routing to the specific chosen route
-      (bool success, bytes memory retdata) =
-        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.pull.selector, routingOrder, strict));
+      (bool success, bytes memory retdata) = address(logic).delegatecall(
+        abi.encodeWithSelector(
+          AbstractRoutingLogic.pullLogic.selector,
+          routingOrder.token,
+          routingOrder.fundOwner,
+          routingOrder.amount,
+          strict
+        )
+      );
       if (!success) {
         SmartRouterStorage.revertWithData(retdata);
       }
       return (abi.decode(retdata, (uint)));
     } else {
-      // default route is to pull funds directly from `routingOrder.reserveId`
+      // default route is to pull funds directly from `routingOrder.fundOwner`
       return super.__pull__(routingOrder, strict);
     }
   }
@@ -47,11 +54,14 @@ contract SmartRouter is SimpleRouter {
   /// @inheritdoc AbstractRouter
   /// @dev pushes liquidity using the logic specified by offer owner
   function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
-    AbstractRouter logic =
+    AbstractRoutingLogic logic =
       SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
     if (address(logic) != address(0)) {
-      (bool success, bytes memory retdata) =
-        address(logic).delegatecall(abi.encodeWithSelector(AbstractRouter.push.selector, routingOrder));
+      (bool success, bytes memory retdata) = address(logic).delegatecall(
+        abi.encodeWithSelector(
+          AbstractRoutingLogic.pushLogic.selector, routingOrder.token, routingOrder.fundOwner, routingOrder.amount
+        )
+      );
       if (!success) {
         SmartRouterStorage.revertWithData(retdata);
       }
@@ -62,14 +72,17 @@ contract SmartRouter is SimpleRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
-    AbstractRouter logic =
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
+    AbstractRoutingLogic logic =
       SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
     if (address(logic) != address(0)) {
       (bool success, bytes memory retdata) = address(this).staticcall(
         abi.encodeWithSelector(
           SmartRouterStorage._staticdelegatecall.selector,
-          abi.encodeWithSelector(AbstractRouter.balanceOfReserve.selector, routingOrder)
+          address(logic),
+          abi.encodeWithSelector(
+            AbstractRoutingLogic.tokenBalanceOf.selector, routingOrder.token, routingOrder.fundOwner
+          )
         )
       );
       if (!success) {
@@ -77,7 +90,7 @@ contract SmartRouter is SimpleRouter {
       }
       return (abi.decode(retdata, (uint)));
     } else {
-      return super.balanceOfReserve(routingOrder);
+      return super.tokenBalanceOf(routingOrder);
     }
   }
 }
