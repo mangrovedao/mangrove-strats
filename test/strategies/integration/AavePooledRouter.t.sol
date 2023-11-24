@@ -15,7 +15,7 @@ import {AllMethodIdentifiersTest} from "@mgv/test/lib/AllMethodIdentifiersTest.s
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
-import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {DirectTester} from "@mgv-strats/test/lib/agents/DirectTester.sol";
 import "@mgv/lib/Debug.sol";
 
 contract AavePooledRouterTest is OfferLogicTest {

@@ -13,7 +13,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
+import {ITesterContract} from "@mgv-strats/test/lib/agents/ITesterContract.sol";
 import {console} from "@mgv/forge-std/console.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature

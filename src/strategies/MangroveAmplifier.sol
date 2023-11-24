@@ -201,6 +201,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice owner of the bundle (is owner of all its offers)
   ///@param bundleId the bundle id
   ///@param outbound_tkn the outbound token of the offer bundle
+  ///@return address of the owner of the bundle
   function ownerOf(uint bundleId, IERC20 outbound_tkn) external view returns (address) {
     return _extractOwnerOf(__bundles[bundleId], outbound_tkn);
   }

@@ -1,18 +1,37 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.10;
 
-import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
-import {OLKey} from "@mgv/src/core/MgvLib.sol";
-import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
-import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {Direct, IERC20} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {ITesterContract, ILiquidityProvider} from "./ITesterContract.sol";
+
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {IERC20} from "@mgv/lib/IERC20.sol";
+import {MgvLib, OLKey, Tick, TickLib} from "@mgv/src/core/MgvLib.sol";
 
-contract OfferMaker is ILiquidityProvider, Direct {
+contract DirectTester is Direct, ITesterContract {
+  bytes32 constant retData = "lastLook/testData";
+
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
   constructor(IMangrove mgv, RouterParams memory routerParams) Direct(mgv, routerParams) {}
+
+  function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
+    return retData;
+  }
+
+  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
+    internal
+    override
+    returns (bytes32 data)
+  {
+    data = super.__posthookSuccess__(order, maker_data);
+    require(
+      data == REPOST_SUCCESS || data == COMPLETE_FILL,
+      (data == "mgv/insufficientProvision")
+        ? "mgv/insufficientProvision"
+        : (data == "mgv/writeOffer/density/tooLow" ? "mgv/writeOffer/density/tooLow" : "posthook/failed")
+    );
+  }
 
   ///@inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
@@ -56,6 +75,7 @@ contract OfferMaker is ILiquidityProvider, Direct {
     }
   }
 
+  ///@inheritdoc ITesterContract
   function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
     external
     payable
@@ -65,11 +85,13 @@ contract OfferMaker is ILiquidityProvider, Direct {
     return newOffer(olKey, tick, gives, gasreq);
   }
 
+  ///@inheritdoc ITesterContract
   function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 
+  ///@inheritdoc ITesterContract
   function tokenBalance(IERC20 token, address) external view returns (uint) {
     return _isRouting() ? router().balanceOfReserve(RL.createOrder(token, FUND_OWNER)) : token.balanceOf(FUND_OWNER);
   }

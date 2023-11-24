@@ -7,12 +7,12 @@ import {
   IERC20,
   RouterProxyFactory
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
+import {ITesterContract, ILiquidityProvider} from "./ITesterContract.sol";
 import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {MgvLib, OLKey, Tick, TickLib} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
-contract OfferForwarder is ILiquidityProvider, Forwarder {
+contract ForwarderTester is ITesterContract, Forwarder {
   constructor(IMangrove mgv, address deployer) Forwarder(mgv, new RouterProxyFactory(), new SimpleRouter()) {}
 
   /// @inheritdoc ILiquidityProvider
@@ -82,5 +82,26 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
         ? "mgv/insufficientProvision"
         : (data == "mgv/writeOffer/density/tooLow" ? "mgv/writeOffer/density/tooLow" : "posthook/failed")
     );
+  }
+
+  ///@inheritdoc ITesterContract
+  function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
+    return router(owner).balanceOfReserve(RL.createOrder({token: token, fundOwner: owner}));
+  }
+
+  ///@inheritdoc ITesterContract
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+    external
+    payable
+    returns (uint offerId)
+  {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
+  }
+
+  ///@inheritdoc ITesterContract
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
-import {DirectTester, Direct} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {DirectTester, Direct} from "@mgv-strats/test/lib/agents/DirectTester.sol";
 import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 

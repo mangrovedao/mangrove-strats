@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter, SimpleRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {OfferLogicTest} from "@mgv-strats/test/strategies/unit/OfferLogic.t.sol";
+import {OfferLogicTest} from "@mgv-strats/test/strategies/integration/OfferLogic.t.sol";
 import {
   IForwarder,
   IMangrove,
@@ -10,7 +10,7 @@ import {
   MangroveOffer,
   RouterProxy
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {ForwarderTester, ITesterContract} from "@mgv-strats/src/toy_strategies/offer_forwarder/ForwarderTester.sol";
+import {ForwarderTester, ITesterContract} from "@mgv-strats/test/lib/agents/ForwarderTester.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {TestSender} from "@mgv/test/lib/agents/TestSender.sol";
 import "@mgv/lib/Debug.sol";

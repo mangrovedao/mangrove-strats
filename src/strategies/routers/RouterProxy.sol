@@ -6,6 +6,7 @@ import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 /// @title Mangrove Router Proxy
 /// @notice A proxy contract that delegates calls to an instance of an AbstractRouter contract.
 ///         It does not allow updates of implementation contract.
+/// @dev it assumes the IMPLEMENTATION uses first storage slot to hold the admin address
 contract RouterProxy {
   /// @notice The address of the deployed SmartRouter contract acting as the delegate implementation.
   /// @dev The SmartRouter instance must be AccessControlled to ensure the storage layout is matched.
