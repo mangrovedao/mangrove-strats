@@ -9,7 +9,7 @@ import {
   RouterProxy
 } from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
 import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
-import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
@@ -59,7 +59,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   struct FixedBundleParams {
     IERC20 outbound_tkn; //the promised asset for all offers of the bundle
     uint outVolume; // how much assets each offer promise
-    AbstractRouter outboundLogic; // the logic to manage liquidity sourcing.  Use `AbstractRouter(address(0))` for simple routing.
+    AbstractRoutingLogic outboundLogic; // the logic to manage liquidity sourcing.  Use `AbstractRoutingLogic(address(0))` for simple routing.
     uint expiryDate; // date of expiration of each offer of the bundle. Use 0 for no expiry.
   }
 
@@ -68,7 +68,7 @@ contract MangroveAmplifier is ExpirableForwarder {
     uint gasreq; // the gas required by this offer (gas may differ between offer because of different routing strategies)
     uint provision; // the portion of `msg.value` that should be allocated to the provision of this offer
     uint tickSpacing; // the tick spacing parameter that charaterizes the offer list to which this offer should be posted.
-    AbstractRouter inboundLogic; //the logics to manage liquidity targetting for this offer of the bundle. Use `AbstractRouter(address(0))` for simple routing.
+    AbstractRoutingLogic inboundLogic; //the logics to manage liquidity targetting for this offer of the bundle. Use `AbstractRouter(address(0))` for simple routing.
     IERC20 inbound_tkn; // the inbound token this offer expects
   }
 

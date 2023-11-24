@@ -101,7 +101,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
     BalanceMemoizer memory memoizer;
     return _balanceOfReserve(routingOrder.token, routingOrder.fundOwner, memoizer);
   }

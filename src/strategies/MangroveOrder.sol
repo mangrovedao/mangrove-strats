@@ -9,9 +9,9 @@ import {
   RouterProxyFactory,
   RouterProxy
 } from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
-import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {TransferLib, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
-import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 
@@ -72,7 +72,7 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     });
     (RouterProxy proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
     SmartRouter userRouter = SmartRouter(address(proxy));
-    if (tko.takerGivesLogic != AbstractRouter(address(0))) {
+    if (address(tko.takerGivesLogic) != address(0)) {
       userRouter.setLogic(pullOrder, tko.takerGivesLogic);
     }
     require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");

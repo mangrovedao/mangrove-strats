@@ -3,7 +3,7 @@ pragma solidity >=0.8.10;
 
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 
 ///@title Interface for resting orders functionality.
 interface IOrderLogic {
@@ -29,8 +29,8 @@ interface IOrderLogic {
     uint expiryDate;
     uint offerId;
     uint restingOrderGasreq;
-    AbstractRouter takerGivesLogic;
-    AbstractRouter takerWantsLogic;
+    AbstractRoutingLogic takerGivesLogic;
+    AbstractRoutingLogic takerWantsLogic;
   }
 
   ///@notice Result of an order from the takers side.
@@ -69,8 +69,8 @@ interface IOrderLogic {
     bool fillWants,
     bool restingOrder,
     uint offerId,
-    AbstractRouter takerGivesLogic,
-    AbstractRouter takerWantsLogic
+    AbstractRoutingLogic takerGivesLogic,
+    AbstractRoutingLogic takerWantsLogic
   );
 
   ///@notice Indicates that the MangroveOrder has been completed.

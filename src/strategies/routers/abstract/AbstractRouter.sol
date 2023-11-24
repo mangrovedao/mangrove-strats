@@ -106,9 +106,10 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
     _unbind(makerContract);
   }
 
-  ///@notice Computes how much funds are available for a given pull routing order
-  ///@param routingOrder the pull order
-  ///@return balance that is accessible to the router for `routingOrder.token`
-  ///@dev `routingOrder.amount` is ignored.
-  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual returns (uint balance);
+  /**
+   * @notice Returns the token balance available for a specific routing order
+   * @param routingOrder The routing order to check the balance for
+   * @return balance The balance of the token in the routing order
+   */
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view virtual returns (uint balance);
 }

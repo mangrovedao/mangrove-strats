@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AbstractRouter} from "./abstract/AbstractRouter.sol";
+import {AbstractRoutingLogic} from "../routing_logic/abstract/AbstractRoutingLogic.sol";
 
 /// @title Mangrove Smart Router Storage
 /// @notice This library provides a storage layout for the Mangrove Smart Router, utilizing a unique namespace to avoid storage collisions.
@@ -14,7 +14,8 @@ library SmartRouterStorage {
   /// @notice Defines the structure of the storage layout used by the Smart Router.
   /// @dev Contains a nested mapping to associate tokens and offer IDs with their respective logic contracts.
   struct Layout {
-    mapping(IERC20 token => mapping(bytes32 olKeyHash => mapping(uint offerId => AbstractRouter router))) routeLogics;
+    mapping(IERC20 token => mapping(bytes32 olKeyHash => mapping(uint offerId => AbstractRoutingLogic logic)))
+      routeLogics;
   }
 
   /// @notice Retrieves a reference to the storage layout for the Smart Router.
@@ -30,8 +31,9 @@ library SmartRouterStorage {
    * @notice An intermediate function to allow a call to be delegated to an implementation while preserving the `view` attribute.
    * @param impl The address of the implementation to which the call will be delegated.
    * @param data The calldata to be sent to the implementation.
-   * @dev usage, for a view funciton `f(args)` of a contract `C`, is as follows:
+   * @dev usage, for a view funciton `f(args)` of a contract `C c`, is as follows:
    *  ```(bool success, bytes memory retdata) = address(this).staticcall(
+   *         address(c),
    *       abi.encodeWithSelector(
    *         SmartRouterStorage._staticdelegatecall.selector,
    *         abi.encodeWithSelector(C.f.selector, args)

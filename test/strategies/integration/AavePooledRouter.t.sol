@@ -121,8 +121,8 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.pushAndSupply(weth, 1 ether, usdc, 2000 * 10 ** 6, owner);
     vm.stopPrank();
 
-    assertEq(pooledRouter.balanceOfReserve(RL.createOrder(weth, owner)), 1 ether, "Incorrect weth balance");
-    assertEq(pooledRouter.balanceOfReserve(RL.createOrder(usdc, owner)), 2000 * 10 ** 6, "Incorrect usdc balance");
+    assertEq(pooledRouter.tokenBalanceOf(RL.createOrder(weth, owner)), 1 ether, "Incorrect weth balance");
+    assertEq(pooledRouter.tokenBalanceOf(RL.createOrder(usdc, owner)), 2000 * 10 ** 6, "Incorrect usdc balance");
   }
 
   function test_supply_error_is_logged() public {
@@ -142,7 +142,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.prank(address(makerContract));
     pooledRouter.pushAndSupply(pixieDust, 1 ether, pixieDust, 0, owner);
     // although aave refused the deposit, funds should be on the router
-    assertEq(pooledRouter.balanceOfReserve(RL.createOrder(pixieDust, owner)), 1 ether, "Incorrect balance on router");
+    assertEq(pooledRouter.tokenBalanceOf(RL.createOrder(pixieDust, owner)), 1 ether, "Incorrect balance on router");
   }
 
   function test_initial_aave_manager_is_deployer() public {
@@ -177,14 +177,14 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.prank(maker1);
     pooledRouter.push(RL.createOrder(usdc, 10 ** 6, maker1));
 
-    uint reserveBalance = pooledRouter.balanceOfReserve(RL.createOrder(usdc, maker1));
+    uint reserveBalance = pooledRouter.tokenBalanceOf(RL.createOrder(usdc, maker1));
     uint totalBalance = pooledRouter.totalBalance(usdc);
 
     vm.prank(deployer);
     pooledRouter.flushBuffer(usdc, false);
 
     assertApproxEqAbs(
-      reserveBalance, pooledRouter.balanceOfReserve(RL.createOrder(usdc, maker1)), 1, "Incorrect reserve balance"
+      reserveBalance, pooledRouter.tokenBalanceOf(RL.createOrder(usdc, maker1)), 1, "Incorrect reserve balance"
     );
     assertApproxEqAbs(totalBalance, pooledRouter.totalBalance(usdc), 1, "Incorrect total balance");
   }
@@ -296,12 +296,12 @@ contract AavePooledRouterTest is OfferLogicTest {
     dai.transfer($(pooledRouter), donation);
 
     uint expectedBalance = (uint(5) * 10 ** 18 + uint(donation)) / 5;
-    uint reserveBalance = pooledRouter.balanceOfReserve(RL.createOrder(dai, maker1));
+    uint reserveBalance = pooledRouter.tokenBalanceOf(RL.createOrder(dai, maker1));
     assertEq(expectedBalance, reserveBalance, "Incorrect reserve for maker1");
 
     expectedBalance = uint(4) * (5 * 10 ** 18 + uint(donation)) / 5;
     vm.prank(maker2);
-    reserveBalance = pooledRouter.balanceOfReserve(RL.createOrder(dai, maker2));
+    reserveBalance = pooledRouter.tokenBalanceOf(RL.createOrder(dai, maker2));
     assertEq(expectedBalance, reserveBalance, "Incorrect reserve for maker2");
   }
 
@@ -419,13 +419,13 @@ contract AavePooledRouterTest is OfferLogicTest {
 
   function empty_pool(IERC20 token, address id) internal {
     // empty usdc reserve
-    uint bal = pooledRouter.balanceOfReserve(RL.createOrder(token, id));
+    uint bal = pooledRouter.tokenBalanceOf(RL.createOrder(token, id));
     if (bal > 0) {
       vm.startPrank(address(makerContract));
       pooledRouter.pull(RL.createOrder(token, bal, owner), true);
       vm.stopPrank();
     }
-    assertEq(pooledRouter.balanceOfReserve(RL.createOrder(token, id)), 0, "Non empty balance");
+    assertEq(pooledRouter.tokenBalanceOf(RL.createOrder(token, id)), 0, "Non empty balance");
 
     assertEq(token.balanceOf($(pooledRouter)), 0, "Non empty buffer");
     assertEq(pooledRouter.overlying(token).balanceOf($(pooledRouter)), 0, "Non empty pool");
@@ -446,7 +446,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.push(RL.createOrder(usdc, amount, maker1));
 
     // computation below should not throw
-    assertEq(pooledRouter.balanceOfReserve(RL.createOrder(usdc, maker1)), amount + 1, "Incorrect balance");
+    assertEq(pooledRouter.tokenBalanceOf(RL.createOrder(usdc, maker1)), amount + 1, "Incorrect balance");
   }
 
   function test_underflow_shares_6dec(uint96 deposit_, uint96 donation_) public {
@@ -470,9 +470,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     vm.prank(maker2);
     pooledRouter.push(RL.createOrder(usdc, deposit, maker2));
 
-    assertApproxEqRel(
-      deposit, pooledRouter.balanceOfReserve(RL.createOrder({token: usdc, fundOwner: maker2})), 10 ** 13
-    ); // error not worth than 10^-7% of the deposit
+    assertApproxEqRel(deposit, pooledRouter.tokenBalanceOf(RL.createOrder({token: usdc, fundOwner: maker2})), 10 ** 13); // error not worth than 10^-7% of the deposit
   }
 
   function test_underflow_shares_18dec(uint96 deposit_, uint96 donation_) public {
@@ -497,7 +495,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     deal($(weth), maker2, deposit);
     vm.prank(maker2);
     pooledRouter.push(order);
-    assertApproxEqRel(deposit, pooledRouter.balanceOfReserve(order), 10 ** 5); // error not worth than 10^-15% of the deposit
+    assertApproxEqRel(deposit, pooledRouter.tokenBalanceOf(order), 10 ** 5); // error not worth than 10^-15% of the deposit
   }
 
   function test_allExternalFunctions_differentCallers_correctAuth() public {
@@ -530,7 +528,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     pooledRouter.POOL();
     pooledRouter.aaveManager();
     pooledRouter.admin();
-    pooledRouter.balanceOfReserve(routingOrder);
+    pooledRouter.tokenBalanceOf(routingOrder);
     pooledRouter.checkAsset(dai);
     pooledRouter.sharesOf(dai, maker1);
     pooledRouter.totalBalance(dai);

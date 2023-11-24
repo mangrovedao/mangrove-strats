@@ -2,6 +2,9 @@
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {ForwarderTester} from "@mgv-strats/test/lib/agents/ForwarderTester.sol";
+import {DirectTester} from "@mgv-strats/test/lib/agents/DirectTester.sol";
+
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
@@ -21,9 +24,9 @@ import {console} from "@mgv/forge-std/console.sol";
 abstract contract OfferLogicTest is StratTest {
   TestToken weth;
   TestToken usdc;
-  address payable taker;
-  address payable deployer; // admin of makerContract
-  address payable owner; // owner of the offers (==deployer for Direct strats)
+  address payable taker; // used to take offers
+  address payable deployer; // used to deploy contracts
+  address payable owner; // owner of the maker contract
 
   ITesterContract makerContract; // can be either OfferMaker or OfferForwarder
   uint gasreq;
@@ -54,7 +57,10 @@ abstract contract OfferLogicTest is StratTest {
       weth = base;
       usdc = quote;
     }
-    taker = payable(new TestSender());
+    deployer = freshAddress("deployer");
+    taker = payable(address(new TestSender()));
+    owner = payable(address(new TestSender()));
+
     vm.deal(taker, 1 ether);
     deal($(weth), taker, cash(weth, 50));
     deal($(usdc), taker, cash(usdc, 100_000));
@@ -67,6 +73,10 @@ abstract contract OfferLogicTest is StratTest {
     // instantiates makerContract
     setupMakerContract();
     fundStrat();
+    vm.prank(deployer);
+    makerContract.activate(weth);
+    vm.prank(deployer);
+    makerContract.activate(usdc);
   }
 
   // override this to use Forwarder strats
@@ -165,7 +175,9 @@ abstract contract OfferLogicTest is StratTest {
   }
 
   function test_deprovisionOffer_throws_if_wei_transfer_fails() public {
+    console.log("test_deprovisionOffer_throws_if_wei_transfer_fails", address(owner).code.length);
     TestSender(owner).refuseNative();
+    console.log("refused");
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -240,10 +252,14 @@ abstract contract OfferLogicTest is StratTest {
   }
 
   // wants 2000 usd for 1 ether
-  function performTrade(bool success) internal returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
+  function performTrade(bool success)
+    internal
+    virtual
+    returns (uint takerGot, uint takerGave, uint bounty, uint fee, uint offerId)
+  {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
-    makerContract.newOfferByVolume{value: 0.1 ether}({
+    offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
@@ -259,11 +275,11 @@ abstract contract OfferLogicTest is StratTest {
     assertTrue(!success || (bounty == 0 && takerGot > 0), "unexpected trade result");
   }
 
-  function test_owner_balance_is_updated_when_trade_succeeds() public {
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual {
     uint balOut = makerContract.tokenBalance(weth, owner);
     uint balIn = makerContract.tokenBalance(usdc, owner);
 
-    (uint takerGot, uint takerGave, uint bounty, uint fee) = performTrade(true);
+    (uint takerGot, uint takerGave, uint bounty, uint fee,) = performTrade(true);
     assertTrue(bounty == 0 && takerGot > 0, "trade failed");
 
     assertEq(makerContract.tokenBalance(weth, owner), balOut - (takerGot + fee), "incorrect out balance");
@@ -303,6 +319,7 @@ abstract contract OfferLogicTest is StratTest {
     });
     vm.stopPrank();
     mgv.setGasprice(1000000);
+
     vm.startPrank(deployer);
     makerContract.withdrawFromMangrove(mgv.balanceOf(address(makerContract)), payable(deployer));
     vm.stopPrank();

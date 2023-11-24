@@ -1,15 +1,14 @@
 // SPDX-License-Identifier:	BSD-2-Clause
 pragma solidity ^0.8.20;
 
-import {SmartRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AaveMemoizer, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {SimpleAaveLogic, IPoolAddressesProvider} from "./SimpleAaveLogic.sol";
 import {AaveLogicStorage} from "./AaveLogicStorage.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title AaveLogic
 /// @notice Routing logic for Aave
-contract AaveLogic is AbstractRouter, AaveMemoizer {
+contract AaveLogic is SimpleAaveLogic {
   /// @notice The maximum credit line to be redeemed
   /// * Credit line is the maximum amount that can be borrowed to stay above the liquidation threshold (health factor > 1)
   /// * If the protocol can redeem a maximum of 100 tokens and the credit line is 50, then the protocol can redeem 50 tokens
@@ -23,7 +22,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   ///@param addressesProvider address of AAVE's address provider
   ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
   constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
-    AaveMemoizer(addressesProvider, interestRateMode)
+    SimpleAaveLogic(addressesProvider, interestRateMode)
   {}
 
   /// @notice Gets the maximum amount of underlying that can be redeemed
@@ -98,7 +97,7 @@ contract AaveLogic is AbstractRouter, AaveMemoizer {
   }
 
   ///@inheritdoc AbstractRouter
-  function balanceOfReserve(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
     Memoizer memory m;
     balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
     balance += balanceOf(routingOrder.token, m, routingOrder.fundOwner);
