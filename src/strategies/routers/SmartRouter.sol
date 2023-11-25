@@ -25,6 +25,13 @@ contract SmartRouter is SimpleRouter {
     emit SetRouteLogic(routingOrder.token, routingOrder.olKeyHash, routingOrder.offerId, logic);
   }
 
+  ///@notice This function is used to get the routing strategy for a given offer.
+  ///@param routingOrder the routing order template for which a logic should be used
+  ///@return logic the logic used for the given routing order.
+  function getLogic(RL.RoutingOrder calldata routingOrder) external view returns (AbstractRoutingLogic) {
+    return SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
+  }
+
   /// @inheritdoc AbstractRouter
   /// @dev pulls liquidity using the logic specified by offer owner
   function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual override returns (uint) {

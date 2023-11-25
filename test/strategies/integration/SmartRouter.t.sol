@@ -73,7 +73,10 @@ contract SmartRouterTest is OfferLogicTest {
     // using simple logic for push so leaving it as is
     vm.stopPrank();
 
-    // taker has approved mangrove in the setUp
+    // expecting that nothing should go wrong during offer logic's execution
+    vm.expectEmit(true, true, true, false, address(mgv));
+    emit OfferSuccess({olKeyHash: olKey.hash(), taker: taker, id: offerId, takerWants: 0, takerGives: 0});
+
     vm.startPrank(taker);
     (takerGot, takerGave, bounty, fee) =
       mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
@@ -82,11 +85,21 @@ contract SmartRouterTest is OfferLogicTest {
   }
 
   function test_owner_balance_is_updated_when_trade_succeeds() public override {
-    // uint balWethBefore = (uint takerGot, uint takerGave, uint bounty, uint fee, uint offerId) = performTrade(true);
-    // assertTrue(bounty == 0 && takerGot > 0, "trade failed");
-    // uint balWethAfter = aaveLogic.balanceOfReserve(
-    //   RL.RoutingOrder({token: weth, fundOwner: owner});
-    // );
+    uint balWethBefore = aaveLogic.tokenBalanceOf(weth, owner); // balance on aave
+    uint balUsdBefore = usdc.balanceOf(owner); // balance on owner's wallet
+
+    // taker wants 0.5 weth for at most 1000 usdc
+    (uint takerGot, uint takerGave, uint bounty, uint fee, uint offerId) = performTrade(true);
+    AbstractRoutingLogic logic = ownerRouter.getLogic(
+      RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0})
+    );
+    assertEq(address(logic), address(aaveLogic), "unexpected logic address");
+
+    assertTrue(bounty == 0 && takerGot > 0, "trade failed");
+    uint balWethAfter = aaveLogic.tokenBalanceOf(weth, owner);
+    uint balUsdAfter = usdc.balanceOf(owner);
+    assertEq(balWethAfter, balWethBefore - takerGot - fee, "unexpected owner weth balance");
+    assertEq(balUsdAfter, balUsdBefore + takerGave, "unexpected owner usd balance");
   }
 
   function test_setLogic_logs() public {

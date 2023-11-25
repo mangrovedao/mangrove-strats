@@ -72,20 +72,6 @@ contract ForwarderTester is ITesterContract, Forwarder {
     require(noRevert, "mgvOffer/weiTransferFail");
   }
 
-  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
-    internal
-    override
-    returns (bytes32 data)
-  {
-    data = super.__posthookSuccess__(order, maker_data);
-    require(
-      data == "posthook/reposted" || data == "posthook/filled",
-      data == "mgv/insufficientProvision"
-        ? "mgv/insufficientProvision"
-        : (data == "mgv/writeOffer/density/tooLow" ? "mgv/writeOffer/density/tooLow" : "posthook/failed")
-    );
-  }
-
   ///@inheritdoc ITesterContract
   function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
     return router(owner).tokenBalanceOf(RL.createOrder({token: token, fundOwner: owner}));
