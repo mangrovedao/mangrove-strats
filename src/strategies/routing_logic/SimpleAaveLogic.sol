@@ -43,7 +43,7 @@ contract SimpleAaveLogic is AaveMemoizer, AbstractRoutingLogic {
   }
 
   ///@inheritdoc AbstractRoutingLogic
-  function tokenBalanceOf(IERC20 token, address fundOwner) external view override returns (uint balance) {
+  function balanceLogic(IERC20 token, address fundOwner) external view override returns (uint balance) {
     Memoizer memory m;
     balance = overlyingBalanceOf(token, m, fundOwner);
   }

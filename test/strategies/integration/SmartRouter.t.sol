@@ -85,7 +85,7 @@ contract SmartRouterTest is OfferLogicTest {
   }
 
   function test_owner_balance_is_updated_when_trade_succeeds() public override {
-    uint balWethBefore = aaveLogic.tokenBalanceOf(weth, owner); // balance on aave
+    uint balWethBefore = aaveLogic.balanceLogic(weth, owner); // balance on aave
     uint balUsdBefore = usdc.balanceOf(owner); // balance on owner's wallet
 
     // taker wants 0.5 weth for at most 1000 usdc
@@ -96,7 +96,7 @@ contract SmartRouterTest is OfferLogicTest {
     assertEq(address(logic), address(aaveLogic), "unexpected logic address");
 
     assertTrue(bounty == 0 && takerGot > 0, "trade failed");
-    uint balWethAfter = aaveLogic.tokenBalanceOf(weth, owner);
+    uint balWethAfter = aaveLogic.balanceLogic(weth, owner);
     uint balUsdAfter = usdc.balanceOf(owner);
     assertEq(balWethAfter, balWethBefore - takerGot - fee, "unexpected owner weth balance");
     assertEq(balUsdAfter, balUsdBefore + takerGave, "unexpected owner usd balance");

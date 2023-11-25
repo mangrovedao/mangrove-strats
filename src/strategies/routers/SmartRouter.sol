@@ -87,9 +87,7 @@ contract SmartRouter is SimpleRouter {
         abi.encodeWithSelector(
           SmartRouterStorage._staticdelegatecall.selector,
           address(logic),
-          abi.encodeWithSelector(
-            AbstractRoutingLogic.tokenBalanceOf.selector, routingOrder.token, routingOrder.fundOwner
-          )
+          abi.encodeWithSelector(AbstractRoutingLogic.balanceLogic.selector, routingOrder.token, routingOrder.fundOwner)
         )
       );
       if (!success) {

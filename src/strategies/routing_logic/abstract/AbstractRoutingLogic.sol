@@ -33,5 +33,5 @@ abstract contract AbstractRoutingLogic {
    * @param fundOwner The owner of the fund
    * @return balance The balance of the token
    */
-  function tokenBalanceOf(IERC20 token, address fundOwner) external view virtual returns (uint balance);
+  function balanceLogic(IERC20 token, address fundOwner) external view virtual returns (uint balance);
 }
