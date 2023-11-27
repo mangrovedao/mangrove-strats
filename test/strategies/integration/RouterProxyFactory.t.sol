@@ -22,8 +22,6 @@ contract RouterProxyFactoryTest is StratTest {
     assertEq(address(proxy), address(proxy_), "Computed address is incorrect");
   }
 
-  event SetAdmin(address);
-
   function test_instantiate() public {
     RouterProxy proxy = RouterProxy(proxyFactory.computeProxyAddress(owner, routerImpl));
     expectFrom(address(proxy));

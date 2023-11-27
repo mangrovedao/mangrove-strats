@@ -37,8 +37,6 @@ contract MgvOrder_Test is StratTest {
   uint constant MID_PRICE = 2000e18;
   // to check ERC20 logging
 
-  event Transfer(address indexed from, address indexed to, uint value);
-
   event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
@@ -791,8 +789,6 @@ contract MgvOrder_Test is StratTest {
     assertTrue(takerGot > 0, "offer failed");
   }
 
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
-
   function test_offer_reneges_when_time_is_expired() public {
     mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp);
     vm.warp(block.timestamp + 1);
@@ -818,8 +814,6 @@ contract MgvOrder_Test is StratTest {
     uint credited = mgo.retractOffer(lo, cold_buyResult.offerId, true);
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
-
-  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));

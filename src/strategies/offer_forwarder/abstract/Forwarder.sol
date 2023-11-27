@@ -222,7 +222,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       }
       // if `args.fund` is too low, offer gasprice might be below mangrove's gasprice
       // Mangrove will then take its own gasprice for the offer and would possibly tap into `this` contract's balance to cover for the missing provision
-      require(args.gasprice >= vars.global.gasprice(), "mgv/insufficientProvision");
+      if (args.gasprice < vars.global.gasprice()) {
+        if (args.noRevert) {
+          return "mgv/insufficientProvision";
+        } else {
+          revert("mgv/insufficientProvision");
+        }
+      }
+
       try MGV.updateOfferByTick{value: args.fund}(
         args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId
       ) {

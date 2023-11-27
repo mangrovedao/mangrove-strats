@@ -49,7 +49,6 @@ abstract contract KandelTest is StratTest {
   event PopulateEnd();
   event RetractStart();
   event RetractEnd();
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
   event SetBaseQuoteTickOffset(uint value);
 
   // sets environment default is local node with fake base and quote

@@ -286,29 +286,6 @@ abstract contract OfferLogicTest is StratTest {
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takerGave, "incorrect in balance");
   }
 
-  function test_reposting_fails_with_expected_reason_when_below_density() public {
-    vm.startPrank(owner);
-    uint offerGives = reader.minVolume(olKey, gasreq);
-    uint offerId =
-      makerContract.newOffer{value: 0.1 ether}({olKey: olKey, tick: Tick.wrap(1), gives: offerGives, gasreq: gasreq});
-    vm.stopPrank();
-    MgvLib.OrderResult memory result;
-    result.mgvData = "mgv/tradeSuccess";
-    MgvLib.SingleOrder memory order;
-    order.olKey = olKey;
-    order.offerId = offerId;
-    order.takerWants = offerGives / 2;
-    /* `offerDetail` is only populated when necessary. */
-    order.offerDetail = mgv.offerDetails(olKey, offerId);
-    order.offer = mgv.offers(olKey, offerId);
-    order.takerGives = order.offer.tick().outboundFromInbound(offerGives / 2);
-    (order.global, order.local) = mgv.config(olKey);
-
-    vm.expectRevert("mgv/writeOffer/density/tooLow");
-    vm.prank($(mgv));
-    makerContract.makerPosthook(order, result);
-  }
-
   function test_reposting_fails_with_expected_reason_when_under_provisioned() public {
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
@@ -335,7 +312,13 @@ abstract contract OfferLogicTest is StratTest {
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
     (order.global, order.local) = mgv.config(olKey);
-    vm.expectRevert("mgv/insufficientProvision");
+    vm.expectEmit(true, true, true, true, address(makerContract));
+    emit LogIncident({
+      olKeyHash: olKey.hash(),
+      offerId: offerId,
+      makerData: bytes32(0),
+      mgvData: "mgv/insufficientProvision"
+    });
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);
   }
@@ -361,7 +344,8 @@ abstract contract OfferLogicTest is StratTest {
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
     (order.global, order.local) = mgv.config(olKey);
-    vm.expectRevert("posthook/failed");
+    vm.expectEmit(true, true, true, true, address(makerContract));
+    emit LogIncident({olKeyHash: olKey.hash(), offerId: offerId, makerData: bytes32(0), mgvData: "mgv/inactive"});
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);
   }

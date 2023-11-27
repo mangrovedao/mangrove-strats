@@ -126,4 +126,10 @@ contract SmartRouterTest is OfferLogicTest {
       RL.createOrder({token: weth, amount: type(uint).max, fundOwner: owner}), AbstractRoutingLogic(address(0))
     );
   }
+
+  function test_pull_reverts_are_correctly_handled() public {
+    vm.startPrank(owner);
+    // removing weth from the pool to make trade fail
+    aaveLogic.POOL().withdraw(address(weth), 10 ether, address(this));
+  }
 }

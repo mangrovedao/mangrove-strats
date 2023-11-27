@@ -8,6 +8,17 @@ import {
 import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 contract StratTest is MangroveTest {
+  // for ExpriableForwarder
+  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
+  // all strats
+  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
+  event Transfer(address indexed from, address indexed to, uint value);
+  event SetAdmin(address);
+
+  // all routers
+  event MakerBind(address indexed maker);
+  event MakerUnbind(address indexed maker);
+
   function $(AccessControlled t) internal pure returns (address payable) {
     return payable(address(t));
   }

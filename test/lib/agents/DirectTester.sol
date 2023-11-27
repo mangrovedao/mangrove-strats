@@ -19,20 +19,6 @@ contract DirectTester is Direct, ITesterContract {
     return retData;
   }
 
-  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
-    internal
-    override
-    returns (bytes32 data)
-  {
-    data = super.__posthookSuccess__(order, maker_data);
-    require(
-      data == REPOST_SUCCESS || data == COMPLETE_FILL,
-      (data == "mgv/insufficientProvision")
-        ? "mgv/insufficientProvision"
-        : (data == "mgv/writeOffer/density/tooLow" ? "mgv/writeOffer/density/tooLow" : "posthook/failed")
-    );
-  }
-
   ///@inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
     public

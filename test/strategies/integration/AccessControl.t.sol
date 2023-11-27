@@ -5,8 +5,6 @@ import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 contract AccessControlTest is StratTest {
-  event SetAdmin(address admin);
-
   address payable admin;
   AccessControlled internal testContract;
 

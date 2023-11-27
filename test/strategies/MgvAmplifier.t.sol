@@ -245,8 +245,6 @@ contract MgvAmplifierTest is StratTest {
   }
 
   event GotPaid();
-  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   receive() external payable {
     emit GotPaid();

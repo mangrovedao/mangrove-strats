@@ -43,8 +43,6 @@ import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol
 abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   GeometricKandel internal kandel;
 
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
-
   bytes32 internal expectedFirOfferMakerData = 0;
 
   function createKandel() public virtual returns (GeometricKandel);
@@ -222,11 +220,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
   function createKandel() public virtual override returns (GeometricKandel) {
     description = string.concat(description, " - Kandel");
-    return new Kandel({
-        mgv: mgv,
-        olKeyBaseQuote: olKey,
-        gasreq: 500_000
-      });
+    return new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: 500_000});
   }
 }
 
@@ -241,11 +235,7 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
       mgv: mgv,
       olKeyBaseQuote: olKey,
       gasreq: 1_000_000,
-      routerParams: Direct.RouterParams({
-        routerImplementation: router,
-        fundOwner: address(this),
-        strict: false
-      })
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(this), strict: false})
     });
     router.bind(address(aaveKandel));
     return aaveKandel;

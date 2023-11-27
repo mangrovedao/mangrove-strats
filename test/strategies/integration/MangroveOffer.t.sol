@@ -14,10 +14,6 @@ contract MangroveOfferTest is StratTest {
   uint constant GASREQ = 50_000;
 
   // tracking IOfferLogic logs
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
-
-  event SetAdmin(address);
-  event SetRouter(address router);
 
   function setUp() public override {
     options.base.symbol = "WETH";
@@ -36,10 +32,7 @@ contract MangroveOfferTest is StratTest {
     Direct.RouterParams memory noRouter;
     deployer = payable(new TestSender());
     vm.prank(deployer);
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      routerParams: noRouter
-      });
+    makerContract = new DirectTester({mgv: IMangrove($(mgv)), routerParams: noRouter});
   }
 
   function test_Admin_is_deployer() public {
@@ -86,9 +79,8 @@ contract MangroveOfferTest is StratTest {
       _olBaseQuote: olKey,
       makerData: "whatever"
     });
-    expectFrom(address(makerContract));
+    vm.expectEmit(true, true, true, true, address(makerContract));
     emit LogIncident(olKey.hash(), 0, "whatever", "mgv/updateOffer/unauthorized");
-    vm.expectRevert("posthook/failed");
     /// since order.offerId is 0, updateOffer will revert. This revert should be caught and logged
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);

@@ -29,10 +29,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.deal(deployer, 10 ether);
 
     vm.startPrank(deployer);
-    forwarder = new ForwarderTester({
-      mgv: IMangrove($(mgv)),
-      routerImplementation: new SimpleRouter()
-    });
+    forwarder = new ForwarderTester({mgv: IMangrove($(mgv)), routerImplementation: new SimpleRouter()});
     vm.stopPrank();
     gasreq = 160_000;
     vm.deal(owner, 10 ether);
@@ -51,9 +48,6 @@ contract OfferForwarderTest is OfferLogicTest {
     deal($(weth), owner, 1 ether);
     deal($(usdc), owner, cash(usdc, 2000));
   }
-
-  event MakerBind(address indexed maker);
-  event MakerUnbind(address indexed maker);
 
   function test_admin_can_unbind() public {
     AbstractRouter router = forwarder.router(owner);
