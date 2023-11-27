@@ -13,16 +13,6 @@ interface IForwarder {
   ///@notice By emitting this data, an indexer will be able to keep track of the real owner of an offer
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
 
-  /// @notice view on offer owners.
-  /// @param olKeyHash the hash of the offer list key.
-  /// @param offerIds an array of offer identifiers on the offer list.
-  /// @return offer_owners an array of the same length where the address at position i is the owner of `offerIds[i]`
-  /// @dev if `offerIds[i]==address(0)` if and only if this offer has no owner.
-  function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
-    external
-    view
-    returns (address[] memory offer_owners);
-
   /// @notice view on an offer owner.
   /// @param olKeyHash the hash of the offer list key.
   /// @param offerId the offer identifier on the offer list.

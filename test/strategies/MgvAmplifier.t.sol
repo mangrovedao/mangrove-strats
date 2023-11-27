@@ -303,4 +303,101 @@ contract MgvAmplifierTest is StratTest {
     partialFill = true;
     run_scenario();
   }
+
+  function test_external_bundle_update_volume() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
+    vm.stopPrank();
+
+    // checking offers of the bundle have been updated to the new outbound volume
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      assertEq(offer.gives(), 50 * 10 ** 18);
+    }
+  }
+
+  function test_external_bundle_update_expiry() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    mgvAmplifier.updateBundle(bundleId, dai, 0, true, block.timestamp + 1000);
+    vm.stopPrank();
+
+    // checking bundle expiry date
+    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), block.timestamp + 1000, "Incorrect expiry");
+  }
+
+  function test_external_bundle_update_volume_and_expiry() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, true, block.timestamp + 1000);
+    vm.stopPrank();
+
+    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), block.timestamp + 1000, "Incorrect expiry");
+
+    // checking offers of the bundle have been updated to the new outbound volume
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      assertEq(offer.gives(), 50 * 10 ** 18);
+    }
+  }
+
+  function test_external_bundle_update_volume_and_expiry_noop() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    mgvAmplifier.updateBundle(bundleId, dai, 0, false, block.timestamp + 1000);
+    vm.stopPrank();
+
+    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), 0, "Incorrect expiry");
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      assertEq(offer.gives(), 1000 * 10 ** 18);
+    }
+  }
+
+  function test_external_bundle_retract() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    uint balWeiBefore = owner.balance;
+    uint freeWei = mgvAmplifier.retractBundle(bundleId, dai);
+    vm.stopPrank();
+    assertEq(owner.balance - balWeiBefore, freeWei, "Incorrect freeWei");
+
+    // checking offers of the bundle have been retracted
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      assertEq(offer.gives(), 0);
+    }
+  }
 }

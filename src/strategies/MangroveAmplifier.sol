@@ -262,7 +262,7 @@ contract MangroveAmplifier is ExpirableForwarder {
     }
   }
 
-  ///@notice public function to update a bundle of offers
+  ///@notice public function to update common parameters of a bundle of offers (i.e outbound volume and expiry date)
   ///@param bundleId the bundle identifier
   ///@param outbound_tkn the outbound token of the bundle
   ///@param outboundVolume the new volume that each offer of the bundle should now offer. Use 0 to skip volume update.
@@ -318,10 +318,10 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@param bundleId the bundle identifier
   ///@param outbound_tkn the outbound token of the bundle
   ///@dev offers can be retracted individually using `super.retractOffer`
-  function retractBundle(uint bundleId, IERC20 outbound_tkn) external {
+  function retractBundle(uint bundleId, IERC20 outbound_tkn) external returns (uint freeWei) {
     BundledOffer[] memory bundle = __bundles[bundleId];
     require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
-    uint freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true);
+    freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true);
     (bool noRevert,) = msg.sender.call{value: freeWei}("");
     require(noRevert, "MgvAmplifier/weiTransferFail");
   }

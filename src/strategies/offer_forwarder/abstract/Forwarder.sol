@@ -60,19 +60,6 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     require(address(routerImplementation) != address(0), "Forwarder/0xRouter");
   }
 
-  ///@inheritdoc IForwarder
-  function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
-    public
-    view
-    override
-    returns (address[] memory offerOwners_)
-  {
-    offerOwners_ = new address[](offerIds.length);
-    for (uint i = 0; i < offerIds.length; ++i) {
-      offerOwners_[i] = ownerOf(olKeyHash, offerIds[i]);
-    }
-  }
-
   /// @notice grants managing (update/retract) rights on a particular offer.
   /// @param olKeyHash the hash of the offer list key.
   /// @param offerId the offer identifier in the offer list.
