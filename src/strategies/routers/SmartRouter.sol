@@ -80,20 +80,10 @@ contract SmartRouter is SimpleRouter {
 
   ///@inheritdoc AbstractRouter
   function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint) {
-    AbstractRoutingLogic logic =
+    AbstractRoutingLogic customLogic =
       SmartRouterStorage.getStorage().routeLogics[routingOrder.token][routingOrder.olKeyHash][routingOrder.offerId];
-    if (address(logic) != address(0)) {
-      (bool success, bytes memory retdata) = address(this).staticcall(
-        abi.encodeWithSelector(
-          SmartRouterStorage._staticdelegatecall.selector,
-          address(logic),
-          abi.encodeWithSelector(AbstractRoutingLogic.balanceLogic.selector, routingOrder.token, routingOrder.fundOwner)
-        )
-      );
-      if (!success) {
-        SmartRouterStorage.revertWithData(retdata);
-      }
-      return (abi.decode(retdata, (uint)));
+    if (address(customLogic) != address(0)) {
+      return customLogic.balanceLogic(routingOrder.token, routingOrder.fundOwner);
     } else {
       return super.tokenBalanceOf(routingOrder);
     }

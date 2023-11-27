@@ -15,7 +15,7 @@ import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.so
 import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows offer owner to post offers on multiple markets with the same collateral.
-/// The strat is implemented such that it cannot give more than the total amplified volume even if it is approved to spend more.
+/// The strat is implemented such that it cannot give more than the total amplified volume even if it is approved to spend more and has access to more funds.
 /// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
 /// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
@@ -49,12 +49,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice MangroveAmplifier is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
-  ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
-    ExpirableForwarder(mgv, factory, new SmartRouter())
-  {
-    _setAdmin(deployer);
-  }
+  constructor(IMangrove mgv, RouterProxyFactory factory) ExpirableForwarder(mgv, factory, new SmartRouter()) {}
 
   struct FixedBundleParams {
     IERC20 outbound_tkn; //the promised asset for all offers of the bundle

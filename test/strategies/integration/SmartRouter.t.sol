@@ -74,8 +74,18 @@ contract SmartRouterTest is OfferLogicTest {
     vm.stopPrank();
 
     // expecting that nothing should go wrong during offer logic's execution
-    vm.expectEmit(true, true, true, false, address(mgv));
-    emit OfferSuccess({olKeyHash: olKey.hash(), taker: taker, id: offerId, takerWants: 0, takerGives: 0});
+    if (success) {
+      vm.expectEmit(true, true, true, false, address(mgv));
+      emit OfferSuccess({olKeyHash: olKey.hash(), taker: taker, id: offerId, takerWants: 0, takerGives: 0});
+    } else {
+      vm.expectEmit(true, true, true, true, address(makerContract));
+      emit LogIncident({
+        olKeyHash: olKey.hash(),
+        offerId: offerId,
+        makerData: "SimpleAaveLogic/TransferFailed",
+        mgvData: "mgv/makerRevert"
+      });
+    }
 
     vm.startPrank(taker);
     (takerGot, takerGave, bounty, fee) =
@@ -97,9 +107,23 @@ contract SmartRouterTest is OfferLogicTest {
 
     assertTrue(bounty == 0 && takerGot > 0, "trade failed");
     uint balWethAfter = aaveLogic.balanceLogic(weth, owner);
+    assertEq(
+      balWethAfter,
+      ownerRouter.tokenBalanceOf(
+        RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0})
+      ),
+      "unexpected owner weth balance"
+    );
     uint balUsdAfter = usdc.balanceOf(owner);
     assertEq(balWethAfter, balWethBefore - takerGot - fee, "unexpected owner weth balance");
     assertEq(balUsdAfter, balUsdBefore + takerGave, "unexpected owner usd balance");
+  }
+
+  function test_owner_balance_is_default_when_no_logic() public {
+    uint balUsdc = usdc.balanceOf(owner);
+    assertTrue(balUsdc > 0, "unexpected owner usdc balance");
+    // since no logic is set, the default logic will be used
+    assertEq(ownerRouter.tokenBalanceOf(RL.createOrder({token: usdc, fundOwner: owner})), balUsdc, "unexpected balance");
   }
 
   function test_setLogic_logs() public {
@@ -131,5 +155,10 @@ contract SmartRouterTest is OfferLogicTest {
     vm.startPrank(owner);
     // removing weth from the pool to make trade fail
     aaveLogic.POOL().withdraw(address(weth), 10 ether, address(this));
+    vm.stopPrank();
+    assertEq(aaveLogic.balanceLogic(weth, owner), 0, "unexpected owner weth balance");
+    // taking owner's offer will fail
+    performTrade(false);
   }
+  // todo test push reverts correctly handled
 }

@@ -27,32 +27,6 @@ library SmartRouterStorage {
     }
   }
 
-  /**
-   * @notice An intermediate function to allow a call to be delegated to an implementation while preserving the `view` attribute.
-   * @param impl The address of the implementation to which the call will be delegated.
-   * @param data The calldata to be sent to the implementation.
-   * @dev usage, for a view funciton `f(args)` of a contract `C c`, is as follows:
-   *  ```(bool success, bytes memory retdata) = address(this).staticcall(
-   *         address(c),
-   *       abi.encodeWithSelector(
-   *         SmartRouterStorage._staticdelegatecall.selector,
-   *         abi.encodeWithSelector(C.f.selector, args)
-   *       )
-   *     );
-   *  ```
-   */
-  function _staticdelegatecall(address impl, bytes calldata data) external {
-    /// makes sure that a call to this function is a pseudo internal call.
-    require(msg.sender == address(this), "SmartRouterStorage/internalOnly");
-    (bool success, bytes memory retdata) = impl.delegatecall(data);
-    if (!success) {
-      revertWithData(retdata);
-    }
-    assembly ("memory-safe") {
-      return(add(retdata, 32), returndatasize())
-    }
-  }
-
   /// @notice Propagates a revert with reason from a failed delegate call.
   /// @param retdata The return data from the delegate call that caused the revert.
   /// @dev This function uses inline assembly to revert with the exact error message from the delegate call.

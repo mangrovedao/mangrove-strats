@@ -64,7 +64,7 @@ contract MgvAmplifierTest is StratTest {
     vm.startPrank(deployer);
     routerFactory = new RouterProxyFactory();
     aaveLogic = new SimpleAaveLogic(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
-    mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, deployer);
+    mgvAmplifier = new MangroveAmplifier(mgv, routerFactory);
     mgvAmplifier.activate(weth);
     mgvAmplifier.activate(dai);
     mgvAmplifier.activate(wbtc);
