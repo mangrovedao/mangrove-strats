@@ -317,6 +317,7 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@notice public method to retract a bundle of offers
   ///@param bundleId the bundle identifier
   ///@param outbound_tkn the outbound token of the bundle
+  ///@return freeWei the amount of native tokens that has been sent to to msg.sender
   ///@dev offers can be retracted individually using `super.retractOffer`
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external returns (uint freeWei) {
     BundledOffer[] memory bundle = __bundles[bundleId];

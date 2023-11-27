@@ -8,7 +8,8 @@ import {
   MangroveAmplifier,
   SmartRouter,
   RouterProxyFactory,
-  RouterProxy
+  RouterProxy,
+  AbstractRoutingLogic
 } from "@mgv-strats/src/strategies/MangroveAmplifier.sol";
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
@@ -109,9 +110,15 @@ contract MgvAmplifierTest is StratTest {
     assertEq(address(mgvAmplifier.ROUTER_FACTORY()), address(routerFactory), "No factory");
   }
 
-  bool use_aave_logic;
-
   function build_amplified_offer_args()
+    internal
+    view
+    returns (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr)
+  {
+    return (build_amplified_offer_args(AbstractRoutingLogic(address(0)), AbstractRoutingLogic(address(0))));
+  }
+
+  function build_amplified_offer_args(AbstractRoutingLogic inboundLogic, AbstractRoutingLogic outboundLogic)
     internal
     view
     returns (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr)
@@ -119,28 +126,36 @@ contract MgvAmplifierTest is StratTest {
     vr = new MangroveAmplifier.VariableBundleParams[](2);
     fx.outbound_tkn = dai;
     fx.outVolume = 1000 * 10 ** 18;
-    if (use_aave_logic) {
-      fx.outboundLogic = aaveLogic;
+    if (address(outboundLogic) != address(0)) {
+      fx.outboundLogic = outboundLogic;
     }
 
     vr[0].inbound_tkn = weth;
     vr[0].tick = TickLib.tickFromVolumes({inboundAmt: 1 ether, outboundAmt: 2000 * 10 ** 18});
-    vr[0].gasreq = use_aave_logic ? aaveLogicGasreq : defaultLogicGasreq;
+    vr[0].gasreq = address(outboundLogic) != address(0) ? aaveLogicGasreq : defaultLogicGasreq;
     vr[0].provision = 0.02 ether;
     vr[0].tickSpacing = options.defaultTickSpacing;
+    if (address(inboundLogic) != address(0)) {
+      vr[0].inboundLogic = inboundLogic;
+    }
 
     vr[1].inbound_tkn = wbtc;
     vr[1].tick = TickLib.tickFromVolumes({inboundAmt: 10 ** 8, outboundAmt: 27_000 * 10 ** 18});
-    vr[1].gasreq = use_aave_logic ? aaveLogicGasreq : defaultLogicGasreq;
+    vr[1].gasreq = address(outboundLogic) != address(0) ? aaveLogicGasreq : defaultLogicGasreq;
     vr[1].provision = 0.02 ether;
     vr[1].tickSpacing = options.defaultTickSpacing;
+    if (address(inboundLogic) != address(0)) {
+      vr[1].inboundLogic = inboundLogic;
+    }
   }
 
   event InitBundle(uint indexed bundleId);
   event EndBundle();
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
+  // SmartRouter
+  event SetRouteLogic(IERC20 indexed token, bytes32 indexed olKeyHash, uint offerId, AbstractRoutingLogic logic);
 
-  function test_newBundle_logs() public {
+  function test_newBundle_no_logic_logs() public {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
 
@@ -158,9 +173,57 @@ contract MgvAmplifierTest is StratTest {
     assertEq(mgvAmplifier.ownerOf(bundleId, dai), owner, "Incorrect bundle owner");
   }
 
-  function run_partial_fill_scenario() internal {
+  function test_newBundle_outbound_logic_logs() public {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
-      build_amplified_offer_args();
+      build_amplified_offer_args(AbstractRoutingLogic(address(0)), aaveLogic);
+
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(dai, dai_weth.hash(), 1, aaveLogic);
+
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(dai, dai_wbtc.hash(), 1, aaveLogic);
+
+    vm.prank(owner);
+    mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+  }
+
+  function test_newBundle_inbound_logic_logs() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args(AbstractRoutingLogic(aaveLogic), AbstractRoutingLogic(address(0)));
+
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(weth, dai_weth.hash(), 1, aaveLogic);
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(wbtc, dai_wbtc.hash(), 1, aaveLogic);
+
+    vm.prank(owner);
+    mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+  }
+
+  function test_newBundle_inbound_outbound_logic_logs() public {
+    address someLogic = freshAddress("logic");
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args({inboundLogic: aaveLogic, outboundLogic: AbstractRoutingLogic(someLogic)});
+
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(weth, dai_weth.hash(), 1, aaveLogic);
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(dai, dai_weth.hash(), 1, AbstractRoutingLogic(someLogic));
+
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(wbtc, dai_wbtc.hash(), 1, aaveLogic);
+    expectFrom(address(mgvAmplifier.router(owner)));
+    emit SetRouteLogic(dai, dai_wbtc.hash(), 1, AbstractRoutingLogic(someLogic));
+
+    vm.prank(owner);
+    mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+  }
+
+  function run_partial_fill_scenario(bool withAaveOutbound) internal {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+    build_amplified_offer_args(
+      AbstractRoutingLogic(address(0)), withAaveOutbound ? aaveLogic : AbstractRoutingLogic(address(0))
+    );
     vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
 
@@ -191,13 +254,11 @@ contract MgvAmplifierTest is StratTest {
   }
 
   function test_partial_fill_of_one_offer_updates_bundle_simple_logic() public {
-    use_aave_logic = false;
-    run_partial_fill_scenario();
+    run_partial_fill_scenario(false);
   }
 
   function test_partial_fill_of_one_offer_updates_bundle_aave_logic() public {
-    use_aave_logic = true;
-    run_partial_fill_scenario();
+    run_partial_fill_scenario(true);
   }
 
   function test_complete_fill_of_one_offer_retracts_bundle() public {
@@ -308,10 +369,14 @@ contract MgvAmplifierTest is StratTest {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
 
-    vm.startPrank(owner);
+    vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+
+    vm.expectRevert("MgvAmplifier/unauthorized");
     mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
-    vm.stopPrank();
+
+    vm.prank(owner);
+    mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
 
     // checking offers of the bundle have been updated to the new outbound volume
     MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
@@ -383,11 +448,15 @@ contract MgvAmplifierTest is StratTest {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
 
-    vm.startPrank(owner);
+    vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
     uint balWeiBefore = owner.balance;
+
+    vm.expectRevert("MgvAmplifier/unauthorized");
+    mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
+
+    vm.prank(owner);
     uint freeWei = mgvAmplifier.retractBundle(bundleId, dai);
-    vm.stopPrank();
     assertEq(owner.balance - balWeiBefore, freeWei, "Incorrect freeWei");
 
     // checking offers of the bundle have been retracted
