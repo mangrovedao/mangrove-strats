@@ -94,7 +94,7 @@ contract SmartRouterTest is OfferLogicTest {
       emit LogIncident({
         olKeyHash: olKey.hash(),
         offerId: offerId,
-        makerData: "SimpleAaveLogic/TransferFailed",
+        makerData: "SimpleAaveLogic/pullFailed",
         mgvData: "mgv/makerRevert"
       });
     }

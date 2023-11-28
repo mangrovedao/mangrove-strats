@@ -69,7 +69,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     deployer = payable(address(new TestSender()));
     vm.deal(deployer, 1 ether);
 
-    dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
+    dai = useForkAave ? dai = TestToken(fork.get("DAI")) : new TestToken($(this), "Dai", "Dai", options.base.decimals);
     IPoolAddressesProvider aave = useForkAave
       ? IPoolAddressesProvider(fork.get("AaveAddressProvider"))
       : IPoolAddressesProvider(
@@ -77,19 +77,13 @@ contract AavePooledRouterTest is OfferLogicTest {
       );
 
     vm.prank(deployer);
-    AavePooledRouter router = new AavePooledRouter({
-      addressesProvider: aave
-    });
+    AavePooledRouter router = new AavePooledRouter({addressesProvider: aave});
 
     vm.startPrank(deployer);
     direct = new DirectTester({
-        mgv: IMangrove($(mgv)),
-        routerParams: Direct.RouterParams({
-          routerImplementation: router,
-          fundOwner: deployer,
-          strict:true
-        })
-      });
+      mgv: IMangrove($(mgv)),
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: deployer, strict: true})
+    });
 
     makerContract = ITesterContract(address(direct));
     weth.approve(address(makerContract), type(uint).max);
@@ -126,19 +120,19 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function test_supply_error_is_logged() public {
-    TestToken pixieDust = new TestToken({
-      admin: address(this),
-      name: "Pixie Dust",
-      symbol: "PXD",
-      _decimals: uint8(18)
-    });
+    TestToken pixieDust = new TestToken({admin: address(this), name: "Pixie Dust", symbol: "PXD", _decimals: uint8(18)});
 
     deal($(pixieDust), address(makerContract), 1 ether);
     vm.prank(address(makerContract));
     pixieDust.approve($(pooledRouter), type(uint).max);
 
     expectFrom($(pooledRouter));
-    emit AaveIncident({token: pixieDust, maker: address(makerContract), fundOwner: owner, aaveReason: "noReason"});
+    emit AaveIncident({
+      token: pixieDust,
+      maker: address(makerContract),
+      fundOwner: owner,
+      aaveReason: "AaveV3Lender/supplyReverted"
+    });
     vm.prank(address(makerContract));
     pooledRouter.pushAndSupply(pixieDust, 1 ether, pixieDust, 0, owner);
     // although aave refused the deposit, funds should be on the router
