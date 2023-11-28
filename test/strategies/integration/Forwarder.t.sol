@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter, SimpleRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {OfferLogicTest} from "@mgv-strats/test/strategies/integration/OfferLogic.t.sol";
+import {OfferLogicTest} from "./abstract/OfferLogic.t.sol";
 import {
   IForwarder,
   IMangrove,
@@ -15,7 +15,7 @@ import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {TestSender} from "@mgv/test/lib/agents/TestSender.sol";
 import "@mgv/lib/Debug.sol";
 
-contract OfferForwarderTest is OfferLogicTest {
+contract ForwarderTest is OfferLogicTest {
   ForwarderTester forwarder;
 
   function setUp() public virtual override {
@@ -26,8 +26,6 @@ contract OfferForwarderTest is OfferLogicTest {
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
 
   function setupMakerContract() internal virtual override {
-    vm.deal(deployer, 10 ether);
-
     vm.startPrank(deployer);
     forwarder = new ForwarderTester({mgv: IMangrove($(mgv)), routerImplementation: new SimpleRouter()});
     vm.stopPrank();
@@ -47,25 +45,6 @@ contract OfferForwarderTest is OfferLogicTest {
   function fundStrat() internal virtual override {
     deal($(weth), owner, 1 ether);
     deal($(usdc), owner, cash(usdc, 2000));
-  }
-
-  function test_admin_can_unbind() public {
-    AbstractRouter router = forwarder.router(owner);
-
-    expectFrom(address(router));
-    emit MakerUnbind(address(makerContract));
-    vm.prank(owner);
-    router.unbind(address(makerContract));
-  }
-
-  function test_maker_can_unbind() public {
-    AbstractRouter router = forwarder.router(owner);
-
-    expectFrom(address(router));
-    emit MakerUnbind(address(makerContract));
-
-    vm.prank(address(makerContract));
-    router.unbind();
   }
 
   function test_derived_gasprice_is_accurate_enough(uint fund) public {
@@ -102,57 +81,6 @@ contract OfferForwarderTest is OfferLogicTest {
       gasreq: gasreq
     });
     assertTrue(old_gasprice < mgv.offerDetails(olKey, offerId).gasprice(), "Gasprice not updated as expected");
-  }
-
-  function test_failed_offer_reaches_posthookFallback() public {
-    MgvLib.SingleOrder memory order;
-    MgvLib.OrderResult memory result;
-    vm.prank(owner);
-    uint offerId = makerContract.newOfferByVolume{value: 1 ether}({
-      olKey: olKey,
-      wants: 2000 * 10 ** 6,
-      gives: 1 ether,
-      gasreq: gasreq
-    });
-    result.mgvData = "anythingButSuccess";
-    result.makerData = "failReason";
-    order.offerId = offerId;
-    order.olKey = olKey;
-    order.offer = mgv.offers(olKey, offerId);
-    order.offerDetail = mgv.offerDetails(olKey, offerId);
-    // this should reach the posthookFallback and computes released provision, assuming offer has failed for half gasreq
-    // as a result the amount of provision that can be redeemed by retracting offerId should increase.
-    vm.startPrank($(mgv));
-    makerContract.makerPosthook{gas: gasreq / 2}(order, result);
-    vm.stopPrank();
-    assertTrue(makerContract.provisionOf(olKey, offerId) > 1 ether, "fallback was not reached");
-  }
-
-  function test_failed_offer_credits_maker(uint fund) public {
-    vm.assume(fund >= reader.getProvision(olKey, gasreq, 0));
-    vm.assume(fund < 5 ether);
-    vm.prank(owner);
-    uint offerId =
-      makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
-    // revoking Mangrove's approvals to make `offerId` fail
-    vm.prank(deployer);
-    makerContract.approve(weth, address(mgv), 0);
-    uint provision = makerContract.provisionOf(olKey, offerId);
-    console.log("provision before fail:", provision);
-
-    // taker has approved mangrove in the setUp
-    vm.startPrank(taker);
-    (uint takerGot,, uint bounty,) =
-      mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
-    vm.stopPrank();
-    assertTrue(bounty > 0 && takerGot == 0, "trade should have failed");
-    uint provision_after_fail = makerContract.provisionOf(olKey, offerId);
-    console.log("provision after fail:", provision_after_fail);
-    console.log("bounty", bounty);
-    // checking that approx is small in front a storage write (approx < write_cost / 10)
-    uint approx_bounty = provision - provision_after_fail;
-    assertTrue((approx_bounty * 10000) / bounty > 9990, "Approximation of offer maker's credit is too coarse");
-    assertTrue(provision_after_fail < mgv.balanceOf(address(makerContract)), "Incorrect approx");
   }
 
   function test_maker_ownership() public {
@@ -266,6 +194,7 @@ contract OfferForwarderTest is OfferLogicTest {
     assertEq(forwarder.ownerOf(olKey.hash(), offerId), owner, "Incorrect maker");
   }
 
+  // Forwarder call `put` during `makerExecute` this test makes it fail.
   function test_put_fail_reverts_with_expected_reason() public {
     MgvLib.SingleOrder memory order;
     vm.startPrank(owner);
@@ -275,7 +204,7 @@ contract OfferForwarderTest is OfferLogicTest {
       gives: 1 ether,
       gasreq: gasreq
     });
-    usdc.approve($(forwarder.router(owner)), 0);
+    usdc.approve($(makerContract.router(owner)), 0);
     vm.stopPrank();
 
     order.olKey = olKey;
@@ -284,5 +213,29 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.expectRevert("mgvOffer/abort/putFailed");
     vm.prank($(mgv));
     makerContract.makerExecute(order);
+  }
+
+  function test_failed_offer_handles_residual_provision() public {
+    MgvLib.SingleOrder memory order;
+    MgvLib.OrderResult memory result;
+    vm.prank(owner);
+    uint offerId = makerContract.newOfferByVolume{value: 1 ether}({
+      olKey: olKey,
+      wants: 2000 * 10 ** 6,
+      gives: 1 ether,
+      gasreq: gasreq
+    });
+    result.mgvData = "anythingButSuccess";
+    result.makerData = "failReason";
+    order.offerId = offerId;
+    order.olKey = olKey;
+    order.offer = mgv.offers(olKey, offerId);
+    order.offerDetail = mgv.offerDetails(olKey, offerId);
+    // this should reach the posthookFallback and computes released provision, assuming offer has failed for half gasreq
+    // as a result the amount of provision that can be redeemed by retracting offerId should increase.
+    vm.startPrank($(mgv));
+    makerContract.makerPosthook{gas: gasreq / 2}(order, result);
+    vm.stopPrank();
+    assertTrue(makerContract.provisionOf(olKey, offerId) > 1 ether, "fallback was not reached");
   }
 }

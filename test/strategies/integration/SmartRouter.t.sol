@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest, TestSender, IMangrove, ITesterContract, MangroveOffer} from "./OfferLogic.t.sol";
+import {OfferLogicTest, TestSender, IMangrove, ITesterContract, MangroveOffer} from "./abstract/OfferLogic.t.sol";
 import {ForwarderTester} from "@mgv-strats/test/lib/agents/ForwarderTester.sol";
 import {SmartRouter, AbstractRoutingLogic, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {SimpleAaveLogic, IPoolAddressesProvider} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";

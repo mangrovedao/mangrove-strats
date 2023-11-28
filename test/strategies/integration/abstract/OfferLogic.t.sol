@@ -87,6 +87,25 @@ abstract contract OfferLogicTest is StratTest {
     deal($(usdc), address(makerContract), cash(usdc, 2000));
   }
 
+  function test_admin_can_unbind() public {
+    AbstractRouter router = makerContract.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
+    vm.prank(owner);
+    router.unbind(address(makerContract));
+  }
+
+  function test_maker_can_unbind() public {
+    AbstractRouter router = makerContract.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
+
+    vm.prank(address(makerContract));
+    router.unbind();
+  }
+
   function test_maker_can_post_newOffer() public {
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
@@ -284,6 +303,33 @@ abstract contract OfferLogicTest is StratTest {
 
     assertEq(makerContract.tokenBalance(weth, owner), balOut - (takerGot + fee), "incorrect out balance");
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takerGave, "incorrect in balance");
+  }
+
+  function test_failed_offer_credits_maker(uint fund) public {
+    vm.assume(fund >= reader.getProvision(olKey, gasreq, 0));
+    vm.assume(fund < 5 ether);
+    vm.prank(owner);
+    uint offerId =
+      makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
+    // revoking Mangrove's approvals to make `offerId` fail
+    vm.prank(deployer);
+    makerContract.approve(weth, address(mgv), 0);
+    uint provision = makerContract.provisionOf(olKey, offerId);
+    console.log("provision before fail:", provision);
+
+    // taker has approved mangrove in the setUp
+    vm.startPrank(taker);
+    (uint takerGot,, uint bounty,) =
+      mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
+    vm.stopPrank();
+    assertTrue(bounty > 0 && takerGot == 0, "trade should have failed");
+    uint provision_after_fail = makerContract.provisionOf(olKey, offerId);
+    console.log("provision after fail:", provision_after_fail);
+    console.log("bounty", bounty);
+    // checking that approx is small in front a storage write (approx < write_cost / 10)
+    uint approx_bounty = provision - provision_after_fail;
+    assertTrue((approx_bounty * 10000) / bounty > 9990, "Approximation of offer maker's credit is too coarse");
+    assertTrue(provision_after_fail < mgv.balanceOf(address(makerContract)), "Incorrect approx");
   }
 
   function test_reposting_fails_with_expected_reason_when_under_provisioned() public {

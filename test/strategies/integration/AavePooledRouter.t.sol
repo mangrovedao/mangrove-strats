@@ -1,7 +1,7 @@
 // SPDX-License-Identifier:	AGPL-3.0
 pragma solidity ^0.8.10;
 
-import {OfferLogicTest, TestSender, IMangrove, ITesterContract} from "./OfferLogic.t.sol";
+import {OfferLogicTest, TestSender, IMangrove, ITesterContract} from "./abstract/OfferLogic.t.sol";
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 
 import {
@@ -100,6 +100,7 @@ contract AavePooledRouterTest is OfferLogicTest {
     // having reserve pointing to deployer allows deployer to have multiple strats with the same shares on the router
     owner = deployer;
     gasreq = 486_310;
+    vm.deal(owner, 10 ether);
   }
 
   function fundStrat() internal virtual override {

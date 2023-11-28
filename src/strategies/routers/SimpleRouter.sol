@@ -10,6 +10,7 @@ import {AbstractRouter, RL} from "./abstract/AbstractRouter.sol";
 /// Thus a maker contract using a vault that is not an EOA must make sure this vault has approval capacities.
 contract SimpleRouter is AbstractRouter {
   /// @inheritdoc AbstractRouter
+  /// @notice SimpleRouter disregards `routingOrder.olKeyHash` and `routingOrder.offerId` as all offers are routed directly to the fund owner.
   function __pull__(RL.RoutingOrder memory routingOrder, uint amount, bool strict)
     internal
     virtual
