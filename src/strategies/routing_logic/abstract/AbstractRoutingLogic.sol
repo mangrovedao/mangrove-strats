@@ -1,7 +1,4 @@
-pragma solidity ^0.8.20;
-
-import {IERC20} from "@mgv/src/core/MgvLib.sol";
-
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@mgv/src/core/MgvLib.sol";
