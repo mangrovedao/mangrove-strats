@@ -500,17 +500,18 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.setExpiry(dai_weth.hash(), 1, block.timestamp);
 
     // market order proceeds and ofr_dai_weth indeed fails
-    vm.expectEmit(true, true, true, false, address(mgvAmplifier));
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
     emit LogIncident({
       olKeyHash: dai_weth.hash(),
       offerId: 1,
       makerData: "ExpirableForwarder/expired",
-      mgvData: bytes32(0)
+      mgvData: "mgv/makerRevert"
     });
     // taker sells  0.004 btc to get 100 dai
     vm.startPrank(taker);
     (uint takerGot, uint takerGave, uint bounty, uint fee) =
       mgv.marketOrderByTick(dai_weth, Tick.wrap(MAX_TICK), 1 ether, true);
     vm.stopPrank();
+    assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
   }
 }
