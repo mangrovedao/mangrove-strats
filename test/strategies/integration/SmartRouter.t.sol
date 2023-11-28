@@ -77,7 +77,7 @@ contract SmartRouterTest is OfferLogicTest {
     });
     // setting pull logic for the offer to use aave
     ownerRouter.setLogic(
-      RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0}), aaveLogic
+      RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner}), aaveLogic
     );
     IERC20 aWeth = aaveLogic.overlying(weth);
     // allowing aave logic to pull aWeth from the owner's wallet
@@ -112,9 +112,8 @@ contract SmartRouterTest is OfferLogicTest {
 
     // taker wants 0.5 weth for at most 1000 usdc
     (uint takerGot, uint takerGave, uint bounty, uint fee, uint offerId) = performTrade(true);
-    AbstractRoutingLogic logic = ownerRouter.getLogic(
-      RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0})
-    );
+    AbstractRoutingLogic logic =
+      ownerRouter.getLogic(RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner}));
     assertEq(address(logic), address(aaveLogic), "unexpected logic address");
 
     assertTrue(bounty == 0 && takerGot > 0, "trade failed");
@@ -122,7 +121,7 @@ contract SmartRouterTest is OfferLogicTest {
     assertEq(
       balWethAfter,
       ownerRouter.tokenBalanceOf(
-        RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0})
+        RL.RoutingOrder({token: weth, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner})
       ),
       "unexpected owner weth balance"
     );
@@ -140,27 +139,21 @@ contract SmartRouterTest is OfferLogicTest {
 
   function test_setLogic_logs() public {
     vm.expectRevert("AccessControlled/Invalid");
-    ownerRouter.setLogic(
-      RL.createOrder({token: weth, amount: type(uint).max, fundOwner: owner}), AbstractRoutingLogic(address(0))
-    );
+    ownerRouter.setLogic(RL.createOrder({token: weth, fundOwner: owner}), AbstractRoutingLogic(address(0)));
 
     vm.expectEmit();
     emit SetRouteLogic({token: weth, olKeyHash: bytes32(0), offerId: 0, logic: AbstractRoutingLogic(address(0))});
 
     // owner can set logic
     vm.prank(owner);
-    ownerRouter.setLogic(
-      RL.createOrder({token: weth, amount: type(uint).max, fundOwner: owner}), AbstractRoutingLogic(address(0))
-    );
+    ownerRouter.setLogic(RL.createOrder({token: weth, fundOwner: owner}), AbstractRoutingLogic(address(0)));
 
     vm.expectEmit();
     emit SetRouteLogic({token: weth, olKeyHash: bytes32(0), offerId: 0, logic: AbstractRoutingLogic(address(0))});
 
     // bound maker contract can set logic
     vm.prank(address(makerContract));
-    ownerRouter.setLogic(
-      RL.createOrder({token: weth, amount: type(uint).max, fundOwner: owner}), AbstractRoutingLogic(address(0))
-    );
+    ownerRouter.setLogic(RL.createOrder({token: weth, fundOwner: owner}), AbstractRoutingLogic(address(0)));
   }
 
   function test_pull_reverts_are_correctly_handled() public {
@@ -187,8 +180,7 @@ contract SmartRouterTest is OfferLogicTest {
     // setting push logic for the offer to use aave
     vm.startPrank(owner);
     ownerRouter.setLogic(
-      RL.RoutingOrder({token: dummyUSDC, offerId: offerId, olKeyHash: olKeyDummy.hash(), fundOwner: owner, amount: 0}),
-      aaveLogic
+      RL.RoutingOrder({token: dummyUSDC, offerId: offerId, olKeyHash: olKeyDummy.hash(), fundOwner: owner}), aaveLogic
     );
     activateOwnerRouter(dummyUSDC, MangroveOffer(payable(address(makerContract))), owner);
     vm.stopPrank();
@@ -226,7 +218,7 @@ contract SmartRouterTest is OfferLogicTest {
     // setting push logic for the offer to use aave
     vm.startPrank(owner);
     ownerRouter.setLogic(
-      RL.RoutingOrder({token: usdc, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0}), aaveLogic
+      RL.RoutingOrder({token: usdc, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner}), aaveLogic
     );
     activateOwnerRouter(usdc, MangroveOffer(payable(address(makerContract))), owner);
     vm.stopPrank();

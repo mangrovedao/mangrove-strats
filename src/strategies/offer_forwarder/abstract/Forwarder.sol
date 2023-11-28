@@ -281,13 +281,12 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     _approveProxy(IERC20(order.olKey.inbound_tkn), RouterProxy(payable(address(ownerRouter))), amount);
 
     RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
-      amount: amount,
       olKeyHash: olKeyHash,
       offerId: order.offerId,
       token: IERC20(order.olKey.inbound_tkn),
       fundOwner: owner
     });
-    return amount - ownerRouter.push(pushOrder);
+    return amount - ownerRouter.push(pushOrder, amount);
   }
 
   ///@dev get outbound tokens from offer owner reserve
@@ -305,12 +304,12 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     return amount
       - ownerRouter.pull(
         RL.RoutingOrder({
-          amount: amount,
           olKeyHash: olKeyHash,
           token: IERC20(order.olKey.outbound_tkn),
           offerId: order.offerId,
           fundOwner: owner
         }),
+        amount,
         true
       ); // this will make trade fail if `missing > pulled` and this `get` is not nested in another `get` in descendant of this class.
   }

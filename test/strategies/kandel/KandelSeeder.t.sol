@@ -108,7 +108,7 @@ contract KandelSeederTest is StratTest {
     router.pushAndSupply(token, 10, IERC20(address(0)), 0, fundOwner);
 
     vm.prank(address(kdl));
-    router.pull(RL.createOrder({token: token, amount: 5, fundOwner: fundOwner}), true);
+    router.pull(RL.createOrder({token: token, fundOwner: fundOwner}), 5, true);
   }
 
   function test_maker_deploys_shared_aaveKandel() public {

@@ -64,18 +64,15 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     // * `this` balances: (NAT_THIS +`msg.value`, OUT_THIS, IN_THIS)
 
     // Pulling funds from `msg.sender`'s routing policy
-    // `routingOrder.amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
-    RL.RoutingOrder memory pullOrder = RL.createOrder({
-      amount: tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume,
-      fundOwner: msg.sender,
-      token: IERC20(tko.olKey.inbound_tkn)
-    });
+    // `amount` is derived via same function as in `execute` of core protocol to ensure same behavior.
+    RL.RoutingOrder memory pullOrder = RL.createOrder({fundOwner: msg.sender, token: IERC20(tko.olKey.inbound_tkn)});
     (RouterProxy proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
     SmartRouter userRouter = SmartRouter(address(proxy));
     if (address(tko.takerGivesLogic) != address(0)) {
       userRouter.setLogic(pullOrder, tko.takerGivesLogic);
     }
-    require(userRouter.pull(pullOrder, true) == pullOrder.amount, "mgvOrder/transferInFail");
+    uint pullAmount = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
+    require(userRouter.pull(pullOrder, pullAmount, true) == pullAmount, "mgvOrder/transferInFail");
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -98,19 +95,17 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     if (res.takerGot > 0) {
       TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       require(
-        userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), amount: res.takerGot, fundOwner: msg.sender})
-        ) == res.takerGot,
+        userRouter.push(RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender}), res.takerGot)
+          == res.takerGot,
         "mgvOrder/pushFailed"
       );
     }
-    uint inboundLeft = pullOrder.amount - res.takerGave;
+    uint inboundLeft = pullAmount - res.takerGave;
     if (inboundLeft > 0) {
       TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
       require(
-        userRouter.push(
-          RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), amount: inboundLeft, fundOwner: msg.sender})
-        ) == inboundLeft,
+        userRouter.push(RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), fundOwner: msg.sender}), inboundLeft)
+          == inboundLeft,
         "mgvOrder/pushFailed"
       );
     }

@@ -123,11 +123,11 @@ abstract contract Direct is MangroveOffer {
       uint pulled = router().pull(
         RL.RoutingOrder({
           token: IERC20(order.olKey.outbound_tkn),
-          amount: missing,
           olKeyHash: order.olKey.hash(),
           offerId: order.offerId,
           fundOwner: FUND_OWNER
         }),
+        missing,
         STRICT_PULLING
       );
       return pulled >= missing ? 0 : missing - pulled;
@@ -142,15 +142,18 @@ abstract contract Direct is MangroveOffer {
     override
     returns (bytes32)
   {
+    bytes32 olKeyHash = order.olKey.hash();
     if (_isRouting()) {
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-      routingOrders[0].amount = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));
       routingOrders[0].fundOwner = FUND_OWNER;
+      routingOrders[0].olKeyHash = olKeyHash;
+      routingOrders[0].offerId = order.offerId;
 
       routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
-      routingOrders[1].amount = IERC20(order.olKey.inbound_tkn).balanceOf(address(this));
       routingOrders[1].fundOwner = FUND_OWNER;
+      routingOrders[1].olKeyHash = olKeyHash;
+      routingOrders[1].offerId = order.offerId;
 
       router().flush(routingOrders);
     }

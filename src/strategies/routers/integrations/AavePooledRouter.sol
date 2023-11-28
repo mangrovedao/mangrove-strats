@@ -168,15 +168,15 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@dev no transfer to AAVE is done at that moment.
   ///@dev data must encode an address for reserveId.
   ///@inheritdoc AbstractRouter
-  function __push__(RL.RoutingOrder memory routingOrder) internal override returns (uint) {
+  function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal override returns (uint) {
     BalanceMemoizer memory memoizer;
-    _mintShares(routingOrder.token, routingOrder.fundOwner, routingOrder.amount, memoizer);
+    _mintShares(routingOrder.token, routingOrder.fundOwner, amount, memoizer);
     // Transfer must occur *after* state updating _mintShares above
     require(
-      TransferLib.transferTokenFrom(routingOrder.token, msg.sender, address(this), routingOrder.amount),
+      TransferLib.transferTokenFrom(routingOrder.token, msg.sender, address(this), amount),
       "AavePooledRouter/pushFailed"
     );
-    return routingOrder.amount;
+    return amount;
   }
 
   ///@notice deposit router-local balance of an asset on the AAVE pool
@@ -196,7 +196,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@return pushed tokens to this contract
   function _pushAndSupply(IERC20 token, uint amount, address fundOwner) internal returns (uint pushed) {
     if (amount > 0) {
-      pushed = __push__(RL.createOrder({fundOwner: fundOwner, token: token, amount: amount}));
+      pushed = __push__(RL.createOrder({fundOwner: fundOwner, token: token}), amount);
     }
     bytes32 aaveData = flushBuffer(token, true);
     if (aaveData != bytes32(0)) {
@@ -236,7 +236,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
   ///@dev outside a market order (i.e if `__pull__` is not called during offer logic's execution) the `token` balance of this router should be empty.
   /// This may not be the case when a "donation" occurred to this contract or if the maker posthook failed to push funds back to AAVE
   /// If the donation is large enough to cover the pull request we use the donation funds
-  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal override returns (uint) {
+  function __pull__(RL.RoutingOrder memory routingOrder, uint amount, bool strict) internal override returns (uint) {
     // The amount to redeem from AAVE
     uint toRedeem;
     // The amount to transfer to the calling maker contract
@@ -245,17 +245,17 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     // The local buffer of token to transfer in case funds have already been redeemed or due to a donation.
     uint buffer = balanceOf(routingOrder.token, memoizer);
     uint reserveBalance = _balanceOfReserve(routingOrder.token, routingOrder.fundOwner, memoizer);
-    if (buffer < routingOrder.amount) {
+    if (buffer < amount) {
       // this pull is the first of the market order (that requires funds from AAVE) so we redeem all the reserve from AAVE
       // note in theory we should check buffer == 0 but donation may have occurred.
       // This check forces donation to be at least the amount of outbound tokens promised by caller to avoid griefing (depositing a small donation to make offer fail).
       toRedeem = balanceOfOverlying(routingOrder.token, memoizer);
-      amount_ = strict ? routingOrder.amount : reserveBalance;
+      amount_ = strict ? amount : reserveBalance;
     } else {
       // since buffer >= amount, this call is not the first pull of the market order (unless a big donation occurred) and we do not withdraw from AAVE
       // we take all we can from the buffer (possibly less than amount_ computed above)
       // toRedeem = 0
-      amount_ = strict ? routingOrder.amount : (buffer > reserveBalance ? reserveBalance : buffer);
+      amount_ = strict ? amount : (buffer > reserveBalance ? reserveBalance : buffer);
     }
     if (amount_ == 0) {
       // redeemAndTransfer would try to burn 0 shares and revert

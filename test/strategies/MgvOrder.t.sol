@@ -855,7 +855,7 @@ contract MgvOrder_Test is StratTest {
     uint g = gasleft();
     vm.startPrank($(mgo));
     quote.approve($(router), 1);
-    uint pushed = router.push(RL.createOrder({token: quote, amount: 1, fundOwner: address(this)}));
+    uint pushed = router.push(RL.createOrder({token: quote, fundOwner: address(this)}), 1);
     vm.stopPrank();
 
     uint push_cost = g - gasleft();
@@ -863,7 +863,7 @@ contract MgvOrder_Test is StratTest {
 
     vm.prank($(mgo));
     g = gasleft();
-    uint pulled = router.pull(RL.createOrder({token: base, amount: 1, fundOwner: address(this)}), true);
+    uint pulled = router.pull(RL.createOrder({token: base, fundOwner: address(this)}), 1, true);
     uint pull_cost = g - gasleft();
     assertEq(pulled, 1, "Pull failed");
 

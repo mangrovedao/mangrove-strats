@@ -35,6 +35,6 @@ contract AavePooledRouterDeployer is Deployer, Test2 {
     vm.stopPrank();
 
     // call below should not revert
-    require(5 == router.pull(RL.createOrder({token: usdc, amount: 5, fundOwner: address(this)}), true), "pull failed!");
+    require(5 == router.pull(RL.createOrder({token: usdc, fundOwner: address(this)}), 5, true), "pull failed!");
   }
 }

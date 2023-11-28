@@ -40,42 +40,52 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
 
   ///@notice pulls liquidity from the reserve and sends it to the calling maker contract.
   ///@param routingOrder the arguments of the pull order
-  ///@param strict if false the router may pull at more than `routingOrder.amount` to msg.sender. Otherwise it pulls at least `routingOrder.amount`.
+  ///@param amount of token that needs to be routed
+  ///@param strict if false the router may pull at more than `amount` to msg.sender. Otherwise it pulls at least `amount`.
   ///@return pulled the amount of `routingOrder.token` that has been sent to `msg.sender`
-  function pull(RL.RoutingOrder calldata routingOrder, bool strict) external onlyBound returns (uint pulled) {
-    if (strict && routingOrder.amount == 0) {
+  function pull(RL.RoutingOrder calldata routingOrder, uint amount, bool strict)
+    external
+    onlyBound
+    returns (uint pulled)
+  {
+    if (strict && amount == 0) {
       return 0;
     }
-    pulled = __pull__(routingOrder, strict);
+    pulled = __pull__(routingOrder, amount, strict);
   }
 
   ///@notice router dependent hook to customize pull orders.
   ///@param routingOrder the arguments of the pull order
-  ///@param strict if false the router may pull at more than `routingOrder.amount` to msg.sender. Otherwise it pulls at least `routingOrder.amount`.
+  ///@param amount of token that needs to be routed
+  ///@param strict if false the router may pull at more than `amount` to msg.sender. Otherwise it pulls at least `amount`.
   ///@return pulled the amount of `routingOrder.token` that has been sent to `msg.sender`
-  function __pull__(RL.RoutingOrder memory routingOrder, bool strict) internal virtual returns (uint);
+  function __pull__(RL.RoutingOrder memory routingOrder, uint amount, bool strict) internal virtual returns (uint);
 
   ///@notice pushes liquidity from msg.sender to the reserve
   ///@param routingOrder the arguments of the push order
+  ///@param amount of token that needs to be routed
   ///@return pushed the amount of `routingOrder.token` that has been taken from `msg.sender`
-  function push(RL.RoutingOrder calldata routingOrder) external onlyBound returns (uint pushed) {
-    if (routingOrder.amount == 0) {
+  function push(RL.RoutingOrder calldata routingOrder, uint amount) external onlyBound returns (uint pushed) {
+    if (amount == 0) {
       return 0;
     }
-    pushed = __push__(routingOrder);
+    pushed = __push__(routingOrder, amount);
   }
 
   ///@notice router dependent hook to customize pull orders.
   ///@param routingOrder the arguments of the pull order
+  ///@param amount of token that needs to be routed
   ///@return pushed the amount of `routingOrder.token` that has been sent to `msg.sender`
-  function __push__(RL.RoutingOrder memory routingOrder) internal virtual returns (uint pushed);
+  function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal virtual returns (uint pushed);
 
-  ///@notice iterative `push` to minimize external calls in case several assets needs to be pushed via the router.
+  ///@notice iterative `push` of the whole maker contract's balance
+  ///@dev minimizes external calls in case several assets needs to be pushed via the router.
   ///@param routingOrders to be executed
   function flush(RL.RoutingOrder[] memory routingOrders) external onlyBound {
     for (uint i = 0; i < routingOrders.length; ++i) {
-      if (routingOrders[i].amount > 0) {
-        require(__push__(routingOrders[i]) == routingOrders[i].amount, "router/pushFailed");
+      uint amount = routingOrders[i].token.balanceOf(msg.sender);
+      if (amount > 0) {
+        require(__push__(routingOrders[i], amount) == amount, "router/flushFailed");
       }
     }
   }

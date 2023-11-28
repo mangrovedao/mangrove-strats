@@ -13,28 +13,15 @@ library RoutingOrderLib {
   ///@param token the asset to be routed
   ///@param olKeyHash the id of the market that triggered the calling offer logic. Is bytes32(0) when routing is done outside offer logic.
   ///@param offerId the id of the offer that triggered the calling offer logic. Is uint(0) when routing is done outsider offer logic.
-  ///@param amount of token that needs to be routed
   ///@param fundOwner the owner of the routed funds. If calling router is a proxy, it address is determined by `fundOwner`.
   struct RoutingOrder {
     IERC20 token;
     bytes32 olKeyHash;
     uint offerId;
-    uint amount;
     address fundOwner;
   }
 
   ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates.
-  ///@param token the asset to be routed
-  ///@param amount of token to be routed
-  ///@param fundOwner the owner of the routed funds
-  ///@return ro the routing order struct
-  function createOrder(IERC20 token, uint amount, address fundOwner) internal pure returns (RoutingOrder memory ro) {
-    ro.token = token;
-    ro.fundOwner = fundOwner;
-    ro.amount = amount;
-  }
-
-  ///@notice helper to create a RoutingOrder struct without zero'ed fields for market coordinates and amount.
   ///@param token the asset to be routed
   ///@param fundOwner the owner of the routed funds
   ///@return ro the routing order struct

@@ -74,9 +74,7 @@ contract AmplifierDeployer is Deployer, Test2 {
 
     deal(amplifier.FUND_OWNER(), address(base), 1);
     vm.startPrank(address(amplifier));
-    require(
-      router.pull(RL.createOrder({token: base, amount: 1, fundOwner: amplifier.FUND_OWNER()}), true) == 1, "Pullfailed"
-    );
+    require(router.pull(RL.createOrder({token: base, fundOwner: amplifier.FUND_OWNER()}), 1, true) == 1, "Pullfailed");
     vm.stopPrank();
   }
 }

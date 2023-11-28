@@ -129,12 +129,12 @@ contract KandelSeederDeployer is Deployer, Test2 {
       vm.startPrank(address(kandel));
       // push should take 5 inbound (out of 10) from kandel and send it to router
       uint pushed = kandel.router().push(
-        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), amount: 5, fundOwner: kandel.FUND_OWNER()})
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), fundOwner: kandel.FUND_OWNER()}), 5
       );
       require(pushed == 5, "smoke test: push failed");
       // pull should take 1 outbound from router and send it to kandel
       uint pulled = kandel.router().pull(
-        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), amount: 1, fundOwner: kandel.FUND_OWNER()}), true
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), fundOwner: kandel.FUND_OWNER()}), 1, true
       );
       require(pulled == 1, "smoke test: pull failed");
       vm.stopPrank();
