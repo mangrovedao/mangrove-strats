@@ -15,6 +15,8 @@ import "@mgv/lib/Debug.sol";
 contract SmartRouterTest is OfferLogicTest {
   ForwarderTester forwarder; // basic forwarder strat
   SmartRouter ownerRouter; // router implementation
+  OLKey olKeyDummy; // to test aave errors
+  IERC20 dummyUSDC; // to test aave errors
 
   // aave logic
   SimpleAaveLogic aaveLogic;
@@ -24,6 +26,16 @@ contract SmartRouterTest is OfferLogicTest {
   function setUp() public override {
     fork = new PinnedPolygonFork(39880000);
     super.setUp();
+    // creating non aave token
+    dummyUSDC = IERC20(address(new TestToken(address(this), "DUMMY token", "DUMMY", 6)));
+    deal(address(dummyUSDC), taker, 1000 * 10 ** 6);
+    // approves taker to send usdc to the mangrove contract
+    vm.prank(taker);
+    dummyUSDC.approve(address(mgv), 1000 * 10 ** 6);
+    // creating half market that will fail to push to dummyUSDC to aave
+    olKeyDummy =
+      OLKey({tickSpacing: options.defaultTickSpacing, inbound_tkn: address(dummyUSDC), outbound_tkn: address(weth)});
+    setupMarket(olKeyDummy);
   }
 
   function setupMakerContract() internal override {
@@ -160,5 +172,72 @@ contract SmartRouterTest is OfferLogicTest {
     // taking owner's offer will fail
     performTrade(false);
   }
-  // todo test push reverts correctly handled
+
+  function test_push_reverts_are_correctly_handled() public {
+    vm.startPrank(owner);
+    weth.approve(address(makerContract.router(owner)), type(uint).max);
+    deal(address(weth), owner, 10 ether);
+    // ask 1000 dummyUSDC for 0.5 weth
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
+      olKey: olKeyDummy,
+      wants: 1000 * 10 ** 6,
+      gives: 0.5 * 10 ** 18,
+      gasreq: gasreq
+    });
+    // setting push logic for the offer to use aave
+    vm.startPrank(owner);
+    ownerRouter.setLogic(
+      RL.RoutingOrder({token: dummyUSDC, offerId: offerId, olKeyHash: olKeyDummy.hash(), fundOwner: owner, amount: 0}),
+      aaveLogic
+    );
+    activateOwnerRouter(dummyUSDC, MangroveOffer(payable(address(makerContract))), owner);
+    vm.stopPrank();
+    // taking owner's offer will fail
+    vm.expectEmit(true, true, true, true, address(makerContract));
+    emit LogIncident({
+      olKeyHash: olKeyDummy.hash(),
+      offerId: offerId,
+      makerData: "AaveV3Lender/supplyReverted",
+      mgvData: "mgv/makerRevert"
+    });
+
+    vm.startPrank(taker);
+    (,, uint bounty,) = mgv.marketOrderByVolume({
+      olKey: olKeyDummy,
+      takerWants: 0.5 ether,
+      takerGives: cash(dummyUSDC, 1000),
+      fillWants: true
+    });
+    vm.stopPrank();
+    assertTrue(bounty > 0, "trade should have failed");
+  }
+
+  function test_push_correctly_to_aave() public {
+    vm.startPrank(owner);
+    weth.approve(address(makerContract.router(owner)), type(uint).max);
+    deal(address(weth), owner, 10 ether);
+    // ask 1000 USDC for 0.5 weth
+    uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
+      olKey: olKey,
+      wants: 1000 * 10 ** 6,
+      gives: 0.5 * 10 ** 18,
+      gasreq: gasreq
+    });
+    // setting push logic for the offer to use aave
+    vm.startPrank(owner);
+    ownerRouter.setLogic(
+      RL.RoutingOrder({token: usdc, offerId: offerId, olKeyHash: olKey.hash(), fundOwner: owner, amount: 0}), aaveLogic
+    );
+    activateOwnerRouter(usdc, MangroveOffer(payable(address(makerContract))), owner);
+    vm.stopPrank();
+
+    vm.expectEmit(true, true, true, false, address(mgv));
+    emit OfferSuccess({olKeyHash: olKey.hash(), taker: taker, id: offerId, takerWants: 0, takerGives: 0});
+
+    vm.startPrank(taker);
+    (,, uint bounty,) =
+      mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
+    vm.stopPrank();
+    assertTrue(bounty == 0, "trade should have succeeded");
+  }
 }

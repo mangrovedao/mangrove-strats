@@ -74,8 +74,8 @@ contract AaveV3Lender {
         require(noRevert, _reason);
         reason = bytes32(bytes(_reason));
       } catch {
-        require(noRevert, "noReason");
-        reason = "noReason";
+        require(noRevert, "AaveV3Lender/withdrawReverted");
+        reason = "AaveV3Lender/withdrawReverted";
       }
     }
   }
@@ -96,8 +96,8 @@ contract AaveV3Lender {
         require(noRevert, reason);
         return bytes32(bytes(reason));
       } catch {
-        require(noRevert, "noReason");
-        return "noReason";
+        require(noRevert, "AaveV3Lender/supplyReverted");
+        return "AaveV3Lender/supplyReverted";
       }
     }
   }
