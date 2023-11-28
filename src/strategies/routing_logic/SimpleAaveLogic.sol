@@ -27,7 +27,7 @@ contract SimpleAaveLogic is AaveMemoizer, AbstractRoutingLogic {
     // will fail if `address(this)` is not approved for it.
     require(
       TransferLib.transferTokenFrom(overlying(token, m), fundOwner, address(this), amount_),
-      "SimpleAaveLogic/TransferFailed"
+      "SimpleAaveLogic/pullFailed"
     );
     // redeem from the pool and send underlying to calling maker contract
     (, pulled) = _redeem(token, amount_, msg.sender, false);
@@ -36,7 +36,7 @@ contract SimpleAaveLogic is AaveMemoizer, AbstractRoutingLogic {
   ///@inheritdoc AbstractRoutingLogic
   function pushLogic(IERC20 token, address fundOwner, uint amount) external override returns (uint pushed) {
     // funds are on MakerContract, they need first to be transferred to this contract before being deposited
-    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "SimpleAaveLogic/TransferFailed");
+    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "SimpleAaveLogic/pushFailed");
 
     // just in time approval of the POOL in order to be able to deposit funds
     _approveLender(token, amount);
