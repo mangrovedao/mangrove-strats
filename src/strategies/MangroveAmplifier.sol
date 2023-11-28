@@ -82,11 +82,14 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
   /// `expiring(0,i)` corresponds to the expiry date of the bundle `i`.
   /// `expiring(hash, i)` where `hash != bytes32(0)` corresponds to the expiry date of offer `i` in the offer list whose hash is `hash`.
-  function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
+  function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
+    // checks expiry date of order.offerId first
+    // if expired the call below will revert
+    retdata = super.__lastLook__(order);
+    // checks now whether there is a bundle wide expiry date
     uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
     uint bundleExpiryDate = expiring(0, bundleId);
     require(bundleExpiryDate == 0 || bundleExpiryDate > block.timestamp, "MgvAmplifier/expiredBundle");
-    return super.__lastLook__(order);
   }
 
   ///@notice bundle wide expiry date setter
@@ -164,8 +167,8 @@ contract MangroveAmplifier is ExpirableForwarder {
       __bundleIdOfOfferId[vars.olKeyHash_i][vars.bundledOffer_i.offerId] = freshBundleId;
       __bundles[freshBundleId].push(vars.bundledOffer_i);
     }
-    // Setting bundle expiry date if required
-    // olKeyHash = 0 indicates that expiry is for the whole bundle
+    // Setting bundle wide expiry date if required
+    // olKeyHash = bytes32(0) indicates that expiry is for the whole bundle
     if (fx.expiryDate != 0) {
       _setBundleExpiry(freshBundleId, fx.expiryDate);
     }
