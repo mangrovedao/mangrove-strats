@@ -215,16 +215,17 @@ contract ForwarderTest is OfferLogicTest {
     makerContract.makerExecute(order);
   }
 
-  function test_failed_offer_handles_residual_provision() public {
+  function test_failed_offer_handles_residual_provision(uint96 prov) public {
+    vm.assume(prov > 0.04 ether);
+    vm.assume(prov <= 10 ether);
     MgvLib.SingleOrder memory order;
     MgvLib.OrderResult memory result;
     vm.prank(owner);
-    uint offerId = makerContract.newOfferByVolume{value: 1 ether}({
-      olKey: olKey,
-      wants: 2000 * 10 ** 6,
-      gives: 1 ether,
-      gasreq: gasreq
-    });
+    uint offerId =
+      makerContract.newOfferByVolume{value: prov}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
+    uint old_provision = makerContract.provisionOf(olKey, offerId);
+    assertEq(old_provision, prov, "Invalid provision");
+
     result.mgvData = "anythingButSuccess";
     result.makerData = "failReason";
     order.offerId = offerId;
@@ -236,6 +237,7 @@ contract ForwarderTest is OfferLogicTest {
     vm.startPrank($(mgv));
     makerContract.makerPosthook{gas: gasreq / 2}(order, result);
     vm.stopPrank();
-    assertTrue(makerContract.provisionOf(olKey, offerId) > 1 ether, "fallback was not reached");
+    uint new_provision = makerContract.provisionOf(olKey, offerId);
+    assertTrue(new_provision > old_provision, "fallback was not reached");
   }
 }
