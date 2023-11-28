@@ -65,14 +65,14 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
 
     // Pulling funds from `msg.sender`'s routing policy
     // `pullAmount` is derived in `execute` of core protocol to ensure same behavior.
-    RL.RoutingOrder memory inboundOrder = RL.createOrder({fundOwner: msg.sender, token: IERC20(tko.olKey.inbound_tkn)});
+    RL.RoutingOrder memory inboundRoute = RL.createOrder({fundOwner: msg.sender, token: IERC20(tko.olKey.inbound_tkn)});
     (RouterProxy proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
     SmartRouter userRouter = SmartRouter(address(proxy));
     if (address(tko.takerGivesLogic) != address(0)) {
-      userRouter.setLogic(inboundOrder, tko.takerGivesLogic);
+      userRouter.setLogic(inboundRoute, tko.takerGivesLogic);
     }
     uint pullAmount = tko.fillWants ? tko.tick.inboundFromOutboundUp(tko.fillVolume) : tko.fillVolume;
-    require(userRouter.pull(inboundOrder, pullAmount, true) == pullAmount, "mgvOrder/transferInFail");
+    require(userRouter.pull(inboundRoute, pullAmount, true) == pullAmount, "mgvOrder/transferInFail");
 
     // POST:
     // * (NAT_USER-`msg.value`, OUT_USER, IN_USER-`takerGives`)
@@ -93,31 +93,31 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     // therefore we require `fillOrKill => (isComplete \/ restingOrder)`
     require(!tko.fillOrKill || isComplete || tko.restingOrder, "mgvOrder/partialFill");
 
-    RL.RoutingOrder memory outboundOrder;
+    RL.RoutingOrder memory outboundRoute;
     if (res.takerGot > 0) {
       // routing outbound token (received by taker) according to takerWantsLogic
       // We approve the user router to pull `takerGot` outbound tokens from this contract.
       TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
       // pushing tokens received during market order
-      outboundOrder = RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender});
+      outboundRoute = RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender});
       if (address(tko.takerWantsLogic) != address(0)) {
-        userRouter.setLogic(outboundOrder, tko.takerWantsLogic);
+        userRouter.setLogic(outboundRoute, tko.takerWantsLogic);
       }
-      require(userRouter.push(outboundOrder, res.takerGot) == res.takerGot, "mgvOrder/pushFailed");
+      require(userRouter.push(outboundRoute, res.takerGot) == res.takerGot, "mgvOrder/pushFailed");
     }
     // we now deal with inbound left in case the order was partially filled
     uint inboundLeft = pullAmount - res.takerGave;
     if (inboundLeft > 0) {
       TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
-      // Here we can use `inboundOrder`.
-      require(userRouter.push(inboundOrder, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
+      // Here we can use `inboundRoute`.
+      require(userRouter.push(inboundRoute, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
     }
     // set back both logic to 0 to save gas if needed
     if (address(tko.takerGivesLogic) != address(0)) {
-      userRouter.setLogic(inboundOrder, AbstractRoutingLogic(address(0)));
+      userRouter.setLogic(inboundRoute, AbstractRoutingLogic(address(0)));
     }
-    if (outboundOrder.token != IERC20(address(0)) && address(tko.takerWantsLogic) != address(0)) {
-      userRouter.setLogic(outboundOrder, AbstractRoutingLogic(address(0)));
+    if (outboundRoute.token != IERC20(address(0)) && address(tko.takerWantsLogic) != address(0)) {
+      userRouter.setLogic(outboundRoute, AbstractRoutingLogic(address(0)));
     }
 
     // POST:
