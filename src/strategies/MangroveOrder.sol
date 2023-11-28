@@ -94,7 +94,11 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     // sending inbound tokens to `msg.sender`'s reserve and sending back remaining outbound tokens
     RL.RoutingOrder memory pushOrder;
     if (res.takerGot > 0) {
+      // We approve the user router to pull outbound tokens from this contract.
       TransferLib.approveToken(IERC20(tko.olKey.outbound_tkn), address(userRouter), res.takerGot);
+      // We then set the logic of the order to the user's routing policy.
+      // NB: This logic is set with an offerId of 0 and should be overwritten by the end of this logic
+      // for gas related reasons, and to avoid the user using an unwanted routing policy in subsequent orders.
       pushOrder = RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender});
       if (address(tko.takerWantsLogic) != address(0)) {
         userRouter.setLogic(pushOrder, tko.takerWantsLogic);
@@ -104,11 +108,9 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     uint inboundLeft = pullAmount - res.takerGave;
     if (inboundLeft > 0) {
       TransferLib.approveToken(IERC20(tko.olKey.inbound_tkn), address(userRouter), inboundLeft);
-      require(
-        userRouter.push(RL.createOrder({token: IERC20(tko.olKey.inbound_tkn), fundOwner: msg.sender}), inboundLeft)
-          == inboundLeft,
-        "mgvOrder/pushFailed"
-      );
+      // Here we can use the same pullOrder as above because the inbound token is the same.
+      // NB: Hence, the logic of the order is set to the same user's routing policy as above.
+      require(userRouter.push(pullOrder, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
     }
     // set back both logic to 0 to save gas if needed
     if (address(tko.takerGivesLogic) != address(0)) {
