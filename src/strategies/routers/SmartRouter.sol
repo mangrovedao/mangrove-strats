@@ -6,6 +6,7 @@ import {SmartRouterStorage, AbstractRoutingLogic, IERC20} from "./SmartRouterSto
 import {AbstractRouter, SimpleRouter, RL} from "./SimpleRouter.sol";
 
 ///@title Mangrove Smart Router implementation
+///@notice Router delegates pull and push logic implementation to arbitrary contracts that implement the `AbstractRoutingLogic` interface.
 contract SmartRouter is SimpleRouter {
   ///@notice logs new setting of routing logic for a specific offer
   ///@param token the asset whose route is being set
