@@ -1,4 +1,6 @@
 // SPDX-License-Identifier:	BSD-2-Clause
+pragma solidity ^0.8.10;
+
 import {
   MangroveOffer,
   Forwarder,
@@ -11,8 +13,6 @@ import {
   OLKey
 } from "./abstract/Forwarder.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
-
-pragma solidity ^0.8.10;
 
 ///@title Forwarder than enables expiry dates for the offer it posts. Expiry is tested in `__lastLook__` hook and induces a small bounty for offer owner.
 contract ExpirableForwarder is Forwarder {
