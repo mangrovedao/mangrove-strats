@@ -14,12 +14,14 @@ import {
 } from "./abstract/Forwarder.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
-///@title Forwarder than enables expiry dates for the offer it posts. Expiry is tested in `__lastLook__` hook and induces a small bounty for offer owner.
+///@title Forwarder contract with basic functionality
+///@notice This contract can be used to post and update offers on Mangrove on behalf of a user. Users can also retract their offers and set/update their expiry.
+///@dev Expiry of offers relies on the `__lastLook__` hook of the `MangroveOffer` contract which reverts when expiry date is passed.
 contract ExpirableForwarder is Forwarder {
   ///@notice Same as Forwarder's constructor
-  ///@param mgv the deployed Mangrove contract on which this contract will post offers.
-  ///@param factory the router proxy factory contract -- cannot be 0x
-  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners -- cannot be 0x
+  ///@param mgv the deployed Mangrove contract on which this contract will post offers -- will revert if 0x
+  ///@param factory the router proxy factory contract -- will revert if 0x
+  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners -- will revert if 0x
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
     Forwarder(mgv, factory, routerImplementation)
   {}

@@ -127,7 +127,7 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
     ///@dev collected bounty compensates gas consumption for the failed offer, but could be lower than the cost of an additional native token transfer
     /// instead of sending the bounty back to `msg.sender` we recycle it into the resting order's provision (so `msg.sender` can retrieve it when deprovisioning).
     /// corner case: if the bounty is large enough, this will make posting of the resting order fail because of `gasprice` overflow.
-    /// The funds will then be sent back to `msg.sender` (see below).
+    /// The funds would then be sent back to `msg.sender` (see below).
     uint fund = msg.value + res.bounty;
 
     if ( // resting order is:
@@ -230,7 +230,10 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
       (res.offerId, res.offerWriteData) = _newOffer(args, msg.sender);
     } else {
       uint offerId = tko.offerId;
+      // chekcing ownership of offer since we use internal version of `updateOffer` which is unguarded
       require(ownerData[olKey.hash()][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      // msg sender might have given an offerId that is already live
+      // we disallow this to avoid confusion
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
       bytes32 repostData = _updateOffer(args, offerId);
       res.offerWriteData = repostData;

@@ -30,8 +30,8 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
   ///@notice The offer was completely filled.
   bytes32 internal constant COMPLETE_FILL = "offer/filled";
 
-  ///@notice Mandatory function to allow `this` to receive native tokens from Mangrove after a call to `MGV.withdraw(...,deprovision:true)`
-  ///@dev override this function if `this` contract needs to handle local accounting of user funds.
+  ///@notice Mandatory function to allow `this` to receive native tokens
+  ///@dev this happens when `this` calls `withdrawFromMangrove` with `deprovision=true` or if `this` becomes the recipient of a `makerExecute` bounty.
   receive() external payable virtual {}
 
   /**
@@ -51,7 +51,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
 
   ///@notice `makerExecute` is the callback function to execute all offers that were posted on Mangrove by `this` contract.
   ///@param order a data structure that recapitulates the taker order and the offer as it was posted on mangrove
-  ///@return ret a bytes32 word to pass information (if needed) to the posthook
+  ///@return ret a bytes32 word to pass information (if needed) to the posthook (under `result.makerData`)
   ///@dev it may not be overriden although it can be customized using `__lastLook__`, `__put__` and `__get__` hooks.
   /// NB #1: if `makerExecute` reverts, the offer will be considered to be refusing the trade.
   /// NB #2: `makerExecute` may return a `bytes32` word to pass information to posthook w/o using storage reads/writes.
