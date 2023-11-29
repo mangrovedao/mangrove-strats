@@ -23,6 +23,9 @@ import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
+import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
+import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
@@ -34,6 +37,7 @@ contract MgvOrder_Test is StratTest {
   using TickNegator for Tick;
 
   uint constant GASREQ = 200_000; // see MangroveOrderGasreqBaseTest
+  uint constant AAVE_GASREQ = 1_000_000; // see AaveGasreqBaseTest
   uint constant MID_PRICE = 2000e18;
   // to check ERC20 logging
 
@@ -61,6 +65,8 @@ contract MgvOrder_Test is StratTest {
 
   IOrderLogic.TakerOrderResult internal cold_buyResult;
   IOrderLogic.TakerOrderResult internal cold_sellResult;
+
+  SimpleAaveLogic internal aaveLogic;
 
   receive() external payable {}
 
@@ -106,6 +112,11 @@ contract MgvOrder_Test is StratTest {
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
+
+    aaveLogic = new SimpleAaveLogic(
+      IPoolAddressesProvider(fork.get("AaveAddressProvider")),
+      2 // variable rate
+    );
 
     // `this` contract will act as `MgvOrder` user
     deal($(base), $(this), 10 ether);
@@ -916,5 +927,60 @@ contract MgvOrder_Test is StratTest {
     mgv.marketOrderByTick(_olKey, tick, 0.5 ether, true);
     gas_();
     assertTrue(mgv.offers(lo, cold_buyResult.offerId).gives() > 0, "Update failed");
+  }
+
+  /////////////////////////////////////
+  ///   Test routing logic (aave)   ///
+  /////////////////////////////////////
+
+  function aavePool() internal view returns (IPool) {
+    return IPool(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getPool());
+  }
+
+  function aaveOverlyingOf(IERC20 token) internal view returns (IERC20) {
+    return IERC20(aavePool().getReserveData(address(token)).aTokenAddress);
+  }
+
+  function createFullAaveBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createBuyOrder();
+    order.restingOrderGasreq = AAVE_GASREQ;
+    order.takerGivesLogic = aaveLogic;
+    order.takerWantsLogic = aaveLogic;
+  }
+
+  function createAaveGivesBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createBuyOrder();
+    order.takerGivesLogic = aaveLogic;
+  }
+
+  function createAaveWantsBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createBuyOrder();
+    order.takerWantsLogic = aaveLogic;
+  }
+
+  // take from user reserve and deposit on aave
+  function test_partial_filled_buy_order_is_transferred_to_taker_on_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createAaveWantsBuyOrder();
+    address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
+    vm.prank(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
+  }
+
+  function test_partial_filled_buy_order_from_aave_is_transferred_to_taker() public {
+    IOrderLogic.TakerOrder memory buyOrder = createAaveGivesBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.5 ether}(buyOrder);
+    vm.stopPrank();
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
+    assertEq(base.balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
   }
 }
