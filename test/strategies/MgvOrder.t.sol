@@ -969,6 +969,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
   }
 
+  // take from aave and deposit on user reserve
   function test_partial_filled_buy_order_from_aave_is_transferred_to_taker() public {
     IOrderLogic.TakerOrder memory buyOrder = createAaveGivesBuyOrder();
     uint amount = takerGives(buyOrder) * 2;
@@ -977,10 +978,32 @@ contract MgvOrder_Test is StratTest {
     quote.approve(address(aavePool()), amount);
     aavePool().supply(address(quote), amount, fresh_taker, 0);
     require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
-    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.5 ether}(buyOrder);
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    uint endBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
     vm.stopPrank();
     assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
     assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
+    assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
+  }
+
+  // take from aave and deposit on aave
+  function test_partial_filled_buy_order_from_aave_is_transferred_to_taker_on_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createFullAaveBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    uint endBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    vm.stopPrank();
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
+    assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
   }
 }
