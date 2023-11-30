@@ -173,6 +173,13 @@ contract MgvAmplifierTest is StratTest {
     assertEq(mgvAmplifier.ownerOf(bundleId, dai), owner, "Incorrect bundle owner");
   }
 
+  function test_newBundle_with_insufficient_provision_reverts_with_expected_message() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.expectRevert("MgvAmplifier/NotEnoughProvisions");
+    mgvAmplifier.newBundle{value: 0.02 ether}(fx, vr);
+  }
+
   function test_newBundle_with_expiry() public {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
