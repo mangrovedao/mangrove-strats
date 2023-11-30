@@ -80,8 +80,8 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@inheritdoc ExpirableForwarder
   ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed.
   ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
-  /// `expiring(0,i)` corresponds to the expiry date of the bundle `i`.
-  /// `expiring(hash, i)` where `hash != bytes32(0)` corresponds to the expiry date of offer `i` in the offer list whose hash is `hash`.
+  /// `expiring(bytes32(0),i)` corresponds to the expiry date of the bundle `i`.
+  /// `expiring(olKey.hash(), i)` corresponds to the expiry date of offer `i` in the offer list identified by `olKey`.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
     // checks expiry date of order.offerId first
     // if expired the call below will revert
