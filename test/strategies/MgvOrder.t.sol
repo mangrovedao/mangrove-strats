@@ -314,6 +314,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
     assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_partial_filled_buy_order_reverts_when_FoK_enabled() public {
@@ -340,13 +341,14 @@ contract MgvOrder_Test is StratTest {
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
     uint balBefore = fresh_taker.balance;
     vm.prank(fresh_taker);
-    mgo.take{value: 0.1 ether}(buyOrder);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     assertEq(balBefore, fresh_taker.balance, "Take function did not return value to taker");
     assertEq(
       takerGives(buyOrder) - takerGives(buyOrder) / 2,
       quote.balanceOf(fresh_taker),
       "Take did not return remainder to taker"
     );
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_partial_filled_order_returns_bounty() public {
@@ -384,6 +386,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(quote.balanceOf(fresh_taker), 0, "incorrect quote balance");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "incorrect base balance");
     assertEq(fresh_taker.balance, nativeBalBefore, "value was not returned to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_taken_resting_order_reused() public {
@@ -411,6 +414,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(offer.gives(), makerGives(buyOrder), "Incorrect offer gives");
     assertApproxEqAbs(offer.wants(), makerWants(buyOrder), 1, "Incorrect offer wants");
     assertEq(offer.tick(), buyOrder.tick.negate(), "Incorrect offer price");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_taken_resting_order_not_reused_if_live() public {
@@ -503,6 +507,7 @@ contract MgvOrder_Test is StratTest {
     );
     assertEq(base.balanceOf(fresh_taker), reader.minusFee(olKey, 1 ether), "Incorrect obtained base balance");
     assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
+    assertEq(res.bounty, 0, "Bounty should be zero");
     // checking price of offer
     Offer offer = mgv.offers(lo, res.offerId);
     OfferDetail detail = mgv.offerDetails(lo, res.offerId);
@@ -529,6 +534,7 @@ contract MgvOrder_Test is StratTest {
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
 
     assertTrue(res.offerId > 0, "Offer not posted");
+    assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
     assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
@@ -571,6 +577,7 @@ contract MgvOrder_Test is StratTest {
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
 
     assertTrue(res.offerId > 0, "Offer not posted");
+    assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
     assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
@@ -619,6 +626,7 @@ contract MgvOrder_Test is StratTest {
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
 
     assertTrue(res.offerId == 0, "Offer should not be posted");
+    assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(res.offerWriteData, expectedResult.offerWriteData, "Incorrect offer write data");
     assertEq(fresh_taker.balance, nativeBalBefore, "No provision should be transferred");
     // checking mappings
@@ -647,6 +655,7 @@ contract MgvOrder_Test is StratTest {
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
 
     assertTrue(res.offerId > 0, "Offer not posted");
+    assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
     assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
@@ -670,6 +679,7 @@ contract MgvOrder_Test is StratTest {
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
     assertEq(mgo.expiring(olKey.hash(), res.offerId), block.timestamp + 1, "Incorrect expiry");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_resting_buy_order_for_blacklisted_reserve_for_inbound_reverts() public {
@@ -743,9 +753,11 @@ contract MgvOrder_Test is StratTest {
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
 
     vm.prank($(sell_taker));
-    (uint takerGot, uint takerGave,, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
     // sell_taker.takeWithInfo({takerWants: 1000 ether, offerId: cold_buyResult.offerId});
 
+    // no fail
+    assertEq(bounty, 0, "Bounty should be zero");
     // offer delivers
     assertEq(takerGot, 1000 ether - fee, "Incorrect received amount for seller taker");
     // inbound token forwarded to test runner
@@ -763,13 +775,15 @@ contract MgvOrder_Test is StratTest {
     TransferLib.approveToken(quote, $(mgo.router(address(this))), takerGives(buyOrder) + makerGives(buyOrder));
     IOrderLogic.TakerOrderResult memory buyResult = mgo.take{value: 0.1 ether}(buyOrder);
 
+    assertEq(buyResult.bounty, 0, "Bounty should be zero");
     assertTrue(buyResult.offerId > 0, "Resting order should succeed");
 
     Tick tick = mgv.offers(lo, buyResult.offerId).tick();
 
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick(lo, tick, 40000 ether, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 40000 ether, true);
 
+    assertEq(bounty, 0, "Bounty should be zero");
     assertTrue(takerGot > 0, "Offer should succeed");
   }
 
@@ -796,8 +810,9 @@ contract MgvOrder_Test is StratTest {
     mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp + 1);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick(lo, tick, 1991, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 1991, true);
     assertTrue(takerGot > 0, "offer failed");
+    assertEq(bounty, 0, "Bounty should be zero");
   }
 
   function test_offer_reneges_when_time_is_expired() public {
@@ -813,8 +828,9 @@ contract MgvOrder_Test is StratTest {
     });
 
     vm.prank($(sell_taker));
-    (uint takerGot,,,) = mgv.marketOrderByTick(lo, tick, 1991, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 1991, true);
     assertTrue(takerGot == 0, "offer should have failed");
+    assertTrue(bounty > 0, "taker not compensated");
   }
   //////////////////////////////
   /// Tests offer management ///
@@ -967,6 +983,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
     assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   // take from aave and deposit on user reserve
@@ -986,6 +1003,7 @@ contract MgvOrder_Test is StratTest {
     assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
     assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   // take from aave and deposit on aave
@@ -1005,5 +1023,6 @@ contract MgvOrder_Test is StratTest {
     assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
     assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 }
