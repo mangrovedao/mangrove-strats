@@ -343,6 +343,8 @@ contract MgvOrder_Test is StratTest {
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     assertEq(balBefore, fresh_taker.balance, "Take function did not return value to taker");
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder) / 2), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder) / 2, "Incorrect partial fill of taker order");
     assertEq(
       takerGives(buyOrder) - takerGives(buyOrder) / 2,
       quote.balanceOf(fresh_taker),
@@ -373,6 +375,9 @@ contract MgvOrder_Test is StratTest {
     assertEq(quote.balanceOf(fresh_taker), 4000 ether - takerGives(buyOrder), "incorrect quote balance");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "incorrect base balance");
     assertEq(fresh_taker.balance, nativeBalBefore, "value was not returned to taker");
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder)), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder), "Incorrect partial fill of taker order");
+    assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
   function test_filled_resting_buy_order_with_FoK_succeeds_and_returns_provision() public {
@@ -386,6 +391,8 @@ contract MgvOrder_Test is StratTest {
     assertEq(quote.balanceOf(fresh_taker), 0, "incorrect quote balance");
     assertEq(base.balanceOf(fresh_taker), res.takerGot, "incorrect base balance");
     assertEq(fresh_taker.balance, nativeBalBefore, "value was not returned to taker");
+    assertEq(res.takerGot, reader.minusFee(olKey, takerWants(buyOrder)), "Incorrect partial fill of taker order");
+    assertEq(res.takerGave, takerGives(buyOrder), "Incorrect partial fill of taker order");
     assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
