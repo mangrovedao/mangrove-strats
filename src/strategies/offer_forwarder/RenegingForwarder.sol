@@ -75,9 +75,12 @@ contract RenegingForwarder is Forwarder {
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
   ///@param volume the amount of outbound tokens above which the offer should renege on trade.
   function _setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume) internal {
-    require(uint160(expiryDate) == expiryDate, "RenegingForwarder/dateOverflow");
-    require(uint96(volume) == volume, "RenegingForwarder/volumeOverflow");
-    __renegeMap[olKeyHash][offerId] = Condition({date: uint160(expiryDate), volume: uint96(volume)});
+    Condition memory cond;
+    cond.date = uint160(expiryDate);
+    require(cond.date == expiryDate, "RenegingForwarder/dateOverflow");
+    cond.volume = uint96(volume);
+    require(cond.volume == volume, "RenegingForwarder/volumeOverflow");
+    __renegeMap[olKeyHash][offerId] = cond;
     emit SetReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
