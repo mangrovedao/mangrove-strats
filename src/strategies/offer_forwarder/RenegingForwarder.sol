@@ -26,12 +26,12 @@ contract RenegingForwarder is Forwarder {
     Forwarder(mgv, factory, routerImplementation)
   {}
 
-  ///@notice The expiry of the offer has been set
+  ///@notice The expiry and max volume of the offer has been set
   ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
   ///@param offerId the Mangrove offer id.
   ///@param date in seconds since unix epoch
   ///@param volume the amount of outbound tokens above which the offer should renege on trade.
-  ///@notice By emitting this data, an indexer will be able to keep track of the expiry date of an offer.
+  ///@notice By emitting this data, an indexer will be able to keep track of the expiry date and the max volume of an offer.
   event SetReneging(bytes32 indexed olKeyHash, uint indexed offerId, uint date, uint volume);
 
   struct Condition {
@@ -39,25 +39,29 @@ contract RenegingForwarder is Forwarder {
     uint96 volume;
   }
 
-  ///@notice `_expiryMaps[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
+  ///@notice `__renegeMap[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
+  ///@notice They also give the max volume of tokens upon which the offer should renege on trade.
   ///@notice if the order tx is included after the expiry date, it reverts.
-  ///@dev 0 means no expiry.
+  ///@dev 0 means no expiry and no max volume.
   mapping(bytes32 olKeyHash => mapping(uint offerId => Condition)) private __renegeMap;
 
-  ///@notice returns expiry date of an offer
+  ///@notice returns expiry date and max volume of an offer
   ///@param olKeyHash the identifier of the offer list
   ///@param offerId the offer identifier
-  ///@return expiry date
+  ///@return expiry date and max Volume
   function reneging(bytes32 olKeyHash, uint offerId) public view returns (Condition memory) {
     return __renegeMap[olKeyHash][offerId];
   }
 
-  ///@notice Updates the expiry date for a specific offer if caller is the offer owner.
+  ///@notice Updates the expiry date and the max volume for a specific offer if caller is the offer owner.
   ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId The offer id whose expiry date is to be set.
+  ///@param offerId The offer id whose expiry date and max volume is to be set.
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
   ///@param volume the amount of outbound tokens above which the offer should renege on trade.
   ///@dev If new date is in the past of the current block's timestamp, offer will renege on trade.
+  /// * While updating, the volume should be set to 0. Otherwise, we create a renege for no reason.
+  /// * If the user wants to reduce the promised volume, he should update his offer directly.
+  /// * If we had to use max volume to avoid reneging with minimum volume, the user could update the offer by himself and set volume back to 0.
   function setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume)
     external
     onlyOwner(olKeyHash, offerId)
@@ -67,7 +71,7 @@ contract RenegingForwarder is Forwarder {
 
   ///@notice internal version of the above.
   ///@param olKeyHash the hash of the offer list key.
-  ///@param offerId The offer id whose expiry date is to be set.
+  ///@param offerId The offer id whose expiry date and max volume is to be set.
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
   ///@param volume the amount of outbound tokens above which the offer should renege on trade.
   function _setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume) internal {

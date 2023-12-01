@@ -19,7 +19,7 @@ import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 /// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
 /// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
-/// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached.
+/// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached, or the max volume is surpassed.
 
 contract MangroveAmplifier is RenegingForwarder {
   ///@notice offer bundle identifier
@@ -78,10 +78,10 @@ contract MangroveAmplifier is RenegingForwarder {
   }
 
   ///@inheritdoc RenegingForwarder
-  ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed.
+  ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed or if the offer volume is higher than max volume.
   ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
-  /// `reneging(bytes32(0),i)` corresponds to the expiry date of the bundle `i` and expiry volume.
-  /// `reneging(olKey.hash(), i)` corresponds to the expiry date and volume of offer `i` in the offer list identified by `olKey`.
+  /// `reneging(bytes32(0),i)` corresponds to the expiry date of the bundle `i`. Expiry volume also lies here but is unused because volumes are different for each offer of the bundle.
+  /// `reneging(olKey.hash(), i)` corresponds to the expiry date and max volume of offer `i` in the offer list identified by `olKey`.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
     // checks expiry date and max offered volume of order.offerId first
     // if expired or over promising the call below will revert
@@ -96,6 +96,7 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@param bundleId the id of the bundle whose expiry date is to be set
   ///@param date the date of expiry (use 0 for no expiry)
   ///@dev and offer logic will renege if either the offer's expiry date is passed or it belongs to a bundle whose expiry date has passed.
+  /// * The volume is set to 0 because it is unused for bundle.
   function _setBundleExpiry(uint bundleId, uint date) internal {
     _setReneging(0, bundleId, date, 0);
   }
