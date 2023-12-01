@@ -526,4 +526,33 @@ contract MgvAmplifierTest is StratTest {
     vm.stopPrank();
     assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
   }
+
+  //////////////////////////
+  /// test on max volume ///
+  //////////////////////////
+
+  function test_offer_cannot_take_more_than_max_volume() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    uint offerId = offers[0].offerId;
+    OLKey memory olKey =
+      OLKey({inbound_tkn: $(offers[0].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
+
+    // get the outbound_tkn volume
+    uint outboundVolume = mgv.offers(dai_weth, offerId).gives();
+
+    mgvAmplifier.setReneging(olKey.hash(), offerId, 0, outboundVolume / 2);
+
+    vm.stopPrank();
+    vm.startPrank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(olKey, Tick.wrap(MAX_TICK), outboundVolume / 2 + 1, true);
+    vm.stopPrank();
+    assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
+    bool isLive = mgv.offers(olKey, offerId).isLive();
+    assertTrue(!isLive, "offer should be dead");
+  }
 }
