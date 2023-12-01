@@ -43,7 +43,7 @@ contract MangroveAmplifier is RenegingForwarder {
 
   ///@notice logs end of bundle creation
   ///@dev to know which offer are part of the bundle one needs to track `NewOwnedOffer(olKeyHash, offerId, owner)` emitted in between `InitBundle` and `EndBundle`
-  ///@dev the expiry date of the bundle is given by the logs `SetExpiry(olKeyHash, offerId, expiryDate)` of each offer of the bundle (all dates are the same).
+  ///@dev the expiry date of the bundle is given by the logs `SetReneging(olKeyHash, offerId, expiryDate, maxVolume)` of each offer of the bundle (all dates are the same).
   event EndBundle();
 
   ///@notice MangroveAmplifier is a Forwarder logic with a smart router.
@@ -80,8 +80,8 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@inheritdoc RenegingForwarder
   ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed.
   ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
-  /// `expiring(bytes32(0),i)` corresponds to the expiry date of the bundle `i`.
-  /// `expiring(olKey.hash(), i)` corresponds to the expiry date of offer `i` in the offer list identified by `olKey`.
+  /// `reneging(bytes32(0),i)` corresponds to the expiry date of the bundle `i` and expiry volume.
+  /// `reneging(olKey.hash(), i)` corresponds to the expiry date and volume of offer `i` in the offer list identified by `olKey`.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
     // checks expiry date and max offered volume of order.offerId first
     // if expired or over promising the call below will revert

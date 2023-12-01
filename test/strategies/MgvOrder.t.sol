@@ -26,6 +26,7 @@ import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abs
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
 import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
 import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
+import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
@@ -687,7 +688,8 @@ contract MgvOrder_Test is StratTest {
     address fresh_taker = freshTaker(2 ether, 0);
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
-    assertEq(mgo.expiring(olKey.hash(), res.offerId), block.timestamp + 1, "Incorrect expiry");
+    RenegingForwarder.Condition memory cond = mgo.reneging(olKey.hash(), res.offerId);
+    assertEq(cond.date, block.timestamp + 1, "Incorrect expiry");
     assertEq(res.bounty, 0, "Bounty should be zero");
   }
 
@@ -816,7 +818,7 @@ contract MgvOrder_Test is StratTest {
   }
 
   function test_offer_succeeds_when_time_is_not_expired() public {
-    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp + 1);
+    mgo.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp + 1, 0);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     vm.prank($(sell_taker));
     (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 1991, true);
@@ -825,7 +827,7 @@ contract MgvOrder_Test is StratTest {
   }
 
   function test_offer_reneges_when_time_is_expired() public {
-    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, block.timestamp);
+    mgo.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp, 0);
     vm.warp(block.timestamp + 1);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     expectFrom($(mgo));
@@ -853,15 +855,16 @@ contract MgvOrder_Test is StratTest {
 
   function test_offer_owner_can_set_expiry() public {
     expectFrom($(mgo));
-    emit SetExpiry(lo.hash(), cold_buyResult.offerId, 42);
-    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, 42);
-    assertEq(mgo.expiring(lo.hash(), cold_buyResult.offerId), 42, "expiry date was not set");
+    emit SetReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
+    mgo.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
+    RenegingForwarder.Condition memory cond = mgo.reneging(lo.hash(), cold_buyResult.offerId);
+    assertEq(cond.date, 42, "expiry date was not set");
   }
 
   function test_only_offer_owner_can_set_expiry() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.setExpiry(lo.hash(), cold_buyResult.offerId, 42);
+    mgo.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
   }
 
   function test_offer_owner_can_update_offer() public {

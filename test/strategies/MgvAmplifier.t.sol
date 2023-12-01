@@ -24,6 +24,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK, MIN_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
+import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
 contract MgvAmplifierTest is StratTest {
   RouterProxyFactory internal routerFactory; // deployed routerFactory
@@ -185,7 +186,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
     fx.expiryDate = block.timestamp + 1000;
     expectFrom(address(mgvAmplifier));
-    emit SetExpiry({olKeyHash: bytes32(0), offerId: 0, date: block.timestamp + 1000});
+    emit SetReneging({olKeyHash: bytes32(0), offerId: 0, date: block.timestamp + 1000, volume: 0});
     vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
     assertEq(bundleId, 0, "Incorrect bundle Id");
@@ -355,7 +356,7 @@ contract MgvAmplifierTest is StratTest {
     // checks 3.2
     // ofr_dai_weth sets expiry date of ofr_dai_wbtc to now
     vm.expectEmit(true, true, true, false, address(mgvAmplifier));
-    emit SetExpiry({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp});
+    emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp, volume: 0});
     // market order proceeds and ofr_dai_weth indeed fails
     vm.expectEmit(true, true, true, false, address(mgvAmplifier));
     emit LogIncident({
@@ -416,8 +417,9 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.updateBundle(bundleId, dai, 0, true, block.timestamp + 1000);
     vm.stopPrank();
 
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
     // checking bundle expiry date
-    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), block.timestamp + 1000, "Incorrect expiry");
+    assertEq(cond.date, block.timestamp + 1000, "Incorrect expiry");
   }
 
   function test_external_bundle_update_volume_and_expiry() public {
@@ -429,7 +431,8 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, true, block.timestamp + 1000);
     vm.stopPrank();
 
-    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), block.timestamp + 1000, "Incorrect expiry");
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
+    assertEq(cond.date, block.timestamp + 1000, "Incorrect expiry");
 
     // checking offers of the bundle have been updated to the new outbound volume
     MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
@@ -451,7 +454,8 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.updateBundle(bundleId, dai, 0, false, block.timestamp + 1000);
     vm.stopPrank();
 
-    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), 0, "Incorrect expiry");
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
+    assertEq(cond.date, 0, "Incorrect expiry");
     MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
@@ -498,13 +502,14 @@ contract MgvAmplifierTest is StratTest {
     vm.stopPrank();
 
     // checking bundle expiry date
-    assertEq(mgvAmplifier.expiring(bytes32(0), bundleId), block.timestamp + 1000, "Incorrect expiry");
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
+    assertEq(cond.date, block.timestamp + 1000, "Incorrect expiry");
 
     // setting expiry date of the first offer to now
     vm.expectEmit(true, true, true, false, address(mgvAmplifier));
-    emit SetExpiry({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp});
+    emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp, volume: 0});
     vm.prank(owner);
-    mgvAmplifier.setExpiry(dai_weth.hash(), 1, block.timestamp);
+    mgvAmplifier.setReneging(dai_weth.hash(), 1, block.timestamp, 0);
 
     // market order proceeds and ofr_dai_weth indeed fails
     vm.expectEmit(true, true, true, true, address(mgvAmplifier));

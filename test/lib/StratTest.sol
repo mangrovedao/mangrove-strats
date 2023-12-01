@@ -8,8 +8,8 @@ import {
 import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 contract StratTest is MangroveTest {
-  // for ExpriableForwarder
-  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
+  // for RenegingForwarder
+  event SetReneging(bytes32 indexed olKeyHash, uint indexed offerId, uint date, uint volume);
   // all strats
   event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
   event Transfer(address indexed from, address indexed to, uint value);
