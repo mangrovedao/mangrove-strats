@@ -940,6 +940,7 @@ contract MgvOrder_Test is StratTest {
     );
   }
 
+  // TODO: test gas cost of taker order
   function test_empirical_offer_gas_cost() public {
     // resting order buys 1 ether for (MID_PRICE-9 ether) dai
     // fresh taker sells 0.5 ether for 900 dai for any gasreq
