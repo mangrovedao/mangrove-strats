@@ -832,7 +832,7 @@ contract MgvOrder_Test is StratTest {
     emit LogIncident({
       olKeyHash: lo.hash(),
       offerId: 4,
-      makerData: "ExpirableForwarder/expired",
+      makerData: "RenegingForwarder/expired",
       mgvData: "mgv/makerRevert"
     });
 

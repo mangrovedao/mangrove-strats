@@ -361,7 +361,7 @@ contract MgvAmplifierTest is StratTest {
     emit LogIncident({
       olKeyHash: dai_weth.hash(),
       offerId: 1,
-      makerData: "ExpirableForwarder/expired",
+      makerData: "RenegingForwarder/expired",
       mgvData: bytes32(0)
     });
 
@@ -511,7 +511,7 @@ contract MgvAmplifierTest is StratTest {
     emit LogIncident({
       olKeyHash: dai_weth.hash(),
       offerId: 1,
-      makerData: "ExpirableForwarder/expired",
+      makerData: "RenegingForwarder/expired",
       mgvData: "mgv/makerRevert"
     });
     // taker sells  0.004 btc to get 100 dai

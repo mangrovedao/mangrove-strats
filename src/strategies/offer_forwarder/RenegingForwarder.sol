@@ -16,8 +16,8 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title Forwarder contract with basic functionality
 ///@notice This contract can be used to post and update offers on Mangrove on behalf of a user. Users can also retract their offers and set/update their expiry.
-///@dev Expiry of offers relies on the `__lastLook__` hook of the `MangroveOffer` contract which reverts when expiry date is passed.
-contract ExpirableForwarder is Forwarder {
+///@dev Reneging of offers relies on the `__lastLook__` hook of the `MangroveOffer` contract which reverts when some predicate over timestamp and received order is met.
+contract RenegingForwarder is Forwarder {
   ///@notice Same as Forwarder's constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers -- will revert if 0x
   ///@param factory the router proxy factory contract -- will revert if 0x
@@ -30,45 +30,76 @@ contract ExpirableForwarder is Forwarder {
   ///@param olKeyHash the hash of the offer list key. It is indexed so RPC call can filter on it.
   ///@param offerId the Mangrove offer id.
   ///@param date in seconds since unix epoch
+  ///@param volume the amount of outbound tokens above which the offer should renege on trade.
   ///@notice By emitting this data, an indexer will be able to keep track of the expiry date of an offer.
-  event SetExpiry(bytes32 indexed olKeyHash, uint indexed offerId, uint date);
+  event SetReneging(bytes32 indexed olKeyHash, uint indexed offerId, uint date, uint volume);
+
+  struct Condition {
+    uint160 date;
+    uint96 volume;
+  }
 
   ///@notice `_expiryMaps[olKey.hash()][offerId]` gives timestamp beyond which `offerId` on the `olKey.(outbound_tkn, inbound_tkn, tickSpacing)` offer list should renege on trade.
   ///@notice if the order tx is included after the expiry date, it reverts.
   ///@dev 0 means no expiry.
-  mapping(bytes32 olKeyHash => mapping(uint offerId => uint expiry)) private _expiryMaps;
+  mapping(bytes32 olKeyHash => mapping(uint offerId => Condition)) private __renegeMap;
 
   ///@notice returns expiry date of an offer
   ///@param olKeyHash the identifier of the offer list
   ///@param offerId the offer identifier
   ///@return expiry date
-  function expiring(bytes32 olKeyHash, uint offerId) public view returns (uint) {
-    return _expiryMaps[olKeyHash][offerId];
+  function reneging(bytes32 olKeyHash, uint offerId) public view returns (Condition memory) {
+    return __renegeMap[olKeyHash][offerId];
   }
 
   ///@notice Updates the expiry date for a specific offer if caller is the offer owner.
   ///@param olKeyHash the hash of the offer list key.
   ///@param offerId The offer id whose expiry date is to be set.
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
+  ///@param volume the amount of outbound tokens above which the offer should renege on trade.
   ///@dev If new date is in the past of the current block's timestamp, offer will renege on trade.
-  function setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) external onlyOwner(olKeyHash, offerId) {
-    _setExpiry(olKeyHash, offerId, expiryDate);
+  function setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume)
+    external
+    onlyOwner(olKeyHash, offerId)
+  {
+    _setReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
   ///@notice internal version of the above.
   ///@param olKeyHash the hash of the offer list key.
   ///@param offerId The offer id whose expiry date is to be set.
   ///@param expiryDate in seconds since unix epoch. Use 0 for no expiry.
-  function _setExpiry(bytes32 olKeyHash, uint offerId, uint expiryDate) internal {
-    _expiryMaps[olKeyHash][offerId] = expiryDate;
-    emit SetExpiry(olKeyHash, offerId, expiryDate);
+  ///@param volume the amount of outbound tokens above which the offer should renege on trade.
+  function _setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume) internal {
+    require(uint160(expiryDate) == expiryDate, "RenegingForwarder/dateOverflow");
+    require(uint96(volume) == volume, "RenegingForwarder/volumeOverflow");
+    __renegeMap[olKeyHash][offerId] = Condition({data: uint160(expiryDate), volume: uint96(volume)});
+    emit SetReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
-  ///Checks the current timestamps and reneges on trade (by reverting) if the offer has expired.
   ///@inheritdoc MangroveOffer
+  ///@dev making sure offer does not over promise twice
+  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {
+    Condition memory cond = __renegeMap[order.olKey.hash()][order.offerId];
+    if (cond.volume == 0) {
+      return super.__residualValues__(order);
+    } else {
+      newGives = order.takerWants <= cond.volume ? cond.volume - order.takerWants : 0;
+      newTick = order.offer.tick();
+    }
+  }
+
+  ///@inheritdoc MangroveOffer
+  ///@notice Checks the current timestamps and `order.takerWants` and reneges on trade (by reverting) if the offer has expired or order is over sized.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal virtual override returns (bytes32) {
-    uint exp = _expiryMaps[order.olKey.hash()][order.offerId];
-    require(exp == 0 || block.timestamp < exp, "ExpirableForwarder/expired");
+    bytes32 olKeyHash = order.olKey.hash();
+    Condition memory cond = __renegeMap[olKeyHash][order.offerId];
+
+    require(cond.date == 0 || block.timestamp < uint(cond.date), "RenegingForwarder/expired");
+    require(cond.volume == 0 || order.takerWants < uint(cond.volume), "RenegingForwarder/overSized");
+    if (cond.volume != 0) {
+      _setReneging(order.olKey.hash(), order.offerId, Condition({date: cond.date, volume: 0}));
+    }
     return super.__lastLook__(order);
   }
 
@@ -111,7 +142,7 @@ contract ExpirableForwarder is Forwarder {
     (freeWei,) = _retractOffer(olKey, offerId, false, deprovision);
     if (freeWei > 0) {
       (bool noRevert,) = msg.sender.call{value: freeWei}("");
-      require(noRevert, "ExpirableForwarder/weiTransferFail");
+      require(noRevert, "RenegingForwarder/weiTransferFail");
     }
   }
 }

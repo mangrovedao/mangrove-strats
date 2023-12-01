@@ -14,7 +14,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 ///@notice This class implements IForwarder, which contains specific Forwarder logic functions in additions to IOfferLogic interface.
 
 abstract contract Forwarder is IForwarder, MangroveOffer {
-  ///@notice approx of amount of gas units required to complete `__posthookFallback__` when evaluating penalty.
+  ///@notice approx of amount of gas units required to complete `__handleResidualProvision__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
 
   ///@notice the router factory contract that is used to deploy offer owner routers
@@ -316,7 +316,9 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
   ///@dev if offer failed to execute, Mangrove retracts and deprovisions it after the posthook call.
   /// As a consequence if this hook is reached, `this` balance on Mangrove *will* increase, after the posthook,
-  /// of some amount $n$ of native tokens. We evaluate here an underapproximation $~n$ in order to credit the offer maker in a pull based manner:
+  /// of some amount $n$ of native tokens.
+  /// Note we cannot assume the whole balance of `this` on Mangrove belongs to the offer owner since other offers may have failed during the market order.
+  /// So we evaluate here an underapproximation $~n$ in order to credit the offer maker in a pull based manner:
   /// failed offer owner can retrieve $~n$ by calling `retractOffer` on the failed offer.
   /// because $~n<n$ a small amount of WEIs will accumulate on the balance of `this` on Mangrove over time.
   /// Note that these WEIs are not burnt since they can be admin retrieved using `withdrawFromMangrove`.
