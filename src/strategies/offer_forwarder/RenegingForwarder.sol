@@ -114,7 +114,7 @@ contract RenegingForwarder is Forwarder {
     if (cond.volume != 0) {
       // if a max volume is set and we are not reneging, we set it back to 0 so that we don't check again and save some gas.
       // note this is OK since reposting the offer in MangroveOffer.__posthookSuccess__ will update the volume according to `__residualValues__`
-      _setReneging(order.olKey.hash(), order.offerId, cond.date, 0);
+      _setReneging(olKeyHash, order.offerId, cond.date, 0);
     }
     return super.__lastLook__(order);
   }
