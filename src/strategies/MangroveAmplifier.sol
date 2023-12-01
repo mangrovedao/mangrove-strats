@@ -83,8 +83,8 @@ contract MangroveAmplifier is RenegingForwarder {
   /// `expiring(bytes32(0),i)` corresponds to the expiry date of the bundle `i`.
   /// `expiring(olKey.hash(), i)` corresponds to the expiry date of offer `i` in the offer list identified by `olKey`.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
-    // checks expiry date of order.offerId first
-    // if expired the call below will revert
+    // checks expiry date and max offered volume of order.offerId first
+    // if expired or over promising the call below will revert
     retdata = super.__lastLook__(order);
     // checks now whether there is a bundle wide expiry date
     uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
@@ -255,8 +255,8 @@ contract MangroveAmplifier is RenegingForwarder {
           /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
           /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
           Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
-          cond.volume = outboundVolume;
-          _setReneging(olKeyHash_i, bundle[i].offerId, cond);
+          cond.volume = uint96(outboundVolume);
+          _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, cond.volume);
         }
       }
     }
@@ -331,10 +331,12 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@dev updating offer bundle in makerExecute rather than in makerPosthook to avoid griefing: an adversarial offer logic could collect the bounty of the bundle by taking the not yet updated offers during its execution.
   ///@dev the risk of updating the bundle during makerExecute is that any revert will make the trade revert, so one needs to make sure it does not happen (by catching potential reverts, assuming no "out of gas" is thrown)
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint) {
+    // `__lastLook__` was already called so we know order is neither expired nor over promising
     // this will use offer owner's router to pull `amount` to this contract
     uint missing = super.__get__(amount, order);
 
-    // we know take care of updating the other offers that are part of the same bundle
+    // we now take care of updating the other offers that are part of the same bundle
+    // this update might fail if the offer list is locked (see `_updateBundle`)
     bytes32 olKeyHash = order.olKey.hash();
     uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
     BundledOffer[] memory bundle = __bundles[bundleId];

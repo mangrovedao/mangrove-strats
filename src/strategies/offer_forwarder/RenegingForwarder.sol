@@ -73,18 +73,25 @@ contract RenegingForwarder is Forwarder {
   function _setReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume) internal {
     require(uint160(expiryDate) == expiryDate, "RenegingForwarder/dateOverflow");
     require(uint96(volume) == volume, "RenegingForwarder/volumeOverflow");
-    __renegeMap[olKeyHash][offerId] = Condition({data: uint160(expiryDate), volume: uint96(volume)});
+    __renegeMap[olKeyHash][offerId] = Condition({date: uint160(expiryDate), volume: uint96(volume)});
     emit SetReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
   ///@inheritdoc MangroveOffer
-  ///@dev making sure offer does not over promise twice
-  function __residualValues__(MgvLib.SingleOrder calldata order) internal virtual returns (uint newGives, Tick newTick) {
+  ///@dev making sure offer does not over promise twice when reposting offer residual.
+  function __residualValues__(MgvLib.SingleOrder calldata order)
+    internal
+    virtual
+    override
+    returns (uint newGives, Tick newTick)
+  {
     Condition memory cond = __renegeMap[order.olKey.hash()][order.offerId];
     if (cond.volume == 0) {
       return super.__residualValues__(order);
     } else {
-      newGives = order.takerWants <= cond.volume ? cond.volume - order.takerWants : 0;
+      // new volume to be offered
+      newGives = order.takerWants < cond.volume ? cond.volume - order.takerWants : 0;
+      // same price
       newTick = order.offer.tick();
     }
   }
@@ -98,7 +105,9 @@ contract RenegingForwarder is Forwarder {
     require(cond.date == 0 || block.timestamp < uint(cond.date), "RenegingForwarder/expired");
     require(cond.volume == 0 || order.takerWants < uint(cond.volume), "RenegingForwarder/overSized");
     if (cond.volume != 0) {
-      _setReneging(order.olKey.hash(), order.offerId, Condition({date: cond.date, volume: 0}));
+      // if a max volume is set and we are not reneging, we set it back to 0 so that we don't check again and save some gas.
+      // note this is OK since reposting the offer in MangroveOffer.__posthookSuccess__ will update the volume according to `__residualValues__`
+      _setReneging(order.olKey.hash(), order.offerId, cond.date, 0);
     }
     return super.__lastLook__(order);
   }
