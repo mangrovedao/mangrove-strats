@@ -399,7 +399,8 @@ contract MgvOrder_Test is StratTest {
   function test_taken_resting_order_reused() public {
     // Arrange - Take resting order
     vm.prank($(sell_taker));
-    mgv.marketOrderByTick(lo, Tick.wrap(MAX_TICK), 1000000 ether, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, Tick.wrap(MAX_TICK), 1000000 ether, true);
+    assertTrue(takerGot > 0 && bounty == 0, "marketOrder failed");
     assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
 
     // Act - Create new resting order, but reuse id
@@ -441,7 +442,8 @@ contract MgvOrder_Test is StratTest {
   function test_taken_resting_order_not_reused_if_not_owned() public {
     // Arrange - Take resting order
     vm.prank($(sell_taker));
-    mgv.marketOrderByTick(lo, Tick.wrap(MAX_TICK), 1000000 ether, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, Tick.wrap(MAX_TICK), 1000000 ether, true);
+    assertTrue(takerGot > 0 && bounty == 0, "marketOrder failed");
     assertFalse(mgv.offers(lo, cold_buyResult.offerId).isLive(), "Offer should be taken and not live");
 
     // Act/assert - Create new resting order, but reuse id
@@ -941,14 +943,15 @@ contract MgvOrder_Test is StratTest {
   function test_empirical_offer_gas_cost() public {
     // resting order buys 1 ether for (MID_PRICE-9 ether) dai
     // fresh taker sells 0.5 ether for 900 dai for any gasreq
-    OLKey memory _olKey = olKey;
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     vm.prank(address(sell_taker));
     _gas();
     // cannot use TestTaker functions that have additional gas cost
     // simply using sell_taker's approvals and already filled balances
-    mgv.marketOrderByTick(_olKey, tick, 0.5 ether, true);
+    (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 0.5 ether, true);
     gas_();
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertTrue(takerGot > 0, "offer should succeed");
     assertTrue(mgv.offers(lo, cold_buyResult.offerId).gives() > 0, "Update failed");
   }
 
