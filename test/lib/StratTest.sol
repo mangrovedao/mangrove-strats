@@ -2,10 +2,12 @@
 pragma solidity ^0.8.10;
 
 import "@mgv/test/lib/MangroveTest.sol";
+import "@mgv/src/preprocessed/Structs.post.sol";
 import {
   MangroveOffer, AbstractRouter, Forwarder
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {MgvCommon} from "@mgv/src/core/MgvCommon.sol";
 
 contract StratTest is MangroveTest {
   // for RenegingForwarder
@@ -45,5 +47,40 @@ contract StratTest is MangroveTest {
     returns (AbstractRouter ownerRouter)
   {
     ownerRouter = activateOwnerRouter(token, makerContract, owner, type(uint).max);
+  }
+
+  function getOfferListStoragePosition(IMangrove mgv, OLKey memory olKey) internal returns (bytes32 pos) {
+    vm.record();
+    mgv.locked(olKey);
+    (bytes32[] memory reads,) = vm.accesses(address(mgv));
+    return reads[0];
+  }
+
+  function forceLockMarket(IMangrove mgv, OLKey memory olKey) internal {
+    bytes32 pos = getOfferListStoragePosition(mgv, olKey);
+    Local local;
+    bytes32 _l = vm.load(address(mgv), pos);
+    assembly {
+      local := _l
+    }
+    local = local.lock(true);
+    assembly {
+      _l := local
+    }
+    vm.store(address(mgv), pos, _l);
+  }
+
+  function forceUnlockMarket(IMangrove mgv, OLKey memory olKey) internal {
+    bytes32 pos = getOfferListStoragePosition(mgv, olKey);
+    Local local;
+    bytes32 _l = vm.load(address(mgv), pos);
+    assembly {
+      local := _l
+    }
+    local = local.lock(false);
+    assembly {
+      _l := local
+    }
+    vm.store(address(mgv), pos, _l);
   }
 }

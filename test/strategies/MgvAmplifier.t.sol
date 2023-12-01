@@ -25,14 +25,18 @@ import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK, MIN_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
+import {VmSafe} from "@mgv/lib/forge-std/src/Vm.sol";
 
 contract MgvAmplifierTest is StratTest {
   RouterProxyFactory internal routerFactory; // deployed routerFactory
   SimpleAaveLogic internal aaveLogic; // deployed simple aave router implementation
   MangroveAmplifier internal mgvAmplifier; // MangroveAmplifier contract
 
-  uint defaultLogicGasreq = 250_000;
-  uint aaveLogicGasreq = 475_000;
+  // uint defaultLogicGasreq = 250_000;
+  // uint aaveLogicGasreq = 475_000;
+
+  uint defaultLogicGasreq = 275_000;
+  uint aaveLogicGasreq = 500_000;
 
   IERC20 weth;
   IERC20 wbtc;
@@ -238,6 +242,16 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
   }
 
+  // event OfferSuccess(
+  //   bytes32 indexed olKeyHash, address indexed taker, uint indexed id, uint takerWants, uint takerGives
+  // );
+
+  function fromAddressToBytes32(address x) internal pure returns (bytes32 res) {
+    assembly {
+      res := x
+    }
+  }
+
   function run_partial_fill_scenario(bool withAaveOutbound) internal {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
     build_amplified_offer_args(
@@ -246,15 +260,30 @@ contract MgvAmplifierTest is StratTest {
     vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
 
-    // we check OfferSuccess is emitted, this will not be emitted if trade fails or posthook reverts
-    vm.expectEmit(true, true, true, false, $(mgv));
-    emit OfferSuccess({olKeyHash: dai_wbtc.hash(), taker: taker, id: 1, takerWants: 0, takerGives: 0});
-
     // taker sells  0.004 btc to get 100 dai
     vm.startPrank(taker);
+    vm.recordLogs();
     (uint takerGot, uint takerGave, uint bounty, uint fee) =
       mgv.marketOrderByTick(dai_wbtc, TickLib.tickFromVolumes(0.004 * 10 ** 8, 100 * 10 ** 18), 0.004 * 10 ** 8, false);
+    VmSafe.Log[] memory entries = vm.getRecordedLogs();
     vm.stopPrank();
+
+    // we check OfferSuccess is emitted, this will not be emitted if trade fails or posthook reverts
+    // we cannot use vm.expectEmit because multiple events are emitted in the same transaction
+    bytes32 topic0 = keccak256("OfferSuccess(bytes32,address,uint256,uint256,uint256)");
+
+    bool found = false;
+    for (uint i; i < entries.length; i++) {
+      if (entries[i].topics[0] == topic0) {
+        found = true;
+        assertEq(entries[i].topics[1], dai_wbtc.hash(), "unexpected olKeyHash");
+        assertEq(entries[i].topics[2], fromAddressToBytes32(taker), "unexpected taker");
+        assertEq(entries[i].topics[3], bytes32(uint(1)), "unexpected id");
+        // assertEq(entries[i].data, abi.encode(uint(0),uint(0)), "unexpected takerWants");
+        break;
+      }
+    }
+    assertTrue(found, "OfferSuccess not emitted");
 
     assertTrue(takerGot + fee >= 100 * 10 ** 18, "unexpected takerGot");
     assertEq(takerGave, 0.004 * 10 ** 8, "unexpected takerGave");
@@ -554,5 +583,106 @@ contract MgvAmplifierTest is StratTest {
     assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
     bool isLive = mgv.offers(olKey, offerId).isLive();
     assertTrue(!isLive, "offer should be dead");
+  }
+
+  function test_lock_market() public {
+    OLKey memory olKey = dai_weth;
+    forceLockMarket(mgv, olKey);
+    assertTrue(mgv.locked(olKey), "market should be locked");
+    forceUnlockMarket(mgv, olKey);
+    assertTrue(!mgv.locked(olKey), "market should be unlocked");
+  }
+
+  function test_max_volume_triggered_and_untriggered() public {
+    // init bundle
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.prank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer memory offerTaken = offers[0];
+    MangroveAmplifier.BundledOffer memory offerNotTaken = offers[1];
+    OLKey memory notTakenOLKey =
+      OLKey({inbound_tkn: $(offerNotTaken.inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
+    OLKey memory takenOLKey =
+      OLKey({inbound_tkn: $(offerTaken.inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
+    uint outboundVolume = mgv.offers(takenOLKey, offerTaken.offerId).gives();
+    uint outboundVolumeNotTaken = mgv.offers(notTakenOLKey, offerNotTaken.offerId).gives();
+
+    // simulate locked market
+    // This will happen if this market order is triggered within an offer execution logic on the market
+    forceLockMarket(mgv, notTakenOLKey);
+    vm.prank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(takenOLKey, Tick.wrap(MAX_TICK), outboundVolume / 2, true);
+    forceUnlockMarket(mgv, notTakenOLKey);
+
+    // check that the offer worked
+    assertTrue(takerGot + fee == outboundVolume / 2 && takerGave > 0 && bounty == 0 && fee > 0, "unexpected trade");
+
+    // check that the max volume was set to half of the outbound volume
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(notTakenOLKey.hash(), offerNotTaken.offerId);
+    assertEq(cond.volume, outboundVolume / 2, "Incorrect max volume");
+    uint giveOfferNotTaken = mgv.offers(notTakenOLKey, offerNotTaken.offerId).gives();
+    assertEq(giveOfferNotTaken, outboundVolumeNotTaken, "Volume should not have been updated");
+
+    // calling on unlocked market shoudl set back max volume to 0 and update all offers
+    vm.prank(taker);
+    (takerGot, takerGave, bounty, fee) =
+      mgv.marketOrderByTick(takenOLKey, Tick.wrap(MAX_TICK), outboundVolume / 4, true);
+
+    // check that the offer worked
+    // and that the max volume was set back to 0 as offer was updated
+    assertTrue(takerGot + fee == outboundVolume / 4 && takerGave > 0 && bounty == 0 && fee > 0, "unexpected trade");
+    RenegingForwarder.Condition memory cond2 = mgvAmplifier.reneging(notTakenOLKey.hash(), offerNotTaken.offerId);
+    assertEq(cond2.volume, 0, "Incorrect max volume");
+
+    // check volume has been updated to the correct new volume (i.e. maxVolume - (takerGot + fee))
+    giveOfferNotTaken = mgv.offers(notTakenOLKey, offerNotTaken.offerId).gives();
+    assertEq(giveOfferNotTaken, outboundVolumeNotTaken / 4, "Volume should have been updated");
+    assertEq(giveOfferNotTaken, cond.volume - (takerGot + fee), "Volume should have been updated");
+  }
+
+  function test_griefing_attack_poc() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.prank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer memory offerTaken = offers[0];
+    MangroveAmplifier.BundledOffer memory offerNotTaken = offers[1];
+    OLKey memory notTakenOLKey =
+      OLKey({inbound_tkn: $(offerNotTaken.inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
+    OLKey memory takenOLKey =
+      OLKey({inbound_tkn: $(offerTaken.inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
+    uint outboundVolume = mgv.offers(takenOLKey, offerTaken.offerId).gives();
+    uint outboundVolumeNotTaken = mgv.offers(notTakenOLKey, offerNotTaken.offerId).gives();
+
+    // simulate locked market
+    // This will happen if this market order is triggered within an offer execution logic on the market
+    forceLockMarket(mgv, notTakenOLKey);
+    vm.prank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(takenOLKey, Tick.wrap(MAX_TICK), outboundVolume / 2, true);
+    forceUnlockMarket(mgv, notTakenOLKey);
+
+    // check that the offer worked
+    assertTrue(takerGot + fee == outboundVolume / 2 && takerGave > 0 && bounty == 0 && fee > 0, "unexpected trade");
+
+    // check that the max volume was set to half of the outbound volume
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(notTakenOLKey.hash(), offerNotTaken.offerId);
+    assertEq(cond.volume, outboundVolume / 2, "Incorrect max volume");
+    uint giveOfferNotTaken = mgv.offers(notTakenOLKey, offerNotTaken.offerId).gives();
+    assertEq(giveOfferNotTaken, outboundVolumeNotTaken, "Volume should not have been updated");
+
+    // take the max volume + 1 on the not taken offer (the one with a set max volume)
+    // this should renege the offer
+    vm.prank(taker);
+    (takerGot, takerGave, bounty, fee) =
+      mgv.marketOrderByTick(notTakenOLKey, Tick.wrap(MAX_TICK), cond.volume + 1, true);
+
+    // check that the offer did not work
+    // and that the max volume was set back to 0 as offer was updated
+    assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
   }
 }

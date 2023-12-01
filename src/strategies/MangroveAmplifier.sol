@@ -85,6 +85,7 @@ contract MangroveAmplifier is RenegingForwarder {
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
     // checks expiry date and max offered volume of order.offerId first
     // if expired or over promising the call below will revert
+    // if offer is reneged, we will not update the volume for the offer as the offerId will be reused by the amplifier in the future
     retdata = super.__lastLook__(order);
     // checks now whether there is a bundle wide expiry date
     uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
@@ -222,7 +223,7 @@ contract MangroveAmplifier is RenegingForwarder {
       });
       bytes32 olKeyHash_i = olKey_i.hash();
       if (skipOlKeyHash != olKeyHash_i) {
-        try MGV.offers(olKey_i, bundle[i].tickSpacing) returns (Offer offer_i) {
+        try MGV.offers(olKey_i, bundle[i].offerId) returns (Offer offer_i) {
           // if offer_i was previously retracted, it should no longer be considered part of the bundle.
           if (offer_i.gives() != 0) {
             OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
@@ -242,6 +243,11 @@ contract MangroveAmplifier is RenegingForwarder {
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
               _retractOffer(olKey_i, bundle[i].offerId, false, false);
+            } else {
+              // set max volume back to 0 as we successfully updated outbout volume on mangrove
+              // we do not reset expiry date if offer is retracted as we won't reuse the same offerId within mangrove amplifier once reracted
+              Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
+              if (cond.volume != 0) _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, 0);
             }
           }
         } catch {
