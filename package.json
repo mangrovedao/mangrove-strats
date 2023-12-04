@@ -38,7 +38,7 @@
   "devDependencies": {
     "@mangrovedao/context-addresses": "next",
     "@mangrovedao/mangrove-deployments": "next",
-    "@types/node": "^20.9.0",
+    "@types/node": "^20.10.3",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
     "micromatch": "^4.0.5",
