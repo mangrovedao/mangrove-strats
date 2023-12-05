@@ -67,6 +67,8 @@ contract MgvOrder_Test is StratTest {
   IOrderLogic.TakerOrderResult internal cold_buyResult;
   IOrderLogic.TakerOrderResult internal cold_sellResult;
 
+  RouterProxyFactory internal factory;
+
   SimpleAaveLogic internal aaveLogic;
 
   receive() external payable {}
@@ -108,7 +110,7 @@ contract MgvOrder_Test is StratTest {
     lo = olKey.flipped();
     setupMarket(olKey);
 
-    RouterProxyFactory factory = new RouterProxyFactory();
+    factory = new RouterProxyFactory();
 
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
@@ -305,6 +307,13 @@ contract MgvOrder_Test is StratTest {
     order = createSellOrder();
     order.tick = tickFromPrice_e18(MID_PRICE - 1e18).negate();
     order.fillVolume = fillVolume;
+  }
+
+  function test_gas() public {
+    uint remain = gasleft();
+    factory.deployProxy(address(this), AbstractRouter(address(0)));
+    uint used = remain - gasleft();
+    console.log("gas used for proxy deployment: %d", used);
   }
 
   function test_partial_filled_buy_order_is_transferred_to_taker() public {
