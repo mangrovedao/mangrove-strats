@@ -3,12 +3,12 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  ExpirableForwarder,
+  RenegingForwarder,
   MangroveOffer,
   Tick,
   RouterProxyFactory,
   RouterProxy
-} from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
+} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 import {TransferLib, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
@@ -22,13 +22,13 @@ import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
 ///@dev requiring no partial fill *and* a resting order is interpreted here as an instruction to revert if the resting order fails to be posted (e.g., if below density).
 
-contract MangroveOrder is ExpirableForwarder, IOrderLogic {
+contract MangroveOrder is RenegingForwarder, IOrderLogic {
   ///@notice MangroveOrder is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
   constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
-    ExpirableForwarder(mgv, factory, new SmartRouter())
+    RenegingForwarder(mgv, factory, new SmartRouter())
   {
     _setAdmin(deployer);
   }
@@ -259,7 +259,7 @@ contract MangroveOrder is ExpirableForwarder, IOrderLogic {
 
       // setting expiry date for the resting order
       if (tko.expiryDate > 0) {
-        _setExpiry(olKey.hash(), res.offerId, tko.expiryDate);
+        _setReneging(olKey.hash(), res.offerId, tko.expiryDate, 0);
       }
     }
   }

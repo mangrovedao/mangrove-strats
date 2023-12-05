@@ -3,11 +3,11 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  ExpirableForwarder,
+  RenegingForwarder,
   MangroveOffer,
   RouterProxyFactory,
   RouterProxy
-} from "@mgv-strats/src/strategies/offer_forwarder/ExpirableForwarder.sol";
+} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
@@ -19,9 +19,9 @@ import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 /// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
 /// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
-/// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached.
+/// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached, or the max volume is surpassed.
 
-contract MangroveAmplifier is ExpirableForwarder {
+contract MangroveAmplifier is RenegingForwarder {
   ///@notice offer bundle identifier
   uint private __bundleId;
 
@@ -43,13 +43,13 @@ contract MangroveAmplifier is ExpirableForwarder {
 
   ///@notice logs end of bundle creation
   ///@dev to know which offer are part of the bundle one needs to track `NewOwnedOffer(olKeyHash, offerId, owner)` emitted in between `InitBundle` and `EndBundle`
-  ///@dev the expiry date of the bundle is given by the logs `SetExpiry(olKeyHash, offerId, expiryDate)` of each offer of the bundle (all dates are the same).
+  ///@dev the expiry date of the bundle is given by the logs `SetReneging(olKeyHash, offerId, expiryDate, maxVolume)` of each offer of the bundle (all dates are the same).
   event EndBundle();
 
   ///@notice MangroveAmplifier is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
-  constructor(IMangrove mgv, RouterProxyFactory factory) ExpirableForwarder(mgv, factory, new SmartRouter()) {}
+  constructor(IMangrove mgv, RouterProxyFactory factory) RenegingForwarder(mgv, factory, new SmartRouter()) {}
 
   struct FixedBundleParams {
     IERC20 outbound_tkn; //the promised asset for all offers of the bundle
@@ -77,18 +77,19 @@ contract MangroveAmplifier is ExpirableForwarder {
     BundledOffer bundledOffer_i; // i^th offer of the bundle
   }
 
-  ///@inheritdoc ExpirableForwarder
-  ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed.
+  ///@inheritdoc RenegingForwarder
+  ///@notice reneges on any offer of a bundle if the bundle expiry date is passed or if the offer's expiry date is passed or if the offer volume is higher than max volume.
   ///@dev we use expiry map to represent both offer expiry (in which case olKeyHash and offerId need to be provided) and bundle expiry
-  /// `expiring(bytes32(0),i)` corresponds to the expiry date of the bundle `i`.
-  /// `expiring(olKey.hash(), i)` corresponds to the expiry date of offer `i` in the offer list identified by `olKey`.
+  /// `reneging(bytes32(0),i)` corresponds to the expiry date of the bundle `i`. Expiry volume also lies here but is unused because volumes are different for each offer of the bundle.
+  /// `reneging(olKey.hash(), i)` corresponds to the expiry date and max volume of offer `i` in the offer list identified by `olKey`.
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
-    // checks expiry date of order.offerId first
-    // if expired the call below will revert
+    // checks expiry date and max offered volume of order.offerId first
+    // if expired or over promising the call below will revert
+    // if offer is reneged, we will not update the volume for the offer as the offerId will be reused by the amplifier in the future
     retdata = super.__lastLook__(order);
     // checks now whether there is a bundle wide expiry date
     uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];
-    uint bundleExpiryDate = expiring(0, bundleId);
+    uint bundleExpiryDate = reneging(bytes32(0), bundleId).date;
     require(bundleExpiryDate == 0 || bundleExpiryDate > block.timestamp, "MgvAmplifier/expiredBundle");
   }
 
@@ -96,8 +97,9 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@param bundleId the id of the bundle whose expiry date is to be set
   ///@param date the date of expiry (use 0 for no expiry)
   ///@dev and offer logic will renege if either the offer's expiry date is passed or it belongs to a bundle whose expiry date has passed.
+  /// * The volume is set to 0 because it is unused for bundle.
   function _setBundleExpiry(uint bundleId, uint date) internal {
-    _setExpiry(0, bundleId, date);
+    _setReneging(0, bundleId, date, 0);
   }
 
   ///@notice posts bundle of offers on Mangrove so as to amplify a certain volume of outbound tokens
@@ -221,7 +223,7 @@ contract MangroveAmplifier is ExpirableForwarder {
       });
       bytes32 olKeyHash_i = olKey_i.hash();
       if (skipOlKeyHash != olKeyHash_i) {
-        try MGV.offers(olKey_i, bundle[i].tickSpacing) returns (Offer offer_i) {
+        try MGV.offers(olKey_i, bundle[i].offerId) returns (Offer offer_i) {
           // if offer_i was previously retracted, it should no longer be considered part of the bundle.
           if (offer_i.gives() != 0) {
             OfferDetail offerDetail_i = MGV.offerDetails(olKey_i, bundle[i].offerId);
@@ -241,6 +243,11 @@ contract MangroveAmplifier is ExpirableForwarder {
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
               _retractOffer(olKey_i, bundle[i].offerId, false, false);
+            } else {
+              // set max volume back to 0 as we successfully updated outbout volume on mangrove
+              // we do not reset expiry date if offer is retracted as we won't reuse the same offerId within mangrove amplifier once reracted
+              Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
+              if (cond.volume != 0) _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, 0);
             }
           }
         } catch {
@@ -254,7 +261,9 @@ contract MangroveAmplifier is ExpirableForwarder {
           /// 1. place a dummy offer on (A,B) that triggers a market order on (A,C) up to an offer that is part of a bundle (A, [B,C])
           /// 2. At the end of the market order attacker collects the bounty of the offer of the bundle that is now expired on the (A,B) offer list.
           /// Griefing would be costly however because the market order on (A,C) needs to reach and partly consumes the offer of the bundle
-          _setExpiry(olKeyHash_i, bundle[i].offerId, block.timestamp);
+          Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
+          cond.volume = uint96(outboundVolume);
+          _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, cond.volume);
         }
       }
     }
@@ -306,7 +315,7 @@ contract MangroveAmplifier is ExpirableForwarder {
         (freeWei, status) = _retractOffer(olKey_i, bundle[i].offerId, true, deprovision);
         if (status != bytes32(0)) {
           // this only happens if offer `i` of the bundle is in a locked offer list --see `_updateBundle`
-          _setExpiry(olKeyHash_i, bundle[i].offerId, block.timestamp);
+          _setReneging(olKeyHash_i, bundle[i].offerId, block.timestamp, 0);
         }
       }
     }
@@ -329,10 +338,12 @@ contract MangroveAmplifier is ExpirableForwarder {
   ///@dev updating offer bundle in makerExecute rather than in makerPosthook to avoid griefing: an adversarial offer logic could collect the bounty of the bundle by taking the not yet updated offers during its execution.
   ///@dev the risk of updating the bundle during makerExecute is that any revert will make the trade revert, so one needs to make sure it does not happen (by catching potential reverts, assuming no "out of gas" is thrown)
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint) {
+    // `__lastLook__` was already called so we know order is neither expired nor over promising
     // this will use offer owner's router to pull `amount` to this contract
     uint missing = super.__get__(amount, order);
 
-    // we know take care of updating the other offers that are part of the same bundle
+    // we now take care of updating the other offers that are part of the same bundle
+    // this update might fail if the offer list is locked (see `_updateBundle`)
     bytes32 olKeyHash = order.olKey.hash();
     uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
     BundledOffer[] memory bundle = __bundles[bundleId];
