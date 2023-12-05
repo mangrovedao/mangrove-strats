@@ -190,6 +190,8 @@ abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
 
     assertGt(takerGot, 0);
     assertEq(bounty, 0);
+
+    printDescription(" - Case: MangroveOrder filled using directly market order");
   }
 
   function test_gas_measurement_take_overhead() public {
@@ -209,6 +211,8 @@ abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
     sellResult = mangroveOrder.take{value: 1 ether}(sellOrder);
     _gas();
     assertGt(sellResult.offerId, 0, "Resting offer failed to be published on mangrove");
+
+    printDescription(" - Case: MangroveOrder take");
   }
 
   receive() external payable {
