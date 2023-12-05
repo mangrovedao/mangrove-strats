@@ -142,3 +142,87 @@ contract MangroveOrderGasreqTest_Polygon_WETH_DAI is MangroveOrderGasreqBaseTest
     this.setUpTokens("WETH.e", "DAI.e");
   }
 }
+
+///@notice Can be used to measure gas overhead of MangroveOrder.
+abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
+  MangroveOrder internal mangroveOrder;
+  IOrderLogic.TakerOrderResult internal buyResult;
+  IOrderLogic.TakerOrderResult internal sellResult;
+  uint GASREQ = 1_000_000;
+  uint volume = 2 ether;
+
+  function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
+    super.setUpTokens(baseToken, quoteToken);
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
+    mangroveOrder.activate(dynamic([IERC20(base), IERC20(quote)]));
+
+    // We approve both base and quote to be able to test both tokens.
+    deal($(quote), $(this), 10 ether);
+    TransferLib.approveToken(quote, $(mangroveOrder.router()), 10 ether);
+
+    deal($(base), $(this), 10 ether);
+    TransferLib.approveToken(base, $(mangroveOrder.router()), 10 ether);
+
+    // A buy
+    IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
+      olKey: olKey,
+      fillOrKill: false,
+      fillWants: false,
+      fillVolume: 1 ether,
+      tick: Tick.wrap(10),
+      restingOrder: true,
+      expiryDate: block.timestamp + 10000,
+      offerId: 0,
+      restingOrderGasreq: GASREQ
+    });
+
+    buyResult = mangroveOrder.take{value: 1 ether}(buyOrder);
+    assertGt(buyResult.offerId, 0, "Resting offer failed to be published on mangrove");
+    description = string.concat(description, " - MangroveOrder");
+  }
+
+  function test_gas_measurement_market_order() public {
+    (IMangrove _mgv,,,) = getStored();
+    prankTaker(lo);
+    _gas();
+    (uint takerGot,, uint bounty,) = _mgv.marketOrderByTick(lo, Tick.wrap(10), volume, true);
+    gas_();
+
+    assertGt(takerGot, 0);
+    assertEq(bounty, 0);
+
+    printDescription(" - Case: MangroveOrder filled using directly market order");
+  }
+
+  function test_gas_measurement_take_overhead() public {
+    IOrderLogic.TakerOrder memory sellOrder = IOrderLogic.TakerOrder({
+      olKey: lo,
+      fillOrKill: false,
+      fillWants: false,
+      fillVolume: volume,
+      tick: Tick.wrap(10),
+      restingOrder: true,
+      expiryDate: block.timestamp + 10000,
+      offerId: 0,
+      restingOrderGasreq: GASREQ // overestimate
+    });
+
+    _gas();
+    sellResult = mangroveOrder.take{value: 1 ether}(sellOrder);
+    gas_();
+    assertGt(sellResult.offerId, 0, "Resting offer failed to be published on mangrove");
+
+    printDescription(" - Case: MangroveOrder take");
+  }
+
+  receive() external payable {
+    // allow mangrove to send native token to test contract
+  }
+}
+
+contract MangroveOrderGasOverhead_Generic_A_B is MangroveOrderGasOverhead {
+  function setUp() public override {
+    super.setUpGeneric();
+    this.setUpTokens(options.base.symbol, options.quote.symbol);
+  }
+}
