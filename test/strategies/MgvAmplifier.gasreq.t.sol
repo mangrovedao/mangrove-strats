@@ -112,19 +112,6 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
       );
       olKey.inbound_tkn = address(token);
       setupMarket(olKey);
-      setupMarket(olKey.flipped());
-
-      // // Create taker for taking quote
-      // TestTaker takerLo = setupTaker(lo, "TakerSell");
-      // takerLo.approveMgv(base, type(uint).max);
-      // deal($(base), $(takerLo), 200000 ether);
-      // takers[lo.hash()] = takerLo;
-
-      // // Create taker for taking base
-      // TestTaker takerOl = setupTaker(olKey, "TakerBuy");
-      // takerOl.approveMgv(quote, type(uint).max);
-      // deal($(quote), $(takerOl), 200000 ether);
-      // takers[olKey.hash()] = takerOl;
 
       mgvAmplifier.activate(token);
       activateOwnerRouter(token, MangroveOffer($(mgvAmplifier)), address(this));
