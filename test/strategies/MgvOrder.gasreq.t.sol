@@ -186,7 +186,7 @@ abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
     prankTaker(lo);
     _gas();
     (uint takerGot,, uint bounty,) = _mgv.marketOrderByTick(lo, Tick.wrap(10), volume, true);
-    _gas();
+    gas_();
 
     assertGt(takerGot, 0);
     assertEq(bounty, 0);
@@ -209,7 +209,7 @@ abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
 
     _gas();
     sellResult = mangroveOrder.take{value: 1 ether}(sellOrder);
-    _gas();
+    gas_();
     assertGt(sellResult.offerId, 0, "Resting offer failed to be published on mangrove");
 
     printDescription(" - Case: MangroveOrder take");
