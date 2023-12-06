@@ -516,7 +516,7 @@ contract MgvAmplifierTest is StratTest {
     uint balWeiBefore = owner.balance;
 
     vm.expectRevert("MgvAmplifier/unauthorized");
-    mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
+    mgvAmplifier.retractBundle(bundleId, dai);
 
     vm.prank(owner);
     uint freeWei = mgvAmplifier.retractBundle(bundleId, dai);
@@ -533,7 +533,7 @@ contract MgvAmplifierTest is StratTest {
     }
   }
 
-  function test_offer_expiry_has_precedence_over_bundle_wide_expiry() public {
+  function test_offer_expiry_before_bundle_expiry() public {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
 
@@ -547,7 +547,7 @@ contract MgvAmplifierTest is StratTest {
     assertEq(cond.date, block.timestamp + 1000, "Incorrect expiry");
 
     // setting expiry date of the first offer to now
-    vm.expectEmit(true, true, true, false, address(mgvAmplifier));
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
     emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp, volume: 0});
     vm.prank(owner);
     mgvAmplifier.setReneging(dai_weth.hash(), 1, block.timestamp, 0);
@@ -558,6 +558,41 @@ contract MgvAmplifierTest is StratTest {
       olKeyHash: dai_weth.hash(),
       offerId: 1,
       makerData: "RenegingForwarder/expired",
+      mgvData: "mgv/makerRevert"
+    });
+    // taker sells  0.004 btc to get 100 dai
+    vm.startPrank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(dai_weth, Tick.wrap(MAX_TICK), 1 ether, true);
+    vm.stopPrank();
+    assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
+  }
+
+  function test_bundle_expiry_before_offer_expiry() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+
+    fx.expiryDate = block.timestamp;
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    vm.stopPrank();
+
+    // checking bundle expiry date
+    RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
+    assertEq(cond.date, block.timestamp, "Incorrect expiry");
+
+    // setting expiry date of the first offer to now
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
+    emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp + 1000, volume: 0});
+    vm.prank(owner);
+    mgvAmplifier.setReneging(dai_weth.hash(), 1, block.timestamp + 1000, 0);
+
+    // market order proceeds and ofr_dai_weth indeed fails
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
+    emit LogIncident({
+      olKeyHash: dai_weth.hash(),
+      offerId: 1,
+      makerData: "MgvAmplifier/expiredBundle",
       mgvData: "mgv/makerRevert"
     });
     // taker sells  0.004 btc to get 100 dai
