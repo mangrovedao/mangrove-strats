@@ -20,6 +20,7 @@ import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
 /// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
 /// Amplified offers have a global expiry date and each offer of the bundle have an individual one. An offer reneges on trade if either the bundle is expired or if their individual expiry date has been reached, or the max volume is surpassed.
+/// offers that renege on trade are not reposted by the strat to avoid repeated renege and potential loss of provision.
 
 contract MangroveAmplifier is RenegingForwarder {
   ///@notice offer bundle identifier

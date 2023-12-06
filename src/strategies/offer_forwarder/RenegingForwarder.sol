@@ -97,6 +97,7 @@ contract RenegingForwarder is Forwarder {
       return super.__residualValues__(order);
     } else {
       // new volume to be offered
+      // if __residualValues__ is called in __posthookFallback__ the offer reneged and cond.volume could be higher than takerWants
       newGives = order.takerWants < cond.volume ? cond.volume - order.takerWants : 0;
       // same price
       newTick = order.offer.tick();
