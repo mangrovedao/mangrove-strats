@@ -85,7 +85,7 @@ contract MangroveAmplifier is RenegingForwarder {
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32 retdata) {
     // checks expiry date and max offered volume of order.offerId first
     // if expired or over promising the call below will revert
-    // if offer is reneged, we will not update the volume for the offer as the offerId will be reused by the amplifier in the future
+    // if offer reneges on trade it will be retracted from Mangrove and __handleResidualProvision__ will credit offer owner from remaining provision
     retdata = super.__lastLook__(order);
     // checks now whether there is a bundle wide expiry date
     uint bundleId = __bundleIdOfOfferId[order.olKey.hash()][order.offerId];

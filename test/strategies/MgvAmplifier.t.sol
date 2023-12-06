@@ -340,17 +340,14 @@ contract MgvAmplifierTest is StratTest {
 
   function makerExecute(MgvLib.SingleOrder calldata) external returns (bytes32) {
     vm.startPrank(taker);
-    (uint takerGot,, uint bounty, uint fee) =
-      mgv.marketOrderByTick(dai_wbtc, Tick.wrap(MAX_TICK), (partialFill ? 10 ** 4 : 10 ** 8), false);
+    // selling btc for dai with fillWants = true to control whether the offer is fully filled or not
+    uint takerWants = partialFill ? 500 * 10 ** 18 : 1000 * 10 ** 18;
+    (uint takerGot,, uint bounty, uint fee) = mgv.marketOrderByTick(dai_wbtc, Tick.wrap(MAX_TICK), takerWants, true);
     vm.stopPrank();
     // checking step 3.1
-    if (!partialFill) {
-      assertEq(takerGot + fee, 1000 * 10 ** 18, "step 3.1"); // the dai from amplifier
-    } else {
-      assertTrue(takerGot > 0, "step 3.1");
-    }
+    assertEq(takerGot + fee, takerWants, "step 3.1"); // the dai from amplifier
     assertEq(bounty, 0); // no failure
-    return "";
+    return bytes32(0);
   }
 
   event GotPaid();
@@ -383,17 +380,32 @@ contract MgvAmplifierTest is StratTest {
     mgv.newOfferByTick{value: 0.1 ether}(dai_weth, Tick.wrap(MIN_TICK), 1 * 10 ** 18, 1_000_000, 0);
 
     // checks 3.2
-    // ofr_dai_weth sets expiry date of ofr_dai_wbtc to now
-    vm.expectEmit(true, true, true, false, address(mgvAmplifier));
-    emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp, volume: 0});
+    // ofr_dai_weth sets volume to now
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
+    if (partialFill) {
+      // if partial fill reneging on volume
+      emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: 0, volume: 500 * 10 ** 18});
+    } else {
+      // if complete fill reneging on date
+      emit SetReneging({olKeyHash: dai_weth.hash(), offerId: 1, date: block.timestamp, volume: 0});
+    }
     // market order proceeds and ofr_dai_weth indeed fails
-    vm.expectEmit(true, true, true, false, address(mgvAmplifier));
-    emit LogIncident({
-      olKeyHash: dai_weth.hash(),
-      offerId: 1,
-      makerData: "RenegingForwarder/expired",
-      mgvData: bytes32(0)
-    });
+    vm.expectEmit(true, true, true, true, address(mgvAmplifier));
+    if (partialFill) {
+      emit LogIncident({
+        olKeyHash: dai_weth.hash(),
+        offerId: 1,
+        makerData: "RenegingForwarder/overSized",
+        mgvData: "mgv/makerRevert"
+      });
+    } else {
+      emit LogIncident({
+        olKeyHash: dai_weth.hash(),
+        offerId: 1,
+        makerData: "RenegingForwarder/expired",
+        mgvData: "mgv/makerRevert"
+      });
+    }
 
     // checks 3.3
     expectFrom(address(this));
