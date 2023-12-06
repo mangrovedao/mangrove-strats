@@ -732,4 +732,35 @@ contract MgvAmplifierTest is StratTest {
     // and that the max volume was set back to 0 as offer was updated
     assertTrue(takerGot == 0 && takerGave == 0 && bounty > 0 && fee == 0, "unexpected trade");
   }
+
+  function test_volume_limit_is_reset_after_partial_fill() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.startPrank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    uint offerId = offers[0].offerId;
+
+    // get the outbound_tkn volume
+    uint outboundVolume = mgv.offers(dai_weth, offerId).gives();
+
+    mgvAmplifier.setReneging(dai_weth.hash(), offerId, block.timestamp + 1000, outboundVolume / 2);
+    vm.stopPrank();
+    assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).volume, outboundVolume / 2, "Incorrect max volume");
+    assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).date, block.timestamp + 1000, "Incorrect date");
+
+    vm.expectEmit(true, true, true, false, $(mgv));
+    emit OfferSuccess({olKeyHash: dai_weth.hash(), taker: taker, id: offerId, takerWants: 0, takerGives: 0});
+    vm.prank(taker);
+    (uint takerGot,, uint bounty, uint fee) =
+      mgv.marketOrderByTick(dai_weth, Tick.wrap(MAX_TICK), outboundVolume / 3, true);
+    assertEq(takerGot + fee, outboundVolume / 3, "Incorrect takerGot");
+    assertEq(bounty, 0, "Incorrect bounty");
+    assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).volume, 0, "volume was not reset");
+    assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).date, block.timestamp + 1000, "date should not change");
+
+    // checking offer is still live
+    assertEq(mgv.offers(dai_weth, offerId).gives(), outboundVolume - takerGot - fee, "Incorrect outbound volume");
+  }
 }
