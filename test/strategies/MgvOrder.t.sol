@@ -306,6 +306,18 @@ contract MgvOrder_Test is StratTest {
     order.fillVolume = fillVolume;
   }
 
+  function test_post_only_order_should_be_posted_and_not_make_market_order() public {
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
+    buyOrder.orderType = TakerOrderType.PO;
+    address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
+    vm.prank(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    assertGt(res.offerId, 0, "Resting offer failed to be published on mangrove");
+    assertEq(res.takerGot, 0, "Taker should not have received any tokens");
+    assertEq(res.takerGave, 0, "Taker should not have given any tokens");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+  }
+
   function test_partial_filled_buy_order_is_transferred_to_taker() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
@@ -1036,6 +1048,10 @@ contract MgvOrder_Test is StratTest {
     assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
     assertEq(res.bounty, 0, "Bounty should be zero");
   }
+
+  ///////////////////////////////////////////////////////
+  ///   Test routing logic (aave) order consumption   ///
+  ///////////////////////////////////////////////////////
 
   function test_post_only_order_take_from_aave() public {}
 }
