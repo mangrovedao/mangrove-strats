@@ -163,6 +163,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s routing policy
     RL.RoutingOrder memory inboundRoute = RL.createOrder({fundOwner: msg.sender, token: IERC20(tko.olKey.inbound_tkn)});
     if (address(tko.takerGivesLogic) != address(0)) {
+      // the logic we set has a 0 olKeyHash and offerId
       userRouter.setLogic(inboundRoute, tko.takerGivesLogic);
     }
     require(userRouter.pull(inboundRoute, pullAmount, true) == pullAmount, "mgvOrder/transferInFail");
@@ -192,6 +193,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // pushing tokens received during market order
       outboundRoute = RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender});
       if (address(tko.takerWantsLogic) != address(0)) {
+        // the logic we set has a 0 olKeyHash and offerId
         userRouter.setLogic(outboundRoute, tko.takerWantsLogic);
       }
       require(userRouter.push(outboundRoute, res.takerGot) == res.takerGot, "mgvOrder/pushFailed");
@@ -294,7 +296,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
 
       // update or create routes for the given offer if needed
       RL.RoutingOrder memory route = RL.RoutingOrder({
-        token: IERC20(tko.olKey.outbound_tkn),
+        token: IERC20(olKey.outbound_tkn),
         fundOwner: msg.sender,
         olKeyHash: olKeyHash,
         offerId: res.offerId
@@ -303,7 +305,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
         // because the taker becomes the maker, the outbound token logic is the takerGivesLogic
         userRouter.setLogic(route, tko.takerGivesLogic);
       }
-      route.token = IERC20(tko.olKey.inbound_tkn);
+      route.token = IERC20(olKey.inbound_tkn);
       if (address(tko.takerWantsLogic) != address(0)) {
         // because the taker becomes the maker, the inbound token logic is the takerWantsLogic
         userRouter.setLogic(route, tko.takerWantsLogic);

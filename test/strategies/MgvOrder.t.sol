@@ -990,11 +990,13 @@ contract MgvOrder_Test is StratTest {
   function createAaveGivesBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     order = createBuyOrder();
     order.takerGivesLogic = aaveLogic;
+    order.restingOrderGasreq = AAVE_GASREQ;
   }
 
   function createAaveWantsBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     order = createBuyOrder();
     order.takerWantsLogic = aaveLogic;
+    order.restingOrderGasreq = AAVE_GASREQ;
   }
 
   // take from user reserve and deposit on aave
@@ -1053,5 +1055,126 @@ contract MgvOrder_Test is StratTest {
   ///   Test routing logic (aave) order consumption   ///
   ///////////////////////////////////////////////////////
 
-  function test_post_only_order_take_from_aave() public {}
+  function getBestTick() internal view returns (Tick tick) {
+    // trick to set the lowest price of the market once posting
+    // we are setting the opposite tick as we are first trying market order on the other side of the book
+    // since it is a PO, it will not check the other side of the book anyway
+    uint bestOfferId = mgv.best(lo);
+    tick = mgv.offers(lo, bestOfferId).tick();
+    tick = Tick.wrap(-Tick.unwrap(tick) + 1);
+  }
+
+  function createTakeableAaveGivesBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createAaveGivesBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function createTakeableAaveWantsBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createAaveWantsBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function createTakeableAaveFullOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createFullAaveBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function test_order_consumption_with_routing_logic_from_aave_and_to_wallet() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveGivesBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(quote).balanceOf(fresh_taker), amount, "Funds were not transferred to taker");
+    assertEq(base.balanceOf(fresh_taker), 0, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(
+      aaveOverlyingOf(quote).balanceOf(fresh_taker),
+      startBalance - (takerGot + fee),
+      "Funds were not transferred to taker"
+    );
+    assertEq(base.balanceOf(fresh_taker), takerGave, "Funds were not transferred to maker");
+  }
+
+  function test_order_consumption_with_routing_logic_from_wallet_and_to_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveWantsBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    require(TransferLib.approveToken(quote, $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = quote.balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(quote.balanceOf(fresh_taker), amount, "Funds were transferred to taker");
+    assertEq(base.balanceOf(fresh_taker), 0, "Funds were transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), takerGave, "Funds were not transferred to taker");
+    assertEq(quote.balanceOf(fresh_taker), startBalance - (takerGot + fee), "Funds were not transferred to maker");
+  }
+
+  function test_order_consumption_with_routing_logic_from_aave_and_to_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveFullOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(quote).balanceOf(fresh_taker), amount, "Funds were not transferred to taker");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), 0, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(
+      aaveOverlyingOf(quote).balanceOf(fresh_taker),
+      startBalance - (takerGot + fee),
+      "Funds were not transferred to taker"
+    );
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), takerGave, "Funds were not transferred to maker");
+  }
 }
