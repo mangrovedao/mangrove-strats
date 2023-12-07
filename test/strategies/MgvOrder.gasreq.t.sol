@@ -13,6 +13,7 @@ import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
+import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
 
 ///@notice Can be used to measure gasreq for MangroveOrder. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing with gas-measurement in core.
@@ -48,11 +49,10 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
       olKey: olKey,
-      fillOrKill: false,
+      orderType: TakerOrderType.GTC,
       fillWants: false,
       fillVolume: 1 ether,
       tick: Tick.wrap(10),
-      restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
       restingOrderGasreq: GASREQ,
@@ -68,11 +68,10 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     // A sell
     IOrderLogic.TakerOrder memory sellOrder = IOrderLogic.TakerOrder({
       olKey: lo,
-      fillOrKill: false,
+      orderType: TakerOrderType.GTC,
       fillWants: false,
       fillVolume: 1 ether,
       tick: Tick.wrap(-20),
-      restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
       restingOrderGasreq: GASREQ, // overestimate
