@@ -20,72 +20,56 @@ enum TakerOrderType {
 
 using TakerOrderTypeLib for TakerOrderType global;
 
+/// @title Library for TakerOrderType
+/// @notice This library contains functions to check the compatibility of an order type with a resting or market order.
 library TakerOrderTypeLib {
-  /// Returns true if the order type is compatible with a resting order.
+  /// @notice Returns true if the order type is compatible with a resting order.
   /// i.e. GTC, GTCE, PO
   /// @param orderType the order type
+  /// @return postRestingOrder true if the order type is compatible with a resting order.
   function postRestingOrder(TakerOrderType orderType) internal pure returns (bool) {
     return uint8(orderType) < 3;
   }
 
-  /// Returns true if the order type can be posted as a resting order.
+  /// @notice Returns true if the order type can be posted as a resting order.
   /// @param orderType the order type
   /// @param filled true if the order is filled
+  /// @return postRestingOrder true if the order type can be posted as a resting order.
   function postRestingOrder(TakerOrderType orderType, bool filled) internal pure returns (bool) {
     return !filled && orderType.postRestingOrder();
   }
 
-  /// Returns true if the order type is compatible with a market order.
+  /// @notice Returns true if the order type is compatible with a market order.
   /// i.e. GTC, GTCE, IOC, FOK
   /// @param orderType the order type
+  /// @return executesMarketOrder true if the order type is compatible with a market order.
   function executesMarketOrder(TakerOrderType orderType) internal pure returns (bool) {
     return orderType != TakerOrderType.PO;
   }
 
-  /// Returns true if the market order is successful according to the order type.
+  /// @notice Returns true if the market order is successful according to the order type.
   /// @param orderType the order type
   /// @param filled true if the order is filled
+  /// @return marketOrderSucceded true if the market order is successful according to the order type.
   function marketOrderSucceded(TakerOrderType orderType, bool filled) internal pure returns (bool) {
     // if post resting order is true, this means
     return filled || orderType.postRestingOrder() || orderType == TakerOrderType.IOC;
   }
 
-  /// Returns true if the market order should be executed.
+  /// @notice Returns true if the market order should be executed.
   /// * This function returns false if the order type is PO (Post Only).
   /// @param orderType the order type
+  /// @return shouldExecuteMarketOrder true if the market order should be executed.
   function shouldExecuteMarketOrder(TakerOrderType orderType) internal pure returns (bool) {
     return orderType != TakerOrderType.PO;
   }
 
-  /// Returns true if the order requires posting the resting order to be successful.
+  /// @notice Returns true if the order requires posting the resting order to be successful.
   /// i.e. GTCE (Good till cancelled enforced) and PO (Post Only)
   /// Reverting Post Only orders is not necessary but saves the gas of the taker.
   /// @param orderType the order type
+  /// @return enforcePostRestingOrder true if the order requires posting the resting order to be successful.
   function enforcePostRestingOrder(TakerOrderType orderType) internal pure returns (bool) {
     return orderType == TakerOrderType.GTCE || orderType == TakerOrderType.PO;
-  }
-
-  /// Returns true if the order type is GTC (Good Till Cancelled).
-  /// @param orderType the order type
-  function isGTC(TakerOrderType orderType) internal pure returns (bool) {
-    return orderType == TakerOrderType.GTC;
-  }
-
-  /// Returns true if the order type is PO (Post Only).
-  /// @param orderType the order type
-  function isPO(TakerOrderType orderType) internal pure returns (bool) {
-    return orderType == TakerOrderType.PO;
-  }
-
-  /// Returns true if the order type is IOC (Immediate or Cancel).
-  /// @param orderType the order type
-  function isIOC(TakerOrderType orderType) internal pure returns (bool) {
-    return orderType == TakerOrderType.IOC;
-  }
-
-  /// Returns true if the order type is FOK (Fill or Kill).
-  /// @param orderType the order type
-  function isFOK(TakerOrderType orderType) internal pure returns (bool) {
-    return orderType == TakerOrderType.FOK;
   }
 }
