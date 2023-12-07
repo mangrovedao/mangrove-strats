@@ -721,11 +721,11 @@ contract MgvOrder_Test is StratTest {
 
   function test_restingOrder_that_fail_to_post_revert_if_no_partialFill() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.orderType = TakerOrderType.FOK;
+    sellOrder.orderType = TakerOrderType.GTCE;
     address fresh_taker = freshTaker(2 ether, 0);
     // pretend new offer failed for some reason
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
-    vm.expectRevert("mgvOrder/partialFill");
+    vm.expectRevert("mgvOrder/RestingOrderFailed");
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
   }
