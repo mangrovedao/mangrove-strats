@@ -12,7 +12,7 @@ pragma solidity >=0.8.10;
 /// @param FOK Fill or kill -> This order must be filled in its entirety immediately at the limit price or better, or it is entirely canceled. There is no partial fulfillment.
 
 ///@dev This enum is used to represent the type of a taker order.
-///@dev invariant must be that TakerOrderType < 3 is a resting order, and >= 3 is a market order.
+///@dev invariant must be that TakerOrderType >= 3 won't try posting a resting order.
 enum TakerOrderType {
   GTC, // = 0
   GTCE, // = 1
