@@ -54,20 +54,17 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
   function take(TakerOrder calldata tko) external payable returns (TakerOrderResult memory res) {
     // Checking whether order is expired
     require(tko.expiryDate == 0 || block.timestamp < tko.expiryDate, "mgvOrder/expired");
-
-    // Notations:
-    // NAT_USER: initial value of `msg.sender.balance` (native balance of user)
-    // OUT/IN_USER: initial value of `tko.[out|in]bound_tkn.balanceOf(reserve(msg.sender))` (user's reserve balance of tokens with the given logic)
-    // NAT_THIS: initial value of `address(this).balance` (native balance of `this`)
-    // OUT/IN_THIS: initial value of `tko.[out|in]bound_tkn.balanceOf(address(this))` (`this` balance of tokens)
-
     (RouterProxy proxy,) = ROUTER_FACTORY.instantiate(msg.sender, ROUTER_IMPLEMENTATION);
     SmartRouter userRouter = SmartRouter(address(proxy));
 
-    bool isComplete;
+    // Notations:
+    // NAT_USER: initial value of `msg.sender.balance` (native balance of user)
+    // OUT/IN_USER: initial value of `userRouter.tokenBalanceOf({token: tko.[out|in]bound_tkn, fundOwner:msg.sender})
+    // NAT_THIS: initial value of `address(this).balance` (native balance of `this`)
+    // OUT/IN_THIS: initial value of `tko.[out|in]bound_tkn.balanceOf(address(this))` (`this` balance of tokens)
 
-    logOrderData(tko);
-
+    logOrderData(tko); // for indexing
+    bool isComplete; // stores whether market order is filled
     // this will check if this isn't a post only offer for the market order
     if (tko.orderType.executesMarketOrder()) {
       // State before market order:
@@ -92,10 +89,10 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     if ( // resting order is:
       tko.orderType.postRestingOrder(isComplete) // required
     ) {
-      // When posting a resting order `msg.sender` becomes a maker.
+      // When posting a resting order `msg.sender` (taker) becomes a maker.
       // For maker orders, outbound tokens are what makers send. Here `msg.sender` sends `tko.olKey.inbound_tkn`.
-      // The offer list on which this contract must post `msg.sender`'s resting order is thus `(tko.olKey)`
-      // the call below will fill the memory data `res`.
+      // The offer list on which this contract must post `msg.sender`'s resting order is thus `tko.olKey.flipped()`
+      // the call below will continue filling the memory data `res`.
       fund = postRestingOrder({tko: tko, olKey: tko.olKey.flipped(), res: res, userRouter: userRouter, fund: fund});
       // POST (case `postRestingOrder` succeeded):
       // * (NAT_USER-`msg.value`, OUT_USER+`res.takerGot`, IN_USER-`res.takerGave`)
@@ -154,6 +151,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
   /// @param userRouter the user router
   /// @return res the result of the market order
   /// @return isComplete true if the order was entirely filled, false otherwise.
+  /// @dev tko.orderType must not be PO
   function executeMarketOrder(TakerOrder calldata tko, SmartRouter userRouter)
     internal
     returns (TakerOrderResult memory res, bool isComplete)
@@ -163,7 +161,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     // Pulling funds from `msg.sender`'s routing policy
     RL.RoutingOrder memory inboundRoute = RL.createOrder({fundOwner: msg.sender, token: IERC20(tko.olKey.inbound_tkn)});
     if (address(tko.takerGivesLogic) != address(0)) {
-      // the logic we set has a 0 olKeyHash and offerId
+      // telling router to use `takerGivesLogic` when `inboundRoute` is selected
       userRouter.setLogic(inboundRoute, tko.takerGivesLogic);
     }
     require(userRouter.pull(inboundRoute, pullAmount, true) == pullAmount, "mgvOrder/transferInFail");
@@ -181,7 +179,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
 
     // we check whether the order was entirely filled before posting the resting order
     // if the order is a FoK and was not entirely filled, we revert.
-    // if the order is partially filled and is to be posted or is an IOC, the market order succeeds.
+    // if the order is GTC(E) or IOC, the market order succeeds.
     // in all cases, if the market order is filled, we do not revert (Here we assume no PO orders are passed to this function)
     require(tko.orderType.marketOrderSucceded(isComplete), "mgvOrder/partialFill");
 
@@ -193,10 +191,14 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // pushing tokens received during market order
       outboundRoute = RL.createOrder({token: IERC20(tko.olKey.outbound_tkn), fundOwner: msg.sender});
       if (address(tko.takerWantsLogic) != address(0)) {
-        // the logic we set has a 0 olKeyHash and offerId
+        // telling router to use `takerWantsLogic` when `outboundRoute` is selected.
         userRouter.setLogic(outboundRoute, tko.takerWantsLogic);
       }
       require(userRouter.push(outboundRoute, res.takerGot) == res.takerGot, "mgvOrder/pushFailed");
+      // set back router's storage to 0 for some cheap gas refund
+      if (address(tko.takerWantsLogic) != address(0)) {
+        userRouter.setLogic(outboundRoute, AbstractRoutingLogic(address(0)));
+      }
     }
     // we now deal with inbound left in case the order was partially filled
     uint inboundLeft = pullAmount - res.takerGave;
@@ -205,15 +207,9 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // Here we can use `inboundRoute`.
       require(userRouter.push(inboundRoute, inboundLeft) == inboundLeft, "mgvOrder/pushFailed");
     }
-    // set back both logic to 0 to save gas if needed
+    // set back router's storage to 0 for some cheap gas refund
     if (address(tko.takerGivesLogic) != address(0)) {
       userRouter.setLogic(inboundRoute, AbstractRoutingLogic(address(0)));
-    }
-    // here we check first if the outbound route is initialized
-    // In some case, we can have a takerWantsLogic different from 0 that has not been set
-    // This is the case if the market order has not been filled at all (i.e. `res.takerGot == 0`)
-    if (outboundRoute.token != IERC20(address(0)) && address(tko.takerWantsLogic) != address(0)) {
-      userRouter.setLogic(outboundRoute, AbstractRoutingLogic(address(0)));
     }
   }
 
@@ -257,7 +253,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       gasreq: tko.restingOrderGasreq,
       gasprice: 0, // ignored
       fund: fund,
-      noRevert: true // returns 0 when MGV reverts
+      noRevert: true // returns `(0,reason)` if MGV reverts
     });
     if (tko.offerId == 0) {
       // posting a new offer
@@ -265,14 +261,13 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     } else {
       // updating an existing offer
       uint offerId = tko.offerId;
-      // chekcing ownership of offer since we use internal version of `updateOffer` which is unguarded
+      // checking ownership of offer since we use internal version of `updateOffer` which is unguarded
       require(ownerData[olKeyHash][offerId].owner == msg.sender, "AccessControlled/Invalid");
       // msg sender might have given an offerId that is already live
       // we disallow this to avoid confusion
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
-      bytes32 repostData = _updateOffer(args, offerId);
-      res.offerWriteData = repostData;
-      if (repostData == REPOST_SUCCESS) {
+      res.offerWriteData = _updateOffer(args, offerId);
+      if (res.offerWriteData == REPOST_SUCCESS) {
         res.offerId = offerId;
       } else {
         res.offerId = 0;
@@ -285,15 +280,13 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // - `fund` is too high and would yield a gasprice overflow
       // - offer list is not active (Mangrove is not dead otherwise market order would have reverted)
       // So the resting order was not posted.
-      // in this case, if we have a GTFE order, we revert.
-      // If this is a PO order, we could proceed, but we revert to avoid further gas loss.
+      // If GTC is enforced (GTCE) or if the order is PO we revert.
       require(!tko.orderType.enforcePostRestingOrder(), "mgvOrder/RestingOrderFailed");
       // `fund` is no longer needed so sending it back to `msg.sender`
       refund = fund;
     } else {
       // offer was successfully posted
       // `fund` was used and we leave `refund` at 0.
-
       // update or create routes for the given offer if needed
       RL.RoutingOrder memory route = RL.RoutingOrder({
         token: IERC20(olKey.outbound_tkn),
@@ -305,6 +298,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
         // because the taker becomes the maker, the outbound token logic is the takerGivesLogic
         userRouter.setLogic(route, tko.takerGivesLogic);
       }
+      // updating route for inbound token
       route.token = IERC20(olKey.inbound_tkn);
       if (address(tko.takerWantsLogic) != address(0)) {
         // because the taker becomes the maker, the inbound token logic is the takerWantsLogic
