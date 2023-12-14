@@ -1,5 +1,9 @@
 # Next version
 
+- Update licenses:
+  - All code is now licensed under the MIT License, with the exception of 3rd party code.
+  - 3rd party code in src/strategies/vendor/ is still covered by the original licences.
+
 # 0.0.2-7
 
 - Export CoreKandel abi

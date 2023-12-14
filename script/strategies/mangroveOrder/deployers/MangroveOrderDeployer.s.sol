@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
@@ -34,7 +34,7 @@ contract MangroveOrderDeployer is Deployer {
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt:salt}(mgv, admin);
+      mgvOrder = new MangroveOrder{salt: salt}(mgv, admin);
     } else {
       mgvOrder = new MangroveOrder(mgv, admin);
     }

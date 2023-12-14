@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
@@ -78,11 +78,7 @@ contract OfferLogicTest is StratTest {
     gasreq = 50_000; // cost for no router, override gasreq for specific strats
 
     vm.startPrank(deployer);
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)),
-      deployer: deployer
-    });
+    makerContract = new DirectTester({mgv: IMangrove($(mgv)), router_: AbstractRouter(address(0)), deployer: deployer});
     weth.approve(address(makerContract), type(uint).max);
     usdc.approve(address(makerContract), type(uint).max);
     vm.stopPrank();

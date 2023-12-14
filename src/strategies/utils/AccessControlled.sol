@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 /// @title This contract is used to restrict access to privileged functions of inheriting contracts through modifiers.

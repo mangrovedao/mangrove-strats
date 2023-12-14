@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
@@ -32,11 +32,7 @@ contract AccessControlTest is StratTest {
     deal(admin, 1 ether);
     vm.expectEmit(true, true, true, true);
     emit SetAdmin($(this));
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)),
-      deployer: admin
-    });
+    makerContract = new DirectTester({mgv: IMangrove($(mgv)), router_: AbstractRouter(address(0)), deployer: admin});
     vm.startPrank(admin);
     makerContract.activate(dynamic([IERC20(weth), usdc]));
     weth.approve(address(makerContract), type(uint).max);

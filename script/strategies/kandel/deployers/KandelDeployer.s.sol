@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
@@ -35,12 +35,7 @@ contract KandelDeployer is Deployer {
    */
   function innerRun(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, string memory name) public {
     broadcast();
-    current = new Kandel(
-      mgv,
-      olKeyBaseQuote,
-      gasreq,
-      broadcaster()
-    );
+    current = new Kandel(mgv, olKeyBaseQuote, gasreq, broadcaster());
 
     string memory kandelName = new KandelSower().getName(name, olKeyBaseQuote, false);
     fork.set(kandelName, address(current));

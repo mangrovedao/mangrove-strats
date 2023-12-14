@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {DataTypes} from "@mgv-strats/src/strategies/vendor/aave/v3/DataTypes.sol";
@@ -19,9 +19,10 @@ contract PoolMock {
       MintableERC20BLWithDecimals underlying = MintableERC20BLWithDecimals(underlyings[i]);
       MintableERC20BLWithDecimals overlying = new MintableERC20BLWithDecimals(
         address(this),
-        string.concat("a",underlying.name()),
+        string.concat("a", underlying.name()),
         string.concat("a", underlying.symbol()),
-        underlying.decimals());
+        underlying.decimals()
+      );
 
       underlyingToOverlying[underlyings[i]] = address(overlying);
     }

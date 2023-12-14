@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
@@ -218,12 +218,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
   function createKandel() public virtual override returns (GeometricKandel) {
     description = string.concat(description, " - Kandel");
-    return new Kandel({
-        mgv: mgv,
-        olKeyBaseQuote: olKey,
-        gasreq: 500_000,
-        reserveId: address(0)
-      });
+    return new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: 500_000, reserveId: address(0)});
   }
 }
 
@@ -234,11 +229,7 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
 
     address aave = fork.get("AaveAddressProvider");
     AavePooledRouter router = new AavePooledRouter(aave);
-    AaveKandel aaveKandel = new AaveKandel({
-      mgv: mgv,
-      olKeyBaseQuote: olKey,
-      reserveId: $(this)
-    });
+    AaveKandel aaveKandel = new AaveKandel({mgv: mgv, olKeyBaseQuote: olKey, reserveId: $(this)});
 
     router.bind(address(aaveKandel));
     aaveKandel.initialize(router, 1_000_000);

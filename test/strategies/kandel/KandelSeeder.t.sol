@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
@@ -56,14 +56,11 @@ contract KandelSeederTest is StratTest {
   function setUp() public virtual override {
     /// sets base, quote, opens a market (base,quote) on Mangrove
     setEnvironment();
-    seeder = new KandelSeeder({
-      mgv:IMangrove($(mgv)), 
-      kandelGasreq: 128_000
-    });
+    seeder = new KandelSeeder({mgv: IMangrove($(mgv)), kandelGasreq: 128_000});
 
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
-      mgv:IMangrove($(mgv)), 
-      addressesProvider: fork.get("AaveAddressProvider"), 
+      mgv: IMangrove($(mgv)),
+      addressesProvider: fork.get("AaveAddressProvider"),
       aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;
