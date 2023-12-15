@@ -1,15 +1,5 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
-
-import "../vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "../vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IRewardsControllerIsh} from "../vendor/aave/v3/IRewardsControllerIsh.sol";
-import {ICreditDelegationToken} from "../vendor/aave/v3/ICreditDelegationToken.sol";
-
-import "../vendor/aave/v3/IPriceOracleGetter.sol";
-import {ReserveConfiguration as RC} from "../vendor/aave/v3/ReserveConfiguration.sol";
-
-import "mgv_src/IMangrove.sol";
 
 library AaveV3BorrowerStorage {
   // address of the lendingPool

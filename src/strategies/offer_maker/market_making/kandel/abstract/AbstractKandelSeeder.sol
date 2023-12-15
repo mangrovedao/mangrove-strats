@@ -1,10 +1,9 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {GeometricKandel} from "./GeometricKandel.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {OLKey, Local} from "@mgv/src/core/MgvLib.sol";
 
 ///@title Abstract Kandel strat deployer.
 ///@notice This seeder deploys Kandel strats on demand and binds them to an AAVE router if needed.
@@ -24,56 +23,30 @@ abstract contract AbstractKandelSeeder {
     KANDEL_GASREQ = kandelGasreq;
   }
 
-  ///@notice a new Kandel with pooled AAVE router has been deployed.
-  ///@param owner the owner of the strat.
-  ///@param base the base token.
-  ///@param quote the quote token.
-  ///@param aaveKandel the address of the deployed strat.
-  ///@param reserveId the reserve identifier used for the router.
-  event NewAaveKandel(
-    address indexed owner, IERC20 indexed base, IERC20 indexed quote, address aaveKandel, address reserveId
-  );
-
-  ///@notice a new Kandel has been deployed.
-  ///@param owner the owner of the strat.
-  ///@param base the base token.
-  ///@param quote the quote token.
-  ///@param kandel the address of the deployed strat.
-  event NewKandel(address indexed owner, IERC20 indexed base, IERC20 indexed quote, address kandel);
-
-  ///@notice Kandel deployment parameters
-  ///@param base ERC20 of Kandel's market
-  ///@param quote ERC20 of Kandel's market
-  ///@param gasprice one wants to use for Kandel's provision
+  ///@notice deploys a new Kandel contract for the given seed parameters.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param liquiditySharing if true, `msg.sender` will be used to identify the shares of the deployed Kandel strat. If msg.sender deploys several instances, reserve of the strats will be shared, but this will require a transfer from router to maker contract for each taken offer, since we cannot transfer the full amount to the first maker contract hit in a market order in case later maker contracts need the funds. Still, only a single AAVE redeem will take place.
-  struct KandelSeed {
-    IERC20 base;
-    IERC20 quote;
-    uint gasprice;
-    bool liquiditySharing;
-  }
-
-  ///@notice deploys a new Kandel contract for the given seed.
-  ///@param seed the parameters for the Kandel strat
   ///@return kandel the Kandel contract.
-  function sow(KandelSeed calldata seed) external returns (GeometricKandel kandel) {
+  function sow(OLKey memory olKeyBaseQuote, bool liquiditySharing) external returns (GeometricKandel kandel) {
     // Seeder must set Kandel owner to an address that is controlled by `msg.sender` (msg.sender or Kandel's address for instance)
     // owner MUST not be freely chosen (it is immutable in Kandel) otherwise one would allow the newly deployed strat to pull from another's strat reserve
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
 
-    (, MgvStructs.LocalPacked local) = MGV.config(address(seed.base), address(seed.quote));
-    (, MgvStructs.LocalPacked local_) = MGV.config(address(seed.quote), address(seed.base));
+    (, Local local) = MGV.config(olKeyBaseQuote);
+    (, Local local_) = MGV.config(olKeyBaseQuote.flipped());
 
     require(local.active() && local_.active(), "KandelSeeder/inactiveMarket");
 
-    kandel = _deployKandel(seed);
-    uint fullCompound = 10 ** kandel.PRECISION();
-    kandel.setCompoundRates(fullCompound, fullCompound);
+    kandel = _deployKandel(olKeyBaseQuote, liquiditySharing);
     kandel.setAdmin(msg.sender);
   }
 
-  ///@notice deploys a new Kandel contract for the given seed.
-  ///@param seed the parameters for the Kandel strat
+  ///@notice deploys a new Kandel contract for the given seed parameters.
+  ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
+  ///@param liquiditySharing if true, `msg.sender` will be used to identify the shares of the deployed Kandel strat. If msg.sender deploys several instances, reserve of the strats will be shared, but this will require a transfer from router to maker contract for each taken offer, since we cannot transfer the full amount to the first maker contract hit in a market order in case later maker contracts need the funds. Still, only a single AAVE redeem will take place.
   ///@return kandel the Kandel contract.
-  function _deployKandel(KandelSeed calldata seed) internal virtual returns (GeometricKandel kandel);
+  function _deployKandel(OLKey memory olKeyBaseQuote, bool liquiditySharing)
+    internal
+    virtual
+    returns (GeometricKandel kandel);
 }

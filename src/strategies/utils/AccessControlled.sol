@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 /// @title This contract is used to restrict access to privileged functions of inheriting contracts through modifiers.
@@ -8,6 +8,7 @@ contract AccessControlled {
   /**
    * @notice logs new `admin` of `this`
    * @param admin The new admin.
+   * @notice By emitting this data, an indexer will be able to keep track of what address is the admin of this contract.
    */
   event SetAdmin(address admin);
   /**
@@ -23,6 +24,7 @@ contract AccessControlled {
   constructor(address admin_) {
     require(admin_ != address(0), "AccessControlled/0xAdmin");
     _admin = admin_;
+    emit SetAdmin(admin_);
   }
 
   /**

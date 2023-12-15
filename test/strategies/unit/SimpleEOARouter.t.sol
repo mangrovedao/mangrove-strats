@@ -1,8 +1,8 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "./OfferLogic.t.sol";
-import "mgv_src/strategies/routers/SimpleRouter.sol";
+import "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 
 contract SimpleEOARouterTest is OfferLogicTest {
   SimpleRouter router;
@@ -14,6 +14,8 @@ contract SimpleEOARouterTest is OfferLogicTest {
     // maker must approve router
     vm.prank(deployer);
     makerContract.setRouter(router);
+
+    gasreq = 80_000;
 
     vm.startPrank(owner);
     weth.approve(address(router), type(uint).max);

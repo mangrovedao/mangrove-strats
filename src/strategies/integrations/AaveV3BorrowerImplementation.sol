@@ -1,18 +1,19 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {
-  AaveV3BorrowerStorage as AMS,
-  IRewardsControllerIsh,
-  IPoolAddressesProvider,
-  ICreditDelegationToken,
-  IPool,
-  IPriceOracleGetter,
-  DataTypes,
-  RC
-} from "./AaveV3BorrowerStorage.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
-import "mgv_src/strategies/utils/TransferLib.sol";
+import {AaveV3BorrowerStorage as AMS} from "./AaveV3BorrowerStorage.sol";
+import "../vendor/aave/v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "../vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {ICreditDelegationToken} from "../vendor/aave/v3/contracts/interfaces/ICreditDelegationToken.sol";
+
+import "../vendor/aave/v3/contracts/interfaces/IPriceOracleGetter.sol";
+import {ReserveConfiguration as RC} from
+  "../vendor/aave/v3/contracts/protocol/libraries/configuration/ReserveConfiguration.sol";
+
+import "@mgv/src/IMangrove.sol";
+
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import "@mgv/lib/TransferLib.sol";
 
 contract AaveV3BorrowerImplementation {
   IPool public immutable POOL;

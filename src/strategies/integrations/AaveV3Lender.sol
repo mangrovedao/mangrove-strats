@@ -1,12 +1,11 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {IPool} from "../vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "../vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IRewardsControllerIsh} from "../vendor/aave/v3/IRewardsControllerIsh.sol";
-import {IMangrove} from "mgv_src/IMangrove.sol";
-import {IERC20} from "mgv_src/MgvLib.sol";
-import {TransferLib} from "mgv_src/strategies/utils/TransferLib.sol";
+import {IPool} from "../vendor/aave/v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "../vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IRewardsController} from "../vendor/aave/v3/periphery/contracts/rewards/interfaces/IRewardsController.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
 /// @title This contract provides a collection of lending capabilities with AAVE-v3 to whichever contract inherits it
 contract AaveV3Lender {
@@ -97,8 +96,8 @@ contract AaveV3Lender {
     internal
     returns (address[] memory rewardsList, uint[] memory claimedAmounts)
   {
-    IRewardsControllerIsh rewardsController =
-      IRewardsControllerIsh(ADDRESS_PROVIDER.getAddress(keccak256("INCENTIVES_CONTROLLER")));
+    IRewardsController rewardsController =
+      IRewardsController(ADDRESS_PROVIDER.getAddress(keccak256("INCENTIVES_CONTROLLER")));
     (rewardsList, claimedAmounts) = rewardsController.claimAllRewards(assets, to);
   }
 

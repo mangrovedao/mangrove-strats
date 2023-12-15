@@ -1,12 +1,12 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-import "mgv_test/lib/forks/Polygon.sol";
-import {ICreditDelegationToken, AaveV3Borrower} from "mgv_src/strategies/integrations/AaveV3Borrower.sol";
-import {AaveCaller, console} from "mgv_test/lib/agents/AaveCaller.sol";
+import "@mgv-strats/test/lib/StratTest.sol";
+import "@mgv/test/lib/forks/Polygon.sol";
+import {ICreditDelegationToken, AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {AaveCaller, console} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
 
-contract AaveMakerTest is MangroveTest {
+contract AaveMakerTest is StratTest {
   IERC20 weth;
   IERC20 dai;
   IERC20 usdc;
@@ -25,9 +25,9 @@ contract AaveMakerTest is MangroveTest {
     fork = new PinnedPolygonFork(39880000); // use polygon fork to use dai, usdc and weth addresses
     fork.setUp();
 
-    dai = IERC20(fork.get("DAI"));
-    weth = IERC20(fork.get("WETH"));
-    usdc = IERC20(fork.get("USDC"));
+    dai = IERC20(fork.get("DAI.e"));
+    weth = IERC20(fork.get("WETH.e"));
+    usdc = IERC20(fork.get("USDC.e"));
     v_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
     s_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 1);
     lender = new AaveCaller(fork.get("AaveAddressProvider"), 2);

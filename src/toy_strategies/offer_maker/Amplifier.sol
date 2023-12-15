@@ -1,14 +1,17 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "mgv_src/strategies/offer_maker/abstract/Direct.sol";
-import "mgv_src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, MgvStructs} from "mgv_src/MgvLib.sol";
+import "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {MgvLib, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
 contract Amplifier is Direct {
   IERC20 public immutable BASE;
   IERC20 public immutable STABLE1;
   IERC20 public immutable STABLE2;
+  uint public immutable TICK_SPACING1;
+  uint public immutable TICK_SPACING2;
 
   ///mapping(IERC20 => mapping(IERC20 => uint)) // base -> stable -> offerid
 
@@ -21,12 +24,20 @@ contract Amplifier is Direct {
   //        Forwarder  Direct <-- offer management (our entry point)
   //    OfferForwarder  OfferMaker <-- new offer posting
 
-  constructor(IMangrove mgv, IERC20 base, IERC20 stable1, IERC20 stable2, address admin)
-    Direct(mgv, NO_ROUTER, 100_000, admin)
-  {
+  constructor(
+    IMangrove mgv,
+    IERC20 base,
+    IERC20 stable1,
+    IERC20 stable2,
+    uint tickSpacing1,
+    uint tickSpacing2,
+    address admin
+  ) Direct(mgv, NO_ROUTER, admin) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     STABLE2 = stable2;
+    TICK_SPACING1 = tickSpacing1;
+    TICK_SPACING2 = tickSpacing2;
     BASE = base;
     AbstractRouter router_ = new SimpleRouter();
     setRouter(router_);
@@ -41,8 +52,7 @@ contract Amplifier is Direct {
    * @param gives in BASE decimals
    * @param wants1 in STABLE1 decimals
    * @param wants2 in STABLE2 decimals
-   * @param pivot1 pivot for STABLE1
-   * @param pivot2 pivot for STABLE2
+   * @param gasreq for one offer
    * @return (offerid for STABLE1, offerid for STABLE2)
    * @dev these offer's provision must be in msg.value
    * @dev `reserve(admin())` must have approved base for `this` contract transfer prior to calling this function
@@ -52,8 +62,7 @@ contract Amplifier is Direct {
     uint gives,
     uint wants1,
     uint wants2,
-    uint pivot1,
-    uint pivot2
+    uint gasreq
   ) external payable onlyAdmin returns (uint, uint) {
     // there is a cost of being paternalistic here, we read MGV storage
     // an offer can be in 4 states:
@@ -63,34 +72,40 @@ contract Amplifier is Direct {
     // MGV.retractOffer(..., deprovision:bool)
     // deprovisioning an offer (via MGV.retractOffer) credits maker balance on Mangrove (no native token transfer)
     // if maker wishes to retrieve native tokens it should call MGV.withdraw (and have a positive balance)
-    require(!MGV.isLive(MGV.offers(address(BASE), address(STABLE1), offerId1)), "Amplifier/offer1AlreadyActive");
-    require(!MGV.isLive(MGV.offers(address(BASE), address(STABLE2), offerId2)), "Amplifier/offer2AlreadyActive");
+    require(
+      !MGV.offers(OLKey(address(BASE), address(STABLE1), TICK_SPACING1), offerId1).isLive(),
+      "Amplifier/offer1AlreadyActive"
+    );
+    require(
+      !MGV.offers(OLKey(address(BASE), address(STABLE2), TICK_SPACING2), offerId2).isLive(),
+      "Amplifier/offer2AlreadyActive"
+    );
     // FIXME the above requirements are not enough because offerId might be live on another base, stable market
+
+    Tick tick = TickLib.tickFromVolumes(wants1, gives);
 
     (offerId1,) = _newOffer(
       OfferArgs({
-        outbound_tkn: BASE,
-        inbound_tkn: STABLE1,
-        wants: wants1,
+        olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
+        tick: tick,
         gives: gives,
-        gasreq: offerGasreq(),
+        gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivot1,
         fund: msg.value,
         noRevert: false
       })
     );
     // no need to fund this second call for provision
     // since the above call should be enough
+    tick = TickLib.tickFromVolumes(wants2, gives);
+
     (offerId2,) = _newOffer(
       OfferArgs({
-        outbound_tkn: BASE,
-        inbound_tkn: STABLE2,
-        wants: wants2,
+        olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
+        tick: tick,
         gives: gives,
-        gasreq: offerGasreq(),
+        gasreq: gasreq,
         gasprice: 0,
-        pivotId: pivot2,
         fund: 0,
         noRevert: false
       })
@@ -114,13 +129,13 @@ contract Amplifier is Direct {
     // - residual below density (dust)
     // - not enough provision
     // - offer list is closed (governance call)
-    (IERC20 alt_stable, uint alt_offerId) =
-      IERC20(order.inbound_tkn) == STABLE1 ? (STABLE2, offerId2) : (STABLE1, offerId1);
-
+    (OLKey memory altOlKey, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
+      ? (OLKey(order.olKey.outbound_tkn, address(STABLE2), TICK_SPACING2), offerId2)
+      : (OLKey(order.olKey.outbound_tkn, address(STABLE1), TICK_SPACING1), offerId1);
     if (repost_status == REPOST_SUCCESS) {
-      uint new_alt_gives = __residualGives__(order); // in base units
-      MgvStructs.OfferPacked alt_offer = MGV.offers(order.outbound_tkn, address(alt_stable), alt_offerId);
-      MgvStructs.OfferDetailPacked alt_detail = MGV.offerDetails(order.outbound_tkn, address(alt_stable), alt_offerId);
+      (uint new_alt_gives,) = __residualValues__(order); // in base units
+      Offer alt_offer = MGV.offers(altOlKey, alt_offerId);
+      OfferDetail alt_detail = MGV.offerDetails(altOlKey, alt_offerId);
 
       uint old_alt_wants = alt_offer.wants();
       // old_alt_gives is also old_gives
@@ -131,15 +146,14 @@ contract Amplifier is Direct {
       unchecked {
         new_alt_wants = (old_alt_wants * new_alt_gives) / old_alt_gives;
       }
+
       // the call below might throw
       bytes32 reason = _updateOffer(
         OfferArgs({
-          outbound_tkn: IERC20(order.outbound_tkn),
-          inbound_tkn: IERC20(alt_stable),
+          olKey: altOlKey,
           gives: new_alt_gives,
-          wants: new_alt_wants,
+          tick: TickLib.tickFromVolumes(new_alt_wants, new_alt_gives),
           gasreq: alt_detail.gasreq(),
-          pivotId: alt_offer.next(),
           gasprice: 0,
           fund: 0,
           noRevert: true
@@ -153,27 +167,30 @@ contract Amplifier is Direct {
       }
     } else {
       // repost failed or offer was entirely taken
-      retractOffer({
-        outbound_tkn: IERC20(order.outbound_tkn),
-        inbound_tkn: IERC20(alt_stable),
-        offerId: alt_offerId,
-        deprovision: false
-      });
+      retractOffer({olKey: altOlKey, offerId: alt_offerId, deprovision: false});
       return "posthook/bothRetracted";
     }
   }
 
-  function retractOffer(IERC20 outbound_tkn, IERC20 inbound_tkn, uint offerId, bool deprovision)
+  function retractOffer(OLKey memory olKey, uint offerId, bool deprovision)
     public
     adminOrCaller(address(MGV))
     returns (uint freeWei)
   {
-    return _retractOffer(outbound_tkn, inbound_tkn, offerId, deprovision);
+    return _retractOffer(olKey, offerId, deprovision);
   }
 
   function retractOffers(bool deprovision) external {
-    uint freeWei = retractOffer({outbound_tkn: BASE, inbound_tkn: STABLE1, offerId: offerId1, deprovision: deprovision});
-    freeWei += retractOffer({outbound_tkn: BASE, inbound_tkn: STABLE2, offerId: offerId2, deprovision: deprovision});
+    uint freeWei = retractOffer({
+      olKey: OLKey(address(BASE), address(STABLE1), TICK_SPACING1),
+      offerId: offerId1,
+      deprovision: deprovision
+    });
+    freeWei += retractOffer({
+      olKey: OLKey(address(BASE), address(STABLE2), TICK_SPACING2),
+      offerId: offerId2,
+      deprovision: deprovision
+    });
     if (freeWei > 0) {
       require(MGV.withdraw(freeWei), "Amplifier/withdrawFail");
       // sending native tokens to `msg.sender` prevents reentrancy issues
@@ -189,11 +206,11 @@ contract Amplifier is Direct {
     returns (bytes32)
   {
     // if we reach this code, trade has failed for lack of base token
-    (IERC20 alt_stable, uint alt_offerId) =
-      IERC20(order.inbound_tkn) == STABLE1 ? (STABLE2, offerId2) : (STABLE1, offerId1);
+    (IERC20 alt_stable, uint tickSpacing, uint alt_offerId) = IERC20(order.olKey.inbound_tkn) == STABLE1
+      ? (STABLE2, TICK_SPACING2, offerId2)
+      : (STABLE1, TICK_SPACING1, offerId1);
     retractOffer({
-      outbound_tkn: IERC20(order.outbound_tkn),
-      inbound_tkn: IERC20(alt_stable),
+      olKey: OLKey(order.olKey.outbound_tkn, address(alt_stable), tickSpacing),
       offerId: alt_offerId,
       deprovision: false
     });

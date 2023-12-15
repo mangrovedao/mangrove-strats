@@ -2,10 +2,12 @@ Copyright (c)-2023 ADDMA (Mangrove Association). All rights reserved.
 
 The files in this repo are covered by different licenses:
 
-* Mangrove Core contracts are licensed under Business Source License 1.1.
-* Contract interfaces (ABIs) are licensed under Unlicense (i.e. they are public domain).
-* Tools and other pieces of code are licensed under BSD 2-Clause License
-    or GNU AFFERO GENERAL PUBLIC LICENSE v3.
+* All code is licensed under the MIT License, with the exception of 3rd party code.
+* 3rd party code in src/strategies/vendor/ is covered by the original licences:
+  - AAVE v3 files: AGPL-3.0 and MIT (changed from BUSL-1.1 per 2023-01-27)
+    - files are verbatim copies from AAVE V3 release 1.19.2 and AAVE V3 Periphery
+        release 2.5.0.
+  - Compound: BSD-3-Clause and Unlicense. The files contain the license text.
 
 Each file header contains the SPDX license identifier of the license for that file.
 For more information about SPDX, please refer to <https://spdx.dev/>.
@@ -14,26 +16,41 @@ License texts:
 
 -------------------------------------------------------------------------------
 
+MIT License
+
+Copyright (c) 2023 ADDMA (Mangrove Association)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
+-------------------------------------------------------------------------------
+AAVE V3 LICENSES
+-------------------------------------------------------------------------------
 Business Source License 1.1
 
 License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
 "Business Source License" is a trademark of MariaDB Corporation Ab.
 
------------------------------------------------------------------------------
+---
 
 Parameters
 
-Licensor:             ADDMA (Mangrove Association)
+Licensor: Aave
 
-Licensed Work:        Mangrove Core
+Licensed Work: Aave V3 Core. The Licensed Work is (c) 2022 Aave
 
-Additional Use Grant: Any uses listed and defined at v1-core-license-grants.addma.eth
+Additional Use Grant: Any uses listed and defined at this [LICENSE](./LICENSE.md)
 
-Change Date:          The earlier of 2027-05-01 or a date specified at v1-core-license-date.addma.eth
+Change Date: The earlier of 27 January 2023 or a date specified at v3-license-date.aave.eth
 
-Change License:       GNU General Public License v2.0 or later
+Change License: MIT
 
------------------------------------------------------------------------------
+---
 
 Terms
 
@@ -81,7 +98,7 @@ MariaDB hereby grants you permission to use this License’s text to license
 your works, and to refer to it using the trademark "Business Source License",
 as long as you comply with the Covenants of Licensor below.
 
------------------------------------------------------------------------------
+---
 
 Covenants of Licensor
 
@@ -98,18 +115,19 @@ other recipients of the licensed work to be provided by Licensor:
 
 2. To either: (a) specify an additional grant of rights to use that does not
    impose any additional restriction on the right granted in this License, as
-   the Additional Use Grant; or (b) insert the text "None" to specify a Change Date.
+   the Additional Use Grant; or (b) insert the text "None".
+
+3. To specify a Change Date.
 
 4. Not to modify this License in any other way.
 
------------------------------------------------------------------------------
+---
 
 Notice
 
 The Business Source License (this document, or the "License") is not an Open
 Source license. However, the Licensed Work will eventually be made available
 under an Open Source License, as stated in this License.
-
 
 
 -------------------------------------------------------------------------------
@@ -778,34 +796,21 @@ For more information on this, and how to apply and follow the GNU AGPL, see
 
 
 
+
 -------------------------------------------------------------------------------
+COMPOUND LICENSES
+-------------------------------------------------------------------------------
+Copyright 2020 Compound Labs, Inc.
 
-BSD 2-Clause License
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
-Copyright (c), ADDMA (Mangrove Association)
-All rights reserved.
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 -------------------------------------------------------------------------------

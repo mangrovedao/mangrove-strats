@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Script, console2 as console} from "forge-std/Script.sol";
-import {GeometricKandel} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {OfferType} from "mgv_src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
-import {IERC20} from "mgv_src/IERC20.sol";
-import {MgvStructs} from "mgv_src/MgvLib.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {console2 as console} from "@mgv/forge-std/Script.sol";
+import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {OfferType} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {toFixed} from "@mgv/lib/Test2.sol";
 
 /**
  * @notice Populate Kandel's distribution on Mangrove
@@ -22,7 +22,7 @@ contract KandelShutdown is Deployer {
     IERC20 quote = kdl.QUOTE();
     uint baseDecimals = base.decimals();
     uint quoteDecimals = quote.decimals();
-    (,,,,,, uint8 length) = kdl.params();
+    (,,, uint32 length) = kdl.params();
 
     uint baseBalance = base.balanceOf(broadcaster());
     uint quoteBalance = quote.balanceOf(broadcaster());

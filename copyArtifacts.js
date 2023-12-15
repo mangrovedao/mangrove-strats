@@ -32,7 +32,7 @@ const argv = require("yargs")
   .help().argv;
 
 // set abi export directory (create if necessary), clear it
-const distAbiDir = cwd + "/dist/mangrove-abis/";
+const distAbiDir = cwd + "/dist/abis/";
 if (!argv.noop) {
   console.log(`${script}: Copying distribution assets...`);
   shell.rm("-rf", distAbiDir);
@@ -65,7 +65,7 @@ const match_path = (artifacts, name) => {
   const filtered = artifacts.filter((p) => p.endsWith(`/${name}.json`));
   if (filtered.length > 1) {
     throw new Error(
-      `${script}: Ambiguous export name: ${name}, matched: ${filtered.toString()}`
+      `${script}: Ambiguous export name: ${name}, matched: ${filtered.toString()}`,
     );
   }
   if (filtered.length === 0) {
@@ -112,7 +112,7 @@ for (const { name, match, basename, data } of export_queue) {
   written.push(basename);
   const export_file = `${distAbiDir}/${basename}`;
   if (!argv.noop) {
-    // since our git posthook seems to add trailing newlines (probably throuhg prettier),
+    // since our git posthook seems to add trailing newlines (probably through prettier),
     // not having one here means repeatedly seeing stripped newlines in git changes
     fs.writeFileSync(export_file, JSON.stringify(data, null, 2) + "\n");
   } else {
@@ -120,8 +120,8 @@ for (const { name, match, basename, data } of export_queue) {
     console.log(
       `${script}: Will export ${Object.keys(data)} to ${path.relative(
         cwd,
-        export_file
-      )}`
+        export_file,
+      )}`,
     );
     console.log();
   }

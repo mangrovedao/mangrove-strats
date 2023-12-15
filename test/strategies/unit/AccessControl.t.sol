@@ -1,14 +1,17 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "mgv_test/lib/MangroveTest.sol";
-// import "mgv_test/lib/Fork.sol";
+import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
 
-import {
-  DirectTester, AbstractRouter, IERC20, IMangrove, IERC20
-} from "mgv_src/strategies/offer_maker/DirectTester.sol";
+import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
-contract AccessControlTest is MangroveTest {
+contract AccessControlTest is StratTest {
+  event SetAdmin(address admin);
+
   TestToken weth;
   TestToken usdc;
   address payable admin;
@@ -27,12 +30,9 @@ contract AccessControlTest is MangroveTest {
 
     admin = freshAddress("admin");
     deal(admin, 1 ether);
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)),
-      deployer: admin,
-      gasreq: 50_000
-    });
+    vm.expectEmit(true, true, true, true);
+    emit SetAdmin($(this));
+    makerContract = new DirectTester({mgv: IMangrove($(mgv)), router_: AbstractRouter(address(0)), deployer: admin});
     vm.startPrank(admin);
     makerContract.activate(dynamic([IERC20(weth), usdc]));
     weth.approve(address(makerContract), type(uint).max);
@@ -47,6 +47,8 @@ contract AccessControlTest is MangroveTest {
 
   function test_admin_can_set_admin() public {
     address newAdmin = freshAddress("newAdmin");
+    expectFrom($(makerContract));
+    emit SetAdmin(newAdmin);
     vm.prank(admin);
     makerContract.setAdmin(newAdmin);
     assertEq(makerContract.admin(), newAdmin, "Incorrect admin");

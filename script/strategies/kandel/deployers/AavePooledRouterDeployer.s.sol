@@ -1,22 +1,19 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {Script, console} from "forge-std/Script.sol";
-import {AavePooledRouter, IERC20} from "mgv_src/strategies/routers/integrations/AavePooledRouter.sol";
-import {Deployer} from "mgv_script/lib/Deployer.sol";
+import {Script, console} from "@mgv/forge-std/Script.sol";
+import {AavePooledRouter, IERC20} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 ///@title  AavePooledRouter deployer
 contract AavePooledRouterDeployer is Deployer {
   function run() public {
-    innerRun({
-      addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
-      overhead: vm.envUint("GASREQ")
-    });
+    innerRun({addressProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")});
   }
 
-  function innerRun(address addressProvider, uint overhead) public {
+  function innerRun(address addressProvider) public {
     broadcast();
-    AavePooledRouter router = new AavePooledRouter(addressProvider, overhead);
+    AavePooledRouter router = new AavePooledRouter(addressProvider);
 
     smokeTest(router);
   }
