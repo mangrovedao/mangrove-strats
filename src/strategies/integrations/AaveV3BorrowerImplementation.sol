@@ -2,13 +2,13 @@
 pragma solidity ^0.8.10;
 
 import {AaveV3BorrowerStorage as AMS} from "./AaveV3BorrowerStorage.sol";
-import "../vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "../vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IRewardsControllerIsh} from "../vendor/aave/v3/IRewardsControllerIsh.sol";
-import {ICreditDelegationToken} from "../vendor/aave/v3/ICreditDelegationToken.sol";
+import "../vendor/aave/v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "../vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {ICreditDelegationToken} from "../vendor/aave/v3/contracts/interfaces/ICreditDelegationToken.sol";
 
-import "../vendor/aave/v3/IPriceOracleGetter.sol";
-import {ReserveConfiguration as RC} from "../vendor/aave/v3/ReserveConfiguration.sol";
+import "../vendor/aave/v3/contracts/interfaces/IPriceOracleGetter.sol";
+import {ReserveConfiguration as RC} from
+  "../vendor/aave/v3/contracts/protocol/libraries/configuration/ReserveConfiguration.sol";
 
 import "@mgv/src/IMangrove.sol";
 

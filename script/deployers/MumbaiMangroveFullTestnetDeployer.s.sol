@@ -19,8 +19,9 @@ import {
   ActivateMangroveOrder, MangroveOrder
 } from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 import {KandelSower} from "@mgv-strats/script/strategies/kandel/KandelSower.s.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IAaveOracle} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IAaveOracle.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -78,8 +79,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     IMangrove mgv = IMangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
     // NB: The oracle only works for AAVE tokens
-    IPriceOracleGetter priceOracle =
-      IPriceOracleGetter(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getAddress("PRICE_ORACLE"));
+    IAaveOracle priceOracle =
+      IAaveOracle(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getAddress("PRICE_ORACLE"));
     require(priceOracle.BASE_CURRENCY() == address(0), "script assumes base currency is in USD");
 
     // Deploy MangroveOrder
