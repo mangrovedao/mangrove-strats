@@ -28,6 +28,8 @@ import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/Aa
 import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
 import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
+import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
+
 library TickNegator {
   function negate(Tick tick) internal pure returns (Tick) {
     return Tick.wrap(-Tick.unwrap(tick));
@@ -45,11 +47,10 @@ contract MgvOrder_Test is StratTest {
   event MangroveOrderStart(
     bytes32 indexed olKeyHash,
     address indexed taker,
-    bool fillOrKill,
     Tick tick,
+    TakerOrderType orderType,
     uint fillVolume,
     bool fillWants,
-    bool restingOrder,
     uint offerId,
     AbstractRoutingLogic takerGivesLogic,
     AbstractRoutingLogic takerWantsLogic
@@ -170,11 +171,11 @@ contract MgvOrder_Test is StratTest {
     IOrderLogic.TakerOrder memory sellOrder;
     // depositing a cold MangroveOrder offer.
     buyOrder = createBuyOrderEvenLowerPriceAndLowerVolume();
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
     buyOrder.expiryDate = block.timestamp + 1;
 
     sellOrder = createSellOrderEvenLowerPriceAndLowerVolume();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     sellOrder.expiryDate = block.timestamp + 1;
 
     // test runner posts limit orders
@@ -225,11 +226,10 @@ contract MgvOrder_Test is StratTest {
     uint fillVolume = 2 ether;
     order = IOrderLogic.TakerOrder({
       olKey: olKey,
-      fillOrKill: false,
+      orderType: TakerOrderType.IOC,
       fillWants: true,
       fillVolume: fillVolume,
       tick: tickFromPrice_e18(MID_PRICE - 1e18),
-      restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
       restingOrderGasreq: GASREQ,
@@ -273,11 +273,10 @@ contract MgvOrder_Test is StratTest {
 
     order = IOrderLogic.TakerOrder({
       olKey: lo,
-      fillOrKill: false,
+      orderType: TakerOrderType.IOC,
       fillWants: false,
       tick: tickFromPrice_e18(MID_PRICE - 9e18).negate(),
       fillVolume: fillVolume,
-      restingOrder: false,
       expiryDate: 0, //NA
       offerId: 0,
       restingOrderGasreq: GASREQ,
@@ -307,6 +306,18 @@ contract MgvOrder_Test is StratTest {
     order.fillVolume = fillVolume;
   }
 
+  function test_post_only_order_should_be_posted_and_not_make_market_order() public {
+    IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
+    buyOrder.orderType = TakerOrderType.PO;
+    address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
+    vm.prank(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    assertGt(res.offerId, 0, "Resting offer failed to be published on mangrove");
+    assertEq(res.takerGot, 0, "Taker should not have received any tokens");
+    assertEq(res.takerGave, 0, "Taker should not have given any tokens");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+  }
+
   function test_partial_filled_buy_order_is_transferred_to_taker() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
@@ -320,7 +331,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_partial_filled_buy_order_reverts_when_FoK_enabled() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
-    buyOrder.fillOrKill = true;
+    buyOrder.orderType = TakerOrderType.FOK;
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
     vm.prank(fresh_taker);
     vm.expectRevert("mgvOrder/partialFill");
@@ -329,7 +340,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_order_reverts_when_expiry_date_is_reached() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
-    buyOrder.fillOrKill = true;
+    buyOrder.orderType = TakerOrderType.FOK;
     buyOrder.expiryDate = block.timestamp;
     address fresh_taker = freshTaker(0, takerGives(buyOrder) * 2);
     vm.prank(fresh_taker);
@@ -367,7 +378,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_filled_resting_buy_order_ignores_resting_option_and_returns_value() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderHalfVolume();
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
     address fresh_taker = freshTaker(0, 4000 ether);
     uint nativeBalBefore = fresh_taker.balance;
     vm.prank(fresh_taker);
@@ -383,7 +394,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_filled_resting_buy_order_with_FoK_succeeds_and_returns_provision() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderHalfVolume();
-    buyOrder.fillOrKill = true;
+    buyOrder.orderType = TakerOrderType.FOK;
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
     uint nativeBalBefore = fresh_taker.balance;
     vm.prank(fresh_taker);
@@ -407,7 +418,7 @@ contract MgvOrder_Test is StratTest {
     // Act - Create new resting order, but reuse id
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.offerId = cold_buyResult.offerId;
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
 
     expectFrom($(mgo));
     logOrderData($(this), buyOrder);
@@ -433,7 +444,7 @@ contract MgvOrder_Test is StratTest {
     // Act - Create new resting order, but reuse id
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.offerId = cold_buyResult.offerId;
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
 
     // Assert
     vm.expectRevert("mgvOrder/offerAlreadyActive");
@@ -450,7 +461,7 @@ contract MgvOrder_Test is StratTest {
     // Act/assert - Create new resting order, but reuse id
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.offerId = cold_buyResult.offerId;
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
 
     address router = $(mgo.router($(sell_taker)));
     vm.prank($(sell_taker));
@@ -471,11 +482,10 @@ contract MgvOrder_Test is StratTest {
     emit MangroveOrderStart(
       tko.olKey.hash(),
       taker,
-      tko.fillOrKill,
       tko.tick,
+      tko.orderType,
       tko.fillVolume,
       tko.fillWants,
-      tko.restingOrder,
       tko.offerId,
       tko.takerWantsLogic,
       tko.takerGivesLogic
@@ -484,7 +494,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_partial_fill_buy_with_resting_order_is_correctly_posted() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrder();
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
       takerGot: reader.minusFee(lo, 1 ether),
@@ -529,7 +539,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_empty_fill_buy_with_resting_order_is_correctly_posted() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
 
     address fresh_taker = freshTaker(0, takerGives(buyOrder));
     uint nativeBalBefore = fresh_taker.balance;
@@ -563,7 +573,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_partial_fill_sell_with_resting_order_is_correctly_posted() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
       takerGot: reader.minusFee(lo, takerWants(sellOrder) / 2) + 1,
@@ -609,7 +619,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_partial_fill_sell_with_resting_order_below_density() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     sellOrder.fillVolume = 1 ether; // the amount that will be filled, used to calculate expected taker result
 
     IOrderLogic.TakerOrderResult memory expectedResult = IOrderLogic.TakerOrderResult({
@@ -650,7 +660,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_empty_fill_sell_with_resting_order_is_correctly_posted() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrderLowerPrice();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
 
     address fresh_taker = freshTaker(2 ether, 0);
     uint nativeBalBefore = fresh_taker.balance;
@@ -683,7 +693,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_resting_order_with_expiry_date_is_correctly_posted() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     sellOrder.expiryDate = block.timestamp + 1;
     address fresh_taker = freshTaker(2 ether, 0);
     vm.prank(fresh_taker);
@@ -695,7 +705,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_resting_buy_order_for_blacklisted_reserve_for_inbound_reverts() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrderHalfVolume();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     address fresh_taker = freshTaker(1 ether, 0);
     vm.mockCall(
       $(quote),
@@ -711,7 +721,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_resting_buy_order_failing_to_post_returns_tokens_and_provision() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     address fresh_taker = freshTaker(2 ether, 0);
     uint oldNativeBal = fresh_taker.balance;
     // pretend new offer failed for some reason
@@ -723,19 +733,18 @@ contract MgvOrder_Test is StratTest {
 
   function test_restingOrder_that_fail_to_post_revert_if_no_partialFill() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
-    sellOrder.fillOrKill = true;
+    sellOrder.orderType = TakerOrderType.GTCE;
     address fresh_taker = freshTaker(2 ether, 0);
     // pretend new offer failed for some reason
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
-    vm.expectRevert("mgvOrder/partialFill");
+    vm.expectRevert("mgvOrder/RestingOrderFailed");
     vm.prank(fresh_taker);
     mgo.take{value: 0.1 ether}(sellOrder);
   }
 
   function test_taker_unable_to_receive_eth_makes_tx_throw_if_resting_order_could_not_be_posted() public {
     IOrderLogic.TakerOrder memory sellOrder = createSellOrder();
-    sellOrder.restingOrder = true;
+    sellOrder.orderType = TakerOrderType.GTC;
     TestSender sender = new TestSender();
     vm.deal($(sender), 1 ether);
 
@@ -782,7 +791,7 @@ contract MgvOrder_Test is StratTest {
 
   function test_resting_buy_offer_can_be_fully_consumed_at_minimum_approval() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
-    buyOrder.restingOrder = true;
+    buyOrder.orderType = TakerOrderType.GTC;
     TransferLib.approveToken(quote, $(mgo.router(address(this))), takerGives(buyOrder) + makerGives(buyOrder));
     IOrderLogic.TakerOrderResult memory buyResult = mgo.take{value: 0.1 ether}(buyOrder);
 
@@ -981,11 +990,13 @@ contract MgvOrder_Test is StratTest {
   function createAaveGivesBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     order = createBuyOrder();
     order.takerGivesLogic = aaveLogic;
+    order.restingOrderGasreq = AAVE_GASREQ;
   }
 
   function createAaveWantsBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
     order = createBuyOrder();
     order.takerWantsLogic = aaveLogic;
+    order.restingOrderGasreq = AAVE_GASREQ;
   }
 
   // take from user reserve and deposit on aave
@@ -1038,5 +1049,132 @@ contract MgvOrder_Test is StratTest {
     assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), res.takerGot, "Funds were not transferred to taker");
     assertApproxEqAbs(startBalance - endBalance, res.takerGave, 1, "Funds were not transferred from aave to taker");
     assertEq(res.bounty, 0, "Bounty should be zero");
+  }
+
+  ///////////////////////////////////////////////////////
+  ///   Test routing logic (aave) order consumption   ///
+  ///////////////////////////////////////////////////////
+
+  function getBestTick() internal view returns (Tick tick) {
+    // trick to set the lowest price of the market once posting
+    // we are setting the opposite tick as we are first trying market order on the other side of the book
+    // since it is a PO, it will not check the other side of the book anyway
+    uint bestOfferId = mgv.best(lo);
+    tick = mgv.offers(lo, bestOfferId).tick();
+    tick = Tick.wrap(-Tick.unwrap(tick) + 1);
+  }
+
+  function createTakeableAaveGivesBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createAaveGivesBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function createTakeableAaveWantsBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createAaveWantsBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function createTakeableAaveFullOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
+    order = createFullAaveBuyOrder();
+    order.orderType = TakerOrderType.PO;
+    order.tick = getBestTick();
+  }
+
+  function test_order_consumption_with_routing_logic_from_aave_and_to_wallet() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveGivesBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(quote).balanceOf(fresh_taker), amount, "Funds were not transferred to taker");
+    assertEq(base.balanceOf(fresh_taker), 0, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(
+      aaveOverlyingOf(quote).balanceOf(fresh_taker),
+      startBalance - (takerGot + fee),
+      "Funds were not transferred to taker"
+    );
+    assertEq(base.balanceOf(fresh_taker), takerGave, "Funds were not transferred to maker");
+  }
+
+  function test_order_consumption_with_routing_logic_from_wallet_and_to_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveWantsBuyOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    require(TransferLib.approveToken(quote, $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = quote.balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(quote.balanceOf(fresh_taker), amount, "Funds were transferred to taker");
+    assertEq(base.balanceOf(fresh_taker), 0, "Funds were transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), takerGave, "Funds were not transferred to taker");
+    assertEq(quote.balanceOf(fresh_taker), startBalance - (takerGot + fee), "Funds were not transferred to maker");
+  }
+
+  function test_order_consumption_with_routing_logic_from_aave_and_to_aave() public {
+    IOrderLogic.TakerOrder memory buyOrder = createTakeableAaveFullOrder();
+    uint amount = takerGives(buyOrder) * 2;
+    address fresh_taker = freshTaker(0, amount);
+
+    vm.startPrank(fresh_taker);
+    quote.approve(address(aavePool()), amount);
+    aavePool().supply(address(quote), amount, fresh_taker, 0);
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
+    IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
+    vm.stopPrank();
+
+    assertEq(res.takerGot, 0, "Order was partially filled or filled");
+    assertEq(res.takerGave, 0, "Incorrect partial fill of taker order");
+    assertEq(aaveOverlyingOf(quote).balanceOf(fresh_taker), amount, "Funds were not transferred to taker");
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), 0, "Funds were not transferred to taker");
+    assertEq(res.bounty, 0, "Bounty should be zero");
+    assertGt(res.offerId, 0, "Offer should be posted");
+
+    Tick tick = mgv.offers(lo, res.offerId).tick();
+
+    vm.prank($(sell_taker));
+    (uint takerGot, uint takerGave, uint bounty, uint fee) = mgv.marketOrderByTick(lo, tick, 1000 ether, true);
+
+    assertEq(bounty, 0, "Bounty should be zero");
+    assertEq(
+      aaveOverlyingOf(quote).balanceOf(fresh_taker),
+      startBalance - (takerGot + fee),
+      "Funds were not transferred to taker"
+    );
+    assertEq(aaveOverlyingOf(base).balanceOf(fresh_taker), takerGave, "Funds were not transferred to maker");
   }
 }

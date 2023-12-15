@@ -12,6 +12,9 @@ contract RouterProxy {
   /// @dev The SmartRouter instance must be AccessControlled to ensure the storage layout is matched.
   AbstractRouter public immutable IMPLEMENTATION;
 
+  /// @notice Emitted when the admin of the proxy is set.
+  /// * This is a copy of the AccessControlled event to set without calling the implementation.
+  /// @param admin The address of the admin of the proxy.
   event SetAdmin(address admin);
 
   /// @notice Deploys a Proxy for the SmartRouter that handles incoming transactions and delegates them to the implementation.
