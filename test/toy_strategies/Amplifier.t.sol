@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
@@ -91,12 +91,12 @@ contract AmplifierTest is StratTest {
     strat = new Amplifier({
       mgv: IMangrove($(mgv)),
       base: weth,
-      stable1: usdc, 
+      stable1: usdc,
       stable2: dai,
       tickSpacing1: olKey.tickSpacing,
       tickSpacing2: olKeyWethDai.tickSpacing,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
-      });
+    });
 
     // NOTE:
     // For this test, we're locking base, ie WETH, in the vault of the contract

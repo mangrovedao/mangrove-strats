@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {OfferLogicTest} from "./OfferLogic.t.sol";
@@ -56,15 +56,13 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function setupLiquidityRouting() internal override {
-    dai = useForkAave ? dai = TestToken(fork.get("DAI.e")) : new TestToken($(this),"Dai","Dai",options.base.decimals);
+    dai = useForkAave ? dai = TestToken(fork.get("DAI.e")) : new TestToken($(this), "Dai", "Dai", options.base.decimals);
     address aave = useForkAave
       ? fork.get("AaveAddressProvider")
       : address(new PoolAddressProviderMock(dynamic([address(dai), address(base), address(quote)])));
 
     vm.startPrank(deployer);
-    AavePooledRouter router = new AavePooledRouter({
-      addressesProvider: aave
-    });
+    AavePooledRouter router = new AavePooledRouter({addressesProvider: aave});
     router.bind(address(makerContract));
     makerContract.setRouter(router);
     vm.stopPrank();
@@ -103,12 +101,7 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function test_supply_error_is_logged() public {
-    TestToken pixieDust = new TestToken({
-      admin: address(this),
-      name: "Pixie Dust",
-      symbol: "PXD",
-      _decimals: uint8(18)
-    });
+    TestToken pixieDust = new TestToken({admin: address(this), name: "Pixie Dust", symbol: "PXD", _decimals: uint8(18)});
 
     deal($(pixieDust), address(makerContract), 1 ether);
     vm.prank(address(makerContract));
@@ -421,12 +414,7 @@ contract AavePooledRouterTest is OfferLogicTest {
   }
 
   function test_checkList_throws_for_tokens_that_are_not_listed_on_aave() public {
-    TestToken tkn = new TestToken(
-      $(this),
-      "wen token",
-      "WEN",
-      42
-    );
+    TestToken tkn = new TestToken($(this), "wen token", "WEN", 42);
     vm.prank(maker1);
     tkn.approve({spender: $(pooledRouter), amount: type(uint).max});
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
@@ -22,8 +22,8 @@ contract MumbaiKandelSeederDeployer is Deployer {
       aaveKandelGasreq: 628_000,
       kandelGasreq: 128_000,
       deployAaveKandel: true,
-      deployKandel:true,
-      testBase: IERC20(fork.get("CRV.T/AAVEv3")), // make sure to use an AAVE faucet 
+      deployKandel: true,
+      testBase: IERC20(fork.get("CRV.T/AAVEv3")), // make sure to use an AAVE faucet
       testQuote: IERC20(fork.get("WBTC.T/AAVEv3")) // make sure to use an AAVE faucet
     });
   }

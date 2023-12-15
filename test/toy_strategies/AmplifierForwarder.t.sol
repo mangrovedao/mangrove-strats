@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
@@ -63,13 +63,13 @@ contract AmplifierForwarderTest is StratTest {
     strat = new AmplifierForwarder({
       mgv: IMangrove($(mgv)),
       base: weth,
-      stable1: usdc, 
+      stable1: usdc,
       stable2: dai,
       tickSpacing1: olKey.tickSpacing,
       tickSpacing2: olKeyWethDai.tickSpacing,
       deployer: $(this),
       gasreq: 450000
-      });
+    });
 
     // allow (the router to) pull of WETH from Amplifier (i.e., strat) to Mangrove
     strat.approve(weth, $(mgv), type(uint).max);

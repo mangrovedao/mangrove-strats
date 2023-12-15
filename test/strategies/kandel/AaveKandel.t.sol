@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {CoreKandelTest} from "./abstract/CoreKandel.t.sol";
@@ -56,11 +56,7 @@ contract AaveKandelTest is CoreKandelTest {
   function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
     uint kandel_gasreq = 629000;
     router = address(router) == address(0) ? new AavePooledRouter(aave) : router;
-    AaveKandel aaveKandel_ = new AaveKandel({
-      mgv: IMangrove($(mgv)),
-      olKeyBaseQuote: olKey,
-      reserveId: id
-    });
+    AaveKandel aaveKandel_ = new AaveKandel({mgv: IMangrove($(mgv)), olKeyBaseQuote: olKey, reserveId: id});
 
     router.bind(address(aaveKandel_));
     // Setting AaveRouter as Kandel's router and activating router on BASE and QUOTE ERC20

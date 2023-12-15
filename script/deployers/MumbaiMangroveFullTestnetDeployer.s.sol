@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {ToyENS} from "@mgv/lib/ToyENS.sol";
@@ -147,10 +147,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     iercs[4] = tokens.usdt.token;
     iercs[5] = tokens.weth.token;
     iercs[6] = tokens.wmatic.token;
-    new ActivateMangroveOrder().innerRun({
-      mgvOrder: mangroveOrder,
-      iercs: iercs
-    });
+    new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, iercs: iercs});
 
     // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
     // Also write its address so it can be used as a library to call createGeometricDistribution

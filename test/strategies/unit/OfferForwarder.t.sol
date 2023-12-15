@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {SimpleRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
@@ -28,10 +28,7 @@ contract OfferForwarderTest is OfferLogicTest {
     vm.deal(deployer, 10 ether);
 
     vm.prank(deployer);
-    forwarder = new ForwarderTester({
-      mgv: IMangrove($(mgv)),
-      deployer: deployer
-    });
+    forwarder = new ForwarderTester({mgv: IMangrove($(mgv)), deployer: deployer});
     gasreq = 150_000;
     owner = payable(address(new TestSender()));
     vm.deal(owner, 10 ether);
