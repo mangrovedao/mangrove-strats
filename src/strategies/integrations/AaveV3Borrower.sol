@@ -16,7 +16,6 @@ import {AaveV3BorrowerStorage as AMS} from "./AaveV3BorrowerStorage.sol";
 import {
   AaveV3BorrowerImplementation as AMI,
   IERC20,
-  IRewardsControllerIsh,
   IPoolAddressesProvider,
   IPool,
   ICreditDelegationToken,
