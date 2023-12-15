@@ -4,7 +4,6 @@ The files in this repo are covered by different licenses:
 
 * All code is licensed under the MIT License, with the exception of 3rd party code.
 * 3rd party code in src/strategies/vendor/ is covered by the original licences:
-  - AAVE v2 files: AGPL-3.0-or-later
   - AAVE v3 files: AGPL-3.0 and MIT (changed from BUSL-1.1 per 2023-01-27)
   - Comound: BSD-3-Clause and Unlicense. The files contain the license text.
 
@@ -24,17 +23,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-
--------------------------------------------------------------------------------
-AAVE V2 LICENSE
--------------------------------------------------------------------------------
-Copyright (C) 2020 Aave
-
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details
 
 
 
