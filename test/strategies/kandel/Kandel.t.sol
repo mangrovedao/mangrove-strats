@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -144,7 +144,7 @@ contract NoRouterKandelTest is CoreKandelTest {
   function test_createDistributionSimple_constantAskBidGives(SimpleDistributionHeapArgs memory args, uint[] memory cuts)
     internal
   {
-    CoreKandel.Distribution[] memory distribution = new CoreKandel.Distribution[](cuts.length+1);
+    CoreKandel.Distribution[] memory distribution = new CoreKandel.Distribution[](cuts.length + 1);
 
     for (uint i = 0; i < cuts.length; i++) {
       distribution[i] = kdl.createDistribution({

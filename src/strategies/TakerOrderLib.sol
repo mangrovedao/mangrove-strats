@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier:	MIT
 pragma solidity >=0.8.10;
 
 /// TakerOrderType is an enum that represents the type of a taker order.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import {Direct, IERC20} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";

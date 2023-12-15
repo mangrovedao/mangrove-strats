@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
@@ -63,7 +63,7 @@ contract MumbaiActivateMarket is Deployer {
     // 1 token_i = (prices[i] * 10**12 / maticPrice) mwei of Matic
     new ActivateMarket().innerRun({
       mgv: mgv,
-      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density     
+      gaspriceOverride: 140, // this overrides Mangrove's gasprice for the computation of market's density
       reader: reader,
       market: market,
       tkn1_in_Mwei: toMweiOfMatic(price0),

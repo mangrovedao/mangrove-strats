@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.10;
 
 import {RL, AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";

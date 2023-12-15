@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	AGPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {MangroveDeployer} from "@mgv/script/core/deployers/MangroveDeployer.s.sol";
@@ -38,7 +38,7 @@ contract MangroveJsDeploy is Deployer {
   RouterProxyFactory public routerProxyFactory;
 
   function run() public {
-    innerRun({gasprice: 1, gasmax: 2_000_000, gasbot: broadcaster()});
+    innerRun({gasprice: 1000, gasmax: 2_000_000, gasbot: broadcaster()});
     outputDeployment();
   }
 
@@ -54,67 +54,34 @@ contract MangroveJsDeploy is Deployer {
     mgv.setUseOracle(false);
 
     broadcast();
-    tokenA = new TestToken({
-      admin: broadcaster(),
-      name: "Token A",
-      symbol: "TokenA",
-      _decimals: 18
-    });
+    tokenA = new TestToken({admin: broadcaster(), name: "Token A", symbol: "TokenA", _decimals: 18});
 
     broadcast();
     tokenA.setMintLimit(type(uint).max);
     fork.set("TokenA", address(tokenA));
 
     broadcast();
-    tokenB = new TestToken({
-      admin: broadcaster(),
-      name: "Token B",
-      symbol: "TokenB",
-      _decimals: 6
-    });
+    tokenB = new TestToken({admin: broadcaster(), name: "Token B", symbol: "TokenB", _decimals: 6});
 
     broadcast();
     tokenB.setMintLimit(type(uint).max);
     fork.set("TokenB", address(tokenB));
 
     broadcast();
-    dai = address(
-      new TestToken({
-      admin: broadcaster(),
-      name: "DAI",
-      symbol: "DAI",
-      _decimals: 18
-      })
-    );
+    dai = address(new TestToken({admin: broadcaster(), name: "DAI", symbol: "DAI", _decimals: 18}));
     fork.set("DAI", dai);
 
     broadcast();
-    usdc = address(
-      new TestToken({
-      admin: broadcaster(),
-      name: "USD Coin",
-      symbol: "USDC",
-      _decimals: 6
-      })
-    );
+    usdc = address(new TestToken({admin: broadcaster(), name: "USD Coin", symbol: "USDC", _decimals: 6}));
     fork.set("USDC", usdc);
 
     broadcast();
-    weth = address(
-      new TestToken({
-      admin: broadcaster(),
-      name: "Wrapped Ether",
-      symbol: "WETH",
-      _decimals: 18
-      })
-    );
+    weth = address(new TestToken({admin: broadcaster(), name: "Wrapped Ether", symbol: "WETH", _decimals: 18}));
     fork.set("WETH", weth);
 
     broadcast();
-    simpleTestMaker = new SimpleTestMaker({
-      _mgv: IMangrove(payable(mgv)),
-      _ol: OLKey(address(tokenA), address(tokenB), 1)
-    });
+    simpleTestMaker =
+      new SimpleTestMaker({_mgv: IMangrove(payable(mgv)), _ol: OLKey(address(tokenA), address(tokenB), 1)});
     fork.set("SimpleTestMaker", address(simpleTestMaker));
 
     ActivateMarket activateMarket = new ActivateMarket();
@@ -124,10 +91,10 @@ contract MangroveJsDeploy is Deployer {
     fork.set("RouterProxyFactory", address(routerProxyFactory));
 
     //FIXME: what tick spacing?
-    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e9, 3 * 1e9, 250);
-    activateMarket.innerRun(mgv, mgvReader, Market(dai, usdc, 1), 1e9 / 1000, 1e9 / 1000, 0);
-    activateMarket.innerRun(mgv, mgvReader, Market(weth, dai, 1), 1e9, 1e9 / 1000, 0);
-    activateMarket.innerRun(mgv, mgvReader, Market(weth, usdc, 1), 1e9, 1e9 / 1000, 0);
+    activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e12, 3 * 1e12, 250);
+    activateMarket.innerRun(mgv, mgvReader, Market(dai, usdc, 1), 1e12 / 1000, 1e12 / 1000, 0);
+    activateMarket.innerRun(mgv, mgvReader, Market(weth, dai, 1), 1e12, 1e12 / 1000, 0);
+    activateMarket.innerRun(mgv, mgvReader, Market(weth, usdc, 1), 1e12, 1e12 / 1000, 0);
 
     MangroveOrderDeployer mgoeDeployer = new MangroveOrderDeployer();
     mgoeDeployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv)), routerProxyFactory: routerProxyFactory});

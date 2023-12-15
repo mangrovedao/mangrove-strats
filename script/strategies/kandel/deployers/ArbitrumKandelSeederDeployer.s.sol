@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
@@ -23,8 +23,8 @@ contract ArbitrumKandelSeederDeployer is Deployer {
       addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")),
       aaveKandelGasreq: 628_000,
       kandelGasreq: 200_000,
-      deployKandel:true,
-      deployAaveKandel:true,
+      deployKandel: true,
+      deployAaveKandel: true,
       testBase: IERC20(fork.get("WETH.e")),
       testQuote: IERC20(fork.get("DAI.e"))
     });

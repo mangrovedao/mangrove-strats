@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
@@ -61,7 +61,7 @@ contract AmplifierDeployer is Deployer, Test2 {
     }
     console.log("Deploying Amplifier...");
     broadcast();
-    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, tickSpacing1, tickSpacing2, admin );
+    Amplifier amplifier = new Amplifier(mgv, base, stable1, stable2, tickSpacing1, tickSpacing2, admin);
     fork.set("Amplifier", address(amplifier));
     require(amplifier.MGV() == mgv, "Smoke test failed.");
     outputDeployment();

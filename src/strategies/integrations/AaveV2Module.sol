@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/src/strategies/vendor/aave/v2/ILendingPool.sol";
