@@ -1,5 +1,6 @@
 # Next version
 
+- Change @mangrovedao/mangrove-core dependency from 'next' to '^2.0.0'
 - Change @mangrovedao/mangrove-deployments and @mangrovedao/context-addresses dependencies from 'next' to '^1.0.0'
 
 # 1.0.0
