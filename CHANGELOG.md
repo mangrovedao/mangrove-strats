@@ -1,5 +1,10 @@
 # Next version
 
+# 1.0.1
+
+- Change @mangrovedao/mangrove-core dependency from 'next' to '^2.0.0'
+- Change @mangrovedao/mangrove-deployments and @mangrovedao/context-addresses dependencies from 'next' to '^1.0.0'
+
 # 1.0.0
 
 The Mangrove strat lib and strategies have been separated out into this repo and package. It used to be part of @mangrovedao/mangrove-core where a description of earlier changes can also be found.
