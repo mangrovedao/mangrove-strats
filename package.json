@@ -33,11 +33,11 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "next"
+    "@mangrovedao/mangrove-core": "^2.0.0"
   },
   "devDependencies": {
-    "@mangrovedao/context-addresses": "next",
-    "@mangrovedao/mangrove-deployments": "next",
+    "@mangrovedao/context-addresses": "^1.0.0",
+    "@mangrovedao/mangrove-deployments": "^1.0.0",
     "@types/node": "^20.9.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
