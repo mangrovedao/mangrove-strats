@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Script, console} from "@mgv/forge-std/Script.sol";
 import {MangroveOrder, IERC20, IMangrove, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 /*  Deploys a MangroveOrder instance
     First test:
@@ -35,9 +36,9 @@ contract MangroveOrderDeployer is Deployer {
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt:salt}(mgv, routerProxyFactory, admin);
+      mgvOrder = new MangroveOrder{salt:salt}(mgv, routerProxyFactory, new SmartRouter(), admin);
     } else {
-      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
+      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, new SmartRouter(), admin);
     }
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {

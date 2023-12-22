@@ -13,7 +13,7 @@ import {TransferLib, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
-import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good Til Cancel" orders, "Good Til Cancel Enforced" orders, "Post Only" orders, "Immediate Or Cancel" orders, and "Fill Or Kill" orders,
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -29,8 +29,8 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
-    RenegingForwarder(mgv, factory, new SmartRouter())
+  constructor(IMangrove mgv, RouterProxyFactory factory, SmartRouter routerImplementation, address deployer)
+    RenegingForwarder(mgv, factory, routerImplementation)
   {
     _setAdmin(deployer);
   }

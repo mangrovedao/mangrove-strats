@@ -112,7 +112,7 @@ contract MgvOrder_Test is StratTest {
     RouterProxyFactory factory = new RouterProxyFactory();
 
     // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
+    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, new SmartRouter(), $(this));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
     aaveLogic = new SimpleAaveLogic(

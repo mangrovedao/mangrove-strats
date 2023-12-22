@@ -13,7 +13,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 ///@notice Each offer posted via this contract are managed by their offer maker, not by this contract's admin.
 ///@notice This class implements IForwarder, which contains specific Forwarder logic functions in additions to IOfferLogic interface.
 
-abstract contract Forwarder is IForwarder, MangroveOffer {
+contract Forwarder is IForwarder, MangroveOffer {
   ///@notice approx of amount of gas units required to complete `__handleResidualProvision__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
 
