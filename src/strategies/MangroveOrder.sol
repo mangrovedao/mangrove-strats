@@ -12,6 +12,9 @@ import {
 import {TransferLib, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {console} from "@mgv/lib/Debug.sol";
 
 import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 
@@ -25,14 +28,68 @@ import {MgvLib, IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 ///@notice An IOC order is a buy (sell) limit order that is ran against the market for a partial or complete fill and no resting order will be posted.
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
 contract MangroveOrder is RenegingForwarder, IOrderLogic {
+  MangroveOrderMaking immutable MANGROVE_ORDER_MAKING;
+
   ///@notice MangroveOrder is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
-    RenegingForwarder(mgv, factory, new SmartRouter())
+  constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation, address deployer)
+    RenegingForwarder(mgv, factory, routerImplementation)
   {
+    MANGROVE_ORDER_MAKING = new MangroveOrderMaking(mgv, factory, routerImplementation, this);
     _setAdmin(deployer);
+  }
+
+  modifier onlyInternal() {
+    require(msg.sender == address(this), "AccessControlled/Invalid");
+    _;
+  }
+
+  function internalNewOffer(OfferArgs memory args, address owner)
+    public
+    onlyInternal
+    returns (uint offerId, bytes32 reason)
+  {
+    return _newOffer(args, owner);
+  }
+
+  function internalUpdateOffer(OfferArgs memory args, uint offerId) public onlyInternal returns (bytes32 reason) {
+    return _updateOffer(args, offerId);
+  }
+
+  function internalSetReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint gasreq) public onlyInternal {
+    _setReneging(olKeyHash, offerId, expiryDate, gasreq);
+  }
+
+  function take(IOrderLogic.TakerOrder calldata) external payable returns (IOrderLogic.TakerOrderResult memory) {
+    address facet = address(MANGROVE_ORDER_MAKING);
+    assembly {
+      // copy function selector and any arguments
+      calldatacopy(0, 0, calldatasize())
+      // execute function call using the facet
+      let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
+      // get any return value
+      returndatacopy(0, 0, returndatasize())
+      // return any return value or error back to the caller
+      switch result
+      case 0 { revert(0, returndatasize()) }
+      default { return(0, returndatasize()) }
+    }
+  }
+}
+
+contract MangroveOrderMaking is IOrderLogic {
+  RouterProxyFactory immutable ROUTER_FACTORY;
+  AbstractRouter immutable ROUTER_IMPLEMENTATION;
+  IMangrove immutable MGV;
+  MangroveOrder immutable MANGROVE_ORDER_TAKING;
+
+  constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation, MangroveOrder mgvOrder) {
+    MGV = mgv;
+    ROUTER_FACTORY = factory;
+    ROUTER_IMPLEMENTATION = routerImplementation;
+    MANGROVE_ORDER_TAKING = mgvOrder;
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
@@ -246,7 +303,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
-    OfferArgs memory args = OfferArgs({
+    IOfferLogic.OfferArgs memory args = IOfferLogic.OfferArgs({
       olKey: olKey,
       tick: residualTick,
       gives: residualGives,
@@ -257,17 +314,21 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     });
     if (tko.offerId == 0) {
       // posting a new offer
-      (res.offerId, res.offerWriteData) = _newOffer(args, msg.sender);
+      (res.offerId, res.offerWriteData) = //_newOffer(args, msg.sender);
+       MANGROVE_ORDER_TAKING.internalNewOffer(args, msg.sender);
     } else {
       // updating an existing offer
       uint offerId = tko.offerId;
       // checking ownership of offer since we use internal version of `updateOffer` which is unguarded
-      require(ownerData[olKeyHash][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      // require(ownerData[olKeyHash][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      require(MANGROVE_ORDER_TAKING.ownerOf(olKeyHash, offerId) == msg.sender, "AccessControlled/Invalid");
+
       // msg sender might have given an offerId that is already live
       // we disallow this to avoid confusion
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
-      res.offerWriteData = _updateOffer(args, offerId);
-      if (res.offerWriteData == REPOST_SUCCESS) {
+      res.offerWriteData = //_updateOffer(args, offerId);
+       MANGROVE_ORDER_TAKING.internalUpdateOffer(args, offerId);
+      if (res.offerWriteData == "offer/updated") {
         res.offerId = offerId;
       } else {
         res.offerId = 0;
@@ -307,7 +368,8 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
 
       // setting expiry date for the resting order
       if (tko.expiryDate > 0) {
-        _setReneging(olKeyHash, res.offerId, tko.expiryDate, 0);
+        //_setReneging(olKeyHash, res.offerId, tko.expiryDate, 0);
+        MANGROVE_ORDER_TAKING.internalSetReneging(olKeyHash, res.offerId, tko.expiryDate, 0);
       }
     }
   }

@@ -14,6 +14,7 @@ import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
+import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 ///@notice Can be used to measure gasreq for MangroveOrder. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing with gas-measurement in core.
@@ -35,7 +36,7 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), $(this));
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), new SmartRouter(), $(this));
     mangroveOrder.activate(base);
     mangroveOrder.activate(quote);
 
