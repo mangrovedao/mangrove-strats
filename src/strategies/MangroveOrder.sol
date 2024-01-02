@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  RenegingForwarder,
   MangroveOffer,
   Tick,
   RouterProxyFactory,
@@ -12,8 +11,13 @@ import {
 import {TransferLib, RL} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
-
+import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
+import {
+  DelegatedRenegingForwarder,
+  DelegatedRFLib as DRF
+} from "@mgv-strats/src/strategies/offer_forwarder/DelegatedRenegingForwarder.sol";
 import {IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 ///@title MangroveOrder. A periphery contract to Mangrove protocol that implements "Good Til Cancel" orders, "Good Til Cancel Enforced" orders, "Post Only" orders, "Immediate Or Cancel" orders, and "Fill Or Kill" orders,
 ///@notice A GTC order is a buy (sell) limit order complemented by a bid (ask) limit order, called a resting order, that occurs when the buy (sell) order was partially filled.
@@ -24,15 +28,28 @@ import {IERC20, OLKey} from "@mgv/src/core/MgvLib.sol";
 ///@notice A PO order is a buy (sell) limit order that is only posted and is not ran against the market.
 ///@notice An IOC order is a buy (sell) limit order that is ran against the market for a partial or complete fill and no resting order will be posted.
 ///@notice A FOK order is simply a buy or sell limit order that is either completely filled or cancelled. No resting order is posted.
-contract MangroveOrder is RenegingForwarder, IOrderLogic {
+contract MangroveOrder is IOrderLogic {
+  DelegatedRenegingForwarder public immutable RENEGING_FORWARDER;
+  IMangrove public immutable MGV;
+  RouterProxyFactory public immutable ROUTER_FACTORY;
+  SmartRouter public immutable ROUTER_IMPLEMENTATION;
+
+  ///@notice The offer was successfully reposted.
+  bytes32 internal constant REPOST_SUCCESS = "offer/updated";
+
   ///@notice MangroveOrder is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
-  constructor(IMangrove mgv, RouterProxyFactory factory, SmartRouter routerImplementation, address deployer)
-    RenegingForwarder(mgv, factory, routerImplementation)
-  {
-    _setAdmin(deployer);
+  constructor(IMangrove mgv, RouterProxyFactory factory, SmartRouter routerImplementation, address deployer) {
+    RENEGING_FORWARDER = new DelegatedRenegingForwarder(mgv, factory, routerImplementation);
+    MGV = mgv;
+    ROUTER_FACTORY = factory;
+    ROUTER_IMPLEMENTATION = routerImplementation;
+    if (deployer == address(0) || deployer == msg.sender) return;
+    DRF.delegateCallWithData(
+      address(RENEGING_FORWARDER), abi.encodeWithSelector(AccessControlled.setAdmin.selector, deployer)
+    );
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
@@ -246,7 +263,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
       // partialFill => tko.fillVolume > res.takerGave
       residualGives = tko.fillVolume - res.takerGave;
     }
-    OfferArgs memory args = OfferArgs({
+    IOfferLogic.OfferArgs memory args = IOfferLogic.OfferArgs({
       olKey: olKey,
       tick: residualTick,
       gives: residualGives,
@@ -257,16 +274,17 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     });
     if (tko.offerId == 0) {
       // posting a new offer
-      (res.offerId, res.offerWriteData) = _newOffer(args, msg.sender);
+      (res.offerId, res.offerWriteData) = DRF.newOffer(args, msg.sender, RENEGING_FORWARDER);
     } else {
       // updating an existing offer
       uint offerId = tko.offerId;
       // checking ownership of offer since we use internal version of `updateOffer` which is unguarded
-      require(ownerData[olKeyHash][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      // require(ownerData[olKeyHash][offerId].owner == msg.sender, "AccessControlled/Invalid");
+      require(DRF.ownerOf(olKeyHash, offerId, RENEGING_FORWARDER) == msg.sender, "AccessControlled/Invalid");
       // msg sender might have given an offerId that is already live
       // we disallow this to avoid confusion
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
-      res.offerWriteData = _updateOffer(args, offerId);
+      res.offerWriteData = DRF.updateOffer(args, offerId, RENEGING_FORWARDER);
       if (res.offerWriteData == REPOST_SUCCESS) {
         res.offerId = offerId;
       } else {
@@ -307,8 +325,38 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
 
       // setting expiry date for the resting order
       if (tko.expiryDate > 0) {
-        _setReneging(olKeyHash, res.offerId, tko.expiryDate, 0);
+        DRF.setReneging(olKeyHash, res.offerId, tko.expiryDate, 0, RENEGING_FORWARDER);
+        // _setReneging(olKeyHash, res.offerId, tko.expiryDate, 0);
       }
+    }
+  }
+
+  receive() external payable {}
+
+  // Find facet for function that is called and execute the
+  // function if a facet is found and return any value.
+  fallback() external payable {
+    // get facet from function selector
+    address facet = address(RENEGING_FORWARDER);
+
+    bytes4 sig = msg.sig;
+    require(
+      sig != RENEGING_FORWARDER.internalNewOffer.selector && sig != RENEGING_FORWARDER.internalUpdateOffer.selector,
+      "mgvOrder/invalidSig"
+    );
+
+    // Execute external function from facet using delegatecall and return any value.
+    assembly {
+      // copy function selector and any arguments
+      calldatacopy(0, 0, calldatasize())
+      // execute function call using the facet
+      let result := delegatecall(gas(), facet, 0, calldatasize(), 0, 0)
+      // get any return value
+      returndatacopy(0, 0, returndatasize())
+      // return any return value or error back to the caller
+      switch result
+      case 0 { revert(0, returndatasize()) }
+      default { return(0, returndatasize()) }
     }
   }
 }

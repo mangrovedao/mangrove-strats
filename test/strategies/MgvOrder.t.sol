@@ -59,6 +59,7 @@ contract MgvOrder_Test is StratTest {
   event MangroveOrderComplete();
 
   MgvOrder internal mgo;
+  RenegingForwarder internal renegingForwarder;
   TestMaker internal ask_maker;
   TestMaker internal bid_maker;
 
@@ -113,6 +114,7 @@ contract MgvOrder_Test is StratTest {
 
     // this contract is admin of MgvOrder and its router
     mgo = new MgvOrder(IMangrove(payable(mgv)), factory, new SmartRouter(), $(this));
+    renegingForwarder = RenegingForwarder(payable(address(mgo)));
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
     aaveLogic = new SimpleAaveLogic(
@@ -125,8 +127,8 @@ contract MgvOrder_Test is StratTest {
     deal($(quote), $(this), 10_000 ether);
 
     // activating MangroveOrder for quote and base
-    mgo.activate(base);
-    mgo.activate(quote);
+    renegingForwarder.activate(base);
+    renegingForwarder.activate(quote);
 
     // `sell_taker` will take resting bid
     sell_taker = setupTaker(olKey, "sell-taker");
@@ -183,8 +185,8 @@ contract MgvOrder_Test is StratTest {
     (RouterProxy testRunnerProxy,) = mgo.ROUTER_FACTORY().instantiate(address(this), mgo.ROUTER_IMPLEMENTATION());
     AbstractRouter(address(testRunnerProxy)).bind(address(mgo));
     // user approves `mgo` to pull quote or base when doing a market order
-    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
-    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
+    require(TransferLib.approveToken(quote, $(renegingForwarder.router(address(this))), type(uint).max));
+    require(TransferLib.approveToken(base, $(renegingForwarder.router(address(this))), type(uint).max));
 
     cold_buyResult = mgo.take{value: 0.1 ether}(buyOrder);
     cold_sellResult = mgo.take{value: 0.1 ether}(sellOrder);
@@ -206,7 +208,7 @@ contract MgvOrder_Test is StratTest {
   }
 
   function test_admin() public {
-    assertEq(mgv.governance(), mgo.admin(), "Invalid admin address");
+    assertEq(mgv.governance(), renegingForwarder.admin(), "Invalid admin address");
   }
 
   function freshTaker(uint balBase, uint balQuote) internal returns (address fresh_taker) {
@@ -214,8 +216,8 @@ contract MgvOrder_Test is StratTest {
     deal($(quote), fresh_taker, balQuote);
     deal($(base), fresh_taker, balBase);
     deal(fresh_taker, 1 ether);
-    activateOwnerRouter(base, MangroveOffer($(mgo)), fresh_taker);
-    activateOwnerRouter(quote, MangroveOffer($(mgo)), fresh_taker);
+    activateOwnerRouter(base, MangroveOffer(payable(address((mgo)))), fresh_taker);
+    activateOwnerRouter(quote, MangroveOffer(payable(address((mgo)))), fresh_taker);
   }
 
   ////////////////////////
@@ -420,9 +422,9 @@ contract MgvOrder_Test is StratTest {
     buyOrder.offerId = cold_buyResult.offerId;
     buyOrder.orderType = TakerOrderType.GTC;
 
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     logOrderData($(this), buyOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     emit MangroveOrderComplete();
 
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
@@ -463,7 +465,7 @@ contract MgvOrder_Test is StratTest {
     buyOrder.offerId = cold_buyResult.offerId;
     buyOrder.orderType = TakerOrderType.GTC;
 
-    address router = $(mgo.router($(sell_taker)));
+    address router = $(renegingForwarder.router($(sell_taker)));
     vm.prank($(sell_taker));
     TransferLib.approveToken(quote, router, takerGives(buyOrder) + makerGives(buyOrder));
     deal($(quote), $(sell_taker), takerGives(buyOrder) + makerGives(buyOrder));
@@ -509,9 +511,9 @@ contract MgvOrder_Test is StratTest {
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     logOrderData(fresh_taker, buyOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
@@ -519,9 +521,9 @@ contract MgvOrder_Test is StratTest {
 
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(renegingForwarder.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(renegingForwarder.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(
       quote.balanceOf(fresh_taker), takerGives(buyOrder) - expectedResult.takerGave, "Incorrect remaining quote balance"
     );
@@ -545,9 +547,9 @@ contract MgvOrder_Test is StratTest {
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     logOrderData(fresh_taker, buyOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
@@ -556,9 +558,9 @@ contract MgvOrder_Test is StratTest {
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(renegingForwarder.provisionOf(lo, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(renegingForwarder.ownerOf(lo.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(quote.balanceOf(fresh_taker), takerGives(buyOrder), "Incorrect remaining quote balance");
     assertEq(base.balanceOf(fresh_taker), 0, "Incorrect obtained base balance");
     // checking price of offer
@@ -588,9 +590,9 @@ contract MgvOrder_Test is StratTest {
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     logOrderData(fresh_taker, sellOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address(mgo)));
     emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
@@ -599,9 +601,9 @@ contract MgvOrder_Test is StratTest {
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(renegingForwarder.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(renegingForwarder.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(
       base.balanceOf(fresh_taker), takerGives(sellOrder) - expectedResult.takerGave, "Incorrect remaining base balance"
     );
@@ -637,9 +639,9 @@ contract MgvOrder_Test is StratTest {
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom(payable(address((mgo))));
     logOrderData(fresh_taker, sellOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address((mgo))));
     emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
@@ -666,9 +668,9 @@ contract MgvOrder_Test is StratTest {
     uint nativeBalBefore = fresh_taker.balance;
 
     // checking log emission
-    expectFrom($(mgo));
+    expectFrom(payable(address((mgo))));
     logOrderData(fresh_taker, sellOrder);
-    expectFrom($(mgo));
+    expectFrom(payable(address((mgo))));
     emit MangroveOrderComplete();
 
     vm.prank(fresh_taker);
@@ -677,9 +679,9 @@ contract MgvOrder_Test is StratTest {
     assertTrue(res.offerId > 0, "Offer not posted");
     assertEq(res.bounty, 0, "Bounty should be zero");
     assertEq(fresh_taker.balance, nativeBalBefore - 0.1 ether, "Value not deposited");
-    assertEq(mgo.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
+    assertEq(renegingForwarder.provisionOf(olKey, res.offerId), 0.1 ether, "Offer not provisioned");
     // checking mappings
-    assertEq(mgo.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
+    assertEq(renegingForwarder.ownerOf(olKey.hash(), res.offerId), fresh_taker, "Invalid offer owner");
     assertEq(base.balanceOf(fresh_taker), takerGives(sellOrder), "Incorrect remaining base balance");
     assertEq(quote.balanceOf(fresh_taker), 0, "Incorrect obtained quote balance");
     // checking price of offer
@@ -698,7 +700,7 @@ contract MgvOrder_Test is StratTest {
     address fresh_taker = freshTaker(2 ether, 0);
     vm.prank(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(sellOrder);
-    RenegingForwarder.Condition memory cond = mgo.reneging(olKey.hash(), res.offerId);
+    RenegingForwarder.Condition memory cond = renegingForwarder.reneging(olKey.hash(), res.offerId);
     assertEq(cond.date, block.timestamp + 1, "Incorrect expiry");
     assertEq(res.bounty, 0, "Bounty should be zero");
   }
@@ -710,7 +712,7 @@ contract MgvOrder_Test is StratTest {
     vm.mockCall(
       $(quote),
       abi.encodeWithSelector(
-        quote.transferFrom.selector, $(mgo), fresh_taker, reader.minusFee(lo, takerWants(sellOrder))
+        quote.transferFrom.selector, payable(address((mgo))), fresh_taker, reader.minusFee(lo, takerWants(sellOrder))
       ),
       abi.encode(false)
     );
@@ -750,7 +752,7 @@ contract MgvOrder_Test is StratTest {
 
     deal($(base), $(sender), 2 ether);
     sender.refuseNative();
-    activateOwnerRouter(base, MangroveOffer($(mgo)), $(sender));
+    activateOwnerRouter(base, MangroveOffer(payable(address((mgo)))), $(sender));
     // mocking MangroveOrder failure to post resting offer
     vm.mockCall($(mgv), abi.encodeWithSelector(mgv.newOfferByTick.selector), abi.encode(uint(0)));
     /// since `sender` throws on `receive()`, this should fail.
@@ -792,7 +794,9 @@ contract MgvOrder_Test is StratTest {
   function test_resting_buy_offer_can_be_fully_consumed_at_minimum_approval() public {
     IOrderLogic.TakerOrder memory buyOrder = createBuyOrderLowerPrice();
     buyOrder.orderType = TakerOrderType.GTC;
-    TransferLib.approveToken(quote, $(mgo.router(address(this))), takerGives(buyOrder) + makerGives(buyOrder));
+    TransferLib.approveToken(
+      quote, $(renegingForwarder.router(address(this))), takerGives(buyOrder) + makerGives(buyOrder)
+    );
     IOrderLogic.TakerOrderResult memory buyResult = mgo.take{value: 0.1 ether}(buyOrder);
 
     assertEq(buyResult.bounty, 0, "Bounty should be zero");
@@ -808,7 +812,7 @@ contract MgvOrder_Test is StratTest {
   }
 
   function test_failing_resting_offer_releases_uncollected_provision() public {
-    uint provision = mgo.provisionOf(lo, cold_buyResult.offerId);
+    uint provision = renegingForwarder.provisionOf(lo, cold_buyResult.offerId);
     // empty quotes so that cold buy offer fails
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     deal($(quote), address(this), 0);
@@ -819,15 +823,16 @@ contract MgvOrder_Test is StratTest {
 
     assertTrue(bounty > 0, "offer should be cleaned");
     assertTrue(
-      provision > mgo.provisionOf(lo, cold_buyResult.offerId), "Remaining provision should be less than original"
+      provision > renegingForwarder.provisionOf(lo, cold_buyResult.offerId),
+      "Remaining provision should be less than original"
     );
-    assertTrue(mgo.provisionOf(lo, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
+    assertTrue(renegingForwarder.provisionOf(lo, cold_buyResult.offerId) > 0, "Remaining provision should not be 0");
     assertTrue(bounty > g * mgv.global().gasprice(), "taker not compensated");
     console.log("Taker gained %s native", toFixed(bounty - g * mgv.global().gasprice(), 18));
   }
 
   function test_offer_succeeds_when_time_is_not_expired() public {
-    mgo.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp + 1, 0);
+    renegingForwarder.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp + 1, 0);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
     vm.prank($(sell_taker));
     (uint takerGot,, uint bounty,) = mgv.marketOrderByTick(lo, tick, 1991, true);
@@ -836,10 +841,10 @@ contract MgvOrder_Test is StratTest {
   }
 
   function test_offer_reneges_when_time_is_expired() public {
-    mgo.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp, 0);
+    renegingForwarder.setReneging(lo.hash(), cold_buyResult.offerId, block.timestamp, 0);
     vm.warp(block.timestamp + 1);
     Tick tick = mgv.offers(lo, cold_buyResult.offerId).tick();
-    expectFrom($(mgo));
+    expectFrom(address(payable(mgo)));
     emit LogIncident({
       olKeyHash: lo.hash(),
       offerId: 4,
@@ -858,36 +863,36 @@ contract MgvOrder_Test is StratTest {
 
   function test_user_can_retract_resting_offer() public {
     uint userWeiBalanceOld = $(this).balance;
-    uint credited = mgo.retractOffer(lo, cold_buyResult.offerId, true);
+    uint credited = renegingForwarder.retractOffer(lo, cold_buyResult.offerId, true);
     assertEq($(this).balance, userWeiBalanceOld + credited, "Incorrect provision received");
   }
 
   function test_offer_owner_can_set_expiry() public {
-    expectFrom($(mgo));
+    expectFrom(address(payable(mgo)));
     emit SetReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
-    mgo.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
-    RenegingForwarder.Condition memory cond = mgo.reneging(lo.hash(), cold_buyResult.offerId);
+    renegingForwarder.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
+    RenegingForwarder.Condition memory cond = renegingForwarder.reneging(lo.hash(), cold_buyResult.offerId);
     assertEq(cond.date, 42, "expiry date was not set");
   }
 
   function test_only_offer_owner_can_set_expiry() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
+    renegingForwarder.setReneging(lo.hash(), cold_buyResult.offerId, 42, 0);
   }
 
   function test_offer_owner_can_update_offer() public {
-    mgo.updateOffer(lo, Tick.wrap(100), 2000 ether, 10, cold_buyResult.offerId);
+    renegingForwarder.updateOffer(lo, Tick.wrap(100), 2000 ether, 10, cold_buyResult.offerId);
     Offer offer = mgv.offers(lo, cold_buyResult.offerId);
     assertEq(Tick.unwrap(offer.tick()), 100, "Incorrect updated price");
     assertEq(offer.gives(), 2000 ether, "Incorrect updated gives");
-    assertEq(mgo.ownerOf(lo.hash(), cold_buyResult.offerId), $(this), "Owner should not have changed");
+    assertEq(renegingForwarder.ownerOf(lo.hash(), cold_buyResult.offerId), $(this), "Owner should not have changed");
   }
 
   function test_only_offer_owner_can_update_offer() public {
     vm.expectRevert("AccessControlled/Invalid");
     vm.prank(freshAddress());
-    mgo.updateOffer(lo, Tick.wrap(0), 2000 ether, cold_buyResult.offerId, 10);
+    renegingForwarder.updateOffer(lo, Tick.wrap(0), 2000 ether, cold_buyResult.offerId, 10);
   }
 
   //////////////////////////////
@@ -895,13 +900,13 @@ contract MgvOrder_Test is StratTest {
   //////////////////////////////
 
   function test_mockup_routing_gas_cost() public {
-    AbstractRouter router = mgo.router(address(this));
+    AbstractRouter router = renegingForwarder.router(address(this));
 
     // making quote balance hot to mock taker's transfer
-    quote.transfer($(mgo), 1);
+    quote.transfer(address(payable(mgo)), 1);
 
     uint g = gasleft();
-    vm.startPrank($(mgo));
+    vm.startPrank(address(payable(mgo)));
     quote.approve($(router), 1);
     uint pushed = router.push(RL.createOrder({token: quote, fundOwner: address(this)}), 1);
     vm.stopPrank();
@@ -909,7 +914,7 @@ contract MgvOrder_Test is StratTest {
     uint push_cost = g - gasleft();
     assertEq(pushed, 1, "Push failed");
 
-    vm.prank($(mgo));
+    vm.prank(address(payable(mgo)));
     g = gasleft();
     uint pulled = router.pull(RL.createOrder({token: base, fundOwner: address(this)}), 1, true);
     uint pull_cost = g - gasleft();
@@ -930,22 +935,22 @@ contract MgvOrder_Test is StratTest {
     vm.prank($(mgv));
     base.transferFrom(address(sell_taker), $(mgv), sellOrder.takerGives);
     vm.prank($(mgv));
-    base.transfer($(mgo), sellOrder.takerGives);
+    base.transfer(payable(address(mgo)), sellOrder.takerGives);
 
     sellOrder.offerId = cold_buyResult.offerId;
     vm.prank($(mgv));
     _gas();
-    mgo.makerExecute(sellOrder);
+    renegingForwarder.makerExecute(sellOrder);
     uint exec_gas = gas_(true);
     // since offer reposts itself, making offer info, mgo credit on mangrove and mgv config hot in storage
     mgv.config(lo);
     mgv.offers(lo, sellOrder.offerId);
     mgv.offerDetails(lo, sellOrder.offerId);
-    mgv.fund{value: 1}($(mgo));
+    mgv.fund{value: 1}(payable(address(mgo)));
 
     vm.prank($(mgv));
     _gas();
-    mgo.makerPosthook(sellOrder, result);
+    renegingForwarder.makerPosthook(sellOrder, result);
     uint posthook_gas = gas_(true);
     console.log(
       "MgvOrder's logic is %d (makerExecute: %d, makerPosthook:%d)", exec_gas + posthook_gas, exec_gas, posthook_gas
@@ -1019,7 +1024,7 @@ contract MgvOrder_Test is StratTest {
     vm.startPrank(fresh_taker);
     quote.approve(address(aavePool()), amount);
     aavePool().supply(address(quote), amount, fresh_taker, 0);
-    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(renegingForwarder.router(fresh_taker)), type(uint).max));
     uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     uint endBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
@@ -1039,7 +1044,7 @@ contract MgvOrder_Test is StratTest {
     vm.startPrank(fresh_taker);
     quote.approve(address(aavePool()), amount);
     aavePool().supply(address(quote), amount, fresh_taker, 0);
-    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(renegingForwarder.router(fresh_taker)), type(uint).max));
     uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     uint endBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
@@ -1090,7 +1095,7 @@ contract MgvOrder_Test is StratTest {
     vm.startPrank(fresh_taker);
     quote.approve(address(aavePool()), amount);
     aavePool().supply(address(quote), amount, fresh_taker, 0);
-    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(renegingForwarder.router(fresh_taker)), type(uint).max));
     uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     vm.stopPrank();
@@ -1122,7 +1127,7 @@ contract MgvOrder_Test is StratTest {
     address fresh_taker = freshTaker(0, amount);
 
     vm.startPrank(fresh_taker);
-    require(TransferLib.approveToken(quote, $(mgo.router(fresh_taker)), type(uint).max));
+    require(TransferLib.approveToken(quote, $(renegingForwarder.router(fresh_taker)), type(uint).max));
     uint startBalance = quote.balanceOf(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     vm.stopPrank();
@@ -1152,7 +1157,7 @@ contract MgvOrder_Test is StratTest {
     vm.startPrank(fresh_taker);
     quote.approve(address(aavePool()), amount);
     aavePool().supply(address(quote), amount, fresh_taker, 0);
-    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(mgo.router(fresh_taker)), type(uint).max));
+    require(TransferLib.approveToken(aaveOverlyingOf(quote), $(renegingForwarder.router(fresh_taker)), type(uint).max));
     uint startBalance = aaveOverlyingOf(quote).balanceOf(fresh_taker);
     IOrderLogic.TakerOrderResult memory res = mgo.take{value: 0.1 ether}(buyOrder);
     vm.stopPrank();

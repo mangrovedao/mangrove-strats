@@ -6,6 +6,7 @@ import {Script2} from "@mgv/lib/Script2.sol";
 import {MangroveOrder, RL} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
 /*  Allows MangroveOrder to trade on the tokens given in argument.
 
@@ -34,7 +35,7 @@ contract ActivateMangroveOrder is Deployer {
     for (uint i = 0; i < tokens.length; ++i) {
       console.log("%s (%s)", tokens[i].symbol(), address(tokens[i]));
       broadcast();
-      mgvOrder.activate(tokens[i]);
+      RenegingForwarder(payable(address(mgvOrder))).activate(tokens[i]);
     }
     console.log("done!");
   }

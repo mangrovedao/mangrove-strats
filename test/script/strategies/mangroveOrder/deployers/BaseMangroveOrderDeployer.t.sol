@@ -17,6 +17,7 @@ import {
   MangroveOrder,
   RouterProxyFactory
 } from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 
 /**
  * Base test suite for [Chain]MangroveOrderDeployer scripts
@@ -32,7 +33,7 @@ abstract contract BaseMangroveOrderDeployerTest is Deployer, Test2 {
     MangroveOrder mgoe = MangroveOrder(fork.get("MangroveOrder"));
     address mgvOrderRouter = fork.get("MangroveOrder-Router");
 
-    assertEq(mgoe.admin(), chief);
+    assertEq(AccessControlled(address(mgoe)).admin(), chief);
     assertEq(address(mgoe.MGV()), mgv);
     assertEq(address(mgoe.ROUTER_IMPLEMENTATION()), mgvOrderRouter);
   }

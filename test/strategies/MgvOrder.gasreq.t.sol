@@ -15,6 +15,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
 ///@notice Can be used to measure gasreq for MangroveOrder. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing with gas-measurement in core.
@@ -30,6 +31,7 @@ import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 ///@dev In addition, wrt density then gasbase is 271276 (c.f. test/strategies/CoreOfferGasbase.gasreq.t.sol:OfferGasBaseTest_Generic_A_B:test_gasbase_to_empty_book_base_quote_success())
 abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   MangroveOrder internal mangroveOrder;
+  RenegingForwarder internal renegingForwarder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
   uint GASREQ = 220_000; // simple resting order gasreq cf discussion above
@@ -37,15 +39,16 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
     mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), new SmartRouter(), $(this));
-    mangroveOrder.activate(base);
-    mangroveOrder.activate(quote);
+    renegingForwarder = RenegingForwarder(payable(address(mangroveOrder)));
+    renegingForwarder.activate(base);
+    renegingForwarder.activate(quote);
 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver
     deal($(quote), $(this), 10 ether);
     deal($(base), $(this), 10 ether);
-    activateOwnerRouter(base, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
-    activateOwnerRouter(quote, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
+    activateOwnerRouter(base, MangroveOffer(payable(address(mangroveOrder))), address(this), 1.5 ether);
+    activateOwnerRouter(quote, MangroveOffer(payable(address(mangroveOrder))), address(this), 1.5 ether);
 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
