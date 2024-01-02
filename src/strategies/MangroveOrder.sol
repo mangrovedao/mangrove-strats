@@ -342,8 +342,7 @@ contract MangroveOrderMaking is IOrderLogic {
     });
     if (tko.offerId == 0) {
       // posting a new offer
-      (res.offerId, res.offerWriteData) = //_newOffer(args, msg.sender);
-       MANGROVE_ORDER_TAKING.internalNewOffer(args, msg.sender);
+      (res.offerId, res.offerWriteData) = MANGROVE_ORDER_TAKING.internalNewOffer(args, msg.sender);
     } else {
       // updating an existing offer
       uint offerId = tko.offerId;
@@ -354,8 +353,7 @@ contract MangroveOrderMaking is IOrderLogic {
       // msg sender might have given an offerId that is already live
       // we disallow this to avoid confusion
       require(!MGV.offers(olKey, offerId).isLive(), "mgvOrder/offerAlreadyActive");
-      res.offerWriteData = //_updateOffer(args, offerId);
-       MANGROVE_ORDER_TAKING.internalUpdateOffer(args, offerId);
+      res.offerWriteData = MANGROVE_ORDER_TAKING.internalUpdateOffer(args, offerId);
       if (res.offerWriteData == "offer/updated") {
         res.offerId = offerId;
       } else {
