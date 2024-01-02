@@ -80,6 +80,7 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     _setReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
+  ///@inheritdoc IOrderLogic
   function take(IOrderLogic.TakerOrder calldata) external payable returns (IOrderLogic.TakerOrderResult memory) {
     address facet = address(MANGROVE_ORDER_MAKING);
     assembly {
