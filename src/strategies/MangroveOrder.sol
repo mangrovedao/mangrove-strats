@@ -41,11 +41,18 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     _setAdmin(deployer);
   }
 
+  /// @notice this modifier ensures that calls accessing the function are only made by himself
   modifier onlyInternal() {
     require(msg.sender == address(this), "AccessControlled/Invalid");
     _;
   }
 
+  /// This function should only be called by the MangroveOrderMaking contract which is itself delegatecalled by MangroveOrder
+  /// This means that this function is only accessible by MangroveOrder address
+  /// @param args OfferArgs
+  /// @param owner the owner of the offer
+  /// @return offerId the offer id
+  /// @return reason the reason of failure
   function internalNewOffer(OfferArgs memory args, address owner)
     public
     onlyInternal
@@ -54,12 +61,23 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
     return _newOffer(args, owner);
   }
 
+  /// This function should only be called by the MangroveOrderMaking contract which is itself delegatecalled by MangroveOrder
+  /// This means that this function is only accessible by MangroveOrder address
+  /// @param args OfferArgs
+  /// @param offerId the offer id
+  /// @return reason the reason of failure
   function internalUpdateOffer(OfferArgs memory args, uint offerId) public onlyInternal returns (bytes32 reason) {
     return _updateOffer(args, offerId);
   }
 
-  function internalSetReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint gasreq) public onlyInternal {
-    _setReneging(olKeyHash, offerId, expiryDate, gasreq);
+  /// This function should only be called by the MangroveOrderMaking contract which is itself delegatecalled by MangroveOrder
+  /// This means that this function is only accessible by MangroveOrder address
+  /// @param olKeyHash the hash of the offer list key
+  /// @param offerId the offer id
+  /// @param expiryDate the new expiry date
+  /// @param volume the new volume
+  function internalSetReneging(bytes32 olKeyHash, uint offerId, uint expiryDate, uint volume) public onlyInternal {
+    _setReneging(olKeyHash, offerId, expiryDate, volume);
   }
 
   function take(IOrderLogic.TakerOrder calldata) external payable returns (IOrderLogic.TakerOrderResult memory) {
@@ -79,12 +97,22 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
   }
 }
 
+/// @title MangroveOrderMaking
+/// @notice this contracts holds the Order logic
+/// @dev these functions ought to be called only while initializing an Order and gas req is thus less important
+/// Therefore this contract will be delegatecalled by MangroveOrder and it may call "itself" to access function from MangroveOrder
+/// Especially to make new offers, update offers and setting the reneging options
 contract MangroveOrderMaking is IOrderLogic {
   RouterProxyFactory immutable ROUTER_FACTORY;
   AbstractRouter immutable ROUTER_IMPLEMENTATION;
   IMangrove immutable MGV;
   MangroveOrder immutable MANGROVE_ORDER_TAKING;
 
+  /// Contract's constructor
+  /// @param mgv The mangrove core contract
+  /// @param factory The router proxy factory
+  /// @param routerImplementation The Smart router implementation used as proxy destination
+  /// @param mgvOrder The MangroveOrder contract
   constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation, MangroveOrder mgvOrder) {
     MGV = mgv;
     ROUTER_FACTORY = factory;
