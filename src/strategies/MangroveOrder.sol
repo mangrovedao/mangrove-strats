@@ -37,6 +37,8 @@ contract MangroveOrder is IOrderLogic {
   ///@notice The offer was successfully reposted.
   bytes32 internal constant REPOST_SUCCESS = "offer/updated";
 
+  event SetAdmin(address indexed admin);
+
   ///@notice MangroveOrder is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
@@ -47,9 +49,11 @@ contract MangroveOrder is IOrderLogic {
     ROUTER_FACTORY = factory;
     ROUTER_IMPLEMENTATION = routerImplementation;
     if (deployer == address(0) || deployer == msg.sender) return;
-    DRF.delegateCallWithData(
-      address(RENEGING_FORWARDER), abi.encodeWithSelector(AccessControlled.setAdmin.selector, deployer)
-    );
+    // admin is at slot 0
+    assembly {
+      sstore(0, deployer)
+    }
+    emit SetAdmin(deployer);
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
