@@ -1,5 +1,7 @@
 # Next version
 
+- Remove double deployment of (Aave)Kandel instances
+
 # 1.0.1
 
 - Change @mangrovedao/mangrove-core dependency from 'next' to '^2.0.0'
