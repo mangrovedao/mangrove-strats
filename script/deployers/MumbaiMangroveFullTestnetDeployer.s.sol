@@ -149,26 +149,5 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     iercs[5] = tokens.weth.token;
     iercs[6] = tokens.wmatic.token;
     new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, iercs: iercs});
-
-    // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
-    // Also write its address so it can be used as a library to call createGeometricDistribution
-    new KandelSower().innerRun({
-      kandelSeeder: seeder,
-      olKeyBaseQuote: OLKey(address(markets[0].tkn1.token), address(markets[0].tkn2.token), markets[0].tickSpacing),
-      sharing: false,
-      onAave: false,
-      registerNameOnFork: true,
-      name: "KandelLib"
-    });
-
-    // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
-    new KandelSower().innerRun({
-      kandelSeeder: aaveSeeder,
-      olKeyBaseQuote: OLKey(address(markets[1].tkn1.token), address(markets[1].tkn2.token), markets[1].tickSpacing),
-      sharing: false,
-      onAave: true,
-      registerNameOnFork: false,
-      name: ""
-    });
   }
 }

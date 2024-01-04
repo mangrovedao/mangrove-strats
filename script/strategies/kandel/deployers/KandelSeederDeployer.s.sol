@@ -54,7 +54,7 @@ contract KandelSeederDeployer is Deployer {
     IERC20 testBase,
     IERC20 testQuote
   ) public returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) {
-    //FIXME: what tick spacing? Why do we assume an open market?
+    // Tick spacing is irrelevant, only used to deploy for verification and to use as a library
     uint tickSpacing = 1;
     OLKey memory olKeyBaseQuote = OLKey(address(testBase), address(testQuote), tickSpacing);
 
@@ -67,6 +67,7 @@ contract KandelSeederDeployer is Deployer {
       console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
       broadcast();
       Kandel kandel = new Kandel(mgv, olKeyBaseQuote, 1, address(0));
+      // Write the kandel's address so it can be used as a library to call createGeometricDistribution
       fork.set("KandelLib", address(kandel));
       smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     }
