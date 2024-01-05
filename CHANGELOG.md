@@ -1,6 +1,10 @@
 # Next version
 
-- Remove double deployment of (Aave)Kandel instances
+- Add support for Sepolia
+- Remove double deployment of (Aave)Kandel instances on Mumbai
+- Bump @mangrovedao/mangrove-core to v2.0.3
+- Bump @mangrovedao/context-addresses to v1.0.1
+- Bump @mangrovedao/mangrove-deployments to v1.0.2
 
 # 1.0.1
 
