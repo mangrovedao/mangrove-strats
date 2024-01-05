@@ -88,7 +88,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     MangroveOrder mangroveOrder = MangroveOrder(fork.get("MangroveOrder"));
 
     // Deploy KandelSeeder & AaveKandelSeeder
-    (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
+    new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
 
     // Activate markets
     Tokens memory tokens;
