@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import {DataTypes} from "@mgv-strats/src/strategies/vendor/aave/v3/DataTypes.sol";
+import {DataTypes} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/protocol/libraries/types/DataTypes.sol";
 import {MintableERC20BLWithDecimals} from "@mgv/src/toy/MintableERC20BLWithDecimals.sol";
 
 contract RewardsControllerIshMock {

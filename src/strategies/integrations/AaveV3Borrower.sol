@@ -10,13 +10,11 @@ pragma solidity ^0.8.10;
 /**
  * @dev it is designed with a diamond storage scheme where core function implementations are delegated to an immutable `IMPLEMENTATION` address
  */
-
 import {AaveV3Lender} from "./AaveV3Lender.sol";
 import {AaveV3BorrowerStorage as AMS} from "./AaveV3BorrowerStorage.sol";
 import {
   AaveV3BorrowerImplementation as AMI,
   IERC20,
-  IRewardsControllerIsh,
   IPoolAddressesProvider,
   IPool,
   ICreditDelegationToken,

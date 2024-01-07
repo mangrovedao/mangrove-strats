@@ -23,7 +23,6 @@ import {OLKey} from "@mgv/src/core/MgvLib.sol";
 /**
  * @notice deploys a Kandel seeder
  */
-
 contract KandelSeederDeployer is Deployer, Test2 {
   function run() public {
     bool deployAaveKandel = true;
@@ -57,7 +56,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
     IERC20 testBase,
     IERC20 testQuote
   ) public returns (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) {
-    //FIXME: what tick spacing? Why do we assume an open market?
+    // Tick spacing is irrelevant, only used to deploy for verification and to use as a library
     uint tickSpacing = 1;
     OLKey memory olKeyBaseQuote = OLKey(address(testBase), address(testQuote), tickSpacing);
 
@@ -70,6 +69,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
       console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
       broadcast();
       Kandel kandel = new Kandel(mgv, olKeyBaseQuote, 1);
+      // Write the kandel's address so it can be used as a library to call createGeometricDistribution
       fork.set("KandelLib", address(kandel));
       smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
     }
@@ -92,11 +92,12 @@ contract KandelSeederDeployer is Deployer, Test2 {
       AbstractRouter router = AbstractRouter(address(aaveSeeder.AAVE_ROUTER()));
       console.log("Seeder's router:", address(router));
       broadcast();
-      new AaveKandel(mgv, olKeyBaseQuote, aaveKandelGasreq, Direct.RouterParams({
-        routerImplementation: router,
-        fundOwner: address(0),
-        strict: true
-      }));
+      new AaveKandel(
+        mgv,
+        olKeyBaseQuote,
+        aaveKandelGasreq,
+        Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: true})
+      );
       smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
     }
 
