@@ -13,7 +13,8 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
 
 import {
   MangroveAmplifier,
@@ -104,12 +105,8 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
     IERC20[] memory _testTokens = new IERC20[](_maxToken);
 
     for (uint i = 0; i < _maxToken; i++) {
-      TestToken token = new TestToken(
-        address(this),
-        string.concat("ampl", tostr(i)),
-        string.concat("TEST", tostr(i)),
-        18
-      );
+      TestToken token =
+        new TestToken(address(this), string.concat("ampl", tostr(i)), string.concat("TEST", tostr(i)), 18);
       olKey.inbound_tkn = address(token);
       setupMarket(olKey);
 

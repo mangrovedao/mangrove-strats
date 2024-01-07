@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {IPool} from "../vendor/aave/v3/IPool.sol";
-import {IPoolAddressesProvider} from "../vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IRewardsControllerIsh} from "../vendor/aave/v3/IRewardsControllerIsh.sol";
+import {IPool} from "../vendor/aave/v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "../vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IRewardsController} from "../vendor/aave/v3/periphery/contracts/rewards/interfaces/IRewardsController.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
@@ -111,8 +111,8 @@ contract AaveV3Lender {
     internal
     returns (address[] memory rewardsList, uint[] memory claimedAmounts)
   {
-    IRewardsControllerIsh rewardsController =
-      IRewardsControllerIsh(ADDRESS_PROVIDER.getAddress(keccak256("INCENTIVES_CONTROLLER")));
+    IRewardsController rewardsController =
+      IRewardsController(ADDRESS_PROVIDER.getAddress(keccak256("INCENTIVES_CONTROLLER")));
     (rewardsList, claimedAmounts) = rewardsController.claimAllRewards(assets, to);
   }
 

@@ -16,7 +16,8 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
 
 import {console} from "@mgv/forge-std/console.sol";
 /* 

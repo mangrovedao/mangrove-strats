@@ -14,7 +14,8 @@ import {
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";

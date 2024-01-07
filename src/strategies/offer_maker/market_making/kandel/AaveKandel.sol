@@ -8,7 +8,7 @@ import {
   IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
-import {IATokenIsh} from "@mgv-strats/src/strategies/vendor/aave/v3/IATokenIsh.sol";
+import {IAToken} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IAToken.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
@@ -47,7 +47,7 @@ contract AaveKandel is GeometricKandel {
   /// @param token the token to verify.
   /// @return true if overlying; otherwise, false.
   function isOverlying(address token) internal view returns (bool) {
-    try IATokenIsh(token).UNDERLYING_ASSET_ADDRESS() returns (address) {
+    try IAToken(token).UNDERLYING_ASSET_ADDRESS() returns (address) {
       return true;
     } catch {}
     return false;

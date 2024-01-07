@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.0;
 
 library DataTypes {
   struct ReserveData {
@@ -46,7 +46,8 @@ library DataTypes {
     //bit 59: stable rate borrowing enabled
     //bit 60: asset is paused
     //bit 61: borrowing in isolation mode is enabled
-    //bit 62-63: reserved
+    //bit 62: siloed borrowing enabled
+    //bit 63: flashloaning enabled
     //bit 64-79: reserve factor
     //bit 80-115 borrow cap in whole tokens, borrowCap == 0 => no cap
     //bit 116-151 supply cap in whole tokens, supplyCap == 0 => no cap
@@ -56,7 +57,7 @@ library DataTypes {
     //bit 212-251 debt ceiling for isolation mode with (ReserveConfiguration::DEBT_CEILING_DECIMALS) decimals
     //bit 252-255 unused
 
-    uint data;
+    uint256 data;
   }
 
   struct UserConfigurationMap {
@@ -65,7 +66,7 @@ library DataTypes {
      * The first bit indicates if an asset is used as collateral by the user, the second whether an
      * asset is borrowed by the user.
      */
-    uint data;
+    uint256 data;
   }
 
   struct EModeCategory {
@@ -78,27 +79,23 @@ library DataTypes {
     string label;
   }
 
-  enum InterestRateMode {
-    NONE,
-    STABLE,
-    VARIABLE
-  }
+  enum InterestRateMode {NONE, STABLE, VARIABLE}
 
   struct ReserveCache {
-    uint currScaledVariableDebt;
-    uint nextScaledVariableDebt;
-    uint currPrincipalStableDebt;
-    uint currAvgStableBorrowRate;
-    uint currTotalStableDebt;
-    uint nextAvgStableBorrowRate;
-    uint nextTotalStableDebt;
-    uint currLiquidityIndex;
-    uint nextLiquidityIndex;
-    uint currVariableBorrowIndex;
-    uint nextVariableBorrowIndex;
-    uint currLiquidityRate;
-    uint currVariableBorrowRate;
-    uint reserveFactor;
+    uint256 currScaledVariableDebt;
+    uint256 nextScaledVariableDebt;
+    uint256 currPrincipalStableDebt;
+    uint256 currAvgStableBorrowRate;
+    uint256 currTotalStableDebt;
+    uint256 nextAvgStableBorrowRate;
+    uint256 nextTotalStableDebt;
+    uint256 currLiquidityIndex;
+    uint256 nextLiquidityIndex;
+    uint256 currVariableBorrowIndex;
+    uint256 nextVariableBorrowIndex;
+    uint256 currLiquidityRate;
+    uint256 currVariableBorrowRate;
+    uint256 reserveFactor;
     ReserveConfigurationMap reserveConfiguration;
     address aTokenAddress;
     address stableDebtTokenAddress;
@@ -108,8 +105,8 @@ library DataTypes {
   }
 
   struct ExecuteLiquidationCallParams {
-    uint reservesCount;
-    uint debtToCover;
+    uint256 reservesCount;
+    uint256 debtToCover;
     address collateralAsset;
     address debtAsset;
     address user;
@@ -121,7 +118,7 @@ library DataTypes {
 
   struct ExecuteSupplyParams {
     address asset;
-    uint amount;
+    uint256 amount;
     address onBehalfOf;
     uint16 referralCode;
   }
@@ -130,12 +127,12 @@ library DataTypes {
     address asset;
     address user;
     address onBehalfOf;
-    uint amount;
+    uint256 amount;
     InterestRateMode interestRateMode;
     uint16 referralCode;
     bool releaseUnderlying;
-    uint maxStableRateBorrowSizePercent;
-    uint reservesCount;
+    uint256 maxStableRateBorrowSizePercent;
+    uint256 reservesCount;
     address oracle;
     uint8 userEModeCategory;
     address priceOracleSentinel;
@@ -143,7 +140,7 @@ library DataTypes {
 
   struct ExecuteRepayParams {
     address asset;
-    uint amount;
+    uint256 amount;
     InterestRateMode interestRateMode;
     address onBehalfOf;
     bool useATokens;
@@ -151,15 +148,15 @@ library DataTypes {
 
   struct ExecuteWithdrawParams {
     address asset;
-    uint amount;
+    uint256 amount;
     address to;
-    uint reservesCount;
+    uint256 reservesCount;
     address oracle;
     uint8 userEModeCategory;
   }
 
   struct ExecuteSetUserEModeParams {
-    uint reservesCount;
+    uint256 reservesCount;
     address oracle;
     uint8 categoryId;
   }
@@ -168,10 +165,10 @@ library DataTypes {
     address asset;
     address from;
     address to;
-    uint amount;
-    uint balanceFromBefore;
-    uint balanceToBefore;
-    uint reservesCount;
+    uint256 amount;
+    uint256 balanceFromBefore;
+    uint256 balanceToBefore;
+    uint256 reservesCount;
     address oracle;
     uint8 fromEModeCategory;
   }
@@ -179,15 +176,15 @@ library DataTypes {
   struct FlashloanParams {
     address receiverAddress;
     address[] assets;
-    uint[] amounts;
-    uint[] interestRateModes;
+    uint256[] amounts;
+    uint256[] interestRateModes;
     address onBehalfOf;
     bytes params;
     uint16 referralCode;
-    uint flashLoanPremiumToProtocol;
-    uint flashLoanPremiumTotal;
-    uint maxStableRateBorrowSizePercent;
-    uint reservesCount;
+    uint256 flashLoanPremiumToProtocol;
+    uint256 flashLoanPremiumTotal;
+    uint256 maxStableRateBorrowSizePercent;
+    uint256 reservesCount;
     address addressesProvider;
     uint8 userEModeCategory;
     bool isAuthorizedFlashBorrower;
@@ -196,17 +193,17 @@ library DataTypes {
   struct FlashloanSimpleParams {
     address receiverAddress;
     address asset;
-    uint amount;
+    uint256 amount;
     bytes params;
     uint16 referralCode;
-    uint flashLoanPremiumToProtocol;
-    uint flashLoanPremiumTotal;
+    uint256 flashLoanPremiumToProtocol;
+    uint256 flashLoanPremiumTotal;
   }
 
   struct FlashLoanRepaymentParams {
-    uint amount;
-    uint totalPremium;
-    uint flashLoanPremiumToProtocol;
+    uint256 amount;
+    uint256 totalPremium;
+    uint256 flashLoanPremiumToProtocol;
     address asset;
     address receiverAddress;
     uint16 referralCode;
@@ -214,7 +211,7 @@ library DataTypes {
 
   struct CalculateUserAccountDataParams {
     UserConfigurationMap userConfig;
-    uint reservesCount;
+    uint256 reservesCount;
     address user;
     address oracle;
     uint8 userEModeCategory;
@@ -225,33 +222,33 @@ library DataTypes {
     UserConfigurationMap userConfig;
     address asset;
     address userAddress;
-    uint amount;
+    uint256 amount;
     InterestRateMode interestRateMode;
-    uint maxStableLoanPercent;
-    uint reservesCount;
+    uint256 maxStableLoanPercent;
+    uint256 reservesCount;
     address oracle;
     uint8 userEModeCategory;
     address priceOracleSentinel;
     bool isolationModeActive;
     address isolationModeCollateralAddress;
-    uint isolationModeDebtCeiling;
+    uint256 isolationModeDebtCeiling;
   }
 
   struct ValidateLiquidationCallParams {
     ReserveCache debtReserveCache;
-    uint totalDebt;
-    uint healthFactor;
+    uint256 totalDebt;
+    uint256 healthFactor;
     address priceOracleSentinel;
   }
 
   struct CalculateInterestRatesParams {
-    uint unbacked;
-    uint liquidityAdded;
-    uint liquidityTaken;
-    uint totalStableDebt;
-    uint totalVariableDebt;
-    uint averageStableBorrowRate;
-    uint reserveFactor;
+    uint256 unbacked;
+    uint256 liquidityAdded;
+    uint256 liquidityTaken;
+    uint256 totalStableDebt;
+    uint256 totalVariableDebt;
+    uint256 averageStableBorrowRate;
+    uint256 reserveFactor;
     address reserve;
     address aToken;
   }

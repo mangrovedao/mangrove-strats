@@ -25,7 +25,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
 import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveMemoizer.sol";
-import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/IPool.sol";
+import {IPool} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPool.sol";
 import {RenegingForwarder} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
 
 import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";

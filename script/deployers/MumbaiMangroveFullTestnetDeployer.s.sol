@@ -19,8 +19,9 @@ import {
   ActivateMangroveOrder, MangroveOrder
 } from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 import {KandelSower} from "@mgv-strats/script/strategies/kandel/KandelSower.s.sol";
-import {IPoolAddressesProvider} from "@mgv-strats/src/strategies/vendor/aave/v3/IPoolAddressesProvider.sol";
-import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/IPriceOracleGetter.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IAaveOracle} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IAaveOracle.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -79,8 +80,8 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     IMangrove mgv = IMangrove(fork.get("Mangrove"));
     MgvReader reader = MgvReader(fork.get("MgvReader"));
     // NB: The oracle only works for AAVE tokens
-    IPriceOracleGetter priceOracle =
-      IPriceOracleGetter(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getAddress("PRICE_ORACLE"));
+    IAaveOracle priceOracle =
+      IAaveOracle(IPoolAddressesProvider(fork.get("AaveAddressProvider")).getAddress("PRICE_ORACLE"));
     require(priceOracle.BASE_CURRENCY() == address(0), "script assumes base currency is in USD");
 
     // Deploy MangroveOrder
@@ -88,7 +89,7 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     MangroveOrder mangroveOrder = MangroveOrder(fork.get("MangroveOrder"));
 
     // Deploy KandelSeeder & AaveKandelSeeder
-    (KandelSeeder seeder, AaveKandelSeeder aaveSeeder) = new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
+    new MumbaiKandelSeederDeployer().runWithChainSpecificParams();
 
     // Activate markets
     Tokens memory tokens;
@@ -140,38 +141,14 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     }
 
     // Activate MangroveOrder on markets
-    IERC20[] memory tkns = new IERC20[](7);
-    tkns[0] = tokens.dai.token;
-    tkns[1] = tokens.crv.token;
-    tkns[2] = tokens.wbtc.token;
-    tkns[3] = tokens.usdc.token;
-    tkns[4] = tokens.usdt.token;
-    tkns[5] = tokens.weth.token;
-    tkns[6] = tokens.wmatic.token;
-    new ActivateMangroveOrder().innerRun({
-      mgvOrder: mangroveOrder,
-      tokens: tkns
-    });
-
-    // Deploy Kandel instance via KandelSeeder to get the Kandel contract verified
-    // Also write its address so it can be used as a library to call createGeometricDistribution
-    new KandelSower().innerRun({
-      kandelSeeder: seeder,
-      olKeyBaseQuote: OLKey(address(markets[0].tkn1.token), address(markets[0].tkn2.token), markets[0].tickSpacing),
-      sharing: false,
-      onAave: false,
-      registerNameOnFork: true,
-      name: "KandelLib"
-    });
-
-    // Deploy AaveKandel instance via AaveKandelSeeder to get the AaveKandel contract verified
-    new KandelSower().innerRun({
-      kandelSeeder: aaveSeeder,
-      olKeyBaseQuote: OLKey(address(markets[1].tkn1.token), address(markets[1].tkn2.token), markets[1].tickSpacing),
-      sharing: false,
-      onAave: true,
-      registerNameOnFork: false,
-      name: ""
-    });
+    IERC20[] memory iercs = new IERC20[](7);
+    iercs[0] = tokens.dai.token;
+    iercs[1] = tokens.crv.token;
+    iercs[2] = tokens.wbtc.token;
+    iercs[3] = tokens.usdc.token;
+    iercs[4] = tokens.usdt.token;
+    iercs[5] = tokens.weth.token;
+    iercs[6] = tokens.wmatic.token;
+    new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, iercs: iercs});
   }
 }
