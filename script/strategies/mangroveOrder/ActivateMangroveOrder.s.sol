@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {console} from "@mgv/forge-std/console.sol";
 import {Script2} from "@mgv/lib/Script2.sol";
-import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder, RL} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
@@ -20,22 +20,22 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 contract ActivateMangroveOrder is Deployer {
   function run() public {
     string[] memory tkns = vm.envString("TKNS", ",");
-    IERC20[] memory iercs = new IERC20[](tkns.length);
+    IERC20[] memory tokens = new IERC20[](tkns.length);
     for (uint i = 0; i < tkns.length; ++i) {
-      iercs[i] = IERC20(fork.get(tkns[i]));
+      tokens[i] = IERC20(fork.get(tkns[i]));
     }
 
-    innerRun({mgvOrder: MangroveOrder(envAddressOrName("MANGROVE_ORDER", "MangroveOrder")), iercs: iercs});
+    innerRun({mgvOrder: MangroveOrder(envAddressOrName("MANGROVE_ORDER", "MangroveOrder")), tokens: tokens});
   }
 
-  function innerRun(MangroveOrder mgvOrder, IERC20[] memory iercs) public {
+  function innerRun(MangroveOrder mgvOrder, IERC20[] memory tokens) public {
     console.log("MangroveOrder (%s) is acting of Mangrove (%s)", address(mgvOrder), address(mgvOrder.MGV()));
     console.log("Activating tokens...");
-    for (uint i = 0; i < iercs.length; ++i) {
-      console.log("%s (%s)", iercs[i].symbol(), address(iercs[i]));
+    for (uint i = 0; i < tokens.length; ++i) {
+      console.log("%s (%s)", tokens[i].symbol(), address(tokens[i]));
+      broadcast();
+      mgvOrder.activate(tokens[i]);
     }
-    broadcast();
-    mgvOrder.activate(iercs);
     console.log("done!");
   }
 }

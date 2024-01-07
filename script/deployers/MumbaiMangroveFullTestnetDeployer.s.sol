@@ -25,6 +25,7 @@ import {IAaveOracle} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/i
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
+import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 /**
  * Deploy and configure a complete Mangrove testnet deployment:
@@ -140,14 +141,15 @@ contract MumbaiMangroveFullTestnetDeployer is Deployer {
     }
 
     // Activate MangroveOrder on markets
-    IERC20[] memory iercs = new IERC20[](7);
-    iercs[0] = tokens.dai.token;
-    iercs[1] = tokens.crv.token;
-    iercs[2] = tokens.wbtc.token;
-    iercs[3] = tokens.usdc.token;
-    iercs[4] = tokens.usdt.token;
-    iercs[5] = tokens.weth.token;
-    iercs[6] = tokens.wmatic.token;
-    new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, iercs: iercs});
+    IERC20[] memory tkns = new IERC20[](7);
+    tkns[0] = tokens.dai.token;
+    tkns[1] = tokens.crv.token;
+    tkns[2] = tokens.wbtc.token;
+    tkns[3] = tokens.usdc.token;
+    tkns[4] = tokens.usdt.token;
+    tkns[5] = tokens.weth.token;
+    tkns[6] = tokens.wmatic.token;
+
+    new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, tokens: tkns});
   }
 }

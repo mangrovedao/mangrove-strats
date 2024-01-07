@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {MangroveOffer, TransferLib} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {IForwarder} from "@mgv-strats/src/strategies/interfaces/IForwarder.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {RL, AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
@@ -13,8 +14,11 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 ///@notice This class implements IForwarder, which contains specific Forwarder logic functions in additions to IOfferLogic interface.
 
 abstract contract Forwarder is IForwarder, MangroveOffer {
-  ///@notice approx of amount of gas units required to complete `__posthookFallback__` when evaluating penalty.
+  ///@notice approx of amount of gas units required to complete `__handleResidualProvision__` when evaluating penalty.
   uint constant GAS_APPROX = 2000;
+
+  ///@notice the router factory contract that is used to deploy offer owner routers
+  RouterProxyFactory public immutable ROUTER_FACTORY;
 
   ///@notice data associated to each offer published on Mangrove by this contract.
   ///@param owner address of the account that can manage (update or retract) the offer
@@ -46,28 +50,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
 
   ///@notice Forwarder constructor
   ///@param mgv the deployed Mangrove contract on which this contract will post offers.
-  ///@param router the router that this contract will use to pull/push liquidity from offer maker's reserve. This must not be `NO_ROUTER`.
-  constructor(IMangrove mgv, AbstractRouter router) MangroveOffer(mgv) {
-    setRouter(router);
-  }
-
-  /// @inheritdoc IOfferLogic
-  function setRouter(AbstractRouter router) public virtual override {
-    require(router != NO_ROUTER, "Forwarder/noRouter");
-    super.setRouter(router);
-  }
-
-  ///@inheritdoc IForwarder
-  function offerOwners(bytes32 olKeyHash, uint[] calldata offerIds)
-    public
-    view
-    override
-    returns (address[] memory offerOwners_)
+  ///@param factory the router proxy factory contract -- cannot be 0x
+  ///@param routerImplementation the deployed SmartRouter contract used to generate proxys for offer owners -- cannot be 0x
+  constructor(IMangrove mgv, RouterProxyFactory factory, AbstractRouter routerImplementation)
+    MangroveOffer(mgv, routerImplementation)
   {
-    offerOwners_ = new address[](offerIds.length);
-    for (uint i = 0; i < offerIds.length; ++i) {
-      offerOwners_[i] = ownerOf(olKeyHash, offerIds[i]);
-    }
+    ROUTER_FACTORY = factory;
+    require(address(factory) != address(0), "Forwarder/0xFactory");
+    require(address(routerImplementation) != address(0), "Forwarder/0xRouter");
   }
 
   /// @notice grants managing (update/retract) rights on a particular offer.
@@ -113,6 +103,19 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     require(owner != address(0), "Forwarder/unknownOffer");
   }
 
+  /// @inheritdoc IOfferLogic
+  function router(address fundOwner) public view override returns (AbstractRouter) {
+    return AbstractRouter(address(ROUTER_FACTORY.computeProxyAddress(fundOwner, ROUTER_IMPLEMENTATION)));
+  }
+
+  ///@notice approves a router proxy for transfering funds from this contract
+  ///@param token the IERC20 whose approval is required
+  ///@param proxy the router proxy contract
+  ///@param amount the approval quantity.
+  function _approveProxy(IERC20 token, RouterProxy proxy, uint amount) internal {
+    require(TransferLib.approveToken(token, address(proxy), amount), "MangroveOffer/ProxyApprovaFailed");
+  }
+
   /// @notice Derives the gas price for the new offer and verifies it against the global configuration.
   /// @param args function's arguments in memory
   /// @return gasprice the gas price that is covered by `provision` - `leftover`.
@@ -129,10 +132,11 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     require(gasprice >= global.gasprice(), "mgv/insufficientProvision");
   }
 
-  /// @notice Inserts a new offer on a Mangrove Offer List.
+  /// @notice Inserts a new offer on a Mangrove Offer List
   /// @dev If inside a hook, one should call `_newOffer` to create a new offer and not directly `MGV.newOffer` to make sure one is correctly dealing with:
   /// * offer ownership
   /// * offer provisions and gasprice
+  /// * offer owner has a router proxy for when her offer is taken
   /// @param args function's arguments in memory
   /// @param owner the address of the offer owner
   /// @return offerId the identifier of the new offer on the offer list. Can be 0 if posting was rejected by Mangrove and `args.noRevert` is `true`.
@@ -205,7 +209,14 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
       }
       // if `args.fund` is too low, offer gasprice might be below mangrove's gasprice
       // Mangrove will then take its own gasprice for the offer and would possibly tap into `this` contract's balance to cover for the missing provision
-      require(args.gasprice >= vars.global.gasprice(), "mgv/insufficientProvision");
+      if (args.gasprice < vars.global.gasprice()) {
+        if (args.noRevert) {
+          return "mgv/insufficientProvision";
+        } else {
+          revert("mgv/insufficientProvision");
+        }
+      }
+
       try MGV.updateOfferByTick{value: args.fund}(
         args.olKey, args.tick, args.gives, args.gasreq, args.gasprice, offerId
       ) {
@@ -229,27 +240,30 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@param olKey the offer list key.
   ///@param offerId the identifier of the offer in the offer list
   ///@param deprovision if set to `true` if offer owner wishes to redeem the offer's provision.
+  ///@param noRevert whether mangrove revert should bubble up or be caught
   ///@return freeWei the amount of native tokens (in WEI) that have been retrieved by retracting the offer.
+  ///@return status a bytes32 containing the revert reason if mangrove reverted and `noRevert` is true.
   ///@dev An offer that is retracted without `deprovision` is retracted from the offer list, but still has its provisions locked by Mangrove.
-  ///@dev Calling this function, with the `deprovision` flag, on an offer that is already retracted must be used to retrieve the locked provisions.
-  function _retractOffer(OLKey memory olKey, uint offerId, bool deprovision) internal returns (uint freeWei) {
+  ///@dev Calling this function, with the `deprovision` flag, should be accompanied by a native token transfer to offer owner in order not to leave funds on this balance.
+  function _retractOffer(OLKey memory olKey, uint offerId, bool noRevert, bool deprovision)
+    internal
+    returns (uint freeWei, bytes32 status)
+  {
     OwnerData storage od = ownerData[olKey.hash()][offerId];
-    freeWei = deprovision ? od.weiBalance : 0; // (a)
-    freeWei += MGV.retractOffer(olKey, offerId, deprovision); // (b)
-    if (freeWei > 0) {
-      // pulling free wei from Mangrove to `this`
-      require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
-      // resetting pending returned provision
-      od.weiBalance = 0;
-      // Griefing issue: the call below could occur nested inside a call to `makerExecute` originating from Mangrove, so `owner` could make the current trade fail.
-      // Here we are safe because callee is offer owner and has no incentive to make current trade fail or waste gas.
-      // w.r.t reentrancy:
-      // * `od.weiBalance` is set to 0 (storage write) prior to this call, so a reentrant call to `retractOffer` would give `freeWei = 0` at (a)
-      // * further call to `MGV.retractOffer` will yield no more WEIs so `freeWei += 0` at (b)
-      // * (a /\ b) imply that the above call to `MGV.withdraw` will be done with `freeWei == 0`.
-      // * `retractOffer` is the only function that allows non admin users to withdraw WEIs from Mangrove.
-      (bool noRevert,) = od.owner.call{value: freeWei}("");
-      require(noRevert, "mgvOffer/weiTransferFail");
+    freeWei = deprovision ? od.weiBalance : 0;
+
+    try MGV.retractOffer(olKey, offerId, deprovision) returns (uint weis) {
+      freeWei += weis;
+      if (freeWei > 0) {
+        // pulling free wei from Mangrove to `this`
+        require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
+        // resetting pending returned provision
+        // calling code must now assign freeWei to owner
+        od.weiBalance = 0;
+      }
+    } catch Error(string memory reason) {
+      require(noRevert, reason);
+      status = bytes32(bytes(reason));
     }
   }
 
@@ -258,28 +272,53 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// However one would then need to pay attention to the following fact:
   /// if `order.olKey.inbound_tkn` is not pushed to reserve during `makerExecute`, in the posthook of this offer execution, the `order.olKey.inbound_tkn` balance of this contract would then contain
   /// the sum of all payments of offers managed by `this` that are in a better position in the offer list (because posthook is called in the call stack order).
-  /// here we maintain an invariant that `this` balance is empty (both for `order.olKey.inbound_tkn` and `order.olKey.outbound_tkn`) at the end of `makerExecute`.
   ///@inheritdoc MangroveOffer
   function __put__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    address owner = ownerOf(order.olKey.hash(), order.offerId);
-    uint pushed = router().push(IERC20(order.olKey.inbound_tkn), owner, amount);
-    return amount - pushed;
+    bytes32 olKeyHash = order.olKey.hash();
+    address owner = ownerOf(olKeyHash, order.offerId);
+    AbstractRouter ownerRouter = router(owner);
+    // exact transfer approval in order to be able to push funds to the router
+    _approveProxy(IERC20(order.olKey.inbound_tkn), RouterProxy(payable(address(ownerRouter))), amount);
+
+    RL.RoutingOrder memory pushOrder = RL.RoutingOrder({
+      olKeyHash: olKeyHash,
+      offerId: order.offerId,
+      token: IERC20(order.olKey.inbound_tkn),
+      fundOwner: owner
+    });
+    return amount - ownerRouter.push(pushOrder, amount);
   }
 
   ///@dev get outbound tokens from offer owner reserve
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal virtual override returns (uint) {
-    address owner = ownerOf(order.olKey.hash(), order.offerId);
-    // telling router one is requiring `amount` of `outTkn` for `owner`.
+    bytes32 olKeyHash = order.olKey.hash();
+    address owner = ownerOf(olKeyHash, order.offerId);
+    AbstractRouter ownerRouter = router(owner);
+    // telling proxy one is requiring `amount` of `outTkn` for `owner`.
     // because `pull` is strict, `pulled <= amount` (cannot be greater)
     // we do not check local balance here because multi user contracts do not keep more balance than what has been pulled
-    uint pulled = router().pull(IERC20(order.olKey.outbound_tkn), owner, amount, true);
-    return amount - pulled; // this will make trade fail if `amount != pulled`
+    // note we assume here that:
+    // 1. proxy has been previously deployed
+    // 2. offer owner has approved proxy for outbound token transfer (this may be done prior to proxy deployment thanks to deterministic address of the proxy)
+    return amount
+      - ownerRouter.pull(
+        RL.RoutingOrder({
+          olKeyHash: olKeyHash,
+          token: IERC20(order.olKey.outbound_tkn),
+          offerId: order.offerId,
+          fundOwner: owner
+        }),
+        amount,
+        true
+      ); // this will make trade fail if `missing > pulled` and this `get` is not nested in another `get` in descendant of this class.
   }
 
   ///@dev if offer failed to execute, Mangrove retracts and deprovisions it after the posthook call.
   /// As a consequence if this hook is reached, `this` balance on Mangrove *will* increase, after the posthook,
-  /// of some amount $n$ of native tokens. We evaluate here an underapproximation $~n$ in order to credit the offer maker in a pull based manner:
+  /// of some amount $n$ of native tokens.
+  /// Note we cannot assume the whole balance of `this` on Mangrove belongs to the offer owner since other offers may have failed during the market order.
+  /// So we evaluate here an underapproximation $~n$ in order to credit the offer maker in a pull based manner:
   /// failed offer owner can retrieve $~n$ by calling `retractOffer` on the failed offer.
   /// because $~n<n$ a small amount of WEIs will accumulate on the balance of `this` on Mangrove over time.
   /// Note that these WEIs are not burnt since they can be admin retrieved using `withdrawFromMangrove`.
@@ -301,13 +340,5 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     // storing the portion of this contract's balance on Mangrove that should be attributed back to the failing offer's owner
     // those free WEIs can be retrieved by offer owner, by calling `retractOffer` with the `deprovision` flag.
     semiBookOwnerData[order.offerId].weiBalance += uint96(approxReturnedProvision);
-  }
-
-  ///@inheritdoc MangroveOffer
-  ///@notice verifies that msg.sender is an allowed reserve id to trade tokens with this contract
-  function __checkList__(IERC20 token) internal view virtual override {
-    super.__checkList__(token);
-    AbstractRouter router_ = router();
-    router_.checkList(token, msg.sender);
   }
 }

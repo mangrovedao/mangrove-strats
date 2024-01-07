@@ -28,9 +28,8 @@ contract AmplifierForwarder is Forwarder {
     IERC20 stable2,
     uint tickSpacing1,
     uint tickSpacing2,
-    address deployer,
     uint gasreq
-  ) Forwarder(mgv, new SimpleRouter()) {
+  ) Forwarder(mgv, new RouterProxyFactory(), new SimpleRouter()) {
     // SimpleRouter takes promised liquidity from admin's address (wallet)
     STABLE1 = stable1;
     TICK_SPACING1 = tickSpacing1;
@@ -38,13 +37,9 @@ contract AmplifierForwarder is Forwarder {
     STABLE2 = stable2;
     BASE = base;
     GASREQ = gasreq;
-
-    AbstractRouter router_ = router();
-    router_.bind(address(this));
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-      router_.setAdmin(deployer);
-    }
+    activate(base);
+    activate(stable1);
+    activate(stable2);
   }
 
   /**
@@ -200,7 +195,9 @@ contract AmplifierForwarder is Forwarder {
     mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(olKey, offerId, deprovision);
+    (freeWei,) = _retractOffer(olKey, offerId, false, deprovision);
+    (bool noRevert,) = ownerOf(olKey.hash(), offerId).call{value: freeWei}("");
+    require(noRevert, "mgvOffer/weiTransferFail");
   }
 
   function retractOffers(bool deprovision) external {

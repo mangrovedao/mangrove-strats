@@ -20,8 +20,7 @@ contract OfferMakerTutorial is Direct, ILiquidityProvider {
     Direct(
       mgv,
       // Do not use a router - i.e., transfer tokens directly to and from the maker's reserve
-      NO_ROUTER,
-      deployer
+      noRouter()
     )
   {}
 

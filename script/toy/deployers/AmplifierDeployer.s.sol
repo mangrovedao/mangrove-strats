@@ -2,8 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {Amplifier, AbstractRouter, IMangrove} from "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
+import {Amplifier, IMangrove} from "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {Test2} from "@mgv/lib/Test2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
 /*  Deploys a Amplifier instance
@@ -12,7 +14,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
     Then broadcast and verify:
  ADMIN=$MUMBAI_PUBLIC_KEY WRITE_DEPLOY=true forge script --fork-url mumbai AmplifierDeployer -vvv --broadcast --verify
     Remember to activate it using Activate*/
-contract AmplifierDeployer is Deployer {
+contract AmplifierDeployer is Deployer, Test2 {
   function run() public {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
@@ -65,17 +67,14 @@ contract AmplifierDeployer is Deployer {
     outputDeployment();
     console.log("Deployed!", address(amplifier));
     console.log("Activating Amplifier");
-    IERC20[] memory tokens = new IERC20[](3);
-    tokens[0] = base;
-    tokens[1] = stable1;
-    tokens[2] = stable2;
-    broadcast();
-    amplifier.activate(tokens);
     AbstractRouter router = amplifier.router();
+
     broadcast();
     base.approve(address(router), type(uint).max);
-    IERC20[] memory tokens2 = new IERC20[](1);
-    tokens2[0] = base;
-    amplifier.checkList(tokens2);
+
+    deal(amplifier.FUND_OWNER(), address(base), 1);
+    vm.startPrank(address(amplifier));
+    require(router.pull(RL.createOrder({token: base, fundOwner: amplifier.FUND_OWNER()}), 1, true) == 1, "Pullfailed");
+    vm.stopPrank();
   }
 }

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
-import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
-import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {DirectTester, Direct} from "@mgv-strats/test/lib/agents/DirectTester.sol";
+import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 
 contract MangroveOfferTest is StratTest {
@@ -14,10 +14,6 @@ contract MangroveOfferTest is StratTest {
   uint constant GASREQ = 50_000;
 
   // tracking IOfferLogic logs
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
-
-  event SetAdmin(address);
-  event SetRouter(address);
 
   function setUp() public override {
     options.base.symbol = "WETH";
@@ -33,120 +29,14 @@ contract MangroveOfferTest is StratTest {
     weth = base;
     usdc = quote;
 
+    Direct.RouterParams memory noRouter;
     deployer = payable(new TestSender());
     vm.prank(deployer);
-    makerContract = new DirectTester({
-      mgv: IMangrove($(mgv)),
-      router_: AbstractRouter(address(0)), // no router
-      deployer: deployer
-    });
+    makerContract = new DirectTester({mgv: IMangrove($(mgv)), routerParams: noRouter});
   }
 
   function test_Admin_is_deployer() public {
     assertEq(makerContract.admin(), deployer, "Incorrect admin");
-  }
-
-  function testCannot_activate_if_not_admin() public {
-    vm.expectRevert("AccessControlled/Invalid");
-    makerContract.activate(dynamic([IERC20(weth), usdc]));
-  }
-
-  function test_a_checkList_with_router() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    vm.stopPrank();
-
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    makerContract.checkList(tokens);
-  }
-
-  function test_b_checkList_router_not_bound() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    vm.stopPrank();
-
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("Router/callerIsNotBoundToRouter");
-    makerContract.checkList(tokens);
-  }
-
-  function test_c_checkList_router_not_approved() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    vm.stopPrank();
-
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("Router/NotApprovedByMakerContract");
-    makerContract.checkList(tokens);
-  }
-
-  function test_d_checkList_router_not_approved_by_reserve() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    // passes c
-    makerContract.approve(weth, address(makerContract.router()), type(uint).max);
-    vm.stopPrank();
-
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    vm.expectRevert("SimpleRouter/NotApprovedByOwner");
-    makerContract.checkList(tokens);
-  }
-
-  function test_e_checkList_completes() public {
-    vm.startPrank(deployer);
-    SimpleRouter router = new SimpleRouter();
-    makerContract.setRouter(router);
-    // passes a
-    makerContract.approve(weth, $(mgv), type(uint).max);
-    // passes b
-    router.bind(address(makerContract));
-    // passes c
-    makerContract.approve(weth, address(makerContract.router()), type(uint).max);
-    // passes d
-    weth.approve(address(makerContract.router()), type(uint).max);
-    vm.stopPrank();
-
-    IERC20[] memory tokens = dynamic([IERC20(weth)]);
-    makerContract.checkList(tokens);
-    // ^^ should not throw
-  }
-
-  function test_activate_completes_checkList_for_deployer() public {
-    IERC20[] memory tokens = dynamic([IERC20(weth), usdc]);
-    // reserve approves router for weth transfer
-    address toApprove =
-      makerContract.router() == makerContract.NO_ROUTER() ? address(makerContract) : address(makerContract.router());
-
-    vm.startPrank(deployer);
-    weth.approve(toApprove, type(uint).max);
-    usdc.approve(toApprove, type(uint).max);
-
-    makerContract.activate(tokens);
-    makerContract.checkList(tokens);
-    vm.stopPrank();
-  }
-
-  function test_activate_throws_if_approve_mangrove_fails() public {
-    // asks weth contract to return false to approve and transfer calls
-    weth.failSoftly(true);
-    vm.expectRevert("mgvOffer/approveMangrove/Fail");
-    vm.prank(deployer);
-    makerContract.activate(dynamic([IERC20(weth)]));
   }
 
   // makerExecute and makerPosthook guards
@@ -189,9 +79,8 @@ contract MangroveOfferTest is StratTest {
       _olBaseQuote: olKey,
       makerData: "whatever"
     });
-    expectFrom(address(makerContract));
+    vm.expectEmit(true, true, true, true, address(makerContract));
     emit LogIncident(olKey.hash(), 0, "whatever", "mgv/updateOffer/unauthorized");
-    vm.expectRevert("posthook/failed");
     /// since order.offerId is 0, updateOffer will revert. This revert should be caught and logged
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);
@@ -241,13 +130,6 @@ contract MangroveOfferTest is StratTest {
     vm.expectRevert("mgvOffer/weiTransferFail");
     vm.prank(deployer);
     makerContract.withdrawFromMangrove(0.1 ether, $(this));
-  }
-
-  function test_setRouter_logs_SetRouter() public {
-    vm.expectEmit(true, true, true, false, address(makerContract));
-    emit SetRouter(address(0));
-    vm.startPrank(deployer);
-    makerContract.setRouter(AbstractRouter(address(0)));
   }
 
   function test_setAdmin_logs_SetAdmin() public {

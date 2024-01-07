@@ -11,9 +11,13 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
 import {Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/Kandel.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
-import {AavePooledRouter} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
+import {
+  AavePooledRouter,
+  IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/routers/integrations/AavePooledRouter.sol";
 import {AaveKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandel.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 
 ///@notice Can be used to test gasreq for Kandel. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing.
@@ -38,8 +42,6 @@ import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 
 abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   GeometricKandel internal kandel;
-
-  event LogIncident(bytes32 indexed olKeyHash, uint indexed offerId, bytes32 makerData, bytes32 mgvData);
 
   bytes32 internal expectedFirOfferMakerData = 0;
 
@@ -218,7 +220,7 @@ abstract contract CoreKandelGasreqBaseTest is StratTest, OfferGasReqBaseTest {
 abstract contract NoRouterKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
   function createKandel() public virtual override returns (GeometricKandel) {
     description = string.concat(description, " - Kandel");
-    return new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: 500_000, reserveId: address(0)});
+    return new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: 500_000});
   }
 }
 
@@ -227,13 +229,15 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
     description = string.concat(description, " - AaveKandel");
     expectedFirOfferMakerData = "IS_FIRST_PULLER";
 
-    address aave = fork.get("AaveAddressProvider");
+    IPoolAddressesProvider aave = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
     AavePooledRouter router = new AavePooledRouter(aave);
-    AaveKandel aaveKandel = new AaveKandel({mgv: mgv, olKeyBaseQuote: olKey, reserveId: $(this)});
-
+    AaveKandel aaveKandel = new AaveKandel({
+      mgv: mgv,
+      olKeyBaseQuote: olKey,
+      gasreq: 1_000_000,
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(this), strict: false})
+    });
     router.bind(address(aaveKandel));
-    aaveKandel.initialize(router, 1_000_000);
-
     return aaveKandel;
   }
 }

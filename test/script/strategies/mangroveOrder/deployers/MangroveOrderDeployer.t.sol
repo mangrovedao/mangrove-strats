@@ -6,6 +6,8 @@ import {
   MangroveOrderDeployer,
   MangroveOrder
 } from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
+import {RouterProxyFactoryDeployer} from
+  "@mgv-strats/script/strategies/routerProxyFactory/deployers/RouterProxyFactoryDeployer.s.sol";
 
 import {BaseMangroveOrderDeployerTest} from "./BaseMangroveOrderDeployer.t.sol";
 
@@ -16,7 +18,9 @@ contract MangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
     address gasbot = freshAddress("gasbot");
     uint gasprice = 42;
     uint gasmax = 8_000_000;
+    // this adds "Mangrove" and "RouterProxyFactory" to toyENS
     (new MangroveDeployer()).innerRun(chief, gasprice, gasmax, gasbot);
+    (new RouterProxyFactoryDeployer()).innerRun();
 
     mgoDeployer = new MangroveOrderDeployer();
   }

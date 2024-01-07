@@ -12,18 +12,26 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title Tests for Kandel without a router, and router agnostic functions.
 contract NoRouterKandelTest is CoreKandelTest {
-  function __deployKandel__(address deployer, address reserveId) internal override returns (GeometricKandel kdl_) {
-    uint GASREQ = 126000;
+  function __deployKandel__(address deployer, address, bool) internal override returns (GeometricKandel kdl_) {
+    uint GASREQ = 170000;
     OLKey memory olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
 
-    vm.expectEmit(true, true, true, true);
-    emit Mgv(mgv);
+    // vm.expectEmit(true, true, true, true);
+    // emit Mgv(mgv);
     vm.expectEmit(true, true, true, true);
     emit OfferListKey(olKey.hash());
     vm.expectEmit(true, true, true, true);
     emit SetGasreq(GASREQ);
-    vm.prank(deployer);
-    kdl_ = new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: GASREQ, reserveId: reserveId});
+    vm.startPrank(deployer);
+    kdl_ = new Kandel({
+      mgv: mgv,
+      olKeyBaseQuote: olKey,
+      gasreq: GASREQ
+    });
+    // activates Kandel for base and quote
+    kdl_.approve(base, $(mgv), type(uint).max);
+    kdl_.approve(quote, $(mgv), type(uint).max);
+    vm.stopPrank();
   }
 
   function validateDistribution(

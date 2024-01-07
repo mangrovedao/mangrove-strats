@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AaveV3Lender} from "@mgv-strats/src/strategies/integrations/AaveV3Lender.sol";
+import {AaveV3Lender, IPoolAddressesProvider} from "@mgv-strats/src/strategies/integrations/AaveV3Lender.sol";
 
 ///@title Memoizes values for AAVE to reduce gas cost and simplify code flow.
 ///@dev the memoizer works in the context of a single token and therefore should not be used across multiple tokens.
@@ -24,7 +24,7 @@ contract HasAaveBalanceMemoizer is AaveV3Lender {
 
   ///@notice contract's constructor
   ///@param addressesProvider address of AAVE's address provider
-  constructor(address addressesProvider) AaveV3Lender(addressesProvider) {}
+  constructor(IPoolAddressesProvider addressesProvider) AaveV3Lender(addressesProvider) {}
 
   ///@notice Gets the overlying for the token.
   ///@param token the token.

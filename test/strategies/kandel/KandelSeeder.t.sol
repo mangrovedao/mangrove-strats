@@ -9,12 +9,13 @@ import {
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
   AaveKandelSeeder,
-  AavePooledRouter
+  AavePooledRouter,
+  IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 contract KandelSeederTest is StratTest {
   PinnedPolygonFork internal fork;
@@ -59,8 +60,8 @@ contract KandelSeederTest is StratTest {
     seeder = new KandelSeeder({mgv: IMangrove($(mgv)), kandelGasreq: 128_000});
 
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
-      mgv: IMangrove($(mgv)),
-      addressesProvider: fork.get("AaveAddressProvider"),
+      mgv:IMangrove($(mgv)), 
+      addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")), 
       aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;
@@ -97,6 +98,16 @@ contract KandelSeederTest is StratTest {
     sow(true);
   }
 
+  function checkListAavePooledRouter(IERC20 token, GeometricKandel kdl, address fundOwner) internal {
+    AavePooledRouter router = AavePooledRouter(address(kdl.router()));
+    deal({to: address(kdl), token: address(token), give: 10});
+    vm.prank(address(kdl));
+    router.pushAndSupply(token, 10, IERC20(address(0)), 0, fundOwner);
+
+    vm.prank(address(kdl));
+    router.pull(RL.createOrder({token: token, fundOwner: fundOwner}), 5, true);
+  }
+
   function test_maker_deploys_shared_aaveKandel() public {
     GeometricKandel kdl;
     address maker = freshAddress("Maker");
@@ -105,11 +116,10 @@ contract KandelSeederTest is StratTest {
 
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), kdl.admin(), "Incorrect owner");
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+    assertEq(kdl.FUND_OWNER(), kdl.admin(), "Incorrect owner");
+
+    checkListAavePooledRouter(base, kdl, address(this));
+    checkListAavePooledRouter(quote, kdl, address(this));
   }
 
   function test_maker_deploys_private_aaveKandel() public {
@@ -120,12 +130,11 @@ contract KandelSeederTest is StratTest {
 
     assertEq(address(kdl.router()), address(aaveRouter), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), address(kdl), "Incorrect owner");
 
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+    // checking router is ready to be used
+    checkListAavePooledRouter(base, kdl, address(kdl));
+    checkListAavePooledRouter(quote, kdl, address(kdl));
   }
 
   function test_maker_deploys_kandel() public {
@@ -133,12 +142,9 @@ contract KandelSeederTest is StratTest {
     address maker = freshAddress("Maker");
     vm.prank(maker);
     kdl = sow(false);
-    assertEq(address(kdl.router()), address(kdl.NO_ROUTER()), "Incorrect router address");
+
+    assertEq(address(kdl.router()), address(0), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), address(kdl), "Incorrect owner");
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = base;
-    tokens[1] = quote;
-    kdl.checkList(tokens);
+    assertEq(kdl.FUND_OWNER(), address(kdl), "Incorrect owner");
   }
 }

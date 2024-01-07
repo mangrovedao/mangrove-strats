@@ -1,0 +1,105 @@
+// SPDX-License-Identifier:	BSD-2-Clause
+pragma solidity ^0.8.20;
+
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {SimpleAaveLogic, IPoolAddressesProvider} from "./SimpleAaveLogic.sol";
+import {AaveLogicStorage} from "./AaveLogicStorage.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
+
+/// @title AaveLogic
+/// @notice Routing logic for Aave
+contract AaveLogic is SimpleAaveLogic {
+  /// @notice The maximum credit line to be redeemed
+  /// * Credit line is the maximum amount that can be borrowed to stay above the liquidation threshold (health factor > 1)
+  /// * If the protocol can redeem a maximum of 100 tokens and the credit line is 50, then the protocol can redeem 50 tokens
+  /// to keep a 50 tokens buffer above the liquidation threshold
+  /// * 100 means we can redeem or borrow 100% of the credit line
+  /// * 0 means we can't redeem or borrow anything
+  /// * If the user has no debt, this number will be ignored
+  uint8 internal immutable MAX_CREDIT_LINE = 100;
+
+  ///@notice contract's constructor
+  ///@param addressesProvider address of AAVE's address provider
+  ///@param interestRateMode  interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
+  constructor(IPoolAddressesProvider addressesProvider, uint interestRateMode)
+    SimpleAaveLogic(addressesProvider, interestRateMode)
+  {}
+
+  /// @notice Gets the maximum amount of underlying that can be redeemed
+  /// @param token The token to redeem
+  /// @return credit_line The maximum amount of underlying that can be redeemed in percentage
+  function creditLineOf(IERC20 token) public view returns (uint8 credit_line) {
+    credit_line = MAX_CREDIT_LINE;
+    uint8 decrease = AaveLogicStorage.getStorage().credit_line_decrease[token];
+    if (decrease > 0) {
+      credit_line -= decrease;
+    }
+  }
+
+  /// @notice Sets the maximum credit line for a given token and user
+  /// @param creditLine The maximum credit line to be redeemed
+  /// @param token The token to set the credit line for
+  function setMaxCreditLine(uint8 creditLine, IERC20 token) public onlyAdmin {
+    require(creditLine <= MAX_CREDIT_LINE, "AaveLogic/InvalidCreditLine");
+    AaveLogicStorage.getStorage().credit_line_decrease[token] = MAX_CREDIT_LINE - creditLine;
+  }
+
+  /// @inheritdoc AbstractRouter
+  /// @dev will only transfer up to the maximum defined credit line
+  /// * if no debt, will transfer the full amount anyway
+  function __pull__(RL.RoutingOrder memory routingOrder, bool) internal virtual override returns (uint) {
+    Memoizer memory m;
+
+    // gets account info
+    (uint maxWithdraw,) = maxGettableUnderlying(routingOrder.token, m, routingOrder.fundOwner, routingOrder.amount);
+    Account memory account = userAccountData(m, routingOrder.fundOwner);
+    uint toWithdraw;
+
+    if (account.debt > 0) {
+      // if there is no debt, we can withdraw the full amount
+      uint creditLine = creditLineOf(routingOrder.token);
+      uint maxCreditLine = maxWithdraw * creditLine / MAX_CREDIT_LINE;
+      toWithdraw = routingOrder.amount > maxCreditLine ? maxCreditLine : routingOrder.amount;
+    } else {
+      // else redeem the max amount
+      uint balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
+      toWithdraw = routingOrder.amount > balance ? balance : routingOrder.amount;
+    }
+    // transfer the IOU tokens from fundOwner
+    require(
+      TransferLib.transferTokenFrom(overlying(routingOrder.token, m), routingOrder.fundOwner, address(this), toWithdraw),
+      "AaveLogic/OverlyingTransferFail"
+    );
+
+    // since this contract will be delegate called, msg.sender is maker contract
+    (, uint redeemed) = _redeem(routingOrder.token, toWithdraw, msg.sender, false);
+    return redeemed;
+  }
+
+  /// @inheritdoc AbstractRouter
+  /// @dev tries to repay existing debt first and then supplies the rest
+  function __push__(RL.RoutingOrder memory routingOrder) internal virtual override returns (uint) {
+    Memoizer memory m;
+    // just in time approval of the POOL in order to be able to deposit funds
+    _approveLender(routingOrder.token, routingOrder.amount);
+    uint leftToPush = routingOrder.amount;
+    // tries to repay existing debt
+    if (debtBalanceOf(routingOrder.token, m, routingOrder.fundOwner) > 0) {
+      uint repaid = _repay(routingOrder.token, leftToPush, routingOrder.fundOwner);
+      leftToPush -= repaid;
+    }
+    // supplies the rest
+    if (leftToPush > 0) {
+      bytes32 reason = _supply(routingOrder.token, leftToPush, routingOrder.fundOwner, true);
+      require(reason == bytes32(0), "AaveLogic/SupplyFailed");
+    }
+    return routingOrder.amount;
+  }
+
+  ///@inheritdoc AbstractRouter
+  function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view virtual override returns (uint balance) {
+    Memoizer memory m;
+    balance = overlyingBalanceOf(routingOrder.token, m, routingOrder.fundOwner);
+    balance += balanceOf(routingOrder.token, m, routingOrder.fundOwner);
+  }
+}

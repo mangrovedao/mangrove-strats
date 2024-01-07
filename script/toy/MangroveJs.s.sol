@@ -7,7 +7,7 @@ import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MangroveOrderDeployer} from "@mgv-strats/script/strategies/mangroveOrder/deployers/MangroveOrderDeployer.s.sol";
 import {KandelSeederDeployer} from "@mgv-strats/script/strategies/kandel/deployers/KandelSeederDeployer.s.sol";
-import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {SimpleTestMaker} from "@mgv/test/lib/agents/TestMaker.sol";
 import {Mangrove} from "@mgv/src/core/Mangrove.sol";
@@ -16,7 +16,10 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {ActivateMarket, Market} from "@mgv/script/core/ActivateMarket.s.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IPoolAddressesProvider} from
+  "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
 
+import {console} from "@mgv/forge-std/console.sol";
 /* 
 This script prepares a local server for testing by mangrove.js.
 
@@ -33,6 +36,7 @@ contract MangroveJsDeploy is Deployer {
   address public weth;
   SimpleTestMaker public simpleTestMaker;
   MangroveOrder public mgo;
+  RouterProxyFactory public routerProxyFactory;
 
   function run() public {
     innerRun({gasprice: 1000, gasmax: 2_000_000, gasbot: broadcaster()});
@@ -83,6 +87,10 @@ contract MangroveJsDeploy is Deployer {
 
     ActivateMarket activateMarket = new ActivateMarket();
 
+    broadcast();
+    routerProxyFactory = new RouterProxyFactory();
+    fork.set("RouterProxyFactory", address(routerProxyFactory));
+
     //FIXME: what tick spacing?
     activateMarket.innerRun(mgv, mgvReader, Market(address(tokenA), address(tokenB), 1), 2 * 1e12, 3 * 1e12, 250);
     activateMarket.innerRun(mgv, mgvReader, Market(dai, usdc, 1), 1e12 / 1000, 1e12 / 1000, 0);
@@ -90,11 +98,12 @@ contract MangroveJsDeploy is Deployer {
     activateMarket.innerRun(mgv, mgvReader, Market(weth, usdc, 1), 1e12, 1e12 / 1000, 0);
 
     MangroveOrderDeployer mgoeDeployer = new MangroveOrderDeployer();
-    mgoeDeployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv))});
+    mgoeDeployer.innerRun({admin: broadcaster(), mgv: IMangrove(payable(mgv)), routerProxyFactory: routerProxyFactory});
 
     address[] memory underlying = dynamic([address(tokenA), address(tokenB), dai, usdc, weth]);
     broadcast();
-    address aaveAddressProvider = address(new PoolAddressProviderMock(underlying));
+    IPoolAddressesProvider aaveAddressProvider =
+      IPoolAddressesProvider(address(new PoolAddressProviderMock(underlying)));
 
     KandelSeederDeployer kandelSeederDeployer = new KandelSeederDeployer();
     kandelSeederDeployer.innerRun({

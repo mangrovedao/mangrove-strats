@@ -15,14 +15,12 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 contract OfferMakerTutorialResidual is Direct, ILiquidityProvider {
   ///@notice Constructor
   ///@param mgv The core Mangrove contract
-  ///@param deployer The address of the deployer
-  constructor(IMangrove mgv, address deployer)
+  constructor(IMangrove mgv)
     // Pass on the reference to the core mangrove contract
     Direct(
       mgv,
       // Do not use a router - i.e., transfer tokens directly to and from the maker's reserve
-      NO_ROUTER,
-      deployer
+      noRouter()
     )
   {}
 

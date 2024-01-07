@@ -10,7 +10,6 @@ pragma solidity ^0.8.10;
 /**
  * @dev it is designed with a diamond storage scheme where core function implementations are delegated to an immutable `IMPLEMENTATION` address
  */
-
 import {AaveV3Lender} from "./AaveV3Lender.sol";
 import {AaveV3BorrowerStorage as AMS} from "./AaveV3BorrowerStorage.sol";
 import {
@@ -45,11 +44,13 @@ contract AaveV3Borrower is AaveV3Lender {
    * @param _referralCode code used by aave to identify certain partners, this can be safely set to 0
    * @param _interestRateMode interest rate mode for borrowing assets. 0 for none, 1 for stable, 2 for variable
    */
-  constructor(address _addressesProvider, uint _referralCode, uint _interestRateMode) AaveV3Lender(_addressesProvider) {
+  constructor(IPoolAddressesProvider _addressesProvider, uint _referralCode, uint _interestRateMode)
+    AaveV3Lender(_addressesProvider)
+  {
     REFERRAL_CODE = uint16(_referralCode);
     INTEREST_RATE_MODE = _interestRateMode;
 
-    address _priceOracle = IPoolAddressesProvider(_addressesProvider).getAddress("PRICE_ORACLE");
+    address _priceOracle = _addressesProvider.getAddress("PRICE_ORACLE");
     require(_priceOracle != address(0), "AaveModule/0xPriceOracle");
 
     ORACLE = IPriceOracleGetter(_priceOracle);

@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AaveV3Borrower, IERC20} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {
+  AaveV3Borrower, IERC20, IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
 import {MangroveTest, console} from "@mgv/test/lib/MangroveTest.sol";
 import {StdCheats} from "@mgv/forge-std/StdCheats.sol";
 
 contract AaveCaller is AaveV3Borrower, StdCheats {
-  constructor(address _addressesProvider, uint borrowMode) AaveV3Borrower(_addressesProvider, 0, borrowMode) {}
+  constructor(IPoolAddressesProvider _addressesProvider, uint borrowMode)
+    AaveV3Borrower(_addressesProvider, 0, borrowMode)
+  {}
 
   address callback;
 
@@ -29,7 +33,7 @@ contract AaveCaller is AaveV3Borrower, StdCheats {
   }
 
   function redeem(IERC20 token, uint amount) public {
-    _redeem(token, amount, address(this));
+    _redeem(token, amount, address(this), false);
   }
 
   function executeOperation(address asset, uint amount, uint premium, address, bytes calldata cd)
