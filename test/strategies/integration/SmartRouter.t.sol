@@ -40,7 +40,7 @@ contract SmartRouterTest is OfferLogicTest {
 
   function setupMakerContract() internal override {
     vm.startPrank(deployer);
-    forwarder = new ForwarderTester(mgv, new SmartRouter());
+    forwarder = new ForwarderTester(mgv, new SmartRouter(address(0)));
     vm.stopPrank();
     makerContract = ITesterContract(address(forwarder)); // for OfferLogic tests
     aaveLogic = new SimpleAaveLogic(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
