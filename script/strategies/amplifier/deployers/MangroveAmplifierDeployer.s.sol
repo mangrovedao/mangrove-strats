@@ -51,7 +51,7 @@ contract MangroveAmplifierDeployer is Deployer {
       vm.setNonce(broadcaster(), nonce + 1);
     }
 
-    fork.set("MangroveOrder", address(mgvAmp));
+    fork.set("MangroveAmplifier", address(mgvAmp));
     smokeTest(mgvAmp, mgv);
   }
 
