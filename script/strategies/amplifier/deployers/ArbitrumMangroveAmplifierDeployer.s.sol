@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
-import {MangroveOrderDeployer, RouterProxyFactory} from "./MangroveOrderDeployer.s.sol";
+import {MangroveAmplifierDeployer, RouterProxyFactory, SmartRouter} from "./MangroveAmplifierDeployer.s.sol";
 
 /**
  * Arbitrum specific deployment of MangroveOrder
  */
 contract ArbitrumMangroveOrderDeployer is Deployer {
-  MangroveOrderDeployer public mangroveOrderDeployer;
+  MangroveAmplifierDeployer public mangroveAmplifierDeployer;
 
   function run() public {
     runWithChainSpecificParams();
@@ -18,11 +18,11 @@ contract ArbitrumMangroveOrderDeployer is Deployer {
   }
 
   function runWithChainSpecificParams() public {
-    mangroveOrderDeployer = new MangroveOrderDeployer();
-    mangroveOrderDeployer.innerRun({
+    mangroveAmplifierDeployer = new MangroveAmplifierDeployer();
+    mangroveAmplifierDeployer.innerRun({
       mgv: IMangrove(fork.get("Mangrove")),
-      admin: fork.get("MgvGovernance"),
-      routerProxyFactory: RouterProxyFactory(fork.get("RouterProxyFactory"))
+      routerProxyFactory: RouterProxyFactory(fork.get("RouterProxyFactory")),
+      routerImplementation: SmartRouter(fork.get("MangroveOrder-Router"))
     });
   }
 }

@@ -10,7 +10,7 @@ import {AbstractRouter, SimpleRouter, RL} from "./SimpleRouter.sol";
 contract SmartRouter is SimpleRouter {
   /// @notice This value is a forced binding, It will be mainly used to refer to the `MangroveOrder` contract.
   /// * this will allow making a single transaction to deploy, bind and take an offer at the same time with the most common strategy.
-  address private immutable forcedBinding;
+  address public immutable forcedBinding;
 
   /// @notice Contract's constructor
   /// @param _forcedBinding the address of the contract that will be forced to be bound to this router.
