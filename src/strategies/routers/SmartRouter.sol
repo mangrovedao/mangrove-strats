@@ -8,6 +8,21 @@ import {AbstractRouter, SimpleRouter, RL} from "./SimpleRouter.sol";
 ///@title Mangrove Smart Router implementation
 ///@notice Router delegates pull and push logic implementation to arbitrary contracts that implement the `AbstractRoutingLogic` interface.
 contract SmartRouter is SimpleRouter {
+  /// @dev This value is a forced binding, It will be mainly used to refer to the `MangroveOrder` contract.
+  /// * this will allow making a single transaction to deploy, bind and take an offer at the same time with the most common strategy.
+  address private immutable forcedBinding;
+
+  /// @notice Contract's constructor
+  /// @param _forcedBinding the address of the contract that will be forced to be bound to this router.
+  constructor(address _forcedBinding) {
+    forcedBinding = _forcedBinding;
+  }
+
+  /// @inheritdoc AbstractRouter
+  function isBound(address mkr) public view virtual override returns (bool) {
+    return mkr == forcedBinding || super.isBound(mkr);
+  }
+
   ///@notice logs new setting of routing logic for a specific offer
   ///@param token the asset whose route is being set
   ///@param olKeyHash the hash of the offer list

@@ -34,7 +34,7 @@ abstract contract AbstractRouter is AccessControlled(msg.sender) {
   ///@notice getter for the `makers: addr => bool` mapping
   ///@param mkr the address of a maker contract
   ///@return true if `mkr` is authorized to call this router.
-  function isBound(address mkr) public view returns (bool) {
+  function isBound(address mkr) public view virtual returns (bool) {
     return RL.boundMakerContracts()[mkr];
   }
 
