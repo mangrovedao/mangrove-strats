@@ -50,7 +50,10 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@notice MangroveAmplifier is a Forwarder logic with a smart router.
   ///@param mgv The mangrove contract on which this logic will run taker and maker orders.
   ///@param factory the router proxy factory used to deploy or retrieve user routers
-  constructor(IMangrove mgv, RouterProxyFactory factory) RenegingForwarder(mgv, factory, new SmartRouter()) {}
+  ///@param routerImplementation the router implementation used to deploy user routers
+  constructor(IMangrove mgv, RouterProxyFactory factory, SmartRouter routerImplementation)
+    RenegingForwarder(mgv, factory, routerImplementation)
+  {}
 
   struct FixedBundleParams {
     IERC20 outbound_tkn; //the promised asset for all offers of the bundle

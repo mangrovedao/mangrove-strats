@@ -35,7 +35,7 @@ contract MangroveOrderDeployer is Deployer {
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt:salt}(mgv, routerProxyFactory, admin);
+      mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
     } else {
       mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
     }

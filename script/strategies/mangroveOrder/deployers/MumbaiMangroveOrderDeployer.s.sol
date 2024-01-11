@@ -19,7 +19,7 @@ contract MumbaiMangroveOrderDeployer is Deployer {
   function runWithChainSpecificParams() public {
     new MangroveOrderDeployer().innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      routerProxyFactory: RouterProxyFactory(envAddressOrName("ROUTER_PROXY_FACTORY","RouterProxyFactory")),
+      routerProxyFactory: RouterProxyFactory(envAddressOrName("ROUTER_PROXY_FACTORY", "RouterProxyFactory")),
       admin: envAddressOrName("MGV_GOVERNANCE", broadcaster())
     });
   }
