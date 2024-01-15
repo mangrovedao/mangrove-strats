@@ -1,5 +1,7 @@
 # Next version
 
+- feat!: Remove mangrove.js deployer
+
 # 1.0.2
 
 - Add support for Sepolia
