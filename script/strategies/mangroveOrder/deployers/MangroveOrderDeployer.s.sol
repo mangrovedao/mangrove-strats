@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
-import {MangroveOrder, IERC20, IMangrove} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {MangroveOrder, IERC20, IMangrove, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Deploys a MangroveOrder instance
@@ -17,7 +17,8 @@ contract MangroveOrderDeployer is Deployer {
   function run() public {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      admin: envAddressOrName("MGV_GOVERNANCE", broadcaster())
+      admin: envAddressOrName("MGV_GOVERNANCE", broadcaster()),
+      routerProxyFactory: RouterProxyFactory(envAddressOrName("ROUTER_PROXY_FACTORY", "RouterProxyFactory"))
     });
     outputDeployment();
   }
@@ -26,7 +27,7 @@ contract MangroveOrderDeployer is Deployer {
    * @param mgv The Mangrove that MangroveOrder should operate on
    * @param admin address of the admin on MangroveOrder after deployment
    */
-  function innerRun(IMangrove mgv, address admin) public {
+  function innerRun(IMangrove mgv, address admin, RouterProxyFactory routerProxyFactory) public {
     MangroveOrder mgvOrder;
     // Bug workaround: Foundry has a bug where the nonce is not incremented when MangroveOrder is deployed.
     //                 We therefore ensure that this happens.
@@ -34,9 +35,9 @@ contract MangroveOrderDeployer is Deployer {
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt: salt}(mgv, admin);
+      mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
     } else {
-      mgvOrder = new MangroveOrder(mgv, admin);
+      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
     }
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
@@ -44,7 +45,7 @@ contract MangroveOrderDeployer is Deployer {
     }
 
     fork.set("MangroveOrder", address(mgvOrder));
-    fork.set("MangroveOrder-Router", address(mgvOrder.router()));
+    fork.set("MangroveOrder-Router", address(mgvOrder.ROUTER_IMPLEMENTATION()));
     smokeTest(mgvOrder, mgv);
   }
 

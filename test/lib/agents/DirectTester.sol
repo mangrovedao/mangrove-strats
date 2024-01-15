@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
-import {OLKey} from "@mgv/src/core/MgvLib.sol";
-import {Tick, TickLib} from "@mgv/lib/core/TickLib.sol";
-import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
-import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
-import {ITesterContract} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
-import {IERC20} from "@mgv/lib/IERC20.sol";
+import {Direct, IERC20} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
+import {ITesterContract, ILiquidityProvider} from "./ITesterContract.sol";
 
-contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
+import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {MgvLib, OLKey, Tick, TickLib} from "@mgv/src/core/MgvLib.sol";
+
+contract DirectTester is Direct, ITesterContract {
+  bytes32 constant retData = "lastLook/testData";
+
   // router_ needs to bind to this contract
   // since one cannot assume `this` is admin of router, one cannot do this here in general
-  constructor(IMangrove mgv, AbstractRouter router_, address deployer, address owner) Direct(mgv, router_, owner) {
-    // stores total gas requirement of this strat (depends on router gas requirements)
-    // if contract is deployed with static address, then one must set admin to something else than msg.sender
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-    }
+  constructor(IMangrove mgv, RouterParams memory routerParams) Direct(mgv, routerParams) {}
+
+  function __lastLook__(MgvLib.SingleOrder calldata) internal virtual override returns (bytes32) {
+    return retData;
   }
 
   ///@inheritdoc ILiquidityProvider
@@ -63,6 +61,7 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     }
   }
 
+  ///@inheritdoc ITesterContract
   function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
     external
     payable
@@ -72,13 +71,14 @@ contract OfferMaker is ILiquidityProvider, ITesterContract, Direct {
     return newOffer(olKey, tick, gives, gasreq);
   }
 
+  ///@inheritdoc ITesterContract
   function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
     Tick tick = TickLib.tickFromVolumes(wants, gives);
     updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 
-  function tokenBalance(IERC20 token, address reserveId) external view override returns (uint) {
-    AbstractRouter router_ = router();
-    return router_ == NO_ROUTER ? token.balanceOf(address(this)) : router_.balanceOfReserve(token, reserveId);
+  ///@inheritdoc ITesterContract
+  function tokenBalance(IERC20 token, address) external view returns (uint) {
+    return _isRouting() ? router().tokenBalanceOf(RL.createOrder(token, FUND_OWNER)) : token.balanceOf(FUND_OWNER);
   }
 }

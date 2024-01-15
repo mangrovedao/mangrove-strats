@@ -7,8 +7,6 @@ import "@mgv-strats/src/toy_strategies/offer_maker/Amplifier.sol";
 import {Local} from "@mgv/src/core/MgvLib.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 
-import {console} from "@mgv/forge-std/console.sol";
-
 contract AmplifierTest is StratTest {
   IERC20 weth;
   IERC20 dai;
@@ -19,7 +17,7 @@ contract AmplifierTest is StratTest {
   address payable taker;
   Amplifier strat;
   OLKey olKeyWethDai;
-  uint constant GASREQ = 200_000;
+  uint constant GASREQ = 250_000;
 
   receive() external payable virtual {}
 
@@ -97,23 +95,6 @@ contract AmplifierTest is StratTest {
       tickSpacing2: olKeyWethDai.tickSpacing,
       admin: $(this) // for ease, set this contract (will be Test runner) as admin for the strat
     });
-
-    // NOTE:
-    // For this test, we're locking base, ie WETH, in the vault of the contract
-    // - so Amplifier is not really used for amplified liquidity, in this example.
-    // However, to employ actual amplified liquidity it is simply a matter of
-    // setting up a more refined router.
-    // check that we actually need to activate for the two 'wants' tokens
-    IERC20[] memory tokens = new IERC20[](3);
-    tokens[0] = dai;
-    tokens[1] = usdc;
-    tokens[2] = weth;
-
-    vm.expectRevert("mgvOffer/LogicMustApproveMangrove");
-    strat.checkList(tokens);
-
-    // and now activate them
-    strat.activate(tokens);
   }
 
   function postAndFundOffers(uint makerGivesAmount, uint makerWantsAmountDAI, uint makerWantsAmountUSDC, uint gasreq)

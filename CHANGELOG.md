@@ -1,6 +1,21 @@
 # Next version
 
 - feat!: Remove mangrove.js deployer
+- Created `SmartRouter` schema to allow to plug any RoutingLogic to a ForwarderContract
+- Created `RouterProxyFactory` to deploy router proxies for each user and allow all approvals to a single contract per user
+- Added `RenegingForwarder` to allow time based and volume based reneging
+- Changed `IOfferLogic` `router` view function to be passed an argument, supposedly the `owner` of the router
+- Added a `router` view function with no args to `Direct` contract because Direct only needs a single router
+- Changed MangroveOrder
+  - Default Router is now a proxied Smart Router
+  - `take` entrypoints args changed
+    - Removed `fillOrKill` and `restingOrder` boolean args
+    - Added `takerOrderType` enum with GTC(E), IOC, FOK, and PO orders
+  - MangroveOrder now extends RenegingForwarder
+- Added `MangroveAmplifier` to amplify create offers on multiple market from a single token
+  - Possibility to attach a logic to every token
+  - Bundle-wise reneging on time possibility
+- Added Aave Routing logic
 
 # 1.0.2
 

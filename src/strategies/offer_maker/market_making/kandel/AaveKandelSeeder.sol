@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AaveKandel, AavePooledRouter} from "./AaveKandel.sol";
+import {AaveKandel, AavePooledRouter, IPoolAddressesProvider} from "./AaveKandel.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -31,7 +32,7 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
   ///@param mgv The Mangrove deployment.
   ///@param addressesProvider address of AAVE's address provider
   ///@param aaveKandelGasreq the total gasreq to use for executing a kandel offer
-  constructor(IMangrove mgv, address addressesProvider, uint aaveKandelGasreq)
+  constructor(IMangrove mgv, IPoolAddressesProvider addressesProvider, uint aaveKandelGasreq)
     AbstractKandelSeeder(mgv, aaveKandelGasreq)
   {
     AavePooledRouter router = new AavePooledRouter(addressesProvider);
@@ -50,11 +51,13 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
     address owner = liquiditySharing ? msg.sender : address(0);
 
-    kandel = new AaveKandel(MGV, olKeyBaseQuote, owner);
+    kandel = new AaveKandel(MGV, olKeyBaseQuote, KANDEL_GASREQ, Direct.RouterParams({
+      routerImplementation: AAVE_ROUTER, // using aave pooled router to source liquidity
+      fundOwner: owner,
+      strict: liquiditySharing
+    }));
     // Allowing newly deployed Kandel to bind to the AaveRouter
     AAVE_ROUTER.bind(address(kandel));
-    // Setting AaveRouter as Kandel's router and activating router on BASE and QUOTE ERC20
-    AaveKandel(payable(kandel)).initialize(AAVE_ROUTER, KANDEL_GASREQ);
     emit NewAaveKandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner);
   }
 }
