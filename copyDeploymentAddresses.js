@@ -15,114 +15,110 @@ if (!config.copyDeployments) {
   process.exit(0);
 }
 
-console.log(`${script}: Copying deployment addresses...`);
+console.group(`${script}:`);
 
 // This is a hack to get the network names because the addresses
 // file names use non-canonical network names from ethers.js
-const networkNames = {
-  1: "mainnet",
-  5: "goerli",
-  137: "matic",
-  42161: "arbitrum",
-  80001: "maticmum",
-  11155111: "sepolia",
-};
+const networkNames = deployments.mangroveNetworkNames;
 
 // Query deployments based on the configuration in config.js
-// Core deployments:
-const mangroveVersionDeployments = deployments.getMangroveVersionDeployments({
+console.log(
+  `Querying mangrove-deployments for core deployments of version ${
+    config.coreDeploymentVersionRangePattern
+  }, ${
+    config.coreDeploymentVersionReleasedFilter === undefined
+      ? "released or unreleased"
+      : config.coreDeploymentVersionReleasedFilter
+      ? "release"
+      : "unreleased"
+  }...`,
+);
+const coreDeploymentsFilter = {
   version: config.coreDeploymentVersionRangePattern,
   released: config.coreDeploymentVersionReleasedFilter,
-});
-const mgvOracleVersionDeployments = deployments.getMgvOracleVersionDeployments({
-  version: config.coreDeploymentVersionRangePattern,
-  released: config.coreDeploymentVersionReleasedFilter,
-});
-const mgvReaderVersionDeployments = deployments.getMgvReaderVersionDeployments({
-  version: config.coreDeploymentVersionRangePattern,
-  released: config.coreDeploymentVersionReleasedFilter,
-});
-// Strat deployments:
-const mangroveOrderVersionDeployments =
-  deployments.getMangroveOrderVersionDeployments({
-    version: config.stratsDeploymentVersionRangePattern,
-    released: config.stratsDeploymentVersionReleasedFilter,
-  });
-const mangroveOrderRouterVersionDeployments =
-  deployments.getMangroveOrderRouterVersionDeployments({
-    version: config.stratsDeploymentVersionRangePattern,
-    released: config.stratsDeploymentVersionReleasedFilter,
-  });
-const kandelSeederVersionDeployments =
-  deployments.getKandelSeederVersionDeployments({
-    version: config.stratsDeploymentVersionRangePattern,
-    released: config.stratsDeploymentVersionReleasedFilter,
-  });
-const aaveKandelSeederVersionDeployments =
-  deployments.getAaveKandelSeederVersionDeployments({
-    version: config.stratsDeploymentVersionRangePattern,
-    released: config.stratsDeploymentVersionReleasedFilter,
-  });
-const aavePooledRouterVersionDeployments =
-  deployments.getAavePooledRouterVersionDeployments({
-    version: config.stratsDeploymentVersionRangePattern,
-    released: config.stratsDeploymentVersionReleasedFilter,
-  });
+};
+const latestCoreDeployments = deployments.getLatestCoreContractsPerNetwork(
+  coreDeploymentsFilter,
+);
+console.group(`...found the following deployments of Mangrove:`);
+for (const [networkName, namedAddresses] of Object.entries(
+  latestCoreDeployments,
+)) {
+  console.log(
+    `${networkName}: ${namedAddresses.mangrove.version} at ${namedAddresses.mangrove.address}`,
+  );
+}
+console.groupEnd();
+console.log();
+
+console.log(
+  `Querying mangrove-deployments for matching strat deployments of version ${
+    config.stratsDeploymentVersionRangePattern
+  }, ${
+    config.stratsDeploymentVersionReleasedFilter === undefined
+      ? "released or unreleased"
+      : config.stratsDeploymentVersionReleasedFilter
+      ? "release"
+      : "unreleased"
+  }...`,
+);
+const stratsDeploymentsFilter = {
+  version: config.stratsDeploymentVersionRangePattern,
+  released: config.stratsDeploymentVersionReleasedFilter,
+};
+const latestStratsDeployments = deployments.getLatestStratContractsPerNetwork(
+  stratsDeploymentsFilter,
+  coreDeploymentsFilter,
+);
+console.group(`...found the following deployments of strats:`);
+for (const [networkName, namedAddresses] of Object.entries(
+  latestStratsDeployments,
+)) {
+  console.group(
+    `${networkName}, Mangrove v${namedAddresses.mangrove.version} at ${namedAddresses.mangrove.address}:`,
+  );
+  for (const [stratName, stratNetworkDeployment] of Object.entries(
+    namedAddresses,
+  )) {
+    if (stratName == "mangrove") {
+      continue;
+    }
+    if (stratNetworkDeployment === undefined) {
+      console.log(`${stratName}: not deployed`);
+      continue;
+    }
+    const name =
+      stratNetworkDeployment.deploymentName ??
+      stratNetworkDeployment.contractName;
+    console.log(
+      `${name}: v${stratNetworkDeployment.version} at ${stratNetworkDeployment.address}`,
+    );
+  }
+  console.groupEnd();
+}
+console.groupEnd();
+console.log();
+
+console.log(`Copying deployment addresses...`);
 
 // NB: Test token deployments are included in the context-addresses package,
 // so they are not queried from mangrove-deployments.
-
-// Construct the addresses object for each network
-const contractsDeployments = [
-  mangroveVersionDeployments,
-  mgvOracleVersionDeployments,
-  mgvReaderVersionDeployments,
-  mangroveOrderVersionDeployments,
-  mangroveOrderRouterVersionDeployments,
-  kandelSeederVersionDeployments,
-  aaveKandelSeederVersionDeployments,
-  aavePooledRouterVersionDeployments,
-].filter((x) => x !== undefined);
-const deployedAddressesByNetwork = {}; // network name => { name: string, address: string }[]
-function getOrCreateNetworkAddresses(networkId) {
-  const networkName = networkNames[+networkId];
-  if (networkName === undefined) {
-    throw new Error(
-      `Network ID ${networkId} is unknown. Please add it to the networkNames object in ${script}.`,
-    );
-  }
-  let networkAddresses = deployedAddressesByNetwork[networkName];
-  if (networkAddresses === undefined) {
-    networkAddresses = [];
-    deployedAddressesByNetwork[networkName] = networkAddresses;
-  }
-  return networkAddresses;
-}
-
-for (const contractDeployments of contractsDeployments) {
-  for (const [networkId, networkDeployments] of Object.entries(
-    contractDeployments.networkAddresses,
-  )) {
-    const networkAddresses = getOrCreateNetworkAddresses(networkId);
-    networkAddresses.push({
-      name:
-        contractDeployments.deploymentName ?? contractDeployments.contractName,
-      address: networkDeployments.primaryAddress,
-    });
-  }
-}
-
 // Create the addresses files with the loaded deployment addresses
-for (const networkName in deployedAddressesByNetwork) {
-  let addressesToWrite = deployedAddressesByNetwork[networkName];
+for (const [networkName, namedAddresses] of Object.entries(
+  deployments.toNamedAddressesPerNamedNetwork(
+    latestCoreDeployments,
+    latestStratsDeployments,
+  ),
+)) {
   const networkAddressesFilePath = path.join(
     __dirname,
     `./addresses/deployed/${networkName}.json`,
   );
   fs.writeFileSync(
     networkAddressesFilePath,
-    JSON.stringify(addressesToWrite, null, 2),
+    JSON.stringify(namedAddresses, null, 2),
   );
 }
 
-console.log(`${script}: ...Done copying deployment addresses`);
+console.log(`...done copying deployment addresses`);
+console.groupEnd();
