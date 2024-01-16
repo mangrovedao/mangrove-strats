@@ -2,10 +2,12 @@
 pragma solidity ^0.8.10;
 
 import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {ForwarderTester} from "@mgv-strats/test/lib/agents/ForwarderTester.sol";
+import {DirectTester} from "@mgv-strats/test/lib/agents/DirectTester.sol";
+
 import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
-import {DirectTester} from "@mgv-strats/src/toy_strategies/offer_maker/DirectTester.sol";
-import {ITesterContract as ITester} from "@mgv-strats/src/toy_strategies/interfaces/ITesterContract.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
@@ -14,17 +16,19 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
+import {ITesterContract} from "@mgv-strats/test/lib/agents/ITesterContract.sol";
+import {console} from "@mgv/forge-std/console.sol";
 
 // unit tests for (single /\ multi) user strats (i.e unit tests that are non specific to either single or multi user feature
 
-contract OfferLogicTest is StratTest {
+abstract contract OfferLogicTest is StratTest {
   TestToken weth;
   TestToken usdc;
-  address payable taker;
-  address payable deployer; // admin of makerContract
-  address payable owner; // owner of the offers (==deployer for Direct strats)
+  address payable taker; // used to take offers
+  address payable deployer; // used to deploy contracts
+  address payable owner; // owner of the maker contract
 
-  ITester makerContract; // can be either OfferMaker or OfferForwarder
+  ITesterContract makerContract; // can be either OfferMaker or OfferForwarder
   uint gasreq;
 
   GenericFork fork;
@@ -53,7 +57,10 @@ contract OfferLogicTest is StratTest {
       weth = base;
       usdc = quote;
     }
-    taker = payable(new TestSender());
+    deployer = freshAddress("deployer");
+    taker = payable(address(new TestSender()));
+    owner = payable(address(new TestSender()));
+
     vm.deal(taker, 1 ether);
     deal($(weth), taker, cash(weth, 50));
     deal($(usdc), taker, cash(usdc, 100_000));
@@ -65,37 +72,38 @@ contract OfferLogicTest is StratTest {
 
     // instantiates makerContract
     setupMakerContract();
-    setupLiquidityRouting();
-    vm.prank(deployer);
-    makerContract.activate(dynamic([IERC20(weth), usdc]));
     fundStrat();
+    vm.prank(deployer);
+    makerContract.activate(weth);
+    vm.prank(deployer);
+    makerContract.activate(usdc);
   }
 
   // override this to use Forwarder strats
-  function setupMakerContract() internal virtual {
-    deployer = payable(address(new TestSender()));
-    vm.deal(deployer, 1 ether);
-    gasreq = 50_000; // cost for no router, override gasreq for specific strats
-
-    vm.startPrank(deployer);
-    makerContract = new DirectTester({mgv: IMangrove($(mgv)), router_: AbstractRouter(address(0)), deployer: deployer});
-    weth.approve(address(makerContract), type(uint).max);
-    usdc.approve(address(makerContract), type(uint).max);
-    vm.stopPrank();
-    owner = deployer;
-  }
-
-  // override this function to use a specific router for the strat
-  function setupLiquidityRouting() internal virtual {}
+  function setupMakerContract() internal virtual;
 
   function fundStrat() internal virtual {
     deal($(weth), address(makerContract), 1 ether);
     deal($(usdc), address(makerContract), cash(usdc, 2000));
   }
 
-  function test_checkList() public {
+  function test_admin_can_unbind() public {
+    AbstractRouter router = makerContract.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
     vm.prank(owner);
-    makerContract.checkList(dynamic([IERC20(weth), usdc]));
+    router.unbind(address(makerContract));
+  }
+
+  function test_maker_can_unbind() public {
+    AbstractRouter router = makerContract.router(owner);
+
+    expectFrom(address(router));
+    emit MakerUnbind(address(makerContract));
+
+    vm.prank(address(makerContract));
+    router.unbind();
   }
 
   function test_maker_can_post_newOffer() public {
@@ -186,7 +194,9 @@ contract OfferLogicTest is StratTest {
   }
 
   function test_deprovisionOffer_throws_if_wei_transfer_fails() public {
+    console.log("test_deprovisionOffer_throws_if_wei_transfer_fails", address(owner).code.length);
     TestSender(owner).refuseNative();
+    console.log("refused");
     vm.startPrank(owner);
     uint offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
@@ -260,14 +270,19 @@ contract OfferLogicTest is StratTest {
     });
   }
 
-  function performTrade(bool success) internal returns (uint takerGot, uint takerGave, uint bounty, uint fee) {
+  // wants 2000 usd for 1 ether
+  function performTrade(bool success)
+    internal
+    virtual
+    returns (uint takerGot, uint takerGave, uint bounty, uint fee, uint offerId)
+  {
     vm.startPrank(owner);
     // ask 2000 USDC for 1 weth
-    makerContract.newOfferByVolume{value: 0.1 ether}({
+    offerId = makerContract.newOfferByVolume{value: 0.1 ether}({
       olKey: olKey,
       wants: 2000 * 10 ** 6,
       gives: 1 * 10 ** 18,
-      gasreq: 2 * gasreq
+      gasreq: gasreq
     });
     vm.stopPrank();
 
@@ -279,38 +294,42 @@ contract OfferLogicTest is StratTest {
     assertTrue(!success || (bounty == 0 && takerGot > 0), "unexpected trade result");
   }
 
-  function test_owner_balance_is_updated_when_trade_succeeds() public {
+  function test_owner_balance_is_updated_when_trade_succeeds() public virtual {
     uint balOut = makerContract.tokenBalance(weth, owner);
     uint balIn = makerContract.tokenBalance(usdc, owner);
 
-    (uint takerGot, uint takerGave, uint bounty, uint fee) = performTrade(true);
+    (uint takerGot, uint takerGave, uint bounty, uint fee,) = performTrade(true);
     assertTrue(bounty == 0 && takerGot > 0, "trade failed");
 
     assertEq(makerContract.tokenBalance(weth, owner), balOut - (takerGot + fee), "incorrect out balance");
     assertEq(makerContract.tokenBalance(usdc, owner), balIn + takerGave, "incorrect in balance");
   }
 
-  function test_reposting_fails_with_expected_reason_when_below_density() public {
-    vm.startPrank(owner);
-    uint offerGives = reader.minVolume(olKey, gasreq);
+  function test_failed_offer_credits_maker(uint fund) public {
+    vm.assume(fund >= reader.getProvision(olKey, gasreq, 0));
+    vm.assume(fund < 5 ether);
+    vm.prank(owner);
     uint offerId =
-      makerContract.newOffer{value: 0.1 ether}({olKey: olKey, tick: Tick.wrap(1), gives: offerGives, gasreq: gasreq});
-    vm.stopPrank();
-    MgvLib.OrderResult memory result;
-    result.mgvData = "mgv/tradeSuccess";
-    MgvLib.SingleOrder memory order;
-    order.olKey = olKey;
-    order.offerId = offerId;
-    order.takerWants = offerGives / 2;
-    /* `offerDetail` is only populated when necessary. */
-    order.offerDetail = mgv.offerDetails(olKey, offerId);
-    order.offer = mgv.offers(olKey, offerId);
-    order.takerGives = order.offer.tick().outboundFromInbound(offerGives / 2);
-    (order.global, order.local) = mgv.config(olKey);
+      makerContract.newOfferByVolume{value: fund}({olKey: olKey, wants: 2000 * 10 ** 6, gives: 1 ether, gasreq: gasreq});
+    // revoking Mangrove's approvals to make `offerId` fail
+    vm.prank(deployer);
+    makerContract.approve(weth, address(mgv), 0);
+    uint provision = makerContract.provisionOf(olKey, offerId);
+    console.log("provision before fail:", provision);
 
-    vm.expectRevert("mgv/writeOffer/density/tooLow");
-    vm.prank($(mgv));
-    makerContract.makerPosthook(order, result);
+    // taker has approved mangrove in the setUp
+    vm.startPrank(taker);
+    (uint takerGot,, uint bounty,) =
+      mgv.marketOrderByVolume({olKey: olKey, takerWants: 0.5 ether, takerGives: cash(usdc, 1000), fillWants: true});
+    vm.stopPrank();
+    assertTrue(bounty > 0 && takerGot == 0, "trade should have failed");
+    uint provision_after_fail = makerContract.provisionOf(olKey, offerId);
+    console.log("provision after fail:", provision_after_fail);
+    console.log("bounty", bounty);
+    // checking that approx is small in front a storage write (approx < write_cost / 10)
+    uint approx_bounty = provision - provision_after_fail;
+    assertTrue((approx_bounty * 10000) / bounty > 9990, "Approximation of offer maker's credit is too coarse");
+    assertTrue(provision_after_fail < mgv.balanceOf(address(makerContract)), "Incorrect approx");
   }
 
   function test_reposting_fails_with_expected_reason_when_under_provisioned() public {
@@ -323,6 +342,7 @@ contract OfferLogicTest is StratTest {
     });
     vm.stopPrank();
     mgv.setGasprice(1000000);
+
     vm.startPrank(deployer);
     makerContract.withdrawFromMangrove(mgv.balanceOf(address(makerContract)), payable(deployer));
     vm.stopPrank();
@@ -338,7 +358,13 @@ contract OfferLogicTest is StratTest {
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
     (order.global, order.local) = mgv.config(olKey);
-    vm.expectRevert("mgv/insufficientProvision");
+    vm.expectEmit(true, true, true, true, address(makerContract));
+    emit LogIncident({
+      olKeyHash: olKey.hash(),
+      offerId: offerId,
+      makerData: bytes32(0),
+      mgvData: "mgv/insufficientProvision"
+    });
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);
   }
@@ -364,7 +390,8 @@ contract OfferLogicTest is StratTest {
     order.offerDetail = mgv.offerDetails(olKey, offerId);
     order.offer = mgv.offers(olKey, offerId);
     (order.global, order.local) = mgv.config(olKey);
-    vm.expectRevert("posthook/failed");
+    vm.expectEmit(true, true, true, true, address(makerContract));
+    emit LogIncident({olKeyHash: olKey.hash(), offerId: offerId, makerData: bytes32(0), mgvData: "mgv/inactive"});
     vm.prank($(mgv));
     makerContract.makerPosthook(order, result);
   }

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier:	BSD-2-Clause
+pragma solidity ^0.8.20;
+
+import {SmartRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IERC4626} from "@mgv-strats/src/strategies/vendor/IERC4626.sol";
+
+abstract contract ERC4626Logic is AbstractRouter {
+  IERC4626 public immutable ERC4626;
+
+  constructor(IERC4626 erc4626, uint pullGasReq_, uint pushGasReq_) {
+    ERC4626 = erc4626;
+  }
+
+  function __pull__(IERC20 token, uint amount, bytes memory data) internal virtual override returns (uint) {
+    uint _amountToWithdraw = ERC4626.convertToShares(amount);
+    address owner = abi.decode(data, (address));
+    // TODO replace by transferFrom
+    // DispatcherRouter(msg.sender).executeTransfer(token, ERC4626, _amountToWithdraw, pullData);
+
+    ERC4626.withdraw(amount, msg.sender, owner);
+  }
+
+  function __push__(IERC20 token, uint amount, bytes memory data) internal virtual override returns (uint) {
+    address owner = abi.decode(data, (address));
+    ERC4626.deposit(amount, owner);
+    return amount;
+  }
+}

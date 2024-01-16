@@ -14,6 +14,7 @@ import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/k
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import "@mgv/lib/Debug.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 abstract contract CoreKandelTest is KandelTest {
   function setUp() public virtual override {
@@ -993,7 +994,7 @@ abstract contract CoreKandelTest is KandelTest {
   {
     address otherMaker = freshAddress();
 
-    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker);
+    GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker, true);
 
     vm.prank(otherMaker);
     TransferLib.approveToken(base, address(otherKandel), type(uint).max);
@@ -1331,12 +1332,12 @@ abstract contract CoreKandelTest is KandelTest {
     // No auth
     kdl.BASE();
     kdl.MGV();
-    kdl.NO_ROUTER();
     kdl.QUOTE();
-    kdl.RESERVE_ID();
+    kdl.FUND_OWNER();
+    kdl.STRICT_PULLING();
+    kdl.ROUTER_IMPLEMENTATION();
     kdl.TICK_SPACING();
     kdl.admin();
-    kdl.checkList(new IERC20[](0));
     kdl.depositFunds(0, 0);
     kdl.getOffer(Ask, 0);
     kdl.indexOfOfferId(Ask, 42);
@@ -1347,8 +1348,11 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.reserveBalance(Ask);
     kdl.provisionOf(olKey, 0);
     kdl.router();
+    kdl.router(address(this));
+    kdl.noRouter();
     kdl.baseQuoteTickOffset();
     kdl.createDistribution(0, 0, Tick.wrap(0), 0, 0, 0, 0, 0, 0);
+    kdl.activate(IERC20(address(0)));
 
     CoreKandel.Distribution memory dist;
     GeometricKandel.Params memory params = getParams(kdl);
@@ -1360,14 +1364,13 @@ abstract contract CoreKandelTest is KandelTest {
 
     // Only admin
     args.allowed = dynamic([address(maker)]);
-    checkAuth(args, abi.encodeCall(kdl.activate, dynamic([IERC20(base)])));
+
     checkAuth(args, abi.encodeCall(kdl.approve, (base, taker, 42)));
     checkAuth(args, abi.encodeCall(kdl.setAdmin, (maker)));
     checkAuth(args, abi.encodeCall(kdl.retractAndWithdraw, (0, 0, 0, 0, 0, maker)));
     checkAuth(args, abi.encodeCall(kdl.setGasprice, (42)));
     checkAuth(args, abi.encodeCall(kdl.setStepSize, (2)));
     checkAuth(args, abi.encodeCall(kdl.setGasreq, (42)));
-    checkAuth(args, abi.encodeCall(kdl.setRouter, (kdl.router())));
     checkAuth(args, abi.encodeCall(kdl.setBaseQuoteTickOffset, (1)));
 
     checkAuth(args, abi.encodeCall(kdl.populate, (dist, params, 0, 0)));

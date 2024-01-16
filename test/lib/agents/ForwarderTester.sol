@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Forwarder, IMangrove} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
-import {ILiquidityProvider} from "@mgv-strats/src/strategies/interfaces/ILiquidityProvider.sol";
-import {SimpleRouter, AbstractRouter} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
-import {MgvLib, OLKey} from "@mgv/src/core/MgvLib.sol";
+import {
+  Forwarder,
+  IMangrove,
+  IERC20,
+  RouterProxyFactory
+} from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
+import {ITesterContract, ILiquidityProvider} from "./ITesterContract.sol";
+import {SimpleRouter, AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/SimpleRouter.sol";
+import {MgvLib, OLKey, Tick, TickLib} from "@mgv/src/core/MgvLib.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 
-contract OfferForwarder is ILiquidityProvider, Forwarder {
-  constructor(IMangrove mgv, address deployer) Forwarder(mgv, new SimpleRouter()) {
-    AbstractRouter router_ = router();
-    router_.bind(address(this));
-    if (deployer != msg.sender) {
-      setAdmin(deployer);
-      router_.setAdmin(deployer);
-    }
-  }
+contract ForwarderTester is ITesterContract, Forwarder {
+  constructor(IMangrove mgv, AbstractRouter routerImplementation)
+    Forwarder(mgv, new RouterProxyFactory(), routerImplementation)
+  {}
 
   /// @inheritdoc ILiquidityProvider
   function newOffer(OLKey memory olKey, Tick tick, uint gives, uint gasreq)
@@ -67,20 +67,29 @@ contract OfferForwarder is ILiquidityProvider, Forwarder {
     mgvOrOwner(olKey.hash(), offerId)
     returns (uint freeWei)
   {
-    return _retractOffer(olKey, offerId, deprovision);
+    (freeWei,) = _retractOffer(olKey, offerId, false, deprovision);
+    (bool noRevert,) = ownerOf(olKey.hash(), offerId).call{value: freeWei}("");
+    require(noRevert, "mgvOffer/weiTransferFail");
   }
 
-  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 maker_data)
-    internal
-    override
-    returns (bytes32 data)
+  ///@inheritdoc ITesterContract
+  function tokenBalance(IERC20 token, address owner) external view override returns (uint) {
+    return router(owner).tokenBalanceOf(RL.createOrder({token: token, fundOwner: owner}));
+  }
+
+  ///@inheritdoc ITesterContract
+  function newOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint gasreq)
+    external
+    payable
+    returns (uint offerId)
   {
-    data = super.__posthookSuccess__(order, maker_data);
-    require(
-      data == "posthook/reposted" || data == "posthook/filled",
-      data == "mgv/insufficientProvision"
-        ? "mgv/insufficientProvision"
-        : (data == "mgv/writeOffer/density/tooLow" ? "mgv/writeOffer/density/tooLow" : "posthook/failed")
-    );
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    return newOffer(olKey, tick, gives, gasreq);
+  }
+
+  ///@inheritdoc ITesterContract
+  function updateOfferByVolume(OLKey memory olKey, uint wants, uint gives, uint offerId, uint gasreq) external payable {
+    Tick tick = TickLib.tickFromVolumes(wants, gives);
+    updateOffer(olKey, tick, gives, offerId, gasreq);
   }
 }

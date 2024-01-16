@@ -11,9 +11,10 @@ import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {MgvReader} from "@mgv/src/periphery/MgvReader.sol";
 import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AaveMock.sol";
-import {AaveCaller} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
+import {AaveCaller, IPoolAddressesProvider} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
 import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
@@ -24,7 +25,7 @@ contract AaveKandelTest is CoreKandelTest {
   AavePooledRouter router;
   AaveKandel aaveKandel;
   bool useForkAave = true;
-  address aave;
+  IPoolAddressesProvider aave;
 
   receive() external payable {}
 
@@ -42,10 +43,10 @@ contract AaveKandelTest is CoreKandelTest {
       olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
       lo = olKey.flipped();
       setupMarket(olKey);
-      aave = fork.get("AaveAddressProvider");
+      aave = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
     } else {
       super.__setForkEnvironment__();
-      aave = address(new PoolAddressProviderMock(dynamic([address(base), address(quote)])));
+      aave = IPoolAddressesProvider(address(new PoolAddressProviderMock(dynamic([address(base), address(quote)]))));
 
       // Assume tokens behave weirdly here
       base.transferResponse(TestToken.MethodResponse.MissingReturn);
@@ -53,14 +54,27 @@ contract AaveKandelTest is CoreKandelTest {
     }
   }
 
-  function __deployKandel__(address deployer, address id) internal virtual override returns (GeometricKandel) {
-    uint kandel_gasreq = 629000;
+  function __deployKandel__(address deployer, address id, bool strict)
+    internal
+    virtual
+    override
+    returns (GeometricKandel)
+  {
+    uint kandel_gasreq = 800_000;
     router = address(router) == address(0) ? new AavePooledRouter(aave) : router;
-    AaveKandel aaveKandel_ = new AaveKandel({mgv: IMangrove($(mgv)), olKeyBaseQuote: olKey, reserveId: id});
+    AaveKandel aaveKandel_ = new AaveKandel({
+      mgv: IMangrove($(mgv)),
+      olKeyBaseQuote: olKey,
+      gasreq: kandel_gasreq,
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: id,
+        strict: strict
+      })
+    });
 
     router.bind(address(aaveKandel_));
     // Setting AaveRouter as Kandel's router and activating router on BASE and QUOTE ERC20
-    aaveKandel_.initialize(router, kandel_gasreq);
     aaveKandel_.setAdmin(deployer);
     return aaveKandel_;
   }
@@ -73,21 +87,10 @@ contract AaveKandelTest is CoreKandelTest {
     return "/out/AaveKandel.sol/AaveKandel.json";
   }
 
-  function test_allExternalFunctions_differentCallers_correctAuth() public override {
-    super.test_allExternalFunctions_differentCallers_correctAuth();
-    CheckAuthArgs memory args;
-    args.callee = $(kdl);
-    args.callers = dynamic([address($(mgv)), maker, $(this), $(kdl)]);
-    args.allowed = dynamic([address(maker)]);
-    args.revertMessage = "AccessControlled/Invalid";
-
-    checkAuth(args, abi.encodeCall(AaveKandel($(kdl)).initialize, (AavePooledRouter($(kdl.router())), 10)));
-  }
-
   function test_initialize() public {
     assertEq(address(kdl.router()), address(router), "Incorrect router address");
     assertEq(kdl.admin(), maker, "Incorrect admin");
-    assertEq(kdl.RESERVE_ID(), maker, "Incorrect owner");
+    assertEq(kdl.FUND_OWNER(), maker, "Incorrect owner");
     assertEq(base.balanceOf(address(router)), 0, "Router should start with no base buffer");
     assertEq(quote.balanceOf(address(router)), 0, "Router should start with no quote buffer");
     assertTrue(kdl.reserveBalance(Ask) > 0, "Incorrect initial reserve balance of base");
@@ -172,8 +175,8 @@ contract AaveKandelTest is CoreKandelTest {
   function test_sharing_liquidity_between_strats(uint16 baseAmount, uint16 quoteAmount) public {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
-    assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
+    assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     uint baseBalance = kdl.reserveBalance(Ask);
     uint quoteBalance = kdl.reserveBalance(Bid);
@@ -216,8 +219,8 @@ contract AaveKandelTest is CoreKandelTest {
     bool allBaseOnAave,
     bool allQuoteOnAave
   ) internal {
-    GeometricKandel kdl_ = __deployKandel__(maker, maker);
-    assertEq(kdl_.RESERVE_ID(), kdl.RESERVE_ID(), "Strats should have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, maker, false);
+    assertEq(kdl_.FUND_OWNER(), kdl.FUND_OWNER(), "Strats should have the same reserveId");
 
     (, Offer bestAsk) = getBestOffers();
     populateSingle({
@@ -257,8 +260,8 @@ contract AaveKandelTest is CoreKandelTest {
   {
     deal($(base), maker, baseAmount);
     deal($(quote), maker, quoteAmount);
-    GeometricKandel kdl_ = __deployKandel__(maker, address(0));
-    assertTrue(kdl_.RESERVE_ID() != kdl.RESERVE_ID(), "Strats should not have the same reserveId");
+    GeometricKandel kdl_ = __deployKandel__(maker, address(0), true);
+    assertTrue(kdl_.FUND_OWNER() != kdl.FUND_OWNER(), "Strats should not have the same reserveId");
     vm.prank(maker);
     kdl.depositFunds(baseAmount, quoteAmount);
 
@@ -274,7 +277,7 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function test_liquidity_flashloan_attack() public {
-    AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    AaveCaller attacker = new AaveCaller(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     deal($(quote), address(this), 1 ether);
     quote.approve({spender: address(mgv), amount: type(uint).max});
     attacker.setCallbackAddress(address(this));
@@ -296,7 +299,7 @@ contract AaveKandelTest is CoreKandelTest {
   function test_liquidity_borrow_clean_attack() public {
     // base is weth and has a borrow cap, so trying the attack on quote
     address dai = fork.get("DAI.e");
-    AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    AaveCaller attacker = new AaveCaller(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     deal($(base), address(this), 1 ether);
     base.approve({spender: address(mgv), amount: type(uint).max});
     uint quoteSupply = attacker.get_supply(quote); // quote in 6 decimals
@@ -332,7 +335,7 @@ contract AaveKandelTest is CoreKandelTest {
     //printOrderBook($(quote), $(base));
     // base is weth and has a borrow cap, so trying the attack on quote
     address dai = fork.get("DAI.e");
-    AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    AaveCaller attacker = new AaveCaller(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     deal($(base), address(this), 1 ether);
     base.approve({spender: address(mgv), amount: type(uint).max});
     uint quoteSupply = attacker.get_supply(quote); // quote in 6 decimals
@@ -362,29 +365,34 @@ contract AaveKandelTest is CoreKandelTest {
   }
 
   function test_cannot_create_aaveKandel_with_aToken_for_base() public {
-    AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    AaveCaller attacker = new AaveCaller(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     IERC20 aToken = attacker.overlying(base);
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
+      gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
-      reserveId: address(0)
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: address(0),
+        strict: false
+      })
     });
   }
 
   function test_cannot_create_aaveKandel_with_aToken_for_quote() public {
-    AaveCaller attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    AaveCaller attacker = new AaveCaller(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     IERC20 aToken = attacker.overlying(quote);
     vm.expectRevert("AaveKandel/cannotTradeAToken");
     new AaveKandel({
       mgv: IMangrove($(mgv)),
+      gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
-      reserveId: address(0)
+      routerParams: Direct.RouterParams({
+        routerImplementation: router,
+        fundOwner: address(0),
+        strict: false
+      })
     });
-  }
-
-  function test_setRouter_no_router() public {
-    vm.expectRevert("AaveKandel/noRouter");
-    kdl.setRouter(AbstractRouter(address(0)));
   }
 }

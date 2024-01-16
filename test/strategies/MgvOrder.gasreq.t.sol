@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {StratTest} from "@mgv-strats/test/lib/StratTest.sol";
+import {StratTest, MangroveOffer} from "@mgv-strats/test/lib/StratTest.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {MangroveOrder} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {
+  MangroveOrder, AbstractRoutingLogic, RL, RouterProxyFactory
+} from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
 import {IERC20, OLKey, Offer} from "@mgv/src/core/MgvLib.sol";
@@ -11,6 +13,7 @@ import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
 import {Tick} from "@mgv/lib/core/TickLib.sol";
 import {OfferGasReqBaseTest} from "@mgv/test/lib/gas/OfferGasReqBase.t.sol";
+import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
 
 ///@notice Can be used to measure gasreq for MangroveOrder. Use `yarn gas-measurement` for better output.
 ///@dev Remember to use same optimization options for core and strats when comparing with gas-measurement in core.
@@ -28,32 +31,33 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   MangroveOrder internal mangroveOrder;
   IOrderLogic.TakerOrderResult internal buyResult;
   IOrderLogic.TakerOrderResult internal sellResult;
-  uint GASREQ = 200_000; // simple resting order gasreq cf discussion above
+  uint GASREQ = 220_000; // simple resting order gasreq cf discussion above
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
-    mangroveOrder.activate(dynamic([IERC20(base), IERC20(quote)]));
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), $(this));
+    mangroveOrder.activate(base);
+    mangroveOrder.activate(quote);
 
     // We approve both base and quote to be able to test both tokens.
     // We should approve 2*volume but do not in order to allow failure to deliver
     deal($(quote), $(this), 10 ether);
-    TransferLib.approveToken(quote, $(mangroveOrder.router()), 1.5 ether);
-
     deal($(base), $(this), 10 ether);
-    TransferLib.approveToken(base, $(mangroveOrder.router()), 1.5 ether);
+    activateOwnerRouter(base, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
+    activateOwnerRouter(quote, MangroveOffer($(mangroveOrder)), address(this), 1.5 ether);
 
     // A buy
     IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
       olKey: olKey,
-      fillOrKill: false,
+      orderType: TakerOrderType.GTC,
       fillWants: false,
       fillVolume: 1 ether,
       tick: Tick.wrap(10),
-      restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
-      restingOrderGasreq: GASREQ
+      restingOrderGasreq: GASREQ,
+      takerGivesLogic: AbstractRoutingLogic(address(0)),
+      takerWantsLogic: AbstractRoutingLogic(address(0))
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision
@@ -64,14 +68,15 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     // A sell
     IOrderLogic.TakerOrder memory sellOrder = IOrderLogic.TakerOrder({
       olKey: lo,
-      fillOrKill: false,
+      orderType: TakerOrderType.GTC,
       fillWants: false,
       fillVolume: 1 ether,
       tick: Tick.wrap(-20),
-      restingOrder: true,
       expiryDate: block.timestamp + 10000,
       offerId: 0,
-      restingOrderGasreq: GASREQ // overestimate
+      restingOrderGasreq: GASREQ, // overestimate
+      takerGivesLogic: AbstractRoutingLogic(address(0)),
+      takerWantsLogic: AbstractRoutingLogic(address(0))
     });
 
     // Post everything as resting order since offer list is empty with plenty of provision
@@ -87,7 +92,7 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
     setGasprice(mgv.global().gasprice() + 1);
   }
 
-  function test_gasreq_repost_on_now_empty_offer_list_with_expiry(OLKey memory _olKey, bool failure) internal {
+  function gasreq_repost_on_now_empty_offer_list_with_expiry(OLKey memory _olKey, bool failure) internal {
     // note: we do not test failure in posthook as it is not supposed to fail for MangroveOrder.
     // we take more than approval to make makerExecute fail
     // this is more expensive than expiry which fails earlier.
@@ -109,22 +114,22 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_success() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, false);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, false);
     printDescription(" - Case: base/quote gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_success() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, false);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(lo, false);
     printDescription(" - Case: quote/base gasreq for taking single offer and repost to now empty book");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_base_quote_failure() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, true);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(olKey, true);
     printDescription(" - Case: base/quote gasreq for taking single failing offer on now empty book so not reposted");
   }
 
   function test_gasreq_repost_on_now_empty_offer_list_with_expiry_quote_base_failure() public {
-    test_gasreq_repost_on_now_empty_offer_list_with_expiry(lo, true);
+    gasreq_repost_on_now_empty_offer_list_with_expiry(lo, true);
     printDescription(" - Case: quote/base gasreq for taking single failing offer on now empty book so not reposted");
   }
 }
@@ -140,89 +145,5 @@ contract MangroveOrderGasreqTest_Polygon_WETH_DAI is MangroveOrderGasreqBaseTest
   function setUp() public override {
     super.setUpPolygon();
     this.setUpTokens("WETH.e", "DAI.e");
-  }
-}
-
-///@notice Can be used to measure gas overhead of MangroveOrder.
-abstract contract MangroveOrderGasOverhead is StratTest, OfferGasReqBaseTest {
-  MangroveOrder internal mangroveOrder;
-  IOrderLogic.TakerOrderResult internal buyResult;
-  IOrderLogic.TakerOrderResult internal sellResult;
-  uint GASREQ = 1_000_000;
-  uint volume = 2 ether;
-
-  function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
-    super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), $(this));
-    mangroveOrder.activate(dynamic([IERC20(base), IERC20(quote)]));
-
-    // We approve both base and quote to be able to test both tokens.
-    deal($(quote), $(this), 10 ether);
-    TransferLib.approveToken(quote, $(mangroveOrder.router()), 10 ether);
-
-    deal($(base), $(this), 10 ether);
-    TransferLib.approveToken(base, $(mangroveOrder.router()), 10 ether);
-
-    // A buy
-    IOrderLogic.TakerOrder memory buyOrder = IOrderLogic.TakerOrder({
-      olKey: olKey,
-      fillOrKill: false,
-      fillWants: false,
-      fillVolume: 1 ether,
-      tick: Tick.wrap(10),
-      restingOrder: true,
-      expiryDate: block.timestamp + 10000,
-      offerId: 0,
-      restingOrderGasreq: GASREQ
-    });
-
-    buyResult = mangroveOrder.take{value: 1 ether}(buyOrder);
-    assertGt(buyResult.offerId, 0, "Resting offer failed to be published on mangrove");
-    description = string.concat(description, " - MangroveOrder");
-  }
-
-  function test_gas_measurement_market_order() public {
-    (IMangrove _mgv,,,) = getStored();
-    prankTaker(lo);
-    _gas();
-    (uint takerGot,, uint bounty,) = _mgv.marketOrderByTick(lo, Tick.wrap(10), volume, true);
-    gas_();
-
-    assertGt(takerGot, 0);
-    assertEq(bounty, 0);
-
-    printDescription(" - Case: MangroveOrder filled using directly market order");
-  }
-
-  function test_gas_measurement_take_overhead() public {
-    IOrderLogic.TakerOrder memory sellOrder = IOrderLogic.TakerOrder({
-      olKey: lo,
-      fillOrKill: false,
-      fillWants: false,
-      fillVolume: volume,
-      tick: Tick.wrap(10),
-      restingOrder: true,
-      expiryDate: block.timestamp + 10000,
-      offerId: 0,
-      restingOrderGasreq: GASREQ // overestimate
-    });
-
-    _gas();
-    sellResult = mangroveOrder.take{value: 1 ether}(sellOrder);
-    gas_();
-    assertGt(sellResult.offerId, 0, "Resting offer failed to be published on mangrove");
-
-    printDescription(" - Case: MangroveOrder take");
-  }
-
-  receive() external payable {
-    // allow mangrove to send native token to test contract
-  }
-}
-
-contract MangroveOrderGasOverhead_Generic_A_B is MangroveOrderGasOverhead {
-  function setUp() public override {
-    super.setUpGeneric();
-    this.setUpTokens(options.base.symbol, options.quote.symbol);
   }
 }
