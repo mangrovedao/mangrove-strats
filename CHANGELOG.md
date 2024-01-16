@@ -1,5 +1,9 @@
 # Next version
 
+- Upgrade to @mangrovedao/mangrove-deployments v2.0.0
+
+# 2.0.0-b1.0
+
 - feat!: Remove mangrove.js deployer
 - Created 'SmartRouter' schema to allow to plug any RoutingLogic to a ForwarderContract
 - Created 'RouterProxyFactory' to deploy router proxies for each user and allow all approvals to a single contract per user

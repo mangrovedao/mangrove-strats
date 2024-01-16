@@ -1,6 +1,6 @@
 {
   "name": "@mangrovedao/mangrove-strats",
-  "version": "2.0.0-b1",
+  "version": "2.0.0-b1.0",
   "author": "Mangrove DAO",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@mangrovedao/context-addresses": "^1.0.1",
-    "@mangrovedao/mangrove-deployments": "^1.0.2",
+    "@mangrovedao/mangrove-deployments": "^2.0.0",
     "@types/node": "^20.9.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.0.2",
