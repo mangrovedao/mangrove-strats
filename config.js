@@ -1,5 +1,5 @@
-const fs = require("fs");
 const path = require("path");
+const deployments = require("@mangrovedao/mangrove-deployments");
 
 // Contracts that should export their ABI only
 exports.abi_exports = [
@@ -35,7 +35,8 @@ exports.copyDeployments = true;
 // to query mangrove-deployments for.
 // Default is the latest patch of the current package version.
 const packageVersion = require("./package.json").version;
-exports.stratsDeploymentVersionRangePattern = `^${packageVersion}`;
+exports.stratsDeploymentVersionRangePattern =
+  deployments.createContractVersionPattern(packageVersion);
 
 // Whether to query mangrove-deployments for released (true), unreleased (false),
 // or the latest of either (undefined) versions of the strat contracts.
@@ -53,7 +54,8 @@ const mangroveCorePackagePath = path.join(
   "package.json",
 );
 const mangroveCoreVersion = require(mangroveCorePackagePath).version;
-exports.coreDeploymentVersionRangePattern = `^${mangroveCoreVersion}`;
+exports.coreDeploymentVersionRangePattern =
+  deployments.createContractVersionPattern(mangroveCoreVersion);
 
 // Whether to query mangrove-deployments for released (true), unreleased (false),
 // or the latest of either (undefined) versions of the core contracts.

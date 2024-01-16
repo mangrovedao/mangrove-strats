@@ -1,6 +1,7 @@
 # Next version
 
 - feat!: Remove mangrove.js deployer
+- Upgrade to @mangrovedao/mangrove-deployments v2.0.0
 
 # 1.0.2
 
