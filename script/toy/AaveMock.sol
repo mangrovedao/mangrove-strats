@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {DataTypes} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/protocol/libraries/types/DataTypes.sol";
 import {MintableERC20BLWithDecimals} from "@mgv/src/toy/MintableERC20BLWithDecimals.sol";
+import {IPriceOracleGetter} from "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPriceOracleGetter.sol";
 
 contract RewardsControllerIshMock {
   function claimAllRewards(address[] calldata assets, address to)
@@ -56,18 +57,36 @@ contract PoolMock {
   }
 }
 
+contract PriceOracleMock is IPriceOracleGetter {
+  function BASE_CURRENCY() external pure override returns (address) {
+    return address(0);
+  }
+
+  function BASE_CURRENCY_UNIT() external pure override returns (uint) {
+    return 8;
+  }
+
+  function getAssetPrice(address) external pure override returns (uint) {
+    return 1e8;
+  }
+}
+
 contract PoolAddressProviderMock {
   address immutable POOL;
   address immutable INCENTIVES_CONTROLLER;
+  address immutable PRICE_ORACLE;
 
   constructor(address[] memory underlyings) {
     POOL = address(new PoolMock(underlyings));
     INCENTIVES_CONTROLLER = address(new RewardsControllerIshMock());
+    PRICE_ORACLE = address(new PriceOracleMock());
   }
 
   function getAddress(bytes32 id) external view returns (address ret) {
     if (id == keccak256("INCENTIVES_CONTROLLER")) {
       ret = INCENTIVES_CONTROLLER;
+    } else if (id == "PRICE_ORACLE") {
+      ret = PRICE_ORACLE;
     }
   }
 
