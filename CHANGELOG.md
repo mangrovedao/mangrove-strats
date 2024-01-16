@@ -1,6 +1,7 @@
 # Next version
 
 - Upgrade to @mangrovedao/mangrove-deployments v2.0.0
+- Add Mock Aave Oracle to Mock Aave contract
 
 # 2.0.0-b1.0
 
