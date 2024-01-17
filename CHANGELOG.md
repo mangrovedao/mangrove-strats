@@ -1,5 +1,7 @@
 # Next version
 
+# 2.0.0-b1.2
+
 - Add exports for `AbstractRoutingLogic` and `SimpleAaveLogic`
 
 # 2.0.0-b1.1
