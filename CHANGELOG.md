@@ -1,5 +1,7 @@
 # Next version
 
+- Add exports for `AbstractRoutingLogic` and `SimpleAaveLogic`
+
 # 2.0.0-b1.1
 
 - Upgrade to @mangrovedao/mangrove-deployments v2.0.0
