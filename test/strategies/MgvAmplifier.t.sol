@@ -85,7 +85,9 @@ contract MgvAmplifierTest is StratTest {
     lo = dai_weth.flipped();
 
     mgv.activate(dai_weth, options.defaultFee, options.density96X32, options.gasbase);
+    mgv.activate(dai_weth.flipped(), options.defaultFee, options.density96X32, options.gasbase);
     mgv.activate(dai_wbtc, options.defaultFee, options.density96X32, options.gasbase);
+    mgv.activate(dai_wbtc.flipped(), options.defaultFee, options.density96X32, options.gasbase);
 
     // preparing owner account (either using SimpleRouter or SimpleAaveRouter)
     deal($(dai), owner, 10_000 * 10 ** 18);
@@ -177,6 +179,47 @@ contract MgvAmplifierTest is StratTest {
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
     assertEq(bundleId, 0, "Incorrect bundle Id");
     assertEq(mgvAmplifier.ownerOf(bundleId, dai), owner, "Incorrect bundle owner");
+  }
+
+  function test_bundle_owner() public {
+    MangroveAmplifier.FixedBundleParams memory fx1;
+    MangroveAmplifier.VariableBundleParams[] memory vr1 = new MangroveAmplifier.VariableBundleParams[](1);
+
+    fx1.outbound_tkn = weth;
+    fx1.outVolume = 1000 * 10 ** 18;
+
+    vr1[0].inbound_tkn = dai;
+    vr1[0].tick = TickLib.tickFromVolumes({inboundAmt: 10_000 * 10 ** 18, outboundAmt: 1 ether});
+    vr1[0].gasreq = defaultLogicGasreq;
+    vr1[0].provision = 0.02 ether;
+    vr1[0].tickSpacing = options.defaultTickSpacing;
+
+    MangroveAmplifier.FixedBundleParams memory fx2;
+    MangroveAmplifier.VariableBundleParams[] memory vr2 = new MangroveAmplifier.VariableBundleParams[](1);
+
+    fx2.outbound_tkn = wbtc;
+    fx2.outVolume = 1000 * 10 ** 8;
+
+    vr2[0].inbound_tkn = dai;
+    vr2[0].tick = TickLib.tickFromVolumes({inboundAmt: 10_000 * 10 ** 18, outboundAmt: 1 ether});
+    vr2[0].gasreq = defaultLogicGasreq;
+    vr2[0].provision = 0.02 ether;
+    vr2[0].tickSpacing = options.defaultTickSpacing;
+
+    vm.prank(owner);
+    uint bundleId1 = mgvAmplifier.newBundle{value: 0.04 ether}(fx1, vr1);
+
+    vm.prank(taker);
+    uint bundleId2 = mgvAmplifier.newBundle{value: 0.04 ether}(fx2, vr2);
+
+    assertEq(mgvAmplifier.ownerOf(bundleId1, weth), owner, "Incorrect bundle owner");
+    assertEq(mgvAmplifier.ownerOf(bundleId2, wbtc), taker, "Incorrect bundle owner");
+
+    vm.expectRevert("MgvAmplifier/invalidBundleId");
+    mgvAmplifier.ownerOf(bundleId1, wbtc);
+
+    vm.expectRevert("MgvAmplifier/invalidBundleId");
+    mgvAmplifier.ownerOf(bundleId2, weth);
   }
 
   function test_newBundle_with_insufficient_provision_reverts_with_expected_message() public {
