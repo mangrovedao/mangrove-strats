@@ -1,5 +1,7 @@
 # Next version
 
+- Fixing `ownerOf` on `MangroveAmplifier` to revert on incorrect params
+
 # 2.0.0-b1.2
 
 - Add exports for `AbstractRoutingLogic` and `SimpleAaveLogic`
