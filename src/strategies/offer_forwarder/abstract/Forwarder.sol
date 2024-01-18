@@ -253,17 +253,20 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     freeWei = deprovision ? od.weiBalance : 0;
 
     try MGV.retractOffer(olKey, offerId, deprovision) returns (uint weis) {
+      // We add `weis` credited to the contract to `freeWei` amount
+      // They were the locked native token provision of the offer that has been retracted
       freeWei += weis;
-      if (freeWei > 0) {
-        // pulling free wei from Mangrove to `this`
-        require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
-        // resetting pending returned provision
-        // calling code must now assign freeWei to owner
-        od.weiBalance = 0;
-      }
     } catch Error(string memory reason) {
       require(noRevert, reason);
       status = bytes32(bytes(reason));
+    }
+    // if `deprovision` is set to false, `freeWei` is 0 because `retractOffer` will return 0
+    if (freeWei > 0) {
+      // pulling free wei from Mangrove to `this`
+      require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
+      // resetting pending returned provision
+      // calling code must now assign freeWei to owner
+      od.weiBalance = 0;
     }
   }
 
