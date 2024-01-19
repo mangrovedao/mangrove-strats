@@ -281,7 +281,9 @@ contract MangroveAmplifier is RenegingForwarder {
               // set max volume back to 0 as we successfully updated outbout volume on mangrove
               // we do not reset expiry date if offer is retracted as we won't reuse the same offerId within mangrove amplifier once reracted
               Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
-              if (cond.volume != 0) _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, 0);
+              if (cond.volume != 0) {
+                _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, 0);
+              }
             }
           }
         } catch {
@@ -337,16 +339,19 @@ contract MangroveAmplifier is RenegingForwarder {
     internal
     returns (uint freeWei)
   {
+    bytes32 status;
+    uint _freeWei;
+    bytes32 olKeyHash_i;
     for (uint i; i < bundle.length; i++) {
       OLKey memory olKey_i = OLKey({
         outbound_tkn: address(outbound_tkn),
         inbound_tkn: address(bundle[i].inbound_tkn),
         tickSpacing: bundle[i].tickSpacing
       });
-      bytes32 olKeyHash_i = olKey_i.hash();
+      olKeyHash_i = olKey_i.hash();
       if (skipOlKeyHash != olKeyHash_i) {
-        bytes32 status;
-        (freeWei, status) = _retractOffer(olKey_i, bundle[i].offerId, true, deprovision);
+        (_freeWei, status) = _retractOffer(olKey_i, bundle[i].offerId, true, deprovision);
+        freeWei += _freeWei;
         if (status != bytes32(0)) {
           // this only happens if offer `i` of the bundle is in a locked offer list --see `_updateBundle`
           _setReneging(olKeyHash_i, bundle[i].offerId, block.timestamp, 0);
