@@ -221,13 +221,13 @@ contract MangroveAmplifier is RenegingForwarder {
     // Example:
     // * User 1 posts bundle 1 on WBTC/DAI and WBTC/USDC with offerIds 1 and 2 respectively.
     // * User 2 posts bundle 2 on WETH/DAI and WETH/USDC with offerIds 1 and 2 respectively.
-    // * if user 2 pass bundle id of 1 and outbound token of WBTC, the function will return user 1 as owner.
+    // * if we pass bundle id of 1 and outbound token of WETH, the function will return user 2 as owner.
 
     // To solve this issue, we do a reverse check where we check the resulting bundle id from olKeyHash and offerId.
     // An **invariant** is that a bundle id can only be associated to one offer id on a given Offer List.
     // To follow the same example as above:
-    // * if user 2 pass bundle id of 1 and outbound token of WBTC, the function will return user 1 as owner.
-    // * the mapping __bundleIdOfOfferId[olKeyHash][offerId] will either return 0 or a a bundle id different than 1.
+    // * if we pass bundle id of 1 and outbound token of WETH, the function will return user 2 as owner.
+    // * the mapping __bundleIdOfOfferId[olKeyHash][offerId] will either return 0 or a a bundle id different than 2.
     // * this will result in a revert as the bundle id of 1 is not associated to offer id 1 on the WBTC/DAI offer list.
     require(__bundleIdOfOfferId[olKeyHash][offerId] == bundleId, "MgvAmplifier/invalidBundleId");
   }
