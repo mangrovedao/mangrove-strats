@@ -2,6 +2,7 @@
 
 - Fixing `ownerOf` on `MangroveAmplifier` to revert on incorrect params
 - Added `freeWei` deprovision on failed `_retractOffer` on forwarder
+- Fixed `freeWei` resetting on each offer retracting while retracting bundle
 
 # 2.0.0-b1.2
 
