@@ -16,6 +16,7 @@ exports.abi_exports = [
   "AbstractKandelSeeder",
   "KandelSeeder",
   "AaveKandelSeeder",
+  "AavePooledRouter",
   "RouterProxyFactory",
   "SmartRouter",
   "AbstractRoutingLogic",
