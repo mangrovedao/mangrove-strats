@@ -1,5 +1,7 @@
 # Next version
 
+# 2.0.0-b1.3
+
 - Add export for `MangroveAmplifier`
 - Add deployer for `SimpleAaveLogic`
 - Add AavePooledRouter to ABI exports
