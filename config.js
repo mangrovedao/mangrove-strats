@@ -21,6 +21,7 @@ exports.abi_exports = [
   "SmartRouter",
   "AbstractRoutingLogic",
   "SimpleAaveLogic",
+  "MangroveAmplifier",
 ];
 
 // Contracts that should export their ABI + bytecode
