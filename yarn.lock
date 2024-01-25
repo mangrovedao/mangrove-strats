@@ -112,12 +112,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-deployments@npm:^2.0.1-2":
-  version: 2.0.1-2
-  resolution: "@mangrovedao/mangrove-deployments@npm:2.0.1-2"
+"@mangrovedao/mangrove-deployments@npm:^2.0.1-3":
+  version: 2.0.1-3
+  resolution: "@mangrovedao/mangrove-deployments@npm:2.0.1-3"
   dependencies:
     semver: ^7.5.4
-  checksum: 13a6efd3af8ced8f95e50dc6d70893b4bd294b969a1c69682a7d1377044455d5aa5875577e9f44536ba8a1e8f3986d2b138a9be97be959cc2309d588e5c9f7d5
+  checksum: 119f3a163f613c9ff25b6126cd7bdd20cd5d4f33a34b5d4256fd604cc0572f558d7e0c39e5a2f1ae72fffc001d55511c3219c4688adcbf481012679cf55e0a3f
   languageName: node
   linkType: hard
 
@@ -127,7 +127,7 @@ __metadata:
   dependencies:
     "@mangrovedao/context-addresses": ^1.0.1
     "@mangrovedao/mangrove-core": ^2.0.3
-    "@mangrovedao/mangrove-deployments": ^2.0.1-2
+    "@mangrovedao/mangrove-deployments": ^2.0.1-3
     "@types/node": ^20.11.5
     husky: ^8.0.3
     lint-staged: ^15.2.0
