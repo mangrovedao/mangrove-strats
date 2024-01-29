@@ -111,7 +111,7 @@ contract RenegingForwarder is Forwarder {
     Condition memory cond = __renegeMap[olKeyHash][order.offerId];
 
     require(cond.date == 0 || block.timestamp < uint(cond.date), "RenegingForwarder/expired");
-    require(cond.volume == 0 || order.takerWants < uint(cond.volume), "RenegingForwarder/overSized");
+    require(cond.volume == 0 || order.takerWants <= uint(cond.volume), "RenegingForwarder/overSized");
 
     return super.__lastLook__(order);
   }
