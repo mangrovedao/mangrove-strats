@@ -181,7 +181,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@inheritdoc MangroveOffer
   ///@notice Internal `updateOffer`, using arguments and variables on memory to avoid stack too deep.
   ///@return reason Either REPOST_SUCCESS or Mangrove's revert reason if update was rejected by Mangrove and `args.noRevert` is `true`.
-  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 reason) {
+  function _updateOffer(OfferArgs memory args, uint offerId) internal virtual override returns (bytes32 reason) {
     unchecked {
       UpdateOfferVars memory vars;
       (vars.global, vars.local) = MGV.config(args.olKey);

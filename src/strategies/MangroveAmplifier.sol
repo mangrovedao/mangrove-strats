@@ -396,7 +396,7 @@ contract MangroveAmplifier is RenegingForwarder {
     // if funds are missing, the trade will fail and one should retract the bundle
     // we also retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
     // otherwise we update the bundle to the new volume
-    uint newOutVolume = order.offer.gives() - order.takerWants;
+    (uint newOutVolume,) = __residualValues__(order);
     if (missing == 0 && newOutVolume > 0) {
       _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, newOutVolume);
     } else {

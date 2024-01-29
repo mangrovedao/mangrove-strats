@@ -3,6 +3,8 @@
 - Fixing `ownerOf` on `MangroveAmplifier` to revert on incorrect params
 - Added `freeWei` deprovision on failed `_retractOffer` on forwarder
 - Fixed `freeWei` resetting on each offer retracting while retracting bundle
+- Resetting `cond.volume` on `_updateOffer` instead of `__lastlook__`
+- Using `__residualValues__` to update other offers in the bundle to keep consistent new outbound volume
 
 # 2.0.0-b1.2
 
