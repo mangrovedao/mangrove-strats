@@ -218,10 +218,17 @@ contract MangroveAmplifier is RenegingForwarder {
 
     // 2 bundles can share the same offer id for a given outbound token.
     // if outbound token is manipulated, the function could resolve with a different bundle owner.
+
     // Example:
-    // * User 1 posts bundle 1 on WBTC/DAI and WBTC/USDC with offerIds 1 and 2 respectively.
-    // * User 2 posts bundle 2 on WETH/DAI and WETH/USDC with offerIds 1 and 2 respectively.
-    // * if we pass bundle id of 1 and outbound token of WETH, the function will return user 2 as owner.
+
+    // * Alice: bundle [1] WBTC/DAI [id 1] and WBTC/USDT [id 1]
+    // * Bob: bundle [2] WETH/DAI [id 1]
+    // * Carl: bundle [3] WETH/USDT [id 1]
+    // *
+    // * Bob: updateBundle(bundleId:1, outbound:WETH)
+    // * check: ownerOf(id:1, inbound: DAI, outbound: WETH) == bob --> True
+    // * update(id:1, outbound: WETH, inbound: DAI) <- the offer of bob.
+    // * update(id:1, outbound: WETH, inbound: USDT) <- the offer of Carl!
 
     // To solve this issue, we do a reverse check where we check the resulting bundle id from olKeyHash and offerId.
     // An **invariant** is that a bundle id can only be associated to one offer id on a given Offer List.
