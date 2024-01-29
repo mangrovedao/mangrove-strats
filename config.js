@@ -16,10 +16,12 @@ exports.abi_exports = [
   "AbstractKandelSeeder",
   "KandelSeeder",
   "AaveKandelSeeder",
+  "AavePooledRouter",
   "RouterProxyFactory",
   "SmartRouter",
   "AbstractRoutingLogic",
   "SimpleAaveLogic",
+  "MangroveAmplifier",
 ];
 
 // Contracts that should export their ABI + bytecode

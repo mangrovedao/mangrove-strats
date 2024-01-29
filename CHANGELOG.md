@@ -7,6 +7,13 @@
 - Using `__residualValues__` to update other offers in the bundle to keep consistent new outbound volume
 - Changing reneging volume condition to a weak inequality
 
+# 2.0.0-b1.3
+
+- Add export for `MangroveAmplifier`
+- Add deployer for `SimpleAaveLogic`
+- Add AavePooledRouter to ABI exports
+- Upgrade to @mangrovedao/mangrove-deployments v2.0.1-1
+
 # 2.0.0-b1.2
 
 - Add exports for `AbstractRoutingLogic` and `SimpleAaveLogic`
