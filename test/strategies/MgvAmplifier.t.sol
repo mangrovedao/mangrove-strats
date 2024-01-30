@@ -805,6 +805,6 @@ contract MgvAmplifierTest is StratTest {
     assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).date, block.timestamp + 1000, "date should not change");
 
     // checking offer is still live
-    assertEq(mgv.offers(dai_weth, offerId).gives(), outboundVolume - takerGot - fee, "Incorrect outbound volume");
+    assertEq(mgv.offers(dai_weth, offerId).gives(), outboundVolume / 2 - takerGot - fee, "Incorrect outbound volume");
   }
 }
