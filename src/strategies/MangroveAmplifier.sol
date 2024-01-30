@@ -33,7 +33,7 @@ contract MangroveAmplifier is RenegingForwarder {
   }
 
   ///@notice maps a `bundleId` to a set of bundled offers
-  mapping(uint bundleId => BundledOffer[]) private __bundles;
+  mapping(uint bundleId => mapping(IERC20 outbound_tkn => BundledOffer[])) private __bundles;
 
   ///@notice maps an offer list key hash and an offerId to the bundle in which this offer is.
   mapping(bytes32 olKeyHash => mapping(uint offerId => uint bundleId)) private __bundleIdOfOfferId;
@@ -171,7 +171,7 @@ contract MangroveAmplifier is RenegingForwarder {
       vars.bundledOffer_i.tickSpacing = vr[i].tickSpacing;
       vars.bundledOffer_i.inbound_tkn = vr[i].inbound_tkn;
       __bundleIdOfOfferId[vars.olKeyHash_i][vars.bundledOffer_i.offerId] = freshBundleId;
-      __bundles[freshBundleId].push(vars.bundledOffer_i);
+      __bundles[freshBundleId][fx.outbound_tkn].push(vars.bundledOffer_i);
     }
     // Setting bundle wide expiry date if required
     // olKeyHash = bytes32(0) indicates that expiry is for the whole bundle
@@ -183,30 +183,19 @@ contract MangroveAmplifier is RenegingForwarder {
 
   ///@notice gets the offers that are bundled under the same `bundleId`
   ///@param bundleId the id of the bundle
+  ///@param outbound_tkn the outbound token of the bundle
   ///@return bundle of offers
-  function offersOf(uint bundleId) external view returns (BundledOffer[] memory) {
-    return __bundles[bundleId];
-  }
-
-  /// @notice returns the owner of a given bundle
-  /// @param bundleId the id of the bundle
-  /// @param outbound_tkn the outbound token of the bundle
-  /// @return address of the owner of the bundle
-  function _extractOwnerOf(uint bundleId, IERC20 outbound_tkn) internal view returns (address) {
-    return _extractOwnerOf(bundleId, __bundles[bundleId], outbound_tkn);
+  function offersOf(uint bundleId, IERC20 outbound_tkn) external view returns (BundledOffer[] memory) {
+    return __bundles[bundleId][outbound_tkn];
   }
 
   ///@notice retrieves bundle owner from offer owner
-  ///@param bundleId the bundle id
   ///@param bundle of offers whose owner is queried
   ///@param outbound_tkn of the bundle
   ///@return owner of the bundle
   ///@dev call assume bundle has at least one offer.
-  function _extractOwnerOf(uint bundleId, BundledOffer[] memory bundle, IERC20 outbound_tkn)
-    internal
-    view
-    returns (address owner)
-  {
+  function _extractOwnerOf(BundledOffer[] memory bundle, IERC20 outbound_tkn) internal view returns (address owner) {
+    if (bundle.length == 0) return address(0);
     bytes32 olKeyHash = OLKey({
       outbound_tkn: address(outbound_tkn),
       inbound_tkn: address(bundle[0].inbound_tkn),
@@ -215,28 +204,6 @@ contract MangroveAmplifier is RenegingForwarder {
     uint offerId = bundle[0].offerId;
     // We check the owner of the bundle ID by checking the owner of the first offer of the bundle
     owner = ownerOf(olKeyHash, offerId);
-
-    // 2 bundles can share the same offer id for a given outbound token.
-    // if outbound token is manipulated, the function could resolve with a different bundle owner.
-
-    // Example:
-
-    // * Alice: bundle [1] WBTC/DAI [id 1] and WBTC/USDT [id 1]
-    // * Bob: bundle [2] WETH/DAI [id 1]
-    // * Carl: bundle [3] WETH/USDT [id 1]
-    // *
-    // * Bob: updateBundle(bundleId:1, outbound:WETH)
-    // * check: ownerOf(id:1, inbound: DAI, outbound: WETH) == bob --> True
-    // * update(id:1, outbound: WETH, inbound: DAI) <- the offer of bob.
-    // * update(id:1, outbound: WETH, inbound: USDT) <- the offer of Carl!
-
-    // To solve this issue, we do a reverse check where we check the resulting bundle id from olKeyHash and offerId.
-    // An **invariant** is that a bundle id can only be associated to one offer id on a given Offer List.
-    // To follow the same example as above:
-    // * if we pass bundle id of 1 and outbound token of WETH, the function will return user 2 as owner.
-    // * the mapping __bundleIdOfOfferId[olKeyHash][offerId] will either return 0 or a a bundle id different than 2.
-    // * this will result in a revert as the bundle id of 1 is not associated to offer id 1 on the WBTC/DAI offer list.
-    require(__bundleIdOfOfferId[olKeyHash][offerId] == bundleId, "MgvAmplifier/invalidBundleId");
   }
 
   ///@notice owner of the bundle (is owner of all its offers)
@@ -244,7 +211,7 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@param outbound_tkn the outbound token of the offer bundle
   ///@return address of the owner of the bundle
   function ownerOf(uint bundleId, IERC20 outbound_tkn) external view returns (address) {
-    return _extractOwnerOf(bundleId, outbound_tkn);
+    return _extractOwnerOf(__bundles[bundleId][outbound_tkn], outbound_tkn);
   }
 
   ///@notice updates a bundle of offers, possibly during the execution of the logic of one of them.
@@ -326,8 +293,8 @@ contract MangroveAmplifier is RenegingForwarder {
     bool updateExpiry,
     uint expiryDate // use only if `updateExpiry` is true
   ) external {
-    BundledOffer[] memory bundle = __bundles[bundleId];
-    require(_extractOwnerOf(bundleId, bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
+    BundledOffer[] memory bundle = __bundles[bundleId][outbound_tkn];
+    require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
     if (outboundVolume > 0) {
       _updateBundle(bundle, outbound_tkn, bytes32(0), outboundVolume);
     }
@@ -373,8 +340,8 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@return freeWei the amount of native tokens that has been sent to to msg.sender
   ///@dev offers can be retracted individually using `super.retractOffer`
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external returns (uint freeWei) {
-    BundledOffer[] memory bundle = __bundles[bundleId];
-    require(_extractOwnerOf(bundleId, bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
+    BundledOffer[] memory bundle = __bundles[bundleId][outbound_tkn];
+    require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
     freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true);
     (bool noRevert,) = msg.sender.call{value: freeWei}("");
     require(noRevert, "MgvAmplifier/weiTransferFail");
@@ -392,7 +359,7 @@ contract MangroveAmplifier is RenegingForwarder {
     // this update might fail if the offer list is locked (see `_updateBundle`)
     bytes32 olKeyHash = order.olKey.hash();
     uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
-    BundledOffer[] memory bundle = __bundles[bundleId];
+    BundledOffer[] memory bundle = __bundles[bundleId][IERC20(order.olKey.outbound_tkn)];
     // if funds are missing, the trade will fail and one should retract the bundle
     // we also retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
     // otherwise we update the bundle to the new volume

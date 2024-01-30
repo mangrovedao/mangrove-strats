@@ -1,6 +1,6 @@
 # Next version
 
-- Fixing `ownerOf` on `MangroveAmplifier` to revert on incorrect params
+- Added `outbound_tkn` to `__bundles` mapping path to ensure unmanipulated outbound token.
 - Added `freeWei` deprovision on failed `_retractOffer` on forwarder
 - Fixed `freeWei` resetting on each offer retracting while retracting bundle
 - Resetting `cond.volume` on `_updateOffer` instead of `__lastlook__`
