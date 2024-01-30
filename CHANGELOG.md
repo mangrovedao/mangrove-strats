@@ -1,5 +1,7 @@
 # Next version
 
+- Add beefy base routing logics, simple routing logic and simple routing logic factory
+
 # 2.0.0-b1.3
 
 - Add export for `MangroveAmplifier`
