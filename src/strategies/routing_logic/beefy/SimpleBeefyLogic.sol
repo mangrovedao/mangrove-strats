@@ -24,7 +24,7 @@ contract SimpleBeefyLogic is AbstractRoutingLogic {
   BeefyCommonLogic public immutable commonLogic;
 
   /**
-   * Contract's constructor
+   * @notice Contract's constructor
    * @param _vault The vault to pull from
    * @param _commonLogic The common logic implementation
    */
@@ -32,12 +32,12 @@ contract SimpleBeefyLogic is AbstractRoutingLogic {
     vault = _vault;
     commonLogic = _commonLogic;
   }
+
   /**
    * @notice Propagates a revert with reason from a failed delegate call.
    * @param retdata The return data from the delegate call that caused the revert.
    * @dev This function uses inline assembly to revert with the exact error message from the delegate call.
    */
-
   function revertWithData(bytes memory retdata) internal pure {
     if (retdata.length == 0) {
       revert("SimpleBeefyLogic/revertNoReason");
@@ -50,6 +50,7 @@ contract SimpleBeefyLogic is AbstractRoutingLogic {
   /**
    * @notice delegate to the common logic
    * @param callData The call data to delegate to the common logic
+   * @return retdata The return data from the delegate call
    */
   function delegateToCommonLogic(bytes memory callData) internal returns (bytes memory) {
     (bool success, bytes memory retdata) = address(commonLogic).delegatecall(callData);

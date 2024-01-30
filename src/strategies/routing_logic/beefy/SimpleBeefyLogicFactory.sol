@@ -21,7 +21,7 @@ contract SimpleBeefyLogicFactory is AccessControlled(msg.sender) {
   mapping(IERC20 token => SimpleBeefyLogic[]) public logicsForToken;
 
   /**
-   * Contract's constructor
+   * @notice Contract's constructor
    */
   constructor() {
     commonLogic = new BeefyCommonLogic();
