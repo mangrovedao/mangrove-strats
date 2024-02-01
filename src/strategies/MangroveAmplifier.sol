@@ -357,8 +357,13 @@ contract MangroveAmplifier is RenegingForwarder {
     // we also retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
     // otherwise we update the bundle to the new volume
     (uint newOutVolume,) = __residualValues__(order);
-    if (missing == 0 && newOutVolume > 0) {
-      _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, newOutVolume);
+    if (missing == 0) {
+      if (newOutVolume > 0) {
+        _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, newOutVolume);
+      } else {
+        // not deprovisionning to save gas
+        _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, false);
+      }
     }
     return missing;
   }
