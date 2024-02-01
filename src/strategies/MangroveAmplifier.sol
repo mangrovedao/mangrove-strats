@@ -359,10 +359,23 @@ contract MangroveAmplifier is RenegingForwarder {
     (uint newOutVolume,) = __residualValues__(order);
     if (missing == 0 && newOutVolume > 0) {
       _updateBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, newOutVolume);
-    } else {
-      // not deprovisionning to save execution gas
-      _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, false);
     }
     return missing;
+  }
+
+  /// @inheritdoc MangroveOffer
+  /// @dev Because the offer execution failed, we will retract the rest of the bundle.
+  function __posthookFallback__(MgvLib.SingleOrder calldata order, MgvLib.OrderResult calldata result)
+    internal
+    virtual
+    override
+    returns (bytes32 data)
+  {
+    bytes32 olKeyHash = order.olKey.hash();
+    uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
+    BundledOffer[] memory bundle = __bundles[bundleId][IERC20(order.olKey.outbound_tkn)];
+    // not deprovisionning to save gas
+    _retractBundle(bundle, IERC20(order.olKey.outbound_tkn), olKeyHash, false);
+    return super.__posthookFallback__(order, result);
   }
 }
