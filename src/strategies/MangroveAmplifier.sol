@@ -251,13 +251,6 @@ contract MangroveAmplifier is RenegingForwarder {
             if (reason != REPOST_SUCCESS) {
               // we do not deprovision, owner funds can be retrieved on a pull basis later on
               _retractOffer(olKey_i, bundle[i].offerId, false, false);
-            } else {
-              // set max volume back to 0 as we successfully updated outbout volume on mangrove
-              // we do not reset expiry date if offer is retracted as we won't reuse the same offerId within mangrove amplifier once reracted
-              Condition memory cond = reneging(olKeyHash_i, bundle[i].offerId);
-              if (cond.volume != 0) {
-                _setReneging(olKeyHash_i, bundle[i].offerId, cond.date, 0);
-              }
             }
           }
         } catch {
