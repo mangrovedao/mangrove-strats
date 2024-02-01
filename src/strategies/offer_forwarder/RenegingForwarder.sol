@@ -144,7 +144,7 @@ contract RenegingForwarder is Forwarder {
   function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 reason) {
     Condition memory cond = reneging(args.olKey.hash(), offerId);
     if (cond.volume > 0) {
-      // resetting volume to 0 when updating offer
+      // resetting reneging volume to 0 when updating offer
       // When reposting on partial fill, residual values are computed based on the reneging volume.
       // So new we can safely set back the max volume to 0.
       _setReneging(args.olKey.hash(), offerId, cond.date, 0);

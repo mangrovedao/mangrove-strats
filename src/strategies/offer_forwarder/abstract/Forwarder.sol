@@ -150,7 +150,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// To do so, we do not let offer maker fix a gasprice. Rather we derive the gasprice based on `msg.value`.
   /// Because of rounding errors in `deriveGasprice` a small amount of WEIs will accumulate in mangrove's balance of `this` contract
   /// We assign this leftover to the corresponding `weiBalance` of `OwnerData`.
-  function _newOffer(OfferArgs memory args, address owner) internal returns (uint offerId, bytes32 status) {
+  function _newOffer(OfferArgs memory args, address owner) internal virtual returns (uint offerId, bytes32 status) {
     // convention for default gasreq value
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
 
