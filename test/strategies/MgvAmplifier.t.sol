@@ -51,7 +51,7 @@ contract MgvAmplifierTest is StratTest {
   address taker = freshAddress("taker"); // takes offers
 
   function setUp() public virtual override {
-    // forking polygon in order to use AAVE
+    // forking polygon in order to use AAVE to test some logic
     PinnedPolygonFork fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
