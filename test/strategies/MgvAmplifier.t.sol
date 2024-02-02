@@ -157,7 +157,7 @@ contract MgvAmplifierTest is StratTest {
     }
   }
 
-  event InitBundle(uint indexed bundleId);
+  event InitBundle(uint indexed bundleId, IERC20 indexed outbound_tkn);
   event EndBundle();
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
   // SmartRouter
@@ -168,7 +168,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
 
     expectFrom(address(mgvAmplifier));
-    emit InitBundle(0);
+    emit InitBundle(0, fx.outbound_tkn);
     expectFrom(address(mgvAmplifier));
     emit NewOwnedOffer(dai_weth.hash(), 1, owner);
     expectFrom(address(mgvAmplifier));
