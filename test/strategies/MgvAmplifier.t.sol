@@ -678,7 +678,7 @@ contract MgvAmplifierTest is StratTest {
     forceLockMarket(mgv, olKey);
     assertTrue(mgv.locked(olKey), "market should be locked");
     forceUnlockMarket(mgv, olKey);
-    assertTrue(!mgv.locked(olKey), "market should be unlocked");
+    assertTrue(!mgv.locked(olKey), "market should not be locked");
   }
 
   function test_max_volume_triggered_and_untriggered() public {
