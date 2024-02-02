@@ -14,8 +14,9 @@ import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/rout
 import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
-///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows offer owner to post offers on multiple markets with the same collateral.
-/// The strat is implemented such that it cannot give more than the total amplified volume even if it is approved to spend more and has access to more funds.
+///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows liquidity providers to post offers on multiple markets with the same collateral.
+/// The strat is implemented such that the whole bundle of offers should not give more than the total amplified volume even if it is approved to spend more and has access to more funds. 
+/// This only holds if offer owner does not update an offer of the bundle individually and if no two offers of the same bundle are on the same offer list.
 /// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
 /// - or be reneging on trade (this happens only in a particular scenario in order to avoid over spending).
@@ -32,7 +33,7 @@ contract MangroveAmplifier is RenegingForwarder {
     uint offerId; // the id of the offer
   }
 
-  ///@notice maps a `bundleId` to a set of bundled offers
+  ///@notice maps a bundle Id and its outbound token to a set of bundled offers
   mapping(uint bundleId => mapping(IERC20 outbound_tkn => BundledOffer[])) private __bundles;
 
   ///@notice maps an offer list key hash and an offerId to the bundle in which this offer is.
@@ -40,7 +41,8 @@ contract MangroveAmplifier is RenegingForwarder {
 
   ///@notice logs beginning of bundle creation
   ///@param bundleId bundle identifier
-  event InitBundle(uint indexed bundleId);
+  ///@param outbound_tkn the outbound token of the bundle
+  event InitBundle(uint indexed bundleId, IERC20 indexed outbound_tkn);
 
   ///@notice logs end of bundle creation
   ///@dev to know which offer are part of the bundle one needs to track `NewOwnedOffer(olKeyHash, offerId, owner)` emitted in between `InitBundle` and `EndBundle`
@@ -67,7 +69,7 @@ contract MangroveAmplifier is RenegingForwarder {
     uint gasreq; // the gas required by this offer (gas may differ between offer because of different routing strategies)
     uint provision; // the portion of `msg.value` that should be allocated to the provision of this offer
     uint tickSpacing; // the tick spacing parameter that charaterizes the offer list to which this offer should be posted.
-    AbstractRoutingLogic inboundLogic; //the logics to manage liquidity targetting for this offer of the bundle. Use `AbstractRouter(address(0))` for simple routing.
+    AbstractRoutingLogic inboundLogic; //the logics to manage liquidity targetting for this offer of the bundle. Use `AbstractRouter(address(0))` for simple routing (to and from offer owner's address).
     IERC20 inbound_tkn; // the inbound token this offer expects
   }
 
@@ -117,7 +119,7 @@ contract MangroveAmplifier is RenegingForwarder {
   {
     HeapVarsNewBundle memory vars;
     freshBundleId = __bundleId++;
-    emit InitBundle(freshBundleId);
+    emit InitBundle(freshBundleId, fx.outbound_tkn);
 
     vars.availableProvision = msg.value;
     // fetching owner's router
@@ -126,7 +128,7 @@ contract MangroveAmplifier is RenegingForwarder {
     for (uint i; i < vr.length; i++) {
       require(vr[i].provision <= vars.availableProvision, "MgvAmplifier/NotEnoughProvisions");
       // making sure no native token remains in the strat
-      // note if `vars.provision_i` is insufficient to cover `gasreq=vr[i].gasreq` the call below will revert
+      // note if `vars.provision_i` is insufficient to cover `gasreq=vr[i].gasreq` the call to `_newOffer` below will revert
       vars.provision_i = i == vr.length - 1 ? vars.availableProvision : vr[i].provision;
       vars.olKey_i = OLKey({
         outbound_tkn: address(fx.outbound_tkn),
@@ -167,7 +169,7 @@ contract MangroveAmplifier is RenegingForwarder {
       // Updating remaining available native tokens for provisions
       vars.availableProvision -= vars.provision_i;
 
-      // pushing to storage the new bundle
+      // pushing the new bundle to storage
       vars.bundledOffer_i.tickSpacing = vr[i].tickSpacing;
       vars.bundledOffer_i.inbound_tkn = vr[i].inbound_tkn;
       __bundleIdOfOfferId[vars.olKeyHash_i][vars.bundledOffer_i.offerId] = freshBundleId;
@@ -192,8 +194,8 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@notice retrieves bundle owner from offer owner
   ///@param bundle of offers whose owner is queried
   ///@param outbound_tkn of the bundle
-  ///@return owner of the bundle
-  ///@dev call assume bundle has at least one offer.
+  ///@return owner of the bundle or address(0)
+  ///@dev call returns address(0) if bundle has no offer instead of reverting.
   function _extractOwnerOf(BundledOffer[] memory bundle, IERC20 outbound_tkn) internal view returns (address owner) {
     if (bundle.length == 0) return address(0);
     bytes32 olKeyHash = OLKey({
@@ -231,6 +233,7 @@ contract MangroveAmplifier is RenegingForwarder {
       });
       bytes32 olKeyHash_i = olKey_i.hash();
       if (skipOlKeyHash != olKeyHash_i) {
+        // view of the offer list below might revert if offer list is locked
         try MGV.offers(olKey_i, bundle[i].offerId) returns (Offer offer_i) {
           // if offer_i was previously retracted, it should no longer be considered part of the bundle.
           if (offer_i.gives() != 0) {
@@ -278,7 +281,7 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@param outboundVolume the new volume that each offer of the bundle should now offer. Use 0 to skip volume update.
   ///@param updateExpiry whether the update also changes expiry date of the bundle
   ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
-  ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`
+  ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`. 
   function updateBundle(
     uint bundleId,
     IERC20 outbound_tkn,
@@ -335,7 +338,7 @@ contract MangroveAmplifier is RenegingForwarder {
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external returns (uint freeWei) {
     BundledOffer[] memory bundle = __bundles[bundleId][outbound_tkn];
     require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
-    freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true);
+    freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true /*deprovision*/);
     (bool noRevert,) = msg.sender.call{value: freeWei}("");
     require(noRevert, "MgvAmplifier/weiTransferFail");
   }
@@ -353,8 +356,8 @@ contract MangroveAmplifier is RenegingForwarder {
     bytes32 olKeyHash = order.olKey.hash();
     uint bundleId = __bundleIdOfOfferId[olKeyHash][order.offerId];
     BundledOffer[] memory bundle = __bundles[bundleId][IERC20(order.olKey.outbound_tkn)];
-    // if funds are missing, the trade will fail and one should retract the bundle
-    // we also retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
+    // if funds are missing, the trade will fail and Mangrove will revert the whole trade.
+    // we retract the bundle if there is no more outbound volume to offer (this avoids reverting of updateOffer for a too low density)
     // otherwise we update the bundle to the new volume
     (uint newOutVolume,) = __residualValues__(order);
     if (missing == 0) {
