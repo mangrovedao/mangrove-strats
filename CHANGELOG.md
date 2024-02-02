@@ -4,8 +4,8 @@
 - Added `freeWei` deprovision on failed `_retractOffer` on forwarder
 - Fixed `freeWei` resetting on each offer retracting while retracting bundle
 - Resetting `cond.volume` on `_updateOffer` instead of `__lastlook__`
-- Using `__residualValues__` to update other offers in the bundle to keep consistent new outbound volume
-- logging outbound token at the creation of a bundle
+- Using `__residualValues__` to update other offers in the bundle in order to keep a consistent outbound volume
+- logging outbound token at the creation of a new bundle
 - Changing reneging volume condition to a weak inequality
 
 # 2.0.0-b1.3
