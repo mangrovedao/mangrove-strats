@@ -3,7 +3,11 @@ pragma solidity ^0.8.10;
 
 import "@mgv-strats/test/lib/StratTest.sol";
 import "@mgv/test/lib/forks/Polygon.sol";
-import {ICreditDelegationToken, AaveV3Borrower} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
+import {
+  ICreditDelegationToken,
+  AaveV3Borrower,
+  IPoolAddressesProvider
+} from "@mgv-strats/src/strategies/integrations/AaveV3Borrower.sol";
 import {AaveCaller, console} from "@mgv-strats/test/lib/agents/AaveCaller.sol";
 
 contract AaveMakerTest is StratTest {
@@ -28,9 +32,10 @@ contract AaveMakerTest is StratTest {
     dai = IERC20(fork.get("DAI.e"));
     weth = IERC20(fork.get("WETH.e"));
     usdc = IERC20(fork.get("USDC.e"));
-    v_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 2);
-    s_attacker = new AaveCaller(fork.get("AaveAddressProvider"), 1);
-    lender = new AaveCaller(fork.get("AaveAddressProvider"), 2);
+    IPoolAddressesProvider addressesProvider = IPoolAddressesProvider(fork.get("AaveAddressProvider"));
+    v_attacker = new AaveCaller(addressesProvider, 2);
+    s_attacker = new AaveCaller(addressesProvider, 1);
+    lender = new AaveCaller(addressesProvider, 2);
   }
 
   struct HeapVars {

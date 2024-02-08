@@ -7,21 +7,23 @@ import {
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/KandelSeeder.sol";
 import {
   AaveKandelSeeder,
-  AaveKandel
+  AaveKandel,
+  IPoolAddressesProvider
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
 import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
+import {Test2} from "@mgv/lib/Test2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 
 /**
  * @notice deploys a Kandel seeder
  */
-
-contract KandelSeederDeployer is Deployer {
+contract KandelSeederDeployer is Deployer, Test2 {
   function run() public {
     bool deployAaveKandel = true;
     bool deployKandel = true;
@@ -33,7 +35,7 @@ contract KandelSeederDeployer is Deployer {
     } catch {}
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
-      addressesProvider: envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider"),
+      addressesProvider: IPoolAddressesProvider(envAddressOrName("AAVE_ADDRESS_PROVIDER", "AaveAddressProvider")),
       aaveKandelGasreq: 628_000,
       kandelGasreq: 128_000,
       deployAaveKandel: deployAaveKandel,
@@ -46,7 +48,7 @@ contract KandelSeederDeployer is Deployer {
 
   function innerRun(
     IMangrove mgv,
-    address addressesProvider,
+    IPoolAddressesProvider addressesProvider,
     uint aaveKandelGasreq,
     uint kandelGasreq,
     bool deployAaveKandel,
@@ -66,7 +68,7 @@ contract KandelSeederDeployer is Deployer {
 
       console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
       broadcast();
-      Kandel kandel = new Kandel(mgv, olKeyBaseQuote, 1, address(0));
+      Kandel kandel = new Kandel(mgv, olKeyBaseQuote, 1);
       // Write the kandel's address so it can be used as a library to call createGeometricDistribution
       fork.set("KandelLib", address(kandel));
       smokeTest(mgv, olKeyBaseQuote, seeder, AbstractRouter(address(0)));
@@ -87,8 +89,15 @@ contract KandelSeederDeployer is Deployer {
 
       console.log("Deploying AaveKandel instance for code verification...");
       prettyLog("Deploying AaveKandel instance...");
+      AbstractRouter router = AbstractRouter(address(aaveSeeder.AAVE_ROUTER()));
+      console.log("Seeder's router:", address(router));
       broadcast();
-      new AaveKandel(mgv, olKeyBaseQuote, address(0));
+      new AaveKandel(
+        mgv,
+        olKeyBaseQuote,
+        aaveKandelGasreq,
+        Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: true})
+      );
       smokeTest(mgv, olKeyBaseQuote, aaveSeeder, aaveSeeder.AAVE_ROUTER());
     }
 
@@ -111,14 +120,25 @@ contract KandelSeederDeployer is Deployer {
 
     require(kandel.router() == expectedRouter, "Incorrect router address");
     require(kandel.admin() == address(this), "Incorrect admin");
-    if (expectedRouter == kandel.NO_ROUTER()) {
-      require(kandel.RESERVE_ID() == address(kandel), "Incorrect id");
+    if (address(expectedRouter) == address(0)) {
+      require(kandel.FUND_OWNER() == address(kandel), "Incorrect id");
     } else {
-      require(kandel.RESERVE_ID() == kandel.admin(), "Incorrect id");
+      require(kandel.FUND_OWNER() == kandel.admin(), "Incorrect id");
+      // starting smoke test with 10 inbound on Kandel
+      deal({to: address(kandel), token: olKeyBaseQuote.inbound_tkn, give: 10});
+
+      vm.startPrank(address(kandel));
+      // push should take 5 inbound (out of 10) from kandel and send it to router
+      uint pushed = kandel.router().push(
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), fundOwner: kandel.FUND_OWNER()}), 5
+      );
+      require(pushed == 5, "smoke test: push failed");
+      // pull should take 1 outbound from router and send it to kandel
+      uint pulled = kandel.router().pull(
+        RL.createOrder({token: IERC20(olKeyBaseQuote.inbound_tkn), fundOwner: kandel.FUND_OWNER()}), 1, true
+      );
+      require(pulled == 1, "smoke test: pull failed");
+      vm.stopPrank();
     }
-    IERC20[] memory tokens = new IERC20[](2);
-    tokens[0] = IERC20(olKeyBaseQuote.outbound_tkn);
-    tokens[1] = IERC20(olKeyBaseQuote.inbound_tkn);
-    kandel.checkList(tokens);
   }
 }

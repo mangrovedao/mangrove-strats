@@ -110,10 +110,10 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
-  ///@param reserveId identifier of this contract's reserve when using a router.
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, address reserveId)
+  ///@param routerParams parameters when using a router.
+  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, RouterParams memory routerParams)
     TradesBaseQuotePair(olKeyBaseQuote)
-    DirectWithBidsAndAsksDistribution(mgv, reserveId)
+    DirectWithBidsAndAsksDistribution(mgv, routerParams)
   {}
 
   ///@notice publishes bids/asks for the distribution in the `indices`. Care must be taken to publish offers in meaningful chunks. For Kandel an offer and its dual should be published in the same chunk (one being optionally initially dead).

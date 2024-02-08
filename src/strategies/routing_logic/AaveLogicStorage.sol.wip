@@ -1,0 +1,34 @@
+// SPDX-License-Identifier:	BSD-2-Clause
+pragma solidity ^0.8.18;
+
+import {IERC20} from "@mgv/lib/IERC20.sol";
+
+///@title Mangrove Smart Router storage (randomized access)
+library AaveLogicStorage {
+  /// @notice pointer to first storage slot used for randomized access
+  bytes32 private constant OFFSET = keccak256("MangroveStrats.AaveLogicStorage.Layout");
+
+  struct Layout {
+    mapping(IERC20 token => uint8 percentage) credit_line_decrease;
+  }
+
+  ///@notice access to storage layout at OFFSET
+  ///@return st storage pointer
+  function getStorage() internal pure returns (Layout storage st) {
+    bytes32 offset = OFFSET;
+    assembly ("memory-safe") {
+      st.slot := offset
+    }
+  }
+
+  ///@notice propagates revert occurring during a delegatecall
+  ///@param retdata the return data of the delegatecall
+  function revertWithData(bytes memory retdata) internal pure {
+    if (retdata.length == 0) {
+      revert("AaveLogic/revertNoReason");
+    }
+    assembly {
+      revert(add(retdata, 32), mload(retdata))
+    }
+  }
+}
