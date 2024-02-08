@@ -2,6 +2,7 @@
 
 - feat!: Remove mangrove.js deployer
 - Upgrade to @mangrovedao/mangrove-deployments v2.0.0
+- Upgrade to @mangrovedao/context-addresses v1.1.0
 
 # 1.0.2
 
