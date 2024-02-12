@@ -15,7 +15,7 @@ import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.so
 import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows liquidity providers to post offers on multiple markets with the same collateral.
-/// The strat is implemented such that the whole bundle of offers should not give more than the total amplified volume even if it is approved to spend more and has access to more funds. 
+/// The strat is implemented such that the whole bundle of offers should not give more than the total amplified volume even if it is approved to spend more and has access to more funds.
 /// This only holds if offer owner does not update an offer of the bundle individually and if no two offers of the same bundle are on the same offer list.
 /// e.g an amplified offer gives A for some amount of B, C or D. If taken on the (A,C) market, the (A,B) and (A,D) offers should now either:
 /// - offer the same amount of A than the residual (A,B) offer -including 0 if the offer was completely filled
@@ -281,7 +281,7 @@ contract MangroveAmplifier is RenegingForwarder {
   ///@param outboundVolume the new volume that each offer of the bundle should now offer. Use 0 to skip volume update.
   ///@param updateExpiry whether the update also changes expiry date of the bundle
   ///@param expiryDate the new date (if `updateExpiry` is true) for the expiry of the offers of the bundle. 0 for no expiry
-  ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`. 
+  ///@dev each offer of the bundle can still be updated individually through `super.updateOffer`.
   function updateBundle(
     uint bundleId,
     IERC20 outbound_tkn,
@@ -338,7 +338,7 @@ contract MangroveAmplifier is RenegingForwarder {
   function retractBundle(uint bundleId, IERC20 outbound_tkn) external returns (uint freeWei) {
     BundledOffer[] memory bundle = __bundles[bundleId][outbound_tkn];
     require(_extractOwnerOf(bundle, outbound_tkn) == msg.sender, "MgvAmplifier/unauthorized");
-    freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true /*deprovision*/);
+    freeWei = _retractBundle(bundle, outbound_tkn, bytes32(0), true /*deprovision*/ );
     (bool noRevert,) = msg.sender.call{value: freeWei}("");
     require(noRevert, "MgvAmplifier/weiTransferFail");
   }

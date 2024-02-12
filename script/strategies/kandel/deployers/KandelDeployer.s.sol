@@ -13,7 +13,6 @@ import {KandelSower} from "../KandelSower.s.sol";
  * @dev since the max number of price slot Kandel can use is an immutable, one should deploy Kandel on a large price range.
  * @dev Example: WRITE_DEPLOY=true BASE=WETH QUOTE=USDC forge script --fork-url $LOCALHOST_URL KandelDeployer --broadcast --private-key $MUMBAI_PRIVATE_KEY
  */
-
 contract KandelDeployer is Deployer {
   Kandel public current;
 

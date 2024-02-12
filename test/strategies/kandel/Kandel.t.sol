@@ -23,11 +23,7 @@ contract NoRouterKandelTest is CoreKandelTest {
     vm.expectEmit(true, true, true, true);
     emit SetGasreq(GASREQ);
     vm.startPrank(deployer);
-    kdl_ = new Kandel({
-      mgv: mgv,
-      olKeyBaseQuote: olKey,
-      gasreq: GASREQ
-    });
+    kdl_ = new Kandel({mgv: mgv, olKeyBaseQuote: olKey, gasreq: GASREQ});
     // activates Kandel for base and quote
     kdl_.approve(base, $(mgv), type(uint).max);
     kdl_.approve(quote, $(mgv), type(uint).max);

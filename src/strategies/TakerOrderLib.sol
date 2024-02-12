@@ -19,6 +19,7 @@ enum TakerOrderType {
   PO, // = 2
   IOC, // = 3
   FOK // = 4
+
 }
 
 using TakerOrderTypeLib for TakerOrderType global;

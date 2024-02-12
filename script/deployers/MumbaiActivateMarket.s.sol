@@ -32,7 +32,6 @@ import {MgvReader, Market} from "@mgv/src/periphery/MgvReader.sol";
  *  TOKEN1_IN_USD=$(cast ff 8 0.9) \
  *  forge script --fork-url mumbai MumbaiActivateMarket
  */
-
 contract MumbaiActivateMarket is Deployer {
   uint maticPrice;
 
@@ -74,10 +73,7 @@ contract MumbaiActivateMarket is Deployer {
     tokens[0] = IERC20(market.tkn0);
     tokens[1] = IERC20(market.tkn1);
 
-    new ActivateMangroveOrder().innerRun({
-      mgvOrder: mangroveOrder,
-      tokens: tokens
-    });
+    new ActivateMangroveOrder().innerRun({mgvOrder: mangroveOrder, tokens: tokens});
   }
 
   function smokeTest(Market memory market) internal view {
