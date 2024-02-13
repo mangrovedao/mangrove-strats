@@ -12,7 +12,7 @@ import {TransferLib, AbstractRouter, RL} from "@mgv-strats/src/strategies/Mangro
 import {SmartRouter, AbstractRoutingLogic} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 
 import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
-import {TickLib, Tick} from "@mgv/lib/core/TickLib.sol";
+import {Tick} from "@mgv/lib/core/TickLib.sol";
 
 ///@title MangroveAmplifier. A strat that implements "liquidity amplification". It allows liquidity providers to post offers on multiple markets with the same collateral.
 /// The strat is implemented such that the whole bundle of offers should not give more than the total amplified volume even if it is approved to spend more and has access to more funds.

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
-import {IERC20} from "@mgv/lib/IERC20.sol";
 import {RoutingOrderLib as RL} from "./RoutingOrderLib.sol";
 
 /// @title AbstractRouter

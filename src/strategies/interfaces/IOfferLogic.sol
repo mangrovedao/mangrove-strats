@@ -51,8 +51,6 @@ interface IOfferLogic is IMaker {
   ///@param gasprice the gasprice used to compute offer's provision (use 0 to use Mangrove's gasprice)
   ///@param fund WEIs in `this` contract's balance that are used to provision the offer.
   ///@param noRevert is set to true if calling function does not wish `_newOffer` to revert on error.
-  ///@param owner the offer maker managing the offer.
-  ///@dev `owner` is required in `Forwarder` logics, when `_newOffer` or `_updateOffer` in called in a hook (`msg.sender==MGV`).
   struct OfferArgs {
     OLKey olKey;
     Tick tick;

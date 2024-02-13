@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import {IERC20} from "@mgv/lib/IERC20.sol";
 import {RouterProxy, AbstractRouter} from "./RouterProxy.sol";
 
 /// @title Mangrove Router Proxy Factory
@@ -10,7 +9,7 @@ import {RouterProxy, AbstractRouter} from "./RouterProxy.sol";
 contract RouterProxyFactory {
   /// @notice Emitted when a new proxy is deployed through this factory.
   /// @param proxy the deployed proxy contract
-  /// @param owner The address which will be the admin and immutable owner of the newly deployed proxy.
+  /// @param owner The address which will be the admin and owner of the newly deployed proxy.
   /// @param implementation The address of the router implementation used by the proxy.
   event ProxyDeployed(RouterProxy proxy, address indexed owner, AbstractRouter indexed implementation);
 

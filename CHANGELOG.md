@@ -7,6 +7,10 @@
 - Using `__residualValues__` to update other offers in the bundle in order to keep a consistent outbound volume
 - logging outbound token at the creation of a new bundle
 - Changing reneging volume condition to a weak inequality
+- feat!: Remove mangrove.js deployer
+- Upgrade to @mangrovedao/mangrove-deployments v2.0.2-0
+- Upgrade to @mangrovedao/context-addresses v1.1.0
+- Simplify copying of context addresses
 
 # 2.0.0-b1.3
 
