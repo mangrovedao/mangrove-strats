@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import {IERC20} from "@mgv/lib/IERC20.sol";
 import {RouterProxy, AbstractRouter} from "./RouterProxy.sol";
 
 /// @title Mangrove Router Proxy Factory
