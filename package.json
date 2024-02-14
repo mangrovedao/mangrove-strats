@@ -33,7 +33,9 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "^2.0.3"
+    "@mangrovedao/mangrove-core": "^2.0.3",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.4"
   },
   "devDependencies": {
     "@mangrovedao/context-addresses": "^1.1.0",
