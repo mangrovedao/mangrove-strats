@@ -30,9 +30,6 @@ library TickNegator {
 contract UniV3_Test is StratTest {
   using TickNegator for Tick;
 
-  TestToken public base;
-  TestToken public quote;
-
   MgvOrder public mgo;
 
   TestTaker public sell_taker;

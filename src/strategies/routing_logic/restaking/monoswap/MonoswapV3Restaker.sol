@@ -4,7 +4,8 @@ pragma solidity ^0.8.20;
 import {AbstractRoutingLogic, IERC20} from "../../abstract/AbstractRoutingLogic.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {SimpleLogicWithHooks} from "../../SimpleLogicWithHooks.sol";
-import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {INonfungiblePositionManager} from
+  "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/interfaces/INonfungiblePositionManager.sol";
 import {MonoswapMgvManager} from "./MonoswapMgvManager.sol";
 
 contract MonoswapV3Restaker is SimpleLogicWithHooks {
