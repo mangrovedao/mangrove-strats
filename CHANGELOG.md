@@ -11,6 +11,7 @@
 - Upgrade to @mangrovedao/mangrove-deployments v2.0.2-0
 - Upgrade to @mangrovedao/context-addresses v1.1.0
 - Simplify copying of context addresses
+- Fixed versionning
 
 # 2.0.0-b1.3
 
