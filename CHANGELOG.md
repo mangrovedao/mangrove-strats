@@ -1,5 +1,7 @@
 # Next version
 
+- Added blast support
+
 # 2.0.1-0
 
 - Added `outbound_tkn` to `__bundles` mapping key so as to ensure unmanipulated outbound token.
