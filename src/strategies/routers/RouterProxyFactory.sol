@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
+import {BlastGasAndYieldClaimable} from "@mgv-strats/src/strategies/utils/BlastGasAndYieldClaimable.sol";
 import {RouterProxy, AbstractRouter} from "./RouterProxy.sol";
 
 /// @title Mangrove Router Proxy Factory
 /// @notice Factory contract for the deployment of RouterProxy instances using CREATE2 for deterministic addresses.
 /// @dev Utilizes Ethereum's CREATE2 opcode for deploying contracts with predictable addresses.
-contract RouterProxyFactory {
+contract RouterProxyFactory is BlastGasAndYieldClaimable(msg.sender) {
   /// @notice Emitted when a new proxy is deployed through this factory.
   /// @param proxy the deployed proxy contract
   /// @param owner The address which will be the admin and owner of the newly deployed proxy.

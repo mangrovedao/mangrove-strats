@@ -1,13 +1,14 @@
 // SPDX-License-Identifier:	MIT
 pragma solidity ^0.8.18;
 
+import {BlastGasAndYieldClaimable} from "@mgv-strats/src/strategies/utils/BlastGasAndYieldClaimable.sol";
 import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 
 /// @title Minimalistic Mangrove Router Proxy
 /// @notice A proxy contract that delegates calls to an instance of an AbstractRouter contract.
 ///         It does not allow updates of implementation contract.
 /// @dev it assumes the IMPLEMENTATION uses first storage slot to hold the admin address (this is guaranteed as long as `AbstractRouter` is `AccessControlled`)
-contract RouterProxy {
+contract RouterProxy is BlastGasAndYieldClaimable(msg.sender) {
   /// @notice The address of the deployed SmartRouter contract acting as the delegate implementation.
   /// @dev The SmartRouter instance must be AccessControlled to ensure the storage layout is matched.
   AbstractRouter public immutable IMPLEMENTATION;
