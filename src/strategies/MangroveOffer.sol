@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {AccessControlledBlastContract} from "@mgv-strats/src/strategies/utils/AccessControlledBlastContract.sol";
 import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {MgvLib, IERC20, OLKey, OfferDetail} from "@mgv/src/core/MgvLib.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
@@ -16,7 +16,7 @@ import {Tick} from "@mgv/lib/core/TickLib.sol";
 /// `_f() internal`: descendant of this contract should provide a public wrapper for this function, with necessary guards.
 /// `__f__() virtual internal`: descendant of this contract should override this function to specialize it to the needs of the strat.
 
-abstract contract MangroveOffer is AccessControlled, IOfferLogic {
+abstract contract MangroveOffer is AccessControlledBlastContract, IOfferLogic {
   ///@notice The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
   IMangrove public immutable MGV;
 
@@ -39,7 +39,7 @@ abstract contract MangroveOffer is AccessControlled, IOfferLogic {
    * @param mgv The Mangrove deployment that is allowed to call `this` for trade execution and posthook.
    * @param routerImplementation sets the type of router that the router factory can spawn
    */
-  constructor(IMangrove mgv, AbstractRouter routerImplementation) AccessControlled(msg.sender) {
+  constructor(IMangrove mgv, AbstractRouter routerImplementation) AccessControlledBlastContract(msg.sender) {
     require(address(mgv) != address(0), "MgvOffer/0xMangrove");
     MGV = mgv;
     ROUTER_IMPLEMENTATION = routerImplementation; // this may be 0x

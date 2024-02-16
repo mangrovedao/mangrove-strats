@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
+import {AccessControlledBlastContract} from "@mgv-strats/src/strategies/utils/AccessControlledBlastContract.sol";
 import {RoutingOrderLib as RL} from "./RoutingOrderLib.sol";
 
 /// @title AbstractRouter
 /// @notice Partial implementation and requirements for liquidity routers.
 
-abstract contract AbstractRouter is AccessControlled(msg.sender) {
+abstract contract AbstractRouter is AccessControlledBlastContract(msg.sender) {
   ///@notice This modifier verifies that `msg.sender` an allowed caller of this router.
   modifier onlyBound() {
     require(isBound(msg.sender), "AccessControlled/Invalid");
