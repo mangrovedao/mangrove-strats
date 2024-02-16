@@ -8,7 +8,7 @@ import {AbstractRouter} from "./abstract/AbstractRouter.sol";
 /// @notice A proxy contract that delegates calls to an instance of an AbstractRouter contract.
 ///         It does not allow updates of implementation contract.
 /// @dev it assumes the IMPLEMENTATION uses first storage slot to hold the admin address (this is guaranteed as long as `AbstractRouter` is `AccessControlled`)
-contract RouterProxy is BlastGasAndYieldClaimable(msg.sender) {
+contract RouterProxy is BlastGasAndYieldClaimable {
   /// @notice The address of the deployed SmartRouter contract acting as the delegate implementation.
   /// @dev The SmartRouter instance must be AccessControlled to ensure the storage layout is matched.
   AbstractRouter public immutable IMPLEMENTATION;
@@ -21,7 +21,7 @@ contract RouterProxy is BlastGasAndYieldClaimable(msg.sender) {
   /// @notice Deploys a Proxy for the SmartRouter that handles incoming transactions and delegates them to the implementation.
   /// @param implementation The address of the deployed SmartRouter contract to which calls will be delegated.
   /// @dev Initializes the contract with an AccessControlled base to set up access control.
-  constructor(AbstractRouter implementation) {
+  constructor(address owner, AbstractRouter implementation) BlastGasAndYieldClaimable(owner) {
     IMPLEMENTATION = implementation;
     // store the msg sender at address 0 (_admin storage slot on access controlled)
     assembly {

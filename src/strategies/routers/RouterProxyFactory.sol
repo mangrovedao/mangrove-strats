@@ -47,7 +47,7 @@ contract RouterProxyFactory is BlastGasAndYieldClaimable(msg.sender) {
   /// @dev Emits a ProxyDeployed event upon successful deployment.
   ///      Note that the deployment can be initiated by any caller, on behalf of `owner`.
   function deployProxy(address owner, AbstractRouter routerImplementation) public returns (RouterProxy proxy) {
-    proxy = new RouterProxy{salt: keccak256(abi.encode(owner))}(routerImplementation);
+    proxy = new RouterProxy{salt: keccak256(abi.encode(owner))}(owner, routerImplementation);
     // TODO: The access controlled admin must maybe be immutable (or this is a vector attack)
     // We will always link one user with a router address anyway
     AbstractRouter(address(proxy)).setAdmin(owner);
