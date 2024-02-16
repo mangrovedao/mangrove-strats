@@ -25,7 +25,7 @@ contract RouterProxyFactory is BlastGasAndYieldClaimable(msg.sender) {
     returns (address payable)
   {
     bytes memory creationCode = type(RouterProxy).creationCode;
-    bytes memory args = abi.encode(routerImplementation);
+    bytes memory args = abi.encode(owner, routerImplementation);
     bytes32 initcodeHash = keccak256(abi.encodePacked(creationCode, args));
     bytes32 salt = keccak256(abi.encode(owner));
     return _extractAddress(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initcodeHash)));
