@@ -179,4 +179,16 @@ contract MonoswapV3Manager {
   function routerTakeAmount(address _user, IERC20 _token, uint _amount) external onlyUserRouter(_user) {
     _retractBalance(_user, _token, _amount, msg.sender);
   }
+
+  /// @notice Takes an amount from the balance of a token to a destination
+  /// @param _user the user address
+  /// @param _token the token taken from the balance
+  /// @param _amount the amount taken from the balance
+  /// @param _destination the destination address
+  function routerTakeAmountTo(address _user, IERC20 _token, uint _amount, address _destination)
+    external
+    onlyUserRouter(_user)
+  {
+    _retractBalance(_user, _token, _amount, _destination);
+  }
 }
