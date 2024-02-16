@@ -231,7 +231,7 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   }
 
   function getFirstOfferFromBundle(uint bundleId) internal view returns (OLKey memory key, uint offerId, uint length) {
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, outbound);
     key = OLKey({
       inbound_tkn: address(offers[0].inbound_tkn),
       outbound_tkn: address(outbound),
@@ -245,7 +245,7 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
     internal
     returns (OLKey memory key, uint offerId, uint length)
   {
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, outbound);
     key = OLKey({
       inbound_tkn: address(offers[0].inbound_tkn),
       outbound_tkn: address(outbound),
@@ -265,7 +265,7 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
   }
 
   function unlockAllMarkets(uint bundleId) internal {
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, outbound);
     OLKey memory toUnlock;
     toUnlock.outbound_tkn = address(outbound);
     toUnlock.tickSpacing = 1;

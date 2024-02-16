@@ -111,12 +111,8 @@ contract RenegingForwarder is Forwarder {
     Condition memory cond = __renegeMap[olKeyHash][order.offerId];
 
     require(cond.date == 0 || block.timestamp < uint(cond.date), "RenegingForwarder/expired");
-    require(cond.volume == 0 || order.takerWants < uint(cond.volume), "RenegingForwarder/overSized");
-    if (cond.volume != 0) {
-      // if a max volume is set and we are not reneging, we set it back to 0 so that we don't check again and save some gas.
-      // note this is OK since reposting the offer in MangroveOffer.__posthookSuccess__ will update the volume according to `__residualValues__`
-      _setReneging(olKeyHash, order.offerId, cond.date, 0);
-    }
+    require(cond.volume == 0 || order.takerWants <= uint(cond.volume), "RenegingForwarder/overSized");
+
     return super.__lastLook__(order);
   }
 
@@ -142,6 +138,18 @@ contract RenegingForwarder is Forwarder {
     args.gasreq = gasreq;
     args.noRevert = false; // will throw if Mangrove reverts
     _updateOffer(args, offerId);
+  }
+
+  ///@inheritdoc MangroveOffer
+  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 reason) {
+    Condition memory cond = reneging(args.olKey.hash(), offerId);
+    if (cond.volume > 0) {
+      // resetting reneging volume to 0 when updating offer
+      // When reposting on partial fill, residual values are computed based on the reneging volume.
+      // So new we can safely set back the max volume to 0.
+      _setReneging(args.olKey.hash(), offerId, cond.date, 0);
+    }
+    return super._updateOffer(args, offerId);
   }
 
   ///@notice Retracts an offer from an Offer List of Mangrove.

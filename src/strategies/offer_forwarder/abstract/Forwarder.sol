@@ -150,7 +150,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   /// To do so, we do not let offer maker fix a gasprice. Rather we derive the gasprice based on `msg.value`.
   /// Because of rounding errors in `deriveGasprice` a small amount of WEIs will accumulate in mangrove's balance of `this` contract
   /// We assign this leftover to the corresponding `weiBalance` of `OwnerData`.
-  function _newOffer(OfferArgs memory args, address owner) internal returns (uint offerId, bytes32 status) {
+  function _newOffer(OfferArgs memory args, address owner) internal virtual returns (uint offerId, bytes32 status) {
     // convention for default gasreq value
     (uint gasprice, uint leftover) = deriveAndCheckGasprice(args);
 
@@ -181,7 +181,7 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
   ///@inheritdoc MangroveOffer
   ///@notice Internal `updateOffer`, using arguments and variables on memory to avoid stack too deep.
   ///@return reason Either REPOST_SUCCESS or Mangrove's revert reason if update was rejected by Mangrove and `args.noRevert` is `true`.
-  function _updateOffer(OfferArgs memory args, uint offerId) internal override returns (bytes32 reason) {
+  function _updateOffer(OfferArgs memory args, uint offerId) internal virtual override returns (bytes32 reason) {
     unchecked {
       UpdateOfferVars memory vars;
       (vars.global, vars.local) = MGV.config(args.olKey);
@@ -253,17 +253,20 @@ abstract contract Forwarder is IForwarder, MangroveOffer {
     freeWei = deprovision ? od.weiBalance : 0;
 
     try MGV.retractOffer(olKey, offerId, deprovision) returns (uint weis) {
+      // We add `weis` credited to the contract to `freeWei` amount
+      // They were the locked native token provision of the offer that has been retracted
       freeWei += weis;
-      if (freeWei > 0) {
-        // pulling free wei from Mangrove to `this`
-        require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
-        // resetting pending returned provision
-        // calling code must now assign freeWei to owner
-        od.weiBalance = 0;
-      }
     } catch Error(string memory reason) {
       require(noRevert, reason);
       status = bytes32(bytes(reason));
+    }
+    // if `deprovision` is set to false, `freeWei` is 0 because `retractOffer` will return 0
+    if (freeWei > 0) {
+      // pulling free wei from Mangrove to `this`
+      require(MGV.withdraw(freeWei), "Forwarder/withdrawFail");
+      // resetting pending returned provision
+      // calling code must now assign freeWei to owner
+      od.weiBalance = 0;
     }
   }
 

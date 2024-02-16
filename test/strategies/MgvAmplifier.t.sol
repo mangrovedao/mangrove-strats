@@ -19,7 +19,7 @@ import {IPoolAddressesProvider} from
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
+import {MgvLib, IERC20, OLKey, Offer, OfferDetail, Local} from "@mgv/src/core/MgvLib.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
@@ -51,7 +51,7 @@ contract MgvAmplifierTest is StratTest {
   address taker = freshAddress("taker"); // takes offers
 
   function setUp() public virtual override {
-    // forking polygon in order to use AAVE
+    // forking polygon in order to use AAVE to test some logic
     PinnedPolygonFork fork = new PinnedPolygonFork(39880000);
     fork.setUp();
     options.gasprice = 90;
@@ -84,8 +84,12 @@ contract MgvAmplifierTest is StratTest {
     olKey = dai_weth; // test defaults
     lo = dai_weth.flipped();
 
-    mgv.activate(dai_weth, options.defaultFee, options.density96X32, options.gasbase);
-    mgv.activate(dai_wbtc, options.defaultFee, options.density96X32, options.gasbase);
+    mgv.activate(dai_weth, options.defaultFee, options.density96X32 * 10 ** 7, options.gasbase);
+    mgv.activate(dai_weth.flipped(), options.defaultFee, options.density96X32 * 10 ** 7, options.gasbase);
+
+    // making density of dai_wbtc higher in order to test partial fill scenario
+    mgv.activate(dai_wbtc, options.defaultFee, options.density96X32 * 2 * 10 ** 9, options.gasbase);
+    mgv.activate(dai_wbtc.flipped(), options.defaultFee, options.density96X32 * 10 ** 4, options.gasbase);
 
     // preparing owner account (either using SimpleRouter or SimpleAaveRouter)
     deal($(dai), owner, 10_000 * 10 ** 18);
@@ -155,7 +159,7 @@ contract MgvAmplifierTest is StratTest {
     }
   }
 
-  event InitBundle(uint indexed bundleId);
+  event InitBundle(uint indexed bundleId, IERC20 indexed outbound_tkn);
   event EndBundle();
   event NewOwnedOffer(bytes32 indexed olKeyHash, uint indexed offerId, address indexed owner);
   // SmartRouter
@@ -166,7 +170,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
 
     expectFrom(address(mgvAmplifier));
-    emit InitBundle(0);
+    emit InitBundle(0, fx.outbound_tkn);
     expectFrom(address(mgvAmplifier));
     emit NewOwnedOffer(dai_weth.hash(), 1, owner);
     expectFrom(address(mgvAmplifier));
@@ -177,6 +181,44 @@ contract MgvAmplifierTest is StratTest {
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
     assertEq(bundleId, 0, "Incorrect bundle Id");
     assertEq(mgvAmplifier.ownerOf(bundleId, dai), owner, "Incorrect bundle owner");
+  }
+
+  function test_bundle_owner() public {
+    MangroveAmplifier.FixedBundleParams memory fx1;
+    MangroveAmplifier.VariableBundleParams[] memory vr1 = new MangroveAmplifier.VariableBundleParams[](1);
+
+    fx1.outbound_tkn = weth;
+    fx1.outVolume = 1000 * 10 ** 18;
+
+    vr1[0].inbound_tkn = dai;
+    vr1[0].tick = TickLib.tickFromVolumes({inboundAmt: 10_000 * 10 ** 18, outboundAmt: 1 ether});
+    vr1[0].gasreq = defaultLogicGasreq;
+    vr1[0].provision = 0.02 ether;
+    vr1[0].tickSpacing = options.defaultTickSpacing;
+
+    MangroveAmplifier.FixedBundleParams memory fx2;
+    MangroveAmplifier.VariableBundleParams[] memory vr2 = new MangroveAmplifier.VariableBundleParams[](1);
+
+    fx2.outbound_tkn = wbtc;
+    fx2.outVolume = 1000 * 10 ** 8;
+
+    vr2[0].inbound_tkn = dai;
+    vr2[0].tick = TickLib.tickFromVolumes({inboundAmt: 10_000 * 10 ** 18, outboundAmt: 1 ether});
+    vr2[0].gasreq = defaultLogicGasreq;
+    vr2[0].provision = 0.02 ether;
+    vr2[0].tickSpacing = options.defaultTickSpacing;
+
+    vm.prank(owner);
+    uint bundleId1 = mgvAmplifier.newBundle{value: 0.04 ether}(fx1, vr1);
+
+    vm.prank(taker);
+    uint bundleId2 = mgvAmplifier.newBundle{value: 0.04 ether}(fx2, vr2);
+
+    assertEq(mgvAmplifier.ownerOf(bundleId1, weth), owner, "Incorrect bundle owner");
+    assertEq(mgvAmplifier.ownerOf(bundleId2, wbtc), taker, "Incorrect bundle owner");
+
+    assertEq(mgvAmplifier.ownerOf(bundleId1, wbtc), address(0), "Incorrect bundle owner");
+    assertEq(mgvAmplifier.ownerOf(bundleId2, weth), address(0), "Incorrect bundle owner");
   }
 
   function test_newBundle_with_insufficient_provision_reverts_with_expected_message() public {
@@ -291,7 +333,7 @@ contract MgvAmplifierTest is StratTest {
     assertEq(bounty, 0, "trade failed");
 
     // checking that offers were correctly updated
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
 
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
@@ -326,7 +368,7 @@ contract MgvAmplifierTest is StratTest {
     vm.stopPrank();
     assertEq(takerGot + fee, 1000 * 10 ** 18, "Failed trade");
     // checking that offers were correctly updated
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
 
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
@@ -426,6 +468,75 @@ contract MgvAmplifierTest is StratTest {
     run_scenario();
   }
 
+  function test_partial_fill_with_residual_below_density_retracts_offer() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.prank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+
+    // min amount of dai to be able to post of the dai_wbtc offer list.
+    uint dai_wbtc_min_volume = reader.minVolume(dai_wbtc, defaultLogicGasreq);
+    uint dai_weth_min_volume = reader.minVolume(dai_weth, defaultLogicGasreq);
+    // computing how much btc to sell in order to get (1000 - dai_wbtc_min_volume) dai
+    uint target = 1000 * 10 ** 18 - dai_wbtc_min_volume;
+    // 1 wbtc is 27000 dai so 1/27000 wbtc is 1 dai and 1/27000 * target is the amount of wbtc to sell
+    uint amount = target / (27_000 * 10 ** 10);
+
+    // taking just enough so that offer fails to repost on wbtc but not on weth
+    vm.startPrank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(dai_wbtc, TickLib.tickFromVolumes(0.004 * 10 ** 8, 100 * 10 ** 18), amount - 352, false);
+    vm.stopPrank();
+    assertEq(bounty, 0, "trade failed");
+    assertTrue(1000 * 10 ** 18 - takerGot - fee < dai_wbtc_min_volume, "partial fill will repost");
+    assertTrue(1000 * 10 ** 18 - takerGot - fee >= dai_weth_min_volume, "partial fill will not repost");
+
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      if (address(bundle[i].inbound_tkn) == address(wbtc)) {
+        assertEq(offer.gives(), 0, "Offer should be retracted");
+      } else {
+        assertEq(offer.gives(), 1000 * 10 ** 18 - takerGot - fee, "Offer should be updated");
+      }
+    }
+  }
+
+  function test_fail_to_deliver_retracts_bundle() public {
+    (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
+      build_amplified_offer_args();
+    vm.prank(owner);
+    uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
+    // removing liquidity from the owner's account so that offer fails to deliver
+    deal($(dai), owner, 0);
+
+    expectFrom(address(mgvAmplifier));
+    emit LogIncident({
+      olKeyHash: dai_weth.hash(),
+      offerId: 1,
+      makerData: "mgvOffer/abort/getFailed",
+      mgvData: "mgv/makerRevert"
+    });
+
+    vm.startPrank(taker);
+    (uint takerGot, uint takerGave, uint bounty, uint fee) =
+      mgv.marketOrderByTick(dai_weth, Tick.wrap(MAX_TICK), 1 ether, true);
+    vm.stopPrank();
+    assertEq(takerGot + fee, 0, "Offer did not fail");
+    assertTrue(bounty > 0, "Offer did not fail");
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
+    for (uint i; i < bundle.length; i++) {
+      Offer offer = mgv.offers(
+        OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
+        bundle[i].offerId
+      );
+      assertEq(offer.gives(), 0, "Offer should be retracted");
+    }
+  }
+
   function test_external_bundle_update_volume() public {
     (MangroveAmplifier.FixedBundleParams memory fx, MangroveAmplifier.VariableBundleParams[] memory vr) =
       build_amplified_offer_args();
@@ -440,7 +551,7 @@ contract MgvAmplifierTest is StratTest {
     mgvAmplifier.updateBundle(bundleId, dai, 50 * 10 ** 18, false, 0);
 
     // checking offers of the bundle have been updated to the new outbound volume
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
         OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
@@ -477,7 +588,7 @@ contract MgvAmplifierTest is StratTest {
     assertEq(cond.date, block.timestamp + 1000, "Incorrect expiry");
 
     // checking offers of the bundle have been updated to the new outbound volume
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
         OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
@@ -498,7 +609,7 @@ contract MgvAmplifierTest is StratTest {
 
     RenegingForwarder.Condition memory cond = mgvAmplifier.reneging(bytes32(0), bundleId);
     assertEq(cond.date, 0, "Incorrect expiry");
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
         OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
@@ -524,7 +635,7 @@ contract MgvAmplifierTest is StratTest {
     assertEq(owner.balance - balWeiBefore, freeWei, "Incorrect freeWei");
 
     // checking offers of the bundle have been retracted
-    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory bundle = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     for (uint i; i < bundle.length; i++) {
       Offer offer = mgv.offers(
         OLKey({inbound_tkn: $(bundle[i].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing}),
@@ -561,7 +672,7 @@ contract MgvAmplifierTest is StratTest {
       makerData: "RenegingForwarder/expired",
       mgvData: "mgv/makerRevert"
     });
-    // taker sells  0.004 btc to get 100 dai
+
     vm.startPrank(taker);
     (uint takerGot, uint takerGave, uint bounty, uint fee) =
       mgv.marketOrderByTick(dai_weth, Tick.wrap(MAX_TICK), 1 ether, true);
@@ -613,7 +724,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
     vm.startPrank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     uint offerId = offers[0].offerId;
     OLKey memory olKey =
       OLKey({inbound_tkn: $(offers[0].inbound_tkn), outbound_tkn: $(dai), tickSpacing: options.defaultTickSpacing});
@@ -638,7 +749,7 @@ contract MgvAmplifierTest is StratTest {
     forceLockMarket(mgv, olKey);
     assertTrue(mgv.locked(olKey), "market should be locked");
     forceUnlockMarket(mgv, olKey);
-    assertTrue(!mgv.locked(olKey), "market should be unlocked");
+    assertTrue(!mgv.locked(olKey), "market should not be locked");
   }
 
   function test_max_volume_triggered_and_untriggered() public {
@@ -647,7 +758,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
     vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     MangroveAmplifier.BundledOffer memory offerTaken = offers[0];
     MangroveAmplifier.BundledOffer memory offerNotTaken = offers[1];
     OLKey memory notTakenOLKey =
@@ -696,7 +807,7 @@ contract MgvAmplifierTest is StratTest {
       build_amplified_offer_args();
     vm.prank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     MangroveAmplifier.BundledOffer memory offerTaken = offers[0];
     MangroveAmplifier.BundledOffer memory offerNotTaken = offers[1];
     OLKey memory notTakenOLKey =
@@ -740,7 +851,7 @@ contract MgvAmplifierTest is StratTest {
     vm.startPrank(owner);
     uint bundleId = mgvAmplifier.newBundle{value: 0.04 ether}(fx, vr);
 
-    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId);
+    MangroveAmplifier.BundledOffer[] memory offers = mgvAmplifier.offersOf(bundleId, fx.outbound_tkn);
     uint offerId = offers[0].offerId;
 
     // get the outbound_tkn volume
@@ -762,6 +873,6 @@ contract MgvAmplifierTest is StratTest {
     assertEq(mgvAmplifier.reneging(dai_weth.hash(), offerId).date, block.timestamp + 1000, "date should not change");
 
     // checking offer is still live
-    assertEq(mgv.offers(dai_weth, offerId).gives(), outboundVolume - takerGot - fee, "Incorrect outbound volume");
+    assertEq(mgv.offers(dai_weth, offerId).gives(), outboundVolume / 2 - takerGot - fee, "Incorrect outbound volume");
   }
 }
