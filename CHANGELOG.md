@@ -1,5 +1,9 @@
 # Next version
 
+- feat: add `MonoSwap` routing logic, manager, and univ3 logics
+
+# 2.0.1-0
+
 - Added `outbound_tkn` to `__bundles` mapping key so as to ensure unmanipulated outbound token.
 - Added `freeWei` deprovision on failed `_retractOffer` on forwarder
 - Fixed `freeWei` resetting on each offer retracting while retracting bundle
@@ -11,6 +15,7 @@
 - Upgrade to @mangrovedao/mangrove-deployments v2.0.2-0
 - Upgrade to @mangrovedao/context-addresses v1.1.0
 - Simplify copying of context addresses
+- Fixed versionning
 
 # 2.0.0-b1.3
 
