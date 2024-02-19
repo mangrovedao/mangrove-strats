@@ -6,7 +6,7 @@ import {BlastRouterProxyFactory} from "@mgv-strats/src/strategies/chains/blast/r
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Deploys a BlastRouterProxyFactory instance */
-contract RouterProxyFactoryDeployer is Deployer {
+contract BlastRouterProxyFactoryDeployer is Deployer {
   function run() public {
     innerRun({chief: envAddressOrName("CHIEF", broadcaster())});
     outputDeployment();
