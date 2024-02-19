@@ -20,7 +20,7 @@ contract BlastMangroveAmplifier is MangroveAmplifier, IBlastPoints {
   constructor(IMangrove mgv, RouterProxyFactory factory, BlastSmartRouter routerImplementation)
     MangroveAmplifier(mgv, factory, routerImplementation)
   {
-    BlastLib.BLAST.configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, msg.sender);
+    BlastLib.BLAST.configureGovernor(msg.sender);
   }
 
   /// @inheritdoc IBlastPoints

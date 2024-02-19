@@ -19,7 +19,7 @@ contract BlastMangroveOrder is MangroveOrder, IBlastPoints {
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
   constructor(IMangrove mgv, RouterProxyFactory factory, address deployer) MangroveOrder(mgv, factory, deployer) {
-    BlastLib.BLAST.configure(YieldMode.CLAIMABLE, GasMode.CLAIMABLE, deployer);
+    BlastLib.BLAST.configureGovernor(deployer);
   }
 
   /// @inheritdoc MangroveOrder
