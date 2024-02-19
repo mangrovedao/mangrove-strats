@@ -41,11 +41,7 @@ contract MangroveAmplifierDeployer is Deployer {
     uint64 nonce = vm.getNonce(broadcaster());
     broadcast();
     // See MangroveAmplifierGasreqBaseTest description for calculation of the gasreq.
-    if (forMultisig) {
-      mgvAmp = new MangroveAmplifier{salt: salt}(mgv, routerProxyFactory, routerImplementation);
-    } else {
-      mgvAmp = new MangroveAmplifier(mgv, routerProxyFactory, routerImplementation);
-    }
+    mgvAmp = deployMangroveAmplifier(mgv, routerProxyFactory, routerImplementation);
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
       vm.setNonce(broadcaster(), nonce + 1);
@@ -53,6 +49,18 @@ contract MangroveAmplifierDeployer is Deployer {
 
     fork.set("MangroveAmplifier", address(mgvAmp));
     smokeTest(mgvAmp, mgv);
+  }
+
+  function deployMangroveAmplifier(
+    IMangrove mgv,
+    RouterProxyFactory routerProxyFactory,
+    SmartRouter routerImplementation
+  ) internal virtual returns (MangroveAmplifier mgvAmp) {
+    if (forMultisig) {
+      mgvAmp = new MangroveAmplifier{salt: salt}(mgv, routerProxyFactory, routerImplementation);
+    } else {
+      mgvAmp = new MangroveAmplifier(mgv, routerProxyFactory, routerImplementation);
+    }
   }
 
   function smokeTest(MangroveAmplifier mgvAmp, IMangrove mgv) internal view {

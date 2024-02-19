@@ -34,11 +34,7 @@ contract MangroveOrderDeployer is Deployer {
     uint64 nonce = vm.getNonce(broadcaster());
     broadcast();
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
-    if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
-    } else {
-      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
-    }
+    mgvOrder = deployMangroveOrder(mgv, admin, routerProxyFactory);
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
       vm.setNonce(broadcaster(), nonce + 1);
@@ -47,6 +43,18 @@ contract MangroveOrderDeployer is Deployer {
     fork.set("MangroveOrder", address(mgvOrder));
     fork.set("MangroveOrder-Router", address(mgvOrder.ROUTER_IMPLEMENTATION()));
     smokeTest(mgvOrder, mgv);
+  }
+
+  function deployMangroveOrder(IMangrove mgv, address admin, RouterProxyFactory routerProxyFactory)
+    internal
+    virtual
+    returns (MangroveOrder mgvOrder)
+  {
+    if (forMultisig) {
+      mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
+    } else {
+      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
+    }
   }
 
   function smokeTest(MangroveOrder mgvOrder, IMangrove mgv) internal view {
