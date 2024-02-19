@@ -64,7 +64,7 @@ contract AccessControlled {
    * @notice This sets and log a new admin
    * @param admin_ The new admin. Cannot be `address(0)`.
    */
-  function _setAdmin(address admin_) internal {
+  function _setAdmin(address admin_) internal virtual {
     require(admin_ != address(0), "AccessControlled/0xAdmin");
     _admin = admin_;
     emit SetAdmin(admin_);

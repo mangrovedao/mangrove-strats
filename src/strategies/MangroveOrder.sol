@@ -30,9 +30,15 @@ contract MangroveOrder is RenegingForwarder, IOrderLogic {
   ///@param factory the router proxy factory used to deploy or retrieve user routers
   ///@param deployer The address of the admin of `this` at the end of deployment
   constructor(IMangrove mgv, RouterProxyFactory factory, address deployer)
-    RenegingForwarder(mgv, factory, new SmartRouter(address(this)))
+    RenegingForwarder(mgv, factory, _deploySmartRouter())
   {
     _setAdmin(deployer);
+  }
+
+  /// @notice Deploys a new RouterProxy for a given owner.
+  /// @return The deployed SmartRouter
+  function _deploySmartRouter() internal virtual returns (SmartRouter) {
+    return new SmartRouter(address(this));
   }
 
   ///@notice compares a taker order with a market order result and checks whether the order was entirely filled
