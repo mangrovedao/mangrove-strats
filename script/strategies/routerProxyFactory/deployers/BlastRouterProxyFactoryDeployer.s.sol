@@ -8,13 +8,13 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 /*  Deploys a BlastRouterProxyFactory instance */
 contract BlastRouterProxyFactoryDeployer is Deployer {
   function run() public {
-    innerRun({chief: envAddressOrName("CHIEF", broadcaster())});
+    innerRun();
     outputDeployment();
   }
 
-  function innerRun(address chief) public {
+  function innerRun() public {
     broadcast();
-    BlastRouterProxyFactory factory = new BlastRouterProxyFactory(chief);
+    BlastRouterProxyFactory factory = new BlastRouterProxyFactory(broadcaster());
     fork.set("RouterProxyFactory", address(factory));
     console.log("factory deployed", address(factory));
   }

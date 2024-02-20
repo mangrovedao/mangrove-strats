@@ -22,7 +22,7 @@ contract MangroveOrderDeployerTest is BaseMangroveOrderDeployerTest {
     uint gasmax = 8_000_000;
     // this adds "Mangrove" and "RouterProxyFactory" to toyENS
     (new MangroveDeployer()).innerRun(chief, gasprice, gasmax, gasbot);
-    (new BlastRouterProxyFactoryDeployer()).innerRun(chief);
+    (new BlastRouterProxyFactoryDeployer()).innerRun();
 
     mgoDeployer = new BlastMangroveOrderDeployer();
   }
