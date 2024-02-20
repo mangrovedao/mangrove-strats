@@ -22,9 +22,7 @@ contract AccessControlled {
    * @param admin_ The address of the admin that can access privileged functions and also allowed to change the admin. Cannot be `address(0)`.
    */
   constructor(address admin_) {
-    require(admin_ != address(0), "AccessControlled/0xAdmin");
-    _admin = admin_;
-    emit SetAdmin(admin_);
+    _setAdmin(admin_);
   }
 
   /**
@@ -63,12 +61,20 @@ contract AccessControlled {
   }
 
   /**
-   * @notice This sets the admin. Only the current admin can change the admin.
+   * @notice This sets and log a new admin
    * @param admin_ The new admin. Cannot be `address(0)`.
    */
-  function setAdmin(address admin_) public onlyAdmin {
+  function _setAdmin(address admin_) internal {
     require(admin_ != address(0), "AccessControlled/0xAdmin");
     _admin = admin_;
     emit SetAdmin(admin_);
+  }
+
+  /**
+   * @notice This sets the admin. Only the current admin can change the admin.
+   * @param admin_ The new admin. Cannot be `address(0)`.
+   */
+  function setAdmin(address admin_) external onlyAdmin {
+    _setAdmin(admin_);
   }
 }

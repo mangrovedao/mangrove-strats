@@ -16,10 +16,16 @@ exports.abi_exports = [
   "AbstractKandelSeeder",
   "KandelSeeder",
   "AaveKandelSeeder",
+  "AavePooledRouter",
+  "RouterProxyFactory",
+  "SmartRouter",
+  "AbstractRoutingLogic",
+  "SimpleAaveLogic",
+  "MangroveAmplifier",
 ];
 
 // Contracts that should export their ABI + bytecode
-exports.full_exports = ["OfferMaker"];
+exports.full_exports = [];
 
 /////////////////////////////////////
 // mangrove-deployments configuration

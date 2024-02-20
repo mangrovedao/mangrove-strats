@@ -16,8 +16,8 @@ contract AaveV3Lender {
 
   /// @notice contract's constructor
   /// @param addressesProvider address of AAVE's address provider
-  constructor(address addressesProvider) {
-    ADDRESS_PROVIDER = IPoolAddressesProvider(addressesProvider);
+  constructor(IPoolAddressesProvider addressesProvider) {
+    ADDRESS_PROVIDER = addressesProvider;
 
     address lendingPool = IPoolAddressesProvider(addressesProvider).getPool();
     require(lendingPool != address(0), "AaveV3Lender/0xPool");
@@ -60,9 +60,24 @@ contract AaveV3Lender {
   ///@param token the asset one is trying to redeem
   ///@param amount of assets one wishes to redeem
   ///@param to is the address where the redeemed assets should be transferred
+  ///@param noRevert does not revert if redeem throws
+  ///@return reason for revert from Aave.
   ///@return redeemed the amount of asset that were transferred to `to`
-  function _redeem(IERC20 token, uint amount, address to) internal returns (uint redeemed) {
-    redeemed = (amount == 0) ? 0 : POOL.withdraw(address(token), amount, to);
+  function _redeem(IERC20 token, uint amount, address to, bool noRevert)
+    internal
+    returns (bytes32 reason, uint redeemed)
+  {
+    if (amount != 0) {
+      try POOL.withdraw(address(token), amount, to) returns (uint _redeemed) {
+        redeemed = _redeemed;
+      } catch Error(string memory _reason) {
+        require(noRevert, _reason);
+        reason = bytes32(bytes(_reason));
+      } catch {
+        require(noRevert, "AaveV3Lender/withdrawReverted");
+        reason = "AaveV3Lender/withdrawReverted";
+      }
+    }
   }
 
   ///@notice supplies funds to the pool
@@ -81,8 +96,8 @@ contract AaveV3Lender {
         require(noRevert, reason);
         return bytes32(bytes(reason));
       } catch {
-        require(noRevert, "noReason");
-        return "noReason";
+        require(noRevert, "AaveV3Lender/supplyReverted");
+        return "AaveV3Lender/supplyReverted";
       }
     }
   }

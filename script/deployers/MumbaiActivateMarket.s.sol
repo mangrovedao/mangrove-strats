@@ -5,7 +5,9 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 import {ActivateMarket, IERC20} from "@mgv/script/core/ActivateMarket.s.sol";
 import {
-  ActivateMangroveOrder, MangroveOrder
+  ActivateMangroveOrder,
+  MangroveOrder,
+  RL
 } from "@mgv-strats/script/strategies/mangroveOrder/ActivateMangroveOrder.s.sol";
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
@@ -68,10 +70,13 @@ contract MumbaiActivateMarket is Deployer {
       tkn2_in_Mwei: toMweiOfMatic(price1),
       fee: 0
     });
+    IERC20[] memory tokens = new IERC20[](2);
+    tokens[0] = IERC20(market.tkn0);
+    tokens[1] = IERC20(market.tkn1);
 
     new ActivateMangroveOrder().innerRun({
       mgvOrder: mangroveOrder,
-      iercs: dynamic([IERC20(market.tkn0), IERC20(market.tkn1)])
+      tokens: tokens
     });
   }
 
