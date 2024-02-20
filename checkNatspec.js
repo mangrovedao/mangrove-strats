@@ -40,6 +40,7 @@ excludes = [
   "CompoundModule",
   "AaveV2Module",
   "AaveV3Borrower",
+  "lib/openzeppelin-contracts/",
 ];
 
 let anyFindings = false;

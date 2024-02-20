@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Univ3Deployer} from "@mgv-strats/src/toy_strategies/utils/UniV3Deployer.sol";
+import {Univ3Deployer} from "@mgv-strats/src/toy_strategies/utils/Univ3Deployer.sol";
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
