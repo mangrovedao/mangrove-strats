@@ -1,5 +1,7 @@
 # Next version
 
+# 2.0.1
+
 - Create `SmartRouter` schema to allow to plug any `RoutingLogic` to a `Forwarder` contract
 - Create `RouterProxyFactory` to deploy router proxies for each user and allow all approvals to a single contract per user
 - Add `RenegingForwarder` to allow time based and volume based reneging
