@@ -71,6 +71,10 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     }
   }
 
+  function _inManager(IERC20 token, address fundOwner) internal view returns (uint) {
+    return manager.balances(fundOwner, token);
+  }
+
   function _collect(uint positionId) internal returns (uint amount0, uint amount1) {
     INonfungiblePositionManager.CollectParams memory params;
     params.tokenId = positionId;
@@ -121,7 +125,8 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     params.tokenId = positionId;
     params.amount0Desired = amount0Desired;
     params.amount1Desired = amount1Desired;
-    positionManager.increaseLiquidity(params);
+    params.deadline = type(uint).max;
+    try positionManager.increaseLiquidity(params) {} catch {}
   }
 
   function _amountsInPosition(Position memory position) internal view returns (uint amount0, uint amount1) {
@@ -145,11 +150,12 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     // preflight checks to save gas in case of failure
 
     // remove position if we don't have enough when collecting
-    if (_owedOf(token, position) < amount) {
+    if (_owedOf(token, position) + _inManager(token, fundOwner) < amount) {
       // remove full position
       INonfungiblePositionManager.DecreaseLiquidityParams memory params;
       params.tokenId = positionId;
       params.liquidity = position.liquidity;
+      params.deadline = type(uint).max;
       positionManager.decreaseLiquidity(params);
       // update the position in memory
       position = _positionFromID(positionId);

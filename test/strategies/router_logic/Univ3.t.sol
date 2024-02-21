@@ -4,197 +4,270 @@ pragma solidity >=0.7.0;
 import {StratTest, MgvReader, TestMaker, TestTaker, TestSender, console} from "@mgv-strats/test/lib/StratTest.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MgvLib, IERC20, OLKey, Offer, OfferDetail} from "@mgv/src/core/MgvLib.sol";
-import {
-  MangroveOrder as MgvOrder,
-  SmartRouter,
-  RouterProxyFactory,
-  RouterProxy
-} from "@mgv-strats/src/strategies/MangroveOrder.sol";
-import {IMangrove} from "@mgv/src/IMangrove.sol";
-import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {TickLib} from "@mgv/lib/core/TickLib.sol";
-import {MAX_TICK} from "@mgv/lib/core/Constants.sol";
-import {Tick} from "@mgv/lib/core/TickLib.sol";
-import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
-import {TakerOrderType} from "@mgv-strats/src/strategies/TakerOrderLib.sol";
-import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
-import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
+import {Univ3Deployer} from "@mgv-strats/src/toy_strategies/utils/Univ3Deployer.sol";
+import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {INonfungiblePositionManager} from
+  "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/interfaces/INonfungiblePositionManager.sol";
+import {TickMath} from "@mgv-strats/src/strategies/vendor/uniswap/v3/core/libraries/TickMath.sol";
+import {MonoswapV3Manager} from "@mgv-strats/src/strategies/routing_logic/restaking/monoswap/MonoswapV3Manager.sol";
+import {MonoswapV3RoutingLogic} from
+  "@mgv-strats/src/strategies/routing_logic/restaking/monoswap/MonoswapV3RoutingLogic.sol";
 
-library TickNegator {
-  function negate(Tick tick) internal pure returns (Tick) {
-    return Tick.wrap(-Tick.unwrap(tick));
-  }
-}
+import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
+import {SmartRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {IERC20} from "@mgv/lib/IERC20.sol";
 
-contract UniV3_Test is StratTest {
-  using TickNegator for Tick;
+contract UniV3_Test is StratTest, Univ3Deployer {
+  TestToken public token0;
+  TestToken public token1;
 
-  MgvOrder public mgo;
+  RouterProxyFactory public proxyFactory;
+  SmartRouter public routerImplementation;
+  SmartRouter public router;
 
-  TestTaker public sell_taker;
-  TestMaker public ask_maker;
+  MonoswapV3Manager public manager;
+  MonoswapV3RoutingLogic public routingLogic;
 
-  TestMaker public bid_maker;
+  IUniswapV3Pool public pool;
 
-  uint constant MID_PRICE = 2000e18;
-  uint constant GASREQ = 1_000_000;
+  uint positionId;
 
-  IOrderLogic.TakerOrderResult internal cold_buyResult;
-  IOrderLogic.TakerOrderResult internal cold_sellResult;
+  function mintNewPosition() internal returns (uint _positionId) {
+    INonfungiblePositionManager.MintParams memory params;
+    params.token0 = address(token0);
+    params.token1 = address(token1);
+    params.fee = 500;
+    params.tickLower = -500;
+    params.tickUpper = 500;
+    params.deadline = block.timestamp + 1000;
+    params.amount0Desired = 1000;
+    params.amount1Desired = 1000;
+    params.recipient = address(this);
 
-  function createBuyOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
-    uint fillVolume = 2 ether;
-    order = IOrderLogic.TakerOrder({
-      olKey: olKey,
-      orderType: TakerOrderType.IOC,
-      fillWants: true,
-      fillVolume: fillVolume,
-      tick: tickFromPrice_e18(MID_PRICE - 1e18),
-      expiryDate: 0, //NA
-      offerId: 0,
-      restingOrderGasreq: GASREQ,
-      takerGivesLogic: AbstractRoutingLogic(address(0)),
-      takerWantsLogic: AbstractRoutingLogic(address(0))
-    });
-  }
+    deal($(token0), address(this), params.amount0Desired);
+    deal($(token1), address(this), params.amount1Desired);
 
-  function createSellOrder() internal view returns (IOrderLogic.TakerOrder memory order) {
-    uint fillVolume = 2 ether;
+    token0.approve(address(positionManager), params.amount0Desired);
+    token1.approve(address(positionManager), params.amount1Desired);
 
-    order = IOrderLogic.TakerOrder({
-      olKey: lo,
-      orderType: TakerOrderType.IOC,
-      fillWants: false,
-      tick: tickFromPrice_e18(MID_PRICE - 9e18).negate(),
-      fillVolume: fillVolume,
-      expiryDate: 0, //NA
-      offerId: 0,
-      restingOrderGasreq: GASREQ,
-      takerGivesLogic: AbstractRoutingLogic(address(0)),
-      takerWantsLogic: AbstractRoutingLogic(address(0))
-    });
+    (_positionId,,,) = positionManager.mint(params);
   }
 
-  function createBuyOrderEvenLowerPriceAndLowerVolume() internal view returns (IOrderLogic.TakerOrder memory order) {
-    uint fillVolume = 1 ether;
-    order = createBuyOrder();
-    order.fillVolume = fillVolume;
-    order.tick = tickFromPrice_e18(MID_PRICE - 9e18);
+  function getRoutingOrder(IERC20 token) internal view returns (RL.RoutingOrder memory order) {
+    order.fundOwner = address(this);
+    order.token = token;
   }
 
-  function createSellOrderEvenLowerPriceAndLowerVolume() internal view returns (IOrderLogic.TakerOrder memory order) {
-    uint fillVolume = 1 ether;
-    order = createSellOrder();
-    order.tick = tickFromPrice_e18(MID_PRICE - 1e18).negate();
-    order.fillVolume = fillVolume;
-  }
-
-  function tickFromPrice_e18(uint priceE18) internal pure returns (Tick tick) {
-    (uint mantissa, uint exp) = TickLib.ratioFromVolumes(priceE18, 1e18);
-    tick = TickLib.tickFromRatio(mantissa, int(exp));
+  function setLogic(IERC20 token) internal {
+    RL.RoutingOrder memory order = getRoutingOrder(token);
+    router.setLogic(order, routingLogic);
   }
 
   function setUp() public override {
-    options.gasprice = 90;
-    options.gasbase = 68_000;
-    options.defaultFee = 30;
-    mgv = setupMangrove();
-    reader = new MgvReader($(mgv));
-    base = new TestToken(address(this), "WETH", "WETH", 18);
-    quote = new TestToken(address(this), "DAI", "DAI", 18);
-    olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
-    lo = olKey.flipped();
-    setupMarket(olKey);
+    deployUniv3();
 
-    RouterProxyFactory factory = new RouterProxyFactory();
+    token0 = new TestToken(address(this), "token0", "T0", 18);
+    token1 = new TestToken(address(this), "token1", "T1", 18);
 
-    // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
-    // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
+    pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
+    pool.initialize(TickMath.getSqrtRatioAtTick(0));
 
-    // `this` contract will act as `MgvOrder` user
-    deal($(base), $(this), 10 ether);
-    deal($(quote), $(this), 10_000 ether);
+    assertEq(pool.token0(), address(token0));
+    assertEq(pool.token1(), address(token1));
+    assertEq(pool.fee(), 500);
+    assertEq(pool.tickSpacing(), 10);
+    (,,,,,, bool unlocked) = pool.slot0();
+    assertTrue(unlocked);
 
-    // activating MangroveOrder for quote and base
-    mgo.activate(base);
-    mgo.activate(quote);
+    proxyFactory = new RouterProxyFactory();
+    // automatically binds to this
+    routerImplementation = new SmartRouter(address(this));
+    (RouterProxy proxy,) = proxyFactory.instantiate(address(this), routerImplementation);
+    router = SmartRouter(address(proxy));
 
-    // `sell_taker` will take resting bid
-    sell_taker = setupTaker(olKey, "sell-taker");
-    deal($(base), $(sell_taker), 10 ether);
+    manager = new MonoswapV3Manager(positionManager, proxyFactory, routerImplementation);
+    routingLogic = new MonoswapV3RoutingLogic(manager);
 
-    // if seller wants to sell directly on mangrove
-    vm.prank($(sell_taker));
-    TransferLib.approveToken(base, $(mgv), 10 ether);
-    // if seller wants to sell via mgo
-    vm.prank($(sell_taker));
-    TransferLib.approveToken(quote, $(mgv), 10 ether);
+    positionId = mintNewPosition();
 
-    // populating order book with offers
-    ask_maker = setupMaker(olKey, "ask-maker");
-    vm.deal($(ask_maker), 10 ether);
+    positionManager.approve(address(router), positionId);
+    manager.changePosition(address(this), positionId);
+    setLogic(token0);
+    setLogic(token1);
+  }
 
-    bid_maker = setupMaker(lo, "bid-maker");
-    vm.deal($(bid_maker), 10 ether);
+  function test_push() public {
+    uint managerBalanceToken0 = manager.balances(address(this), token0);
+    uint managerBalanceToken1 = manager.balances(address(this), token1);
 
-    deal($(base), $(ask_maker), 10 ether);
-    deal($(quote), $(bid_maker), 10000 ether);
+    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
 
-    // pre populating book with cold maker offers.
-    ask_maker.approveMgv(base, 10 ether);
-    uint volume = 1 ether;
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE), volume, 50_000, 0, 0.1 ether);
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 1e18), volume, 50_000, 0, 0.1 ether);
-    ask_maker.newOfferByTickWithFunding(olKey, tickFromPrice_e18(MID_PRICE + 2e18), volume, 50_000, 0, 0.1 ether);
+    assertEq(managerBalanceToken0, 0);
+    assertEq(managerBalanceToken1, 0);
 
-    bid_maker.approveMgv(quote, 10000 ether);
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 10e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 11e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
-    bid_maker.newOfferByTickWithFunding(
-      lo, tickFromPrice_e18(MID_PRICE - 12e18).negate(), 2000e18, 50_000, 0, 0.1 ether
-    );
+    uint amount = 1000;
+    deal($(token0), address(this), amount);
+    token0.approve(address(router), amount);
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.push(order, amount);
 
-    IOrderLogic.TakerOrder memory buyOrder;
-    IOrderLogic.TakerOrder memory sellOrder;
-    // depositing a cold MangroveOrder offer.
-    buyOrder = createBuyOrderEvenLowerPriceAndLowerVolume();
-    buyOrder.orderType = TakerOrderType.GTC;
-    buyOrder.expiryDate = block.timestamp + 1;
+    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
 
-    sellOrder = createSellOrderEvenLowerPriceAndLowerVolume();
-    sellOrder.orderType = TakerOrderType.GTC;
-    sellOrder.expiryDate = block.timestamp + 1;
+    assertEq(managerBalanceToken0Step2, amount);
+    assertEq(managerBalanceToken1Step2, 0);
+    assertEq(liquidityStep2, liquidity);
 
-    // test runner posts limit orders
-    // one cannot bind to the router if not instanciated (altough approval can be done)
-    (RouterProxy testRunnerProxy,) = mgo.ROUTER_FACTORY().instantiate(address(this), mgo.ROUTER_IMPLEMENTATION());
-    AbstractRouter(address(testRunnerProxy)).bind(address(mgo));
-    // user approves `mgo` to pull quote or base when doing a market order
-    require(TransferLib.approveToken(quote, $(mgo.router(address(this))), type(uint).max));
-    require(TransferLib.approveToken(base, $(mgo.router(address(this))), type(uint).max));
+    deal($(token1), address(this), amount);
+    token1.approve(address(router), amount);
+    order = getRoutingOrder(token1);
+    router.push(order, amount);
 
-    cold_buyResult = mgo.take{value: 0.1 ether}(buyOrder);
-    cold_sellResult = mgo.take{value: 0.1 ether}(sellOrder);
+    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
 
-    assertTrue(cold_buyResult.offerId * cold_sellResult.offerId > 0, "Resting offer failed to be published on mangrove");
-    // mgo ask
-    // 4 ┆ 1999 DAI  /  1 WETH 0xc7183455a4C133Ae270771860664b6B7ec320bB1
-    // maker asks
-    // 1 ┆ 2000 DAI  /  1 WETH 0x1d1499e622D69689cdf9004d05Ec547d650Ff211
-    // 2 ┆ 2001 DAI  /  1 WETH 0x1d1499e622D69689cdf9004d05Ec547d650Ff211
-    // 3 ┆ 2002 DAI  /  1 WETH 0x1d1499e622D69689cdf9004d05Ec547d650Ff211
-    // ------------------------------------------------------------------
-    // mgo bid
-    // 4 ┆ 1 WETH  /  1991 0xc7183455a4C133Ae270771860664b6B7ec320bB1
-    // maker bids
-    // 1 ┆ 1 WETH  /  1990 DAI 0xA4AD4f68d0b91CFD19687c881e50f3A00242828c
-    // 2 ┆ 1 WETH  /  1989 DAI 0xA4AD4f68d0b91CFD19687c881e50f3A00242828c
-    // 3 ┆ 1 WETH  /  1988 DAI 0xA4AD4f68d0b91CFD19687c881e50f3A00242828c
+    assertEq(managerBalanceToken0Step3, 0);
+    assertEq(managerBalanceToken1Step3, 0);
+    assertEq(liquidityStep3, liquidity * 2);
+  }
+
+  function test_pull() public {
+    uint managerBalanceToken0 = manager.balances(address(this), token0);
+    uint managerBalanceToken1 = manager.balances(address(this), token1);
+
+    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0, 0);
+    assertEq(managerBalanceToken1, 0);
+
+    uint amount = 500;
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.pull(order, amount, true);
+
+    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken1Step2, amount);
+    assertEq(managerBalanceToken0Step2, 0);
+    assertApproxEqAbs(liquidityStep2, liquidity / 2, 100);
+
+    order = getRoutingOrder(token1);
+    router.pull(order, amount, true);
+
+    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step3, 0);
+    assertEq(managerBalanceToken1Step3, 0);
+    assertApproxEqAbs(liquidityStep3, liquidity / 2, 100);
+  }
+
+  function test_pull_too_much() public {
+    uint amount = 10000;
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    vm.expectRevert();
+    router.pull(order, amount, true);
+  }
+
+  function test_push_and_pull() public {
+    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+
+    uint amount = 1000;
+    deal($(token0), address(this), amount);
+    token0.approve(address(router), amount);
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.push(order, amount);
+
+    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step2, amount);
+    assertEq(liquidityStep2, liquidity);
+
+    router.pull(order, amount, true);
+
+    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step3, 0);
+    assertEq(liquidityStep3, liquidity);
+  }
+
+  function test_push_imbalanced_ratios() public {
+    uint managerBalanceToken0 = manager.balances(address(this), token0);
+    uint managerBalanceToken1 = manager.balances(address(this), token1);
+
+    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0, 0);
+    assertEq(managerBalanceToken1, 0);
+
+    uint amount0 = 1000;
+    deal($(token0), address(this), amount0);
+    token0.approve(address(router), amount0);
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.push(order, amount0);
+
+    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step2, amount0);
+    assertEq(managerBalanceToken1Step2, 0);
+    assertEq(liquidityStep2, liquidity);
+
+    uint amount1 = 500;
+
+    deal($(token1), address(this), amount1);
+    token1.approve(address(router), amount1);
+    order = getRoutingOrder(token1);
+    router.push(order, amount1);
+
+    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+
+    assertGt(managerBalanceToken0Step3, 0);
+    assertEq(managerBalanceToken1Step3, 0);
+    assertGt(liquidityStep3, liquidity);
+  }
+
+  function test_pull_imbalanced_ratios() public {
+    uint managerBalanceToken0 = manager.balances(address(this), token0);
+    uint managerBalanceToken1 = manager.balances(address(this), token1);
+
+    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0, 0);
+    assertEq(managerBalanceToken1, 0);
+
+    uint amount0 = 200;
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.pull(order, amount0, true);
+
+    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step2, 0);
+    assertEq(managerBalanceToken1Step2, amount0);
+    assertLt(liquidityStep2, liquidity);
+
+    uint amount1 = 500;
+    order = getRoutingOrder(token1);
+    router.pull(order, amount1, true);
+
+    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+
+    assertEq(managerBalanceToken0Step3, amount1 - amount0);
+    assertEq(managerBalanceToken1Step3, 0);
+    assertLt(liquidityStep3, liquidityStep2);
   }
 }

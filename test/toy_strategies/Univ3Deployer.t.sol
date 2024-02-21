@@ -9,6 +9,7 @@ import {PoolAddress} from "@mgv-strats/src/strategies/vendor/uniswap/v3/peripher
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {INonfungiblePositionManager} from
   "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/interfaces/INonfungiblePositionManager.sol";
+import {TickMath} from "@mgv-strats/src/strategies/vendor/uniswap/v3/core/libraries/TickMath.sol";
 
 contract Univ3Deployer_test is StratTest, Univ3Deployer {
   PinnedPolygonFork fork;
@@ -61,30 +62,41 @@ contract Univ3Deployer_test is StratTest, Univ3Deployer {
     assertEq(pool, factory.getPool(address(base), address(quote), 500));
     assertEq(pool, address(exepextedPool));
 
+    exepextedPool.initialize(TickMath.getSqrtRatioAtTick(0));
+
     assertEq(exepextedPool.token0(), address(base));
     assertEq(exepextedPool.token1(), address(quote));
     assertEq(exepextedPool.fee(), 500);
     assertEq(exepextedPool.tickSpacing(), 10);
+    (,,,,,, bool unlocked) = exepextedPool.slot0();
+    assertTrue(unlocked);
   }
 
   function test_addLiquidity() public {
     address pool = factory.createPool(address(base), address(quote), 500);
+    IUniswapV3Pool(pool).initialize(TickMath.getSqrtRatioAtTick(0));
+
     INonfungiblePositionManager.MintParams memory params;
     params.token0 = address(base);
     params.token1 = address(quote);
     params.fee = 500;
     params.tickLower = -500;
     params.tickUpper = 500;
-    uint amount0Desired = 1000;
-    uint amount1Desired = 1000;
+    params.deadline = block.timestamp + 1000;
+    params.amount0Desired = 1000;
+    params.amount1Desired = 1000;
     params.recipient = address(this);
 
-    base.mint(amount0Desired);
-    quote.mint(amount1Desired);
+    // base.mint(amount0Desired);
+    // quote.mint(amount1Desired);
+    deal($(base), address(this), params.amount0Desired);
+    deal($(quote), address(this), params.amount1Desired);
 
-    base.approve(address(positionManager), amount0Desired);
-    quote.approve(address(positionManager), amount1Desired);
+    base.approve(address(positionManager), params.amount0Desired);
+    quote.approve(address(positionManager), params.amount1Desired);
 
     positionManager.mint(params);
+
+    assertEq(positionManager.balanceOf(address(this)), 1);
   }
 }
