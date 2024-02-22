@@ -39,7 +39,6 @@ contract MangroveAmplifierDeployer is Deployer {
     // Bug workaround: Foundry has a bug where the nonce is not incremented when MangroveAmplifier is deployed.
     //                 We therefore ensure that this happens.
     uint64 nonce = vm.getNonce(broadcaster());
-    broadcast();
     // See MangroveAmplifierGasreqBaseTest description for calculation of the gasreq.
     mgvAmp = deployMangroveAmplifier(mgv, routerProxyFactory, routerImplementation);
     // Bug workaround: See comment above `nonce` further up
@@ -56,6 +55,7 @@ contract MangroveAmplifierDeployer is Deployer {
     RouterProxyFactory routerProxyFactory,
     SmartRouter routerImplementation
   ) internal virtual returns (MangroveAmplifier mgvAmp) {
+    broadcast();
     if (forMultisig) {
       mgvAmp = new MangroveAmplifier{salt: salt}(mgv, routerProxyFactory, routerImplementation);
     } else {

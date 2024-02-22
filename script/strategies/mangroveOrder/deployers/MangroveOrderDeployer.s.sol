@@ -32,7 +32,7 @@ contract MangroveOrderDeployer is Deployer {
     // Bug workaround: Foundry has a bug where the nonce is not incremented when MangroveOrder is deployed.
     //                 We therefore ensure that this happens.
     uint64 nonce = vm.getNonce(broadcaster());
-    broadcast();
+
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
     mgvOrder = deployMangroveOrder(mgv, admin, routerProxyFactory);
     // Bug workaround: See comment above `nonce` further up
@@ -50,6 +50,7 @@ contract MangroveOrderDeployer is Deployer {
     virtual
     returns (MangroveOrder mgvOrder)
   {
+    broadcast();
     if (forMultisig) {
       mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
     } else {

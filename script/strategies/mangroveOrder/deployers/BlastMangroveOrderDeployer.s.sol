@@ -14,6 +14,7 @@ contract BlastMangroveOrderDeployer is MangroveOrderDeployer {
     virtual
     returns (MangroveOrder mgvOrder)
   {
+    broadcast();
     if (forMultisig) {
       mgvOrder = new BlastMangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
     } else {

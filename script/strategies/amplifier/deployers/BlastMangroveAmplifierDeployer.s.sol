@@ -18,6 +18,7 @@ contract BlastMangroveAmplifierDeployer is MangroveAmplifierDeployer {
     SmartRouter _routerImplementation
   ) internal override returns (MangroveAmplifier mgvAmp) {
     BlastSmartRouter routerImplementation = BlastSmartRouter(address(_routerImplementation));
+    broadcast();
     if (forMultisig) {
       mgvAmp = new BlastMangroveAmplifier{salt: salt}(mgv, routerProxyFactory, routerImplementation);
     } else {
