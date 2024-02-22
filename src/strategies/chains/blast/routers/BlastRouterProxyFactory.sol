@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import {RouterProxyFactory} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
-import {BlastLib} from "@mgv-strats/src/strategies/vendor/blast/BlastLib.sol";
+import {BlastLib} from "@mgv/src/chains/blast/lib/BlastLib.sol";
 import {AccessControlled} from "@mgv-strats/src/strategies/utils/AccessControlled.sol";
-import {IBlastPoints} from "@mgv-strats/src/strategies/vendor/blast/IBlastPoints.sol";
+import {IBlastPoints} from "@mgv/src/chains/blast/interfaces/IBlastPoints.sol";
 
 /// @title BlastRouterProxyFactory
 /// @notice The Blast variant of RouterProxyFactory

@@ -3,9 +3,8 @@ pragma solidity ^0.8.20;
 
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {RouterProxyFactory} from "@mgv-strats/src/strategies/offer_forwarder/RenegingForwarder.sol";
-import {IBlastPoints} from "@mgv-strats/src/strategies/vendor/blast/IBlastPoints.sol";
-import {BlastLib} from "@mgv-strats/src/strategies/vendor/blast/BlastLib.sol";
-import {YieldMode, GasMode} from "@mgv-strats/src/strategies/vendor/blast/IBlast.sol";
+import {IBlastPoints} from "@mgv/src/chains/blast/interfaces/IBlastPoints.sol";
+import {BlastLib} from "@mgv/src/chains/blast/lib/BlastLib.sol";
 import {MangroveAmplifier} from "@mgv-strats/src/strategies/MangroveAmplifier.sol";
 import {BlastSmartRouter} from "@mgv-strats/src/strategies/chains/blast/routers/BlastSmartRouter.sol";
 
