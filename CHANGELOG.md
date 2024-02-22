@@ -2,55 +2,34 @@
 
 - feat: add `MonoSwap` routing logic, manager, and univ3 logics
 
-# 2.0.1-0
+# 2.1.0-0
 
-- Added `outbound_tkn` to `__bundles` mapping key so as to ensure unmanipulated outbound token.
-- Added `freeWei` deprovision on failed `_retractOffer` on forwarder
-- Fixed `freeWei` resetting on each offer retracting while retracting bundle
-- Resetting `cond.volume` on `_updateOffer` instead of `__lastlook__`
-- Using `__residualValues__` to update other offers in the bundle in order to keep a consistent outbound volume
-- logging outbound token at the creation of a new bundle
-- Changing reneging volume condition to a weak inequality
-- feat!: Remove mangrove.js deployer
-- Upgrade to @mangrovedao/mangrove-deployments v2.0.2-0
-- Upgrade to @mangrovedao/context-addresses v1.1.0
-- Simplify copying of context addresses
-- Fixed versionning
+- Add support for blast
 
-# 2.0.0-b1.3
+# 2.0.1
 
-- Add export for `MangroveAmplifier`
-- Add deployer for `SimpleAaveLogic`
-- Add AavePooledRouter to ABI exports
-- Upgrade to @mangrovedao/mangrove-deployments v2.0.1-1
-
-# 2.0.0-b1.2
-
-- Add exports for `AbstractRoutingLogic` and `SimpleAaveLogic`
-
-# 2.0.0-b1.1
-
-- Upgrade to @mangrovedao/mangrove-deployments v2.0.0
-- Add Mock Aave Oracle to Mock Aave contract
-
-# 2.0.0-b1.0
-
-- feat!: Remove mangrove.js deployer
-- Created 'SmartRouter' schema to allow to plug any RoutingLogic to a ForwarderContract
-- Created 'RouterProxyFactory' to deploy router proxies for each user and allow all approvals to a single contract per user
-- Added 'RenegingForwarder' to allow time based and volume based reneging
-- Changed 'IOfferLogic' 'router' view function to be passed an argument, supposedly the 'owner' of the router
-- Added a 'router' view function with no args to 'Direct' contract because Direct only needs a single router
-- Changed MangroveOrder
+- Create `SmartRouter` schema to allow to plug any `RoutingLogic` to a `Forwarder` contract
+- Create `RouterProxyFactory` to deploy router proxies for each user and allow all approvals to a single contract per user
+- Add `RenegingForwarder` to allow time based and volume based reneging
+- Change `IOfferLogic` `router` view function to be passed an argument, supposedly the 'owner' of the router
+- Add a `router` view function with no args to `Direct` contract because `Direct` only needs a single router
+- Change `MangroveOrder`
   - Default Router is now a proxied Smart Router
-  - 'take' entrypoints args changed
-    - Removed 'fillOrKill' and 'restingOrder' boolean args
-    - Added 'takerOrderType' enum with GTC(E), IOC, FOK, and PO orders
-  - MangroveOrder now extends RenegingForwarder
-- Added 'MangroveAmplifier' to amplify create offers on multiple market from a single token
+  - `take` entrypoints args changed
+    - Removed `fillOrKill` and `restingOrder` boolean args
+    - Added `takerOrderType` enum with GTC(E), IOC, FOK, and PO orders
+  - `MangroveOrder` now extends `RenegingForwarder`
+- Add `MangroveAmplifier` to amplify create offers on multiple market from a single token
   - Possibility to attach a logic to every token
   - Bundle-wise reneging on time possibility
-- Added Aave Routing logic
+- Add ABI exports for `MangroveAmplifier`, `AbstractRoutingLogic`, `SimpleAaveLogic`, and `AavePooledRouter`
+- Add Aave Routing logic
+- Add Mock Aave Oracle to `AaveMock` contract
+- Add deployer for `SimpleAaveLogic`
+- Remove mangrove.js deployer
+- Bump @mangrovedao/context-addresses to v1.1.2
+- Bump @mangrovedao/mangrove-deployments to v2.0.2
+- Simplify copying of context addresses
 
 # 1.0.2
 
