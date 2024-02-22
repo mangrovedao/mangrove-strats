@@ -1,6 +1,6 @@
 {
   "name": "@mangrovedao/mangrove-strats",
-  "version": "2.0.1",
+  "version": "2.1.0-0",
   "author": "Mangrove DAO",
   "license": "SEE LICENSE IN LICENSE",
   "main": "index.js",
