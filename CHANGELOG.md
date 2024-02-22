@@ -1,5 +1,7 @@
 # Next version
 
+# 2.1.0-0
+
 - Add support for blast
 
 # 2.0.1
