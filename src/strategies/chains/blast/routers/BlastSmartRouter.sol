@@ -13,8 +13,7 @@ contract BlastSmartRouter is SmartRouter {
   constructor(address _forcedBinding) SmartRouter(_forcedBinding) {}
 
   /// @inheritdoc AccessControlled
-  function _setAdmin(address _admin) internal override {
-    super._setAdmin(_admin);
-    BlastLib.BLAST.configureGovernor(_admin);
+  function _onAdminChange(address admin_) internal override {
+    BlastLib.BLAST.configureGovernor(admin_);
   }
 }

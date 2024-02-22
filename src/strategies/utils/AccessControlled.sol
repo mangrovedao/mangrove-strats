@@ -61,13 +61,20 @@ contract AccessControlled {
   }
 
   /**
+   * @notice This function is called to add logic on admin change for inheriting contracts.
+   * @param admin_ The new admin. Cannot be `address(0)`.
+   */
+  function _onAdminChange(address admin_) internal virtual {}
+
+  /**
    * @notice This sets and log a new admin
    * @param admin_ The new admin. Cannot be `address(0)`.
    */
-  function _setAdmin(address admin_) internal virtual {
+  function _setAdmin(address admin_) internal {
     require(admin_ != address(0), "AccessControlled/0xAdmin");
     _admin = admin_;
     emit SetAdmin(admin_);
+    _onAdminChange(admin_);
   }
 
   /**
