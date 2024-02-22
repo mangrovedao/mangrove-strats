@@ -18,6 +18,7 @@ import {SimpleAbracadabraLogic} from "@mgv-strats/src/strategies/routing_logic/S
 import {IPoolAddressesProvider} from
   "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
 import {ICauldronV4} from "@mgv-strats/src/strategies/vendor/abracadabra/interfaces/ICauldronV4.sol";
+import {AbracadabraAddressProvider} from "@mgv-strats/src/strategies/integrations/abracadabra/AddressProvider.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
@@ -35,6 +36,7 @@ contract MgvAmplifierTest is StratTest {
   SimpleAaveLogic internal aaveLogic; // deployed simple aave router implementation
   SimpleAbracadabraLogic internal abracadabraLogic; // deployed simple abracadabra router implementation
   MangroveAmplifier internal mgvAmplifier; // MangroveAmplifier contract
+  AbracadabraAddressProvider internal abracadabraAddressProvider; // abracadabra address provider
 
   // uint defaultLogicGasreq = 250_000;
   // uint aaveLogicGasreq = 475_000;
@@ -76,8 +78,9 @@ contract MgvAmplifierTest is StratTest {
 
     vm.startPrank(deployer);
     routerFactory = new RouterProxyFactory();
+    abracadabraAddressProvider = new AbracadabraAddressProvider(mim);
     aaveLogic = new SimpleAaveLogic(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
-    abracadabraLogic = new SimpleAbracadabraLogic(mim, ICauldronV4(fork.get("AbracadabraCauldron")));
+    abracadabraLogic = new SimpleAbracadabraLogic(abracadabraAddressProvider);
     mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, new SmartRouter(address(0)));
     mgvAmplifier.activate(weth);
     mgvAmplifier.activate(dai);

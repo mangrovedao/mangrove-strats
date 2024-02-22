@@ -4,31 +4,37 @@ pragma solidity ^0.8.10;
 import {ICauldronV4} from "../../vendor/abracadabra/interfaces/ICauldronV4.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {AbracadabraConstants} from "../../vendor/abracadabra/constants.sol";
+import {AbracadabraAddressProvider} from "./AddressProvider.sol";
 
 /// @title This contract provides a collection of lending capabilities with Abracadabra- to whichever contract inherits it
 contract AbracadabraLender {
   ///@notice The Abracadabra cauldron retrieved from the cauldron provider.
-  ICauldronV4 public immutable CAULDRON;
+  AbracadabraAddressProvider public immutable ADDRESSES;
 
   /// @notice contract's constructor
-  /// @param cauldron address of cauldron this lender is for
-  constructor(ICauldronV4 cauldron) {
-    CAULDRON = cauldron;
+  /// @param addressProvider address provider to allow for cauldron look up
+  constructor(AbracadabraAddressProvider addressProvider) {
+    ADDRESSES = addressProvider;
   }
 
-  /// @notice allows this contract to approve the POOL to transfer some underlying asset on its behalf
-  /// @dev this is a necessary step prior to supplying tokens to the POOL or to repay a debt
+  function cauldronFor(IERC20 token) public view returns (ICauldronV4) {
+    return ICauldronV4(ADDRESSES.cauldrons(address(token)));
+  }
+
+  ///@notice fetches the balance of the overlying of the asset (always MIM)
+  ///@param owner the balance owner
+  ///@return balance of the overlying of the asset
+  function overlyingBalanceOf(address owner) internal view returns (uint) {
+    return IERC20(ADDRESSES.MIM()).balanceOf(owner);
+  }
+
+  /// @notice allows this contract to approve the cauldron to transfer some underlying asset on its behalf
+  /// @dev this is a necessary step prior to supplying tokens to the cauldron
   /// @param token the underlying asset for which approval is required
   /// @param amount the approval amount
   function _approveLender(IERC20 token, uint amount) internal {
-    TransferLib.approveToken(token, address(CAULDRON), amount);
-  }
-
-  /// @notice convenience function to obtain the overlying of a given asset
-  /// @param asset the underlying asset
-  /// @return aToken the overlying asset
-  function overlying(IERC20 asset) public view returns (IERC20 aToken) {
-    aToken = CAULDRON.collateral();
+    TransferLib.approveToken(token, address(cauldronFor(token)), amount);
   }
 
   ///@notice redeems funds from the pool
@@ -43,11 +49,20 @@ contract AbracadabraLender {
     returns (bytes32 reason, uint redeemed)
   {
     if (amount != 0) {
-      uint8[] memory actions = new uint8[](1);
-      uint[] memory values = new uint[](1);
-      bytes[] memory datas = new bytes[](1);
-      try CAULDRON.cook(actions, values, datas) returns (uint value1, uint value2) {
-        // redeemed = _redeemed; // Need to work out what value will be
+      uint8[] memory actions = new uint8[](2);
+      actions[0] = 4; // ACTION_REMOVE_COLLATERAL
+      actions[1] = 21; // ACTION_BENTO_WITHDRAW
+
+      uint[] memory values = new uint[](2);
+      values[0] = 0;
+      values[1] = 0;
+
+      bytes[] memory datas = new bytes[](2);
+      datas[0] = abi.encode(amount, to);
+      datas[1] = abi.encode(token, to, 0, amount);
+
+      try cauldronFor(token).cook(actions, values, datas) returns (uint value1, uint value2) {
+        redeemed = value1;
       } catch Error(string memory _reason) {
         require(noRevert, _reason);
         reason = bytes32(bytes(_reason));
@@ -68,11 +83,22 @@ contract AbracadabraLender {
     if (amount == 0) {
       return bytes32(0);
     } else {
-      uint8[] memory actions = new uint8[](1);
-      uint[] memory values = new uint[](1);
-      bytes[] memory datas = new bytes[](1);
-      try CAULDRON.cook(actions, values, datas) {
-        // (address(token), amount, onBehalf, 0) {
+      uint8[] memory actions = new uint8[](3);
+      actions[0] = 11; // ACTION_UPDATE_EXCHANGE_RATE // ?
+      actions[1] = 20; // ACTION_BENTO_DEPOSIT
+      actions[2] = 10; // ACTION_ADD_COLLATERAL
+
+      uint[] memory values = new uint[](3);
+      values[0] = 0;
+      values[1] = msg.value; // Needs to be set for Native tokens only
+      values[2] = 0;
+
+      bytes[] memory datas = new bytes[](3);
+      datas[0] = abi.encode(false, uint(0), uint(0));
+      datas[1] = abi.encode(token, onBehalf, amount, 0);
+      datas[2] = abi.encode(int(-2), onBehalf, true);
+
+      try cauldronFor(token).cook(actions, values, datas) {
         return bytes32(0);
       } catch Error(string memory reason) {
         require(noRevert, reason);
@@ -82,13 +108,5 @@ contract AbracadabraLender {
         return "AbraLender/supplyReverted";
       }
     }
-  }
-
-  ///@notice verifies whether an asset can be supplied on pool
-  ///@param asset the asset one wants to lend
-  ///@return true if the asset can be supplied on pool
-  function checkAsset(IERC20 asset) public view returns (bool) {
-    IERC20 aToken = overlying(asset);
-    return address(aToken) != address(0);
   }
 }

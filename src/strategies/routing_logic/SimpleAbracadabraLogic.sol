@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {AbstractRoutingLogic, IERC20} from "./abstract/AbstractRoutingLogic.sol";
 import {AbracadabraLender} from "@mgv-strats/src/strategies/integrations/abracadabra/Lender.sol";
+import {AbracadabraAddressProvider} from "@mgv-strats/src/strategies/integrations/abracadabra/AddressProvider.sol";
 import {ICauldronV4} from "../vendor/abracadabra/interfaces/ICauldronV4.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
@@ -11,13 +12,9 @@ import {TransferLib} from "@mgv/lib/TransferLib.sol";
 /// @title SimpleAbracadabraLogic
 /// @notice Routing logic for Abracadabra without credit line
 contract SimpleAbracadabraLogic is AbracadabraLender, AbstractRoutingLogic {
-  IERC20 public immutable MIM;
-
-  ///@notice contract's constructor
-  ///@param magicInternetMoney ERC20 contract for the MIM contract used as overlying for all cauldrons
-  constructor(IERC20 magicInternetMoney, ICauldronV4 cauldron) AbracadabraLender(cauldron) {
-    MIM = magicInternetMoney;
-  }
+  /// @notice contract's constructor
+  /// @param addressProvider address provider to allow for cauldron look up
+  constructor(AbracadabraAddressProvider addressProvider) AbracadabraLender(addressProvider) {}
 
   ///@inheritdoc AbstractRoutingLogic
   function pullLogic(IERC20 token, address fundOwner, uint amount, bool strict) external override returns (uint pulled) {
@@ -28,7 +25,7 @@ contract SimpleAbracadabraLogic is AbracadabraLender, AbstractRoutingLogic {
     // fetching overlyings from owner's account
     // will fail if `address(this)` is not approved for it.
     require(
-      TransferLib.transferTokenFrom(overlying(token), fundOwner, address(this), amount_),
+      TransferLib.transferTokenFrom(ADDRESSES.MIM(), fundOwner, address(this), amount_),
       "SimpleAbracadabraLogic/pullFailed"
     );
     // redeem from the cauldron and send underlying to calling maker contract
@@ -58,14 +55,7 @@ contract SimpleAbracadabraLogic is AbracadabraLender, AbstractRoutingLogic {
   }
 
   ///@inheritdoc AbstractRoutingLogic
-  function balanceLogic(IERC20 token, address fundOwner) external view override returns (uint balance) {
+  function balanceLogic(IERC20 _token, address fundOwner) external view override returns (uint balance) {
     balance = overlyingBalanceOf(fundOwner);
-  }
-
-  ///@notice fetches the balance of the overlying of the asset (always MIM)
-  ///@param owner the balance owner
-  ///@return balance of the overlying of the asset
-  function overlyingBalanceOf(address owner) internal view returns (uint) {
-    return MIM.balanceOf(owner);
   }
 }

@@ -10,8 +10,8 @@ import {
 
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
-import {PoolAddressProviderMock} from "@mgv-strats/script/toy/AbracadabraMock.sol";
 import {ICauldronV4} from "@mgv-strats/src/strategies/vendor/abracadabra/interfaces/ICauldronV4.sol";
+import {AbracadabraAddressProvider} from "@mgv-strats/src/strategies/integrations/abracadabra/AddressProvider.sol";
 
 import {Test2} from "@mgv/lib/Test2.sol";
 
@@ -36,7 +36,7 @@ contract SimpleAbracadabraLogicDeployerTest is Deployer, Test2 {
   }
 
   function test_normal_deploy() public {
-    salDeployer.innerRun({mim: dai, cauldron: ICauldronV4(address(0))});
+    salDeployer.innerRun({addressProvider: AbracadabraAddressProvider(address(0))});
 
     SimpleAbracadabraLogic sal = SimpleAbracadabraLogic(fork.get("SimpleAbracadabraLogic"));
   }
