@@ -10,9 +10,9 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {INonfungiblePositionManager} from
   "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/interfaces/INonfungiblePositionManager.sol";
 import {TickMath} from "@mgv-strats/src/strategies/vendor/uniswap/v3/core/libraries/TickMath.sol";
-import {MonoswapV3Manager} from "@mgv-strats/src/strategies/routing_logic/restaking/monoswap/MonoswapV3Manager.sol";
-import {MonoswapV3RoutingLogic} from
-  "@mgv-strats/src/strategies/routing_logic/restaking/monoswap/MonoswapV3RoutingLogic.sol";
+import {UniswapV3Manager} from "@mgv-strats/src/strategies/routing_logic/restaking/uni-v3/UniswapV3Manager.sol";
+import {UniswapV3RoutingLogic} from
+  "@mgv-strats/src/strategies/routing_logic/restaking/uni-v3/UniswapV3RoutingLogic.sol";
 
 import {RouterProxyFactory, RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 import {SmartRouter, RL} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
@@ -26,12 +26,27 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   SmartRouter public routerImplementation;
   SmartRouter public router;
 
-  MonoswapV3Manager public manager;
-  MonoswapV3RoutingLogic public routingLogic;
+  UniswapV3Manager public manager;
+  UniswapV3RoutingLogic public routingLogic;
 
   IUniswapV3Pool public pool;
 
   uint positionId;
+
+  struct Position {
+    uint96 nonce;
+    address operator;
+    address token0;
+    address token1;
+    uint24 fee;
+    int24 tickLower;
+    int24 tickUpper;
+    uint128 liquidity;
+    uint feeGrowthInside0LastX128;
+    uint feeGrowthInside1LastX128;
+    uint128 tokensOwed0;
+    uint128 tokensOwed1;
+  }
 
   function mintNewPosition() internal returns (uint _positionId) {
     INonfungiblePositionManager.MintParams memory params;
@@ -64,6 +79,14 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     router.setLogic(order, routingLogic);
   }
 
+  function getLiquidity() internal view returns (uint128 liquidity) {
+    (bool success, bytes memory data) =
+      address(positionManager).staticcall(abi.encodeWithSelector(positionManager.positions.selector, positionId));
+    require(success, "MV3RoutingLogic/position-not-found");
+    Position memory position = abi.decode(data, (Position));
+    liquidity = position.liquidity;
+  }
+
   function setUp() public override {
     deployUniv3();
 
@@ -86,8 +109,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     (RouterProxy proxy,) = proxyFactory.instantiate(address(this), routerImplementation);
     router = SmartRouter(address(proxy));
 
-    manager = new MonoswapV3Manager(positionManager, proxyFactory, routerImplementation);
-    routingLogic = new MonoswapV3RoutingLogic(manager);
+    manager = new UniswapV3Manager(positionManager, proxyFactory, routerImplementation);
+    routingLogic = new UniswapV3RoutingLogic(manager);
 
     positionId = mintNewPosition();
 
@@ -101,7 +124,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     uint managerBalanceToken0 = manager.balances(address(this), token0);
     uint managerBalanceToken1 = manager.balances(address(this), token1);
 
-    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+    uint128 liquidity = getLiquidity();
 
     assertEq(managerBalanceToken0, 0);
     assertEq(managerBalanceToken1, 0);
@@ -114,7 +137,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount);
     assertEq(managerBalanceToken1Step2, 0);
@@ -127,7 +150,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
     assertEq(managerBalanceToken1Step3, 0);
@@ -138,7 +161,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     uint managerBalanceToken0 = manager.balances(address(this), token0);
     uint managerBalanceToken1 = manager.balances(address(this), token1);
 
-    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+    uint128 liquidity = getLiquidity();
 
     assertEq(managerBalanceToken0, 0);
     assertEq(managerBalanceToken1, 0);
@@ -149,7 +172,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken1Step2, amount);
     assertEq(managerBalanceToken0Step2, 0);
@@ -160,7 +183,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
     assertEq(managerBalanceToken1Step3, 0);
@@ -175,7 +198,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   }
 
   function test_push_and_pull() public {
-    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+    uint128 liquidity = getLiquidity();
 
     uint amount = 1000;
     deal($(token0), address(this), amount);
@@ -184,7 +207,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     router.push(order, amount);
 
     uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
-    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount);
     assertEq(liquidityStep2, liquidity);
@@ -192,7 +215,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     router.pull(order, amount, true);
 
     uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
-    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
     assertEq(liquidityStep3, liquidity);
@@ -202,7 +225,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     uint managerBalanceToken0 = manager.balances(address(this), token0);
     uint managerBalanceToken1 = manager.balances(address(this), token1);
 
-    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+    uint128 liquidity = getLiquidity();
 
     assertEq(managerBalanceToken0, 0);
     assertEq(managerBalanceToken1, 0);
@@ -215,7 +238,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount0);
     assertEq(managerBalanceToken1Step2, 0);
@@ -230,7 +253,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep3 = getLiquidity();
 
     assertGt(managerBalanceToken0Step3, 0);
     assertEq(managerBalanceToken1Step3, 0);
@@ -241,7 +264,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     uint managerBalanceToken0 = manager.balances(address(this), token0);
     uint managerBalanceToken1 = manager.balances(address(this), token1);
 
-    (,,,,,,, uint128 liquidity,,,,) = positionManager.positions(positionId);
+    uint128 liquidity = getLiquidity();
 
     assertEq(managerBalanceToken0, 0);
     assertEq(managerBalanceToken1, 0);
@@ -252,7 +275,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep2,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, 0);
     assertEq(managerBalanceToken1Step2, amount0);
@@ -264,7 +287,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
     uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
-    (,,,,,,, uint128 liquidityStep3,,,,) = positionManager.positions(positionId);
+    uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, amount1 - amount0);
     assertEq(managerBalanceToken1Step3, 0);

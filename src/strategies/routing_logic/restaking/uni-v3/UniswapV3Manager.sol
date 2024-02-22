@@ -8,12 +8,12 @@ import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {RouterProxyFactory} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
 
-/// @title Monoswap V3 Manager
+/// @title Uniswap V3 Manager
 /// @author Mangrove DAO
-/// @notice This contract is used to manage Monoswap V3 positions used by the mangrove strategy
+/// @notice This contract is used to manage Uniswap V3 positions used by the mangrove strategy
 /// * This contract holds the position ID for the managed positions
 /// * It also holds the balances of the tokens that cannot be reinvested immediately into the strategy
-contract MonoswapV3Manager {
+contract UniswapV3Manager {
   /// @notice The position manager contract
   INonfungiblePositionManager public immutable positionManager;
 

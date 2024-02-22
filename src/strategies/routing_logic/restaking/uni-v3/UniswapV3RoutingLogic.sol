@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {AbstractRoutingLogic, IERC20} from "../../abstract/AbstractRoutingLogic.sol";
-import {MonoswapV3Manager} from "./MonoswapV3Manager.sol";
+import {UniswapV3Manager} from "./UniswapV3Manager.sol";
 import {INonfungiblePositionManager} from
   "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/interfaces/INonfungiblePositionManager.sol";
 import {PoolAddress} from "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/libraries/PoolAddress.sol";
@@ -11,11 +11,20 @@ import {TickMath} from "@mgv-strats/src/strategies/vendor/uniswap/v3/core/librar
 import {LiquidityAmounts} from "@mgv-strats/src/strategies/vendor/uniswap/v3/periphery/libraries/LiquidityAmounts.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 
-contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
-  MonoswapV3Manager public immutable manager;
+/// @title UniswapV3RoutingLogic
+/// @author Mangrove DAO
+/// @notice This contract is used to manage the routing logic for Uniswap V3
+contract UniswapV3RoutingLogic is AbstractRoutingLogic {
+  /// @notice The Uniswap V3 manager contract
+  UniswapV3Manager public immutable manager;
+
+  /// @notice The Uniswap V3 position manager contract
   INonfungiblePositionManager public immutable positionManager;
+
+  /// @notice The Uniswap V3 factory address
   address public immutable factory;
 
+  /// @notice The Uniswap V3 position struct
   struct Position {
     uint96 nonce;
     address operator;
@@ -31,12 +40,17 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     uint128 tokensOwed1;
   }
 
-  constructor(MonoswapV3Manager _manager) {
+  /// @notice Construct the Uniswap V3 routing logic
+  /// @param _manager the Uniswap V3 manager contract
+  constructor(UniswapV3Manager _manager) {
     manager = _manager;
     positionManager = _manager.positionManager();
     factory = positionManager.factory();
   }
 
+  /// @notice Get the position from the position ID
+  /// @param positionId the position ID
+  /// @return position the position struct
   function _positionFromID(uint positionId) internal view returns (Position memory position) {
     (bool success, bytes memory data) =
       address(positionManager).staticcall(abi.encodeWithSelector(positionManager.positions.selector, positionId));
@@ -44,11 +58,20 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     position = abi.decode(data, (Position));
   }
 
+  /// @notice Get the position from the fund owner
+  /// @param fundOwner the fund owner address
+  /// @return positionId the position ID
+  /// @return position the position struct
   function _getPosition(address fundOwner) internal view returns (uint positionId, Position memory position) {
     positionId = manager.positions(fundOwner);
     position = _positionFromID(positionId);
   }
 
+  /// @notice Get the pool key
+  /// @param token0 the first token address
+  /// @param token1 the second token address
+  /// @param fee the fee
+  /// @return poolKey the pool key
   function _getPoolKey(address token0, address token1, uint24 fee)
     internal
     pure
@@ -57,10 +80,17 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     poolKey = PoolAddress.getPoolKey(token0, token1, fee);
   }
 
+  /// @notice Get the pool
+  /// @param poolKey the pool key
+  /// @return pool the pool contract
   function _getPool(PoolAddress.PoolKey memory poolKey) internal view returns (IUniswapV3Pool pool) {
     return IUniswapV3Pool(PoolAddress.computeAddress(factory, poolKey));
   }
 
+  /// @notice Get the amount owed of a token given a position
+  /// @param _token the token
+  /// @param position the position
+  /// @return owed the amount owed
   function _owedOf(IERC20 _token, Position memory position) internal pure returns (uint owed) {
     address token = address(_token);
     if (token == position.token0) {
@@ -71,10 +101,18 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     }
   }
 
+  /// @notice Get the amount in the manager
+  /// @param token the token
+  /// @param fundOwner the fund owner
+  /// @return inManager the amount in the manager
   function _inManager(IERC20 token, address fundOwner) internal view returns (uint) {
     return manager.balances(fundOwner, token);
   }
 
+  /// @notice Collect the fees from a position (or unused tokens)
+  /// @param positionId the position ID
+  /// @return amount0 the amount of token0
+  /// @return amount1 the amount of token1
   function _collect(uint positionId) internal returns (uint amount0, uint amount1) {
     INonfungiblePositionManager.CollectParams memory params;
     params.tokenId = positionId;
@@ -84,6 +122,10 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     (amount0, amount1) = positionManager.collect(params);
   }
 
+  /// @notice Take all tokens from the manager
+  /// @param token0 the first token
+  /// @param token1 the second token
+  /// @param fundOwner the fund owner
   function _takeAllFromManager(IERC20 token0, IERC20 token1, address fundOwner) internal {
     // take all from manager
     uint balance0 = manager.balances(fundOwner, token0);
@@ -96,6 +138,10 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     }
   }
 
+  /// @notice Send all tokens to the manager
+  /// @param token0 the first token
+  /// @param token1 the second token
+  /// @param fundOwner the fund owner
   function _sendAllToManager(IERC20 token0, IERC20 token1, address fundOwner) internal {
     // send all to manager
     uint balance0 = token0.balanceOf(address(this));
@@ -110,6 +156,11 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     }
   }
 
+  /// @notice Reposition the position
+  /// @param positionId the position ID
+  /// @param token0 the first token
+  /// @param token1 the second token
+  /// @param fundOwner the fund owner
   function _reposition(uint positionId, IERC20 token0, IERC20 token1, address fundOwner) internal {
     // take all tokens possible everywhere
     _takeAllFromManager(token0, token1, fundOwner);
@@ -129,6 +180,10 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     try positionManager.increaseLiquidity(params) {} catch {}
   }
 
+  /// @notice Get the amounts in a position
+  /// @param position the position
+  /// @return amount0 the amount of token0
+  /// @return amount1 the amount of token1
   function _amountsInPosition(Position memory position) internal view returns (uint amount0, uint amount1) {
     (uint160 sqrtPriceX96,,,,,,) = _getPool(_getPoolKey(position.token0, position.token1, position.fee)).slot0();
     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
@@ -137,8 +192,12 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
       LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioAX96, sqrtRatioBX96, position.liquidity);
   }
 
-  // pull => take all => collect => send to msg.sender => reposition => send remaining to manager
-
+  /// @inheritdoc AbstractRoutingLogic
+  /// @dev the pull logics first checks if it has enough to collect and in manager to send to mangrove and avoid uneceesary decrease in liquidity
+  /// * if not, we first decrease the full liquidity
+  /// * In any case, we then collect from the position, remove all  tokens from the manager
+  /// * Then we send the necessary amount to the maker contract
+  /// * finally we reposition and send the remaining amount to the manager
   function pullLogic(IERC20 token, address fundOwner, uint amount, bool)
     external
     virtual
@@ -174,8 +233,9 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     return amount;
   }
 
-  // push => take from msg.sender => take all => collect => reposition => send remaining to manager
-
+  /// @inheritdoc AbstractRoutingLogic
+  /// @dev the push logics first collect all fees from the position, then take all tokens from the manager
+  /// * It then repositions the position and sends the remaining amount to the manager
   function pushLogic(IERC20 token, address fundOwner, uint amount) external virtual override returns (uint pushed) {
     // push directly to manager (avoid gas vost of trying to reposition)
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "MV3RoutingLogic/push-failed");
@@ -193,6 +253,13 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     return amount;
   }
 
+  /// @notice Get the balance of a token
+  /// @param token The token
+  /// @param fundOwner The fund owner
+  /// @param position The position
+  /// @return managerBalance the amount in the manager
+  /// @return owed the amount owed by the position
+  /// @return inPosition the amount in the position
   function _balanceOf(IERC20 token, address fundOwner, Position memory position)
     internal
     view
@@ -213,6 +280,7 @@ contract MonoswapV3RoutingLogic is AbstractRoutingLogic {
     }
   }
 
+  /// @inheritdoc AbstractRoutingLogic
   function balanceLogic(IERC20 token, address fundOwner) external view virtual override returns (uint balance) {
     (, Position memory position) = _getPosition(fundOwner);
     (uint managerBalance, uint owed, uint inPosition) = _balanceOf(token, fundOwner, position);
