@@ -67,24 +67,22 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     position = _positionFromID(positionId);
   }
 
-  /// @notice Get the pool key
-  /// @param token0 the first token address
-  /// @param token1 the second token address
-  /// @param fee the fee
-  /// @return poolKey the pool key
-  function _getPoolKey(address token0, address token1, uint24 fee)
-    internal
-    pure
-    returns (PoolAddress.PoolKey memory poolKey)
-  {
-    poolKey = PoolAddress.getPoolKey(token0, token1, fee);
+  function _anyOfToken(IERC20 token, Position memory position) internal pure {
+    require(token == IERC20(position.token0) || token == IERC20(position.token1), "MV3RoutingLogic/invalid-token");
   }
 
-  /// @notice Get the pool
-  /// @param poolKey the pool key
-  /// @return pool the pool contract
-  function _getPool(PoolAddress.PoolKey memory poolKey) internal view returns (IUniswapV3Pool pool) {
-    return IUniswapV3Pool(PoolAddress.computeAddress(factory, poolKey));
+  /// @notice Gets the current price from a pool
+  /// @param token0 The first token
+  /// @param token1 The second token
+  /// @param fee The fee
+  function getCurrentSqrtRatioX96(address token0, address token1, uint24 fee)
+    internal
+    view
+    returns (uint160 sqrtPriceX96)
+  {
+    PoolAddress.PoolKey memory poolKey = PoolAddress.getPoolKey(token0, token1, fee);
+    IUniswapV3Pool pool = IUniswapV3Pool(PoolAddress.computeAddress(factory, poolKey));
+    (sqrtPriceX96,,,,,,) = pool.slot0();
   }
 
   /// @notice Get the amount owed of a token given a position
@@ -122,55 +120,62 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     (amount0, amount1) = positionManager.collect(params);
   }
 
-  /// @notice Take all tokens from the manager
+  /// @notice Get the tokens array
+  /// @param token the token in logic
   /// @param token0 the first token
   /// @param token1 the second token
+  function _getTokensArray(IERC20 token, IERC20 token0, IERC20 token1) internal pure returns (IERC20[] memory tokens) {
+    if (token == token0 || token == token1) {
+      tokens = new IERC20[](2);
+    } else {
+      tokens = new IERC20[](3);
+      tokens[2] = token;
+    }
+    tokens[0] = token0;
+    tokens[1] = token1;
+  }
+
+  /// @notice Take all tokens from the manager
+  /// @param tokens the tokens
   /// @param fundOwner the fund owner
-  function _takeAllFromManager(IERC20 token0, IERC20 token1, address fundOwner) internal {
-    // take all from manager
-    uint balance0 = manager.balances(fundOwner, token0);
-    if (balance0 > 0) {
-      manager.routerTakeAmountTo(fundOwner, token0, balance0, address(this));
-    }
-    uint balance1 = manager.balances(fundOwner, token1);
-    if (balance1 > 0) {
-      manager.routerTakeAmountTo(fundOwner, token1, balance1, address(this));
-    }
+  function _takeAllFromManager(IERC20[] memory tokens, address fundOwner) internal {
+    uint[] memory amounts;
+    (tokens, amounts) = manager.getFullBalancesParams(fundOwner, tokens);
+    manager.routerTakeAmounts(fundOwner, tokens, amounts, address(this));
   }
 
   /// @notice Send all tokens to the manager
-  /// @param token0 the first token
-  /// @param token1 the second token
+  /// @param tokens the tokens
   /// @param fundOwner the fund owner
-  function _sendAllToManager(IERC20 token0, IERC20 token1, address fundOwner) internal {
-    // send all to manager
-    uint balance0 = token0.balanceOf(address(this));
-    if (balance0 > 0) {
-      require(TransferLib.approveToken(token0, address(manager), balance0), "MV3RoutingLogic/approve-failed");
-      manager.addToBalance(fundOwner, token0, balance0);
+  function _sendAllToManager(IERC20[] memory tokens, address fundOwner) internal {
+    uint[] memory amounts = new uint[](tokens.length);
+    for (uint i = 0; i < tokens.length; i++) {
+      amounts[i] = tokens[i].balanceOf(address(this));
+      if (amounts[i] > 0) {
+        require(TransferLib.approveToken(tokens[i], address(manager), amounts[i]), "MV3RoutingLogic/approve-failed");
+      }
     }
-    uint balance1 = token1.balanceOf(address(this));
-    if (balance1 > 0) {
-      require(TransferLib.approveToken(token1, address(manager), balance1), "MV3RoutingLogic/approve-failed");
-      manager.addToBalance(fundOwner, token1, balance1);
-    }
+    manager.addToBalances(fundOwner, tokens, amounts);
+  }
+
+  /// @notice Approve the position manager for a given amount of tokens
+  /// @param token the token to approve
+  /// @param amount the amount to approve
+  function _approvePositionManager(IERC20 token, uint amount) internal {
+    require(TransferLib.approveToken(token, address(positionManager), amount), "MV3RoutingLogic/approve-failed");
   }
 
   /// @notice Reposition the position
   /// @param positionId the position ID
   /// @param token0 the first token
   /// @param token1 the second token
-  /// @param fundOwner the fund owner
-  function _reposition(uint positionId, IERC20 token0, IERC20 token1, address fundOwner) internal {
-    // take all tokens possible everywhere
-    _takeAllFromManager(token0, token1, fundOwner);
-    _collect(positionId);
+  function _reposition(uint positionId, IERC20 token0, IERC20 token1) internal {
     // check balances of amount 0 and amount 1
     uint amount0Desired = token0.balanceOf(address(this));
     uint amount1Desired = token1.balanceOf(address(this));
     // give allowance to the position manager for these tokens
-    TransferLib.approveToken(token0, address(positionManager), amount0Desired);
-    TransferLib.approveToken(token1, address(positionManager), amount1Desired);
+    _approvePositionManager(token0, amount0Desired);
+    _approvePositionManager(token1, amount1Desired);
     // reposition
     INonfungiblePositionManager.IncreaseLiquidityParams memory params;
     params.tokenId = positionId;
@@ -178,6 +183,9 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     params.amount1Desired = amount1Desired;
     params.deadline = type(uint).max;
     try positionManager.increaseLiquidity(params) {} catch {}
+    // resetting allowances (ensure no allowance is left behind and gas refund for storage reset)
+    _approvePositionManager(token0, 0);
+    _approvePositionManager(token1, 0);
   }
 
   /// @notice Get the amounts in a position
@@ -185,7 +193,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @return amount0 the amount of token0
   /// @return amount1 the amount of token1
   function _amountsInPosition(Position memory position) internal view returns (uint amount0, uint amount1) {
-    (uint160 sqrtPriceX96,,,,,,) = _getPool(_getPoolKey(position.token0, position.token1, position.fee)).slot0();
+    uint160 sqrtPriceX96 = getCurrentSqrtRatioX96(position.token0, position.token1, position.fee);
     uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(position.tickLower);
     uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(position.tickUpper);
     (amount0, amount1) =
@@ -207,7 +215,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     // get the position
     (uint positionId, Position memory position) = _getPosition(fundOwner);
     // preflight checks to save gas in case of failure
-
+    _anyOfToken(token, position);
     // remove position if we don't have enough when collecting
     if (_owedOf(token, position) + _inManager(token, fundOwner) < amount) {
       // remove full position
@@ -217,18 +225,20 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
       params.deadline = type(uint).max;
       positionManager.decreaseLiquidity(params);
       // update the position in memory
-      position = _positionFromID(positionId);
+      // position = _positionFromID(positionId); // update not needed given the rest of the function only uses the tokens
     }
     // collect
     _collect(positionId);
+    // create token array
+    IERC20[] memory tokens = _getTokensArray(token, IERC20(position.token0), IERC20(position.token1));
     // take all tokens from manager
-    _takeAllFromManager(IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _takeAllFromManager(tokens, fundOwner);
     // send to msg.sender
     require(TransferLib.transferToken(token, msg.sender, amount), "MV3RoutingLogic/pull-failed");
     // try to reposition with the given amounts of token0 and token1
-    _reposition(positionId, IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _reposition(positionId, IERC20(position.token0), IERC20(position.token1));
     // send remaining amount of token0 and token1 to manager
-    _sendAllToManager(IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _sendAllToManager(tokens, fundOwner);
     // return amount
     return amount;
   }
@@ -237,18 +247,22 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @dev the push logics first collect all fees from the position, then take all tokens from the manager
   /// * It then repositions the position and sends the remaining amount to the manager
   function pushLogic(IERC20 token, address fundOwner, uint amount) external virtual override returns (uint pushed) {
-    // push directly to manager (avoid gas vost of trying to reposition)
-    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "MV3RoutingLogic/push-failed");
     // get the position choosen by the user
     (uint positionId, Position memory position) = _getPosition(fundOwner);
+    // preflight checks to save gas in case of failure
+    _anyOfToken(token, position);
+    // push directly to manager (avoid gas vost of trying to reposition)
+    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "MV3RoutingLogic/push-failed");
     // collect all to this
     _collect(positionId);
+    // Get tokens array
+    IERC20[] memory tokens = _getTokensArray(token, IERC20(position.token0), IERC20(position.token1));
     // take all tokens from manager
-    _takeAllFromManager(IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _takeAllFromManager(tokens, fundOwner);
     // reposition
-    _reposition(positionId, IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _reposition(positionId, IERC20(position.token0), IERC20(position.token1));
     // send remaining amount of token0 and token1 to manager
-    _sendAllToManager(IERC20(position.token0), IERC20(position.token1), fundOwner);
+    _sendAllToManager(tokens, fundOwner);
     // return amount
     return amount;
   }

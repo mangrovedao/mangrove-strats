@@ -21,6 +21,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 contract UniV3_Test is StratTest, Univ3Deployer {
   TestToken public token0;
   TestToken public token1;
+  TestToken public token2;
 
   RouterProxyFactory public proxyFactory;
   SmartRouter public routerImplementation;
@@ -92,6 +93,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     token0 = new TestToken(address(this), "token0", "T0", 18);
     token1 = new TestToken(address(this), "token1", "T1", 18);
+    token2 = new TestToken(address(this), "token2", "T2", 18);
 
     pool = IUniswapV3Pool(factory.createPool(address(token0), address(token1), 500));
     pool.initialize(TickMath.getSqrtRatioAtTick(0));
@@ -292,5 +294,13 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     assertEq(managerBalanceToken0Step3, amount1 - amount0);
     assertEq(managerBalanceToken1Step3, 0);
     assertLt(liquidityStep3, liquidityStep2);
+  }
+
+  function test_pull_tokens_not_in_position() public {
+    uint amount = 1000;
+    RL.RoutingOrder memory order = getRoutingOrder(token2);
+    setLogic(token2);
+    vm.expectRevert("MV3RoutingLogic/invalid-token");
+    router.pull(order, amount, true);
   }
 }

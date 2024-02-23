@@ -81,6 +81,33 @@ contract UniswapV3Manager {
     ROUTER_IMPLEMENTATION = _routerImplementation;
   }
 
+  function getFullBalancesParams(address _user, IERC20[] calldata _tokens)
+    external
+    view
+    returns (IERC20[] memory tokens, uint[] memory amounts)
+  {
+    uint[] memory _amounts = new uint[](_tokens.length);
+    uint nTokens;
+    for (uint i = 0; i < _tokens.length; i++) {
+      _amounts[i] = balances[_user][_tokens[i]];
+      if (_amounts[i] > 0) {
+        nTokens++;
+      }
+    }
+
+    tokens = new IERC20[](nTokens);
+    amounts = new uint[](nTokens);
+
+    uint j;
+    for (uint i = 0; i < _tokens.length; i++) {
+      if (_amounts[i] > 0) {
+        tokens[j] = _tokens[i];
+        amounts[j] = _amounts[i];
+        j++;
+      }
+    }
+  }
+
   /// @notice Returns the user router address
   /// @param _user the user address
   /// @return router the user router address
@@ -128,25 +155,39 @@ contract UniswapV3Manager {
 
   /// @notice Retracts the balance of a token
   /// @param _user the user address
-  /// @param _token the token retracted from the balance
-  function retractBalance(address _user, IERC20 _token) external onlyAllowed(_user) {
-    _retractBalance(_user, _token, balances[_user][_token], _user);
+  /// @param _tokens the tokens retracted from the balance
+  /// @param _amounts the amounts retracted from the balance
+  /// @param _destination the destination address
+  function _batchRetractBalance(
+    address _user,
+    IERC20[] calldata _tokens,
+    uint[] calldata _amounts,
+    address _destination
+  ) internal {
+    for (uint i = 0; i < _tokens.length; i++) {
+      _retractBalance(_user, _tokens[i], _amounts[i], _destination);
+    }
   }
+
+  // -- User balances functions --
 
   /// @notice Retracts the balance of a token
   /// @param _user the user address
   /// @param _token the token retracted from the balance
   /// @param _destination the destination address
-  function retractBalanceTo(address _user, IERC20 _token, address _destination) external onlyAllowed(_user) {
+  function retractBalance(address _user, IERC20 _token, address _destination) external onlyAllowed(_user) {
     _retractBalance(_user, _token, balances[_user][_token], _destination);
   }
 
-  /// @notice Retracts an amount of a token from the balance
+  /// @notice Retracts the balance of a token
   /// @param _user the user address
-  /// @param _token the token retracted from the balance
-  /// @param _amount the amount retracted from the balance
-  function retractAmout(address _user, IERC20 _token, uint _amount) external onlyAllowed(_user) {
-    _retractBalance(_user, _token, _amount, _user);
+  /// @param _tokens the tokens retracted from the balance
+  /// @param _destination the destination address
+  function retractBalances(address _user, IERC20[] calldata _tokens, uint[] calldata _amounts, address _destination)
+    external
+    onlyAllowed(_user)
+  {
+    _batchRetractBalance(_user, _tokens, _amounts, _destination);
   }
 
   /// @notice Retracts an amount of a token from the balance
@@ -154,41 +195,54 @@ contract UniswapV3Manager {
   /// @param _token the token retracted from the balance
   /// @param _amount the amount retracted from the balance
   /// @param _destination the destination address
-  function retractAmountTo(address _user, IERC20 _token, uint _amount, address _destination)
-    external
-    onlyAllowed(_user)
-  {
+  function retractAmount(address _user, IERC20 _token, uint _amount, address _destination) external onlyAllowed(_user) {
     _retractBalance(_user, _token, _amount, _destination);
   }
 
-  /// @notice Adds to the balance of a token
+  /// @notice Retracts an amount of a token from the balance
   /// @param _user the user address
-  /// @param _token the token added to the balance
-  /// @param _amount the amount added to the balance
-  function addToBalance(address _user, IERC20 _token, uint _amount) external onlyUserRouter(_user) {
-    require(TransferLib.transferTokenFrom(_token, msg.sender, address(this), _amount), "MV3Manager/transfer-failed");
-    uint balance = balances[_user][_token] + _amount;
-    balances[_user][_token] = balance;
-    emit BalanceChanged(_user, _token, balance);
+  /// @param _tokens the token retracted from the balance
+  /// @param _amounts the amount retracted from the balance
+  /// @param _destination the destination address
+  function retractAmounts(address _user, IERC20[] calldata _tokens, uint[] calldata _amounts, address _destination)
+    external
+    onlyAllowed(_user)
+  {
+    _batchRetractBalance(_user, _tokens, _amounts, _destination);
   }
 
-  /// @notice Takes an amount from the balance of a token
+  // -- router functions --
+
+  /// @notice Adds to the balance of a token
   /// @param _user the user address
-  /// @param _token the token taken from the balance
-  /// @param _amount the amount taken from the balance
-  function routerTakeAmount(address _user, IERC20 _token, uint _amount) external onlyUserRouter(_user) {
-    _retractBalance(_user, _token, _amount, msg.sender);
+  /// @param _tokens the tokens added to the balance
+  /// @param _amounts the amounts added to the balance
+  function addToBalances(address _user, IERC20[] calldata _tokens, uint[] calldata _amounts)
+    external
+    onlyUserRouter(_user)
+  {
+    for (uint i = 0; i < _tokens.length; i++) {
+      IERC20 _token = _tokens[i];
+      uint _amount = _amounts[i];
+      if (_amount == 0) {
+        continue;
+      }
+      require(TransferLib.transferTokenFrom(_token, msg.sender, address(this), _amount), "MV3Manager/transfer-failed");
+      uint balance = balances[_user][_token] + _amount;
+      balances[_user][_token] = balance;
+      emit BalanceChanged(_user, _token, balance);
+    }
   }
 
   /// @notice Takes an amount from the balance of a token to a destination
   /// @param _user the user address
-  /// @param _token the token taken from the balance
-  /// @param _amount the amount taken from the balance
+  /// @param _tokens the tokens taken from the balance
+  /// @param _amounts the amounts taken from the balance
   /// @param _destination the destination address
-  function routerTakeAmountTo(address _user, IERC20 _token, uint _amount, address _destination)
+  function routerTakeAmounts(address _user, IERC20[] calldata _tokens, uint[] calldata _amounts, address _destination)
     external
     onlyUserRouter(_user)
   {
-    _retractBalance(_user, _token, _amount, _destination);
+    _batchRetractBalance(_user, _tokens, _amounts, _destination);
   }
 }
