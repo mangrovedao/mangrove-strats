@@ -47,6 +47,8 @@ contract BlastUniswapV3Manager is UniswapV3Manager, Ownable, IBlastPoints {
 
   /// @notice Claims yield from a rebasing token
   /// @param token The token to claim from
+  /// @param recipient The recipient of the claim
+  /// @param amount The amount to claim
   function claim(IERC20Rebasing token, address recipient, uint amount) external onlyOwner {
     token.claim(recipient, amount);
   }
