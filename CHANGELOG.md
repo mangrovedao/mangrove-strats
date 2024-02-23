@@ -3,6 +3,10 @@
 - Upgrade to @mangrovedao/mangrove-deployments v2.1.1
 - Upgrade to @mangrovedao/context-addresses v1.2.0
 
+# 2.1.0-0
+
+- Add support for blast
+
 # 2.0.1
 
 - Create `SmartRouter` schema to allow to plug any `RoutingLogic` to a `Forwarder` contract
