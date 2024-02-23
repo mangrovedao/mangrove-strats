@@ -62,6 +62,7 @@ contract UniswapV3Manager is ERC1155("") {
 
   /// @notice Returns the id corresponding to a token
   /// @param _token the token address
+  /// @return _id the token id
   function id(IERC20 _token) internal pure returns (uint _id) {
     assembly {
       _id := _token
@@ -71,6 +72,7 @@ contract UniswapV3Manager is ERC1155("") {
   /// @notice Returns the balance of a token
   /// @param _user the user address
   /// @param _token the token address
+  /// @return _balance the token balance
   function balanceOf(address _user, IERC20 _token) public view returns (uint) {
     return balanceOf(_user, id(_token));
   }
@@ -137,6 +139,11 @@ contract UniswapV3Manager is ERC1155("") {
     require(TransferLib.transferToken(_token, _destination, _amount), "UniV3Manager/transfer-failed");
   }
 
+  /// @notice Retracts the balance of a token
+  /// @param _user the user address
+  /// @param _token the token retracted from the balance
+  /// @param _amount the amount retracted from the balance
+  /// @param _destination the destination address
   function _retractBalanceSingle(address _user, IERC20 _token, uint _amount, address _destination) internal {
     _retractBalance(_user, _token, _amount, _destination);
     _burn(_user, id(_token), _amount);

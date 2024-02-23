@@ -67,6 +67,9 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     position = _positionFromID(positionId);
   }
 
+  /// @notice Check if the token is one of the position tokens
+  /// @param token the token
+  /// @param position the position
   function _anyOfToken(IERC20 token, Position memory position) internal pure {
     require(token == IERC20(position.token0) || token == IERC20(position.token1), "UniV3RoutingLogic/invalid-token");
   }
@@ -75,6 +78,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @param token0 The first token
   /// @param token1 The second token
   /// @param fee The fee
+  /// @return sqrtPriceX96 The current price
   function getCurrentSqrtRatioX96(address token0, address token1, uint24 fee)
     internal
     view
@@ -124,6 +128,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @param token the token in logic
   /// @param token0 the first token
   /// @param token1 the second token
+  /// @return tokens the tokens array
   function _getTokensArray(IERC20 token, IERC20 token0, IERC20 token1) internal pure returns (IERC20[] memory tokens) {
     if (token == token0 || token == token1) {
       tokens = new IERC20[](2);
