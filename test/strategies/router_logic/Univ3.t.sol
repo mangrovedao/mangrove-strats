@@ -32,6 +32,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
   IUniswapV3Pool public pool;
 
+  address public user = 0xC249dBb976015D65CB5F2a8a008bD590Bb9efcd2;
+
   uint positionId;
 
   struct Position {
@@ -59,19 +61,21 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     params.deadline = block.timestamp + 1000;
     params.amount0Desired = 1000;
     params.amount1Desired = 1000;
-    params.recipient = address(this);
+    params.recipient = user;
 
-    deal($(token0), address(this), params.amount0Desired);
-    deal($(token1), address(this), params.amount1Desired);
+    deal($(token0), user, params.amount0Desired);
+    deal($(token1), user, params.amount1Desired);
 
+    vm.startPrank(user);
     token0.approve(address(positionManager), params.amount0Desired);
     token1.approve(address(positionManager), params.amount1Desired);
 
     (_positionId,,,) = positionManager.mint(params);
+    vm.stopPrank();
   }
 
   function getRoutingOrder(IERC20 token) internal view returns (RL.RoutingOrder memory order) {
-    order.fundOwner = address(this);
+    order.fundOwner = user;
     order.token = token;
   }
 
@@ -83,7 +87,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   function getLiquidity() internal view returns (uint128 liquidity) {
     (bool success, bytes memory data) =
       address(positionManager).staticcall(abi.encodeWithSelector(positionManager.positions.selector, positionId));
-    require(success, "MV3RoutingLogic/position-not-found");
+    require(success, "UniV3RoutingLogic/position-not-found");
     Position memory position = abi.decode(data, (Position));
     liquidity = position.liquidity;
   }
@@ -108,7 +112,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     proxyFactory = new RouterProxyFactory();
     // automatically binds to this
     routerImplementation = new SmartRouter(address(this));
-    (RouterProxy proxy,) = proxyFactory.instantiate(address(this), routerImplementation);
+    (RouterProxy proxy,) = proxyFactory.instantiate(user, routerImplementation);
     router = SmartRouter(address(proxy));
 
     manager = new UniswapV3Manager(positionManager, proxyFactory, routerImplementation);
@@ -116,15 +120,17 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     positionId = mintNewPosition();
 
+    vm.startPrank(user);
     positionManager.approve(address(router), positionId);
-    manager.changePosition(address(this), positionId);
+    manager.changePosition(user, positionId);
     setLogic(token0);
     setLogic(token1);
+    vm.stopPrank();
   }
 
   function test_push() public {
-    uint managerBalanceToken0 = manager.balances(address(this), token0);
-    uint managerBalanceToken1 = manager.balances(address(this), token1);
+    uint managerBalanceToken0 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1 = manager.balanceOf(user, token1);
 
     uint128 liquidity = getLiquidity();
 
@@ -137,8 +143,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     RL.RoutingOrder memory order = getRoutingOrder(token0);
     router.push(order, amount);
 
-    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step2 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step2 = manager.balanceOf(user, token1);
     uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount);
@@ -150,8 +156,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     order = getRoutingOrder(token1);
     router.push(order, amount);
 
-    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step3 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step3 = manager.balanceOf(user, token1);
     uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
@@ -160,8 +166,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   }
 
   function test_pull() public {
-    uint managerBalanceToken0 = manager.balances(address(this), token0);
-    uint managerBalanceToken1 = manager.balances(address(this), token1);
+    uint managerBalanceToken0 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1 = manager.balanceOf(user, token1);
 
     uint128 liquidity = getLiquidity();
 
@@ -172,8 +178,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     RL.RoutingOrder memory order = getRoutingOrder(token0);
     router.pull(order, amount, true);
 
-    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step2 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step2 = manager.balanceOf(user, token1);
     uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken1Step2, amount);
@@ -183,8 +189,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     order = getRoutingOrder(token1);
     router.pull(order, amount, true);
 
-    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step3 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step3 = manager.balanceOf(user, token1);
     uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
@@ -208,7 +214,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     RL.RoutingOrder memory order = getRoutingOrder(token0);
     router.push(order, amount);
 
-    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
+    uint managerBalanceToken0Step2 = manager.balanceOf(user, token0);
     uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount);
@@ -216,7 +222,7 @@ contract UniV3_Test is StratTest, Univ3Deployer {
 
     router.pull(order, amount, true);
 
-    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
+    uint managerBalanceToken0Step3 = manager.balanceOf(user, token0);
     uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, 0);
@@ -224,8 +230,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   }
 
   function test_push_imbalanced_ratios() public {
-    uint managerBalanceToken0 = manager.balances(address(this), token0);
-    uint managerBalanceToken1 = manager.balances(address(this), token1);
+    uint managerBalanceToken0 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1 = manager.balanceOf(user, token1);
 
     uint128 liquidity = getLiquidity();
 
@@ -238,8 +244,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     RL.RoutingOrder memory order = getRoutingOrder(token0);
     router.push(order, amount0);
 
-    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step2 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step2 = manager.balanceOf(user, token1);
     uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, amount0);
@@ -253,8 +259,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     order = getRoutingOrder(token1);
     router.push(order, amount1);
 
-    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step3 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step3 = manager.balanceOf(user, token1);
     uint128 liquidityStep3 = getLiquidity();
 
     assertGt(managerBalanceToken0Step3, 0);
@@ -263,8 +269,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
   }
 
   function test_pull_imbalanced_ratios() public {
-    uint managerBalanceToken0 = manager.balances(address(this), token0);
-    uint managerBalanceToken1 = manager.balances(address(this), token1);
+    uint managerBalanceToken0 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1 = manager.balanceOf(user, token1);
 
     uint128 liquidity = getLiquidity();
 
@@ -275,8 +281,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     RL.RoutingOrder memory order = getRoutingOrder(token0);
     router.pull(order, amount0, true);
 
-    uint managerBalanceToken0Step2 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step2 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step2 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step2 = manager.balanceOf(user, token1);
     uint128 liquidityStep2 = getLiquidity();
 
     assertEq(managerBalanceToken0Step2, 0);
@@ -287,8 +293,8 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     order = getRoutingOrder(token1);
     router.pull(order, amount1, true);
 
-    uint managerBalanceToken0Step3 = manager.balances(address(this), token0);
-    uint managerBalanceToken1Step3 = manager.balances(address(this), token1);
+    uint managerBalanceToken0Step3 = manager.balanceOf(user, token0);
+    uint managerBalanceToken1Step3 = manager.balanceOf(user, token1);
     uint128 liquidityStep3 = getLiquidity();
 
     assertEq(managerBalanceToken0Step3, amount1 - amount0);
@@ -300,7 +306,51 @@ contract UniV3_Test is StratTest, Univ3Deployer {
     uint amount = 1000;
     RL.RoutingOrder memory order = getRoutingOrder(token2);
     setLogic(token2);
-    vm.expectRevert("MV3RoutingLogic/invalid-token");
+    vm.expectRevert("UniV3RoutingLogic/invalid-token");
     router.pull(order, amount, true);
+  }
+
+  function test_take_balance() public {
+    uint push = 1000;
+    deal($(token0), address(this), push);
+    token0.approve(address(router), push);
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.push(order, push);
+
+    uint balanceInManager = manager.balanceOf(user, token0);
+    uint balanceBefore = token0.balanceOf(user);
+
+    assertEq(balanceInManager, push);
+    assertEq(balanceBefore, 0);
+
+    uint pull = 500;
+    vm.prank(user);
+    manager.retractAmount(user, token0, pull, user);
+
+    uint balanceAfter = token0.balanceOf(user);
+    uint balanceInManagerAfter = manager.balanceOf(user, token0);
+
+    assertEq(balanceAfter, pull);
+    assertEq(balanceInManagerAfter, push - pull);
+  }
+
+  function test_cannot_withdraw_more() public {
+    uint push = 1000;
+    deal($(token0), address(this), push);
+    token0.approve(address(router), push);
+    RL.RoutingOrder memory order = getRoutingOrder(token0);
+    router.push(order, push);
+
+    uint balanceInManager = manager.balanceOf(user, token0);
+    uint balanceBefore = token0.balanceOf(user);
+
+    assertEq(balanceInManager, push);
+    assertEq(balanceBefore, 0);
+
+    uint pull = push * 2;
+    deal($(token0), address(manager), pull);
+    vm.expectRevert("UniV3Manager/insufficient-balance");
+    vm.prank(user);
+    manager.retractAmount(user, token0, pull, user);
   }
 }

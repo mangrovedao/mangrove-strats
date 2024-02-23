@@ -7,13 +7,14 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {RouterProxyFactory} from "@mgv-strats/src/strategies/routers/RouterProxyFactory.sol";
+import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
 /// @title Uniswap V3 Manager
 /// @author Mangrove DAO
 /// @notice This contract is used to manage Uniswap V3 positions used by the mangrove strategy
 /// * This contract holds the position ID for the managed positions
 /// * It also holds the balances of the tokens that cannot be reinvested immediately into the strategy
-contract UniswapV3Manager {
+contract UniswapV3Manager is ERC1155("") {
   /// @notice The position manager contract
   INonfungiblePositionManager public immutable positionManager;
 
@@ -23,47 +24,25 @@ contract UniswapV3Manager {
   /// @notice The router proxy factory contract
   RouterProxyFactory public immutable routerProxyFactory;
 
-  /// @notice The managers mapping
-  mapping(address owner => mapping(address manager => bool isManager)) public managers;
-
   /// @notice The positions mapping
   mapping(address owner => uint position) public positions;
-
-  /// @notice The balances mapping
-  mapping(address owner => mapping(IERC20 token => uint balance)) public balances;
-
-  /// @notice Fires when a manager is added
-  /// @param user the user address
-  /// @param manager the manager address
-  event ManagerAdded(address indexed user, address indexed manager);
-
-  /// @notice Fires when a manager is removed
-  /// @param user the user address
-  /// @param manager the manager address
-  event ManagerRemoved(address indexed user, address indexed manager);
 
   /// @notice Fires when a position is changed
   /// @param user the user address
   /// @param positionId the position ID
   event PositionChanged(address indexed user, uint indexed positionId);
 
-  /// @notice Fires when a balance is changed
-  /// @param user the user address
-  /// @param token the token address
-  /// @param balance the new balance for the token
-  event BalanceChanged(address indexed user, IERC20 indexed token, uint balance);
-
   /// @notice Modifier to allow only the user or a manager to call a function
   /// @param _user the user address
   modifier onlyAllowed(address _user) {
-    require(_user == msg.sender || managers[_user][msg.sender], "MV3Manager/not-allowed");
+    require(_user == msg.sender || isApprovedForAll(_user, msg.sender), "UniV3Manager/not-allowed");
     _;
   }
 
   /// @notice Modifier to allow only the user router to call a function
   /// @param _user the user address
   modifier onlyUserRouter(address _user) {
-    require(userRouter(_user) == msg.sender, "MV3Manager/not-allowed");
+    require(userRouter(_user) == msg.sender, "UniV3Manager/not-allowed");
     _;
   }
 
@@ -81,6 +60,27 @@ contract UniswapV3Manager {
     ROUTER_IMPLEMENTATION = _routerImplementation;
   }
 
+  /// @notice Returns the id corresponding to a token
+  /// @param _token the token address
+  function id(IERC20 _token) internal pure returns (uint _id) {
+    assembly {
+      _id := _token
+    }
+  }
+
+  /// @notice Returns the balance of a token
+  /// @param _user the user address
+  /// @param _token the token address
+  function balanceOf(address _user, IERC20 _token) public view returns (uint) {
+    return balanceOf(_user, id(_token));
+  }
+
+  /// @notice Returns the full balances of a user given a list of tokens
+  /// * Only non-zero balances are returned
+  /// @param _user the user address
+  /// @param _tokens the tokens addresses
+  /// @return tokens the tokens with non-zero balances
+  /// @return amounts the non-zero balances
   function getFullBalancesParams(address _user, IERC20[] calldata _tokens)
     external
     view
@@ -89,7 +89,7 @@ contract UniswapV3Manager {
     uint[] memory _amounts = new uint[](_tokens.length);
     uint nTokens;
     for (uint i = 0; i < _tokens.length; i++) {
-      _amounts[i] = balances[_user][_tokens[i]];
+      _amounts[i] = balanceOf(_user, _tokens[i]);
       if (_amounts[i] > 0) {
         nTokens++;
       }
@@ -115,22 +115,6 @@ contract UniswapV3Manager {
     return routerProxyFactory.computeProxyAddress(_user, ROUTER_IMPLEMENTATION);
   }
 
-  /// @notice Adds a manager
-  /// @param _user the user address
-  /// @param _manager the manager address
-  function addManager(address _user, address _manager) external onlyAllowed(_user) {
-    managers[_user][_manager] = true;
-    emit ManagerAdded(_user, _manager);
-  }
-
-  /// @notice Removes a manager
-  /// @param _user the user address
-  /// @param _manager the manager address
-  function removeManager(address _user, address _manager) external onlyAllowed(_user) {
-    managers[_user][_manager] = false;
-    emit ManagerRemoved(_user, _manager);
-  }
-
   /// @notice Changes the position ID
   /// @param _user the user address
   /// @param _positionId the position ID
@@ -146,11 +130,16 @@ contract UniswapV3Manager {
   /// @param _amount the amount retracted from the balance
   /// @param _destination the destination address
   function _retractBalance(address _user, IERC20 _token, uint _amount, address _destination) internal {
-    require(balances[_user][_token] >= _amount, "MV3Manager/insufficient-balance");
-    require(TransferLib.transferToken(_token, _destination, _amount), "MV3Manager/transfer-failed");
-    uint balance = balances[_user][_token] - _amount;
-    balances[_user][_token] = balance;
-    emit BalanceChanged(_user, _token, balance);
+    if (_amount == 0) {
+      return;
+    }
+    require(balanceOf(_user, _token) >= _amount, "UniV3Manager/insufficient-balance");
+    require(TransferLib.transferToken(_token, _destination, _amount), "UniV3Manager/transfer-failed");
+  }
+
+  function _retractBalanceSingle(address _user, IERC20 _token, uint _amount, address _destination) internal {
+    _retractBalance(_user, _token, _amount, _destination);
+    _burn(_user, id(_token), _amount);
   }
 
   /// @notice Retracts the balance of a token
@@ -164,9 +153,12 @@ contract UniswapV3Manager {
     uint[] calldata _amounts,
     address _destination
   ) internal {
+    uint[] memory _ids = new uint[](_tokens.length);
     for (uint i = 0; i < _tokens.length; i++) {
+      _ids[i] = id(_tokens[i]);
       _retractBalance(_user, _tokens[i], _amounts[i], _destination);
     }
+    _burnBatch(_user, _ids, _amounts);
   }
 
   // -- User balances functions --
@@ -176,18 +168,7 @@ contract UniswapV3Manager {
   /// @param _token the token retracted from the balance
   /// @param _destination the destination address
   function retractBalance(address _user, IERC20 _token, address _destination) external onlyAllowed(_user) {
-    _retractBalance(_user, _token, balances[_user][_token], _destination);
-  }
-
-  /// @notice Retracts the balance of a token
-  /// @param _user the user address
-  /// @param _tokens the tokens retracted from the balance
-  /// @param _destination the destination address
-  function retractBalances(address _user, IERC20[] calldata _tokens, uint[] calldata _amounts, address _destination)
-    external
-    onlyAllowed(_user)
-  {
-    _batchRetractBalance(_user, _tokens, _amounts, _destination);
+    _retractBalanceSingle(_user, _token, balanceOf(_user, _token), _destination);
   }
 
   /// @notice Retracts an amount of a token from the balance
@@ -196,7 +177,7 @@ contract UniswapV3Manager {
   /// @param _amount the amount retracted from the balance
   /// @param _destination the destination address
   function retractAmount(address _user, IERC20 _token, uint _amount, address _destination) external onlyAllowed(_user) {
-    _retractBalance(_user, _token, _amount, _destination);
+    _retractBalanceSingle(_user, _token, _amount, _destination);
   }
 
   /// @notice Retracts an amount of a token from the balance
@@ -221,17 +202,32 @@ contract UniswapV3Manager {
     external
     onlyUserRouter(_user)
   {
+    uint toMint;
     for (uint i = 0; i < _tokens.length; i++) {
       IERC20 _token = _tokens[i];
       uint _amount = _amounts[i];
       if (_amount == 0) {
         continue;
       }
-      require(TransferLib.transferTokenFrom(_token, msg.sender, address(this), _amount), "MV3Manager/transfer-failed");
-      uint balance = balances[_user][_token] + _amount;
-      balances[_user][_token] = balance;
-      emit BalanceChanged(_user, _token, balance);
+      toMint++;
+      require(TransferLib.transferTokenFrom(_token, msg.sender, address(this), _amount), "UniV3Manager/transfer-failed");
     }
+    if (toMint == 0) {
+      return;
+    }
+    uint[] memory ids = new uint[](toMint);
+    uint[] memory amounts = new uint[](toMint);
+    uint j;
+
+    for (uint i = 0; i < _tokens.length; i++) {
+      if (_amounts[i] > 0) {
+        ids[j] = id(_tokens[i]);
+        amounts[j] = _amounts[i];
+        j++;
+      }
+    }
+
+    _mintBatch(_user, ids, amounts, "");
   }
 
   /// @notice Takes an amount from the balance of a token to a destination

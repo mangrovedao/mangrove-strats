@@ -54,7 +54,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   function _positionFromID(uint positionId) internal view returns (Position memory position) {
     (bool success, bytes memory data) =
       address(positionManager).staticcall(abi.encodeWithSelector(positionManager.positions.selector, positionId));
-    require(success, "MV3RoutingLogic/position-not-found");
+    require(success, "UniV3RoutingLogic/position-not-found");
     position = abi.decode(data, (Position));
   }
 
@@ -68,7 +68,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   }
 
   function _anyOfToken(IERC20 token, Position memory position) internal pure {
-    require(token == IERC20(position.token0) || token == IERC20(position.token1), "MV3RoutingLogic/invalid-token");
+    require(token == IERC20(position.token0) || token == IERC20(position.token1), "UniV3RoutingLogic/invalid-token");
   }
 
   /// @notice Gets the current price from a pool
@@ -104,7 +104,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @param fundOwner the fund owner
   /// @return inManager the amount in the manager
   function _inManager(IERC20 token, address fundOwner) internal view returns (uint) {
-    return manager.balances(fundOwner, token);
+    return manager.balanceOf(fundOwner, token);
   }
 
   /// @notice Collect the fees from a position (or unused tokens)
@@ -141,6 +141,9 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   function _takeAllFromManager(IERC20[] memory tokens, address fundOwner) internal {
     uint[] memory amounts;
     (tokens, amounts) = manager.getFullBalancesParams(fundOwner, tokens);
+    if (tokens.length == 0) {
+      return;
+    }
     manager.routerTakeAmounts(fundOwner, tokens, amounts, address(this));
   }
 
@@ -152,7 +155,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     for (uint i = 0; i < tokens.length; i++) {
       amounts[i] = tokens[i].balanceOf(address(this));
       if (amounts[i] > 0) {
-        require(TransferLib.approveToken(tokens[i], address(manager), amounts[i]), "MV3RoutingLogic/approve-failed");
+        require(TransferLib.approveToken(tokens[i], address(manager), amounts[i]), "UniV3RoutingLogic/approve-failed");
       }
     }
     manager.addToBalances(fundOwner, tokens, amounts);
@@ -162,7 +165,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   /// @param token the token to approve
   /// @param amount the amount to approve
   function _approvePositionManager(IERC20 token, uint amount) internal {
-    require(TransferLib.approveToken(token, address(positionManager), amount), "MV3RoutingLogic/approve-failed");
+    require(TransferLib.approveToken(token, address(positionManager), amount), "UniV3RoutingLogic/approve-failed");
   }
 
   /// @notice Reposition the position
@@ -234,7 +237,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     // take all tokens from manager
     _takeAllFromManager(tokens, fundOwner);
     // send to msg.sender
-    require(TransferLib.transferToken(token, msg.sender, amount), "MV3RoutingLogic/pull-failed");
+    require(TransferLib.transferToken(token, msg.sender, amount), "UniV3RoutingLogic/pull-failed");
     // try to reposition with the given amounts of token0 and token1
     _reposition(positionId, IERC20(position.token0), IERC20(position.token1));
     // send remaining amount of token0 and token1 to manager
@@ -252,7 +255,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     // preflight checks to save gas in case of failure
     _anyOfToken(token, position);
     // push directly to manager (avoid gas vost of trying to reposition)
-    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "MV3RoutingLogic/push-failed");
+    require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "UniV3RoutingLogic/push-failed");
     // collect all to this
     _collect(positionId);
     // Get tokens array
@@ -281,7 +284,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   {
     // amount in manager + amount owed + amount from liquidity
     // amount in manager
-    managerBalance = manager.balances(fundOwner, token);
+    managerBalance = manager.balanceOf(fundOwner, token);
     // amount owed
     owed = _owedOf(token, position);
     // amount from liquidity
