@@ -60,8 +60,8 @@ contract KandelSeederTest is StratTest {
     seeder = new KandelSeeder({mgv: IMangrove($(mgv)), kandelGasreq: 128_000});
 
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
-      mgv:IMangrove($(mgv)), 
-      addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")), 
+      mgv: IMangrove($(mgv)),
+      addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")),
       aaveKandelGasreq: 628_000
     });
     aaveSeeder = aaveKandelSeeder;

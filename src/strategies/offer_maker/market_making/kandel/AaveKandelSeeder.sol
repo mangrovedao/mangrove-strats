@@ -51,11 +51,16 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
     address owner = liquiditySharing ? msg.sender : address(0);
 
-    kandel = new AaveKandel(MGV, olKeyBaseQuote, KANDEL_GASREQ, Direct.RouterParams({
-      routerImplementation: AAVE_ROUTER, // using aave pooled router to source liquidity
-      fundOwner: owner,
-      strict: liquiditySharing
-    }));
+    kandel = new AaveKandel(
+      MGV,
+      olKeyBaseQuote,
+      KANDEL_GASREQ,
+      Direct.RouterParams({
+        routerImplementation: AAVE_ROUTER, // using aave pooled router to source liquidity
+        fundOwner: owner,
+        strict: liquiditySharing
+      })
+    );
     // Allowing newly deployed Kandel to bind to the AaveRouter
     AAVE_ROUTER.bind(address(kandel));
     emit NewAaveKandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner);

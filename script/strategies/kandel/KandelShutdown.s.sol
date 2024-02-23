@@ -11,7 +11,6 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 /**
  * @notice Populate Kandel's distribution on Mangrove
  */
-
 contract KandelShutdown is Deployer {
   function run() public {
     innerRun({kdl: GeometricKandel(envAddressOrName("KANDEL"))});
