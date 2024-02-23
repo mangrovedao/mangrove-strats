@@ -1,6 +1,8 @@
 # Next version
 
 - feat: add `MonoSwap` routing logic, manager, and univ3 logics
+- Upgrade to @mangrovedao/mangrove-deployments v2.1.1
+- Upgrade to @mangrovedao/context-addresses v1.2.0
 
 # 2.1.0-0
 
