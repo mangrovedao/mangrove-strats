@@ -51,9 +51,5 @@ contract Univ3LogicDeployerTest is Deployer, Test2, Univ3Deployer {
       implementation: AbstractRouter(fork.get("MangroveOrder-Router")),
       forkName: "MyFork"
     });
-
-    // SimpleAaveLogic sal = SimpleAaveLogic(fork.get("SimpleAaveLogic"));
-
-    // assertEq(sal.INTEREST_RATE_MODE(), interestRateMode);
   }
 }
