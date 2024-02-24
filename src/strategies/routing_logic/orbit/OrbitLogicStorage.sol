@@ -11,15 +11,20 @@ import {ComptrollerV2Storage} from "@orbit-protocol/contracts/Core/ComptrollerSt
 /// @author Mangrove DAO
 /// @notice Maps underlying tokens to their corresponding cTokens
 contract OrbitLogicStorage {
+  /// @notice Mapping from underlying tokens to their corresponding cTokens
   mapping(IERC20 token => OErc20 oToken) public overlying;
 
+  /// @notice OrbitSpaceStation contract
   OrbitSpaceStation public immutable spaceStation;
 
+  /// @notice Constructor
+  /// @param _spaceStation OrbitSpaceStation contract
   constructor(OrbitSpaceStation _spaceStation) {
     spaceStation = _spaceStation;
     setUpStorage();
   }
 
+  /// @notice Set up storage
   function setUpStorage() public {
     OToken[] memory cTokens = spaceStation.getAllMarkets();
     for (uint i = 0; i < cTokens.length; i++) {
@@ -29,6 +34,8 @@ contract OrbitLogicStorage {
     }
   }
 
+  /// @notice Remove a market
+  /// @param token IERC20 token
   function removeMarket(IERC20 token) public {
     // do checks first
     OErc20 cToken = overlying[token];
@@ -41,6 +48,8 @@ contract OrbitLogicStorage {
     delete overlying[token];
   }
 
+  /// @notice Remove multiple markets
+  /// @param tokens IERC20 tokens
   function removeMarkets(IERC20[] memory tokens) public {
     OToken[] memory cTokens = spaceStation.getAllMarkets();
     for (uint i = 0; i < tokens.length; i++) {

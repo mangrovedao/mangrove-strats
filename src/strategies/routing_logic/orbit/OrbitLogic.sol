@@ -26,6 +26,7 @@ contract OrbitLogic is AbstractRoutingLogic, ExponentialNoError {
 
   /// @notice Get the overlying oToken for a given token
   /// @param token IERC20 token
+  /// @return _overlying OErc20 token
   function overlying(IERC20 token) public view returns (OErc20 _overlying) {
     _overlying = orbitStorage.overlying(token);
     require(address(_overlying) != address(0), "OrbitLogic: Invalid token");
