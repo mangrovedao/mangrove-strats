@@ -1,5 +1,6 @@
 # Next version
 
+- Add `SimpleAbracadabraLogic`
 - Upgrade to @mangrovedao/mangrove-deployments v2.1.1
 - Upgrade to @mangrovedao/context-addresses v1.2.0
 

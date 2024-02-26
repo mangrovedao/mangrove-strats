@@ -14,8 +14,11 @@ import {
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {SimpleAaveLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAaveLogic.sol";
+import {SimpleAbracadabraLogic} from "@mgv-strats/src/strategies/routing_logic/SimpleAbracadabraLogic.sol";
 import {IPoolAddressesProvider} from
   "@mgv-strats/src/strategies/vendor/aave/v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {ICauldronV4} from "@mgv-strats/src/strategies/vendor/abracadabra/interfaces/ICauldronV4.sol";
+import {AbracadabraAddressProvider} from "@mgv-strats/src/strategies/integrations/abracadabra/AddressProvider.sol";
 
 import {PinnedPolygonFork} from "@mgv/test/lib/forks/Polygon.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
@@ -31,17 +34,22 @@ import {VmSafe} from "@mgv/lib/forge-std/src/Vm.sol";
 contract MgvAmplifierTest is StratTest {
   RouterProxyFactory internal routerFactory; // deployed routerFactory
   SimpleAaveLogic internal aaveLogic; // deployed simple aave router implementation
+  SimpleAbracadabraLogic internal abracadabraLogic; // deployed simple abracadabra router implementation
   MangroveAmplifier internal mgvAmplifier; // MangroveAmplifier contract
+  AbracadabraAddressProvider internal abracadabraAddressProvider; // abracadabra address provider
 
   // uint defaultLogicGasreq = 250_000;
   // uint aaveLogicGasreq = 475_000;
 
   uint defaultLogicGasreq = 275_000;
   uint aaveLogicGasreq = 500_000;
+  uint abracadabraLogicGasreq = 500_000;
 
   IERC20 weth;
   IERC20 wbtc;
   IERC20 dai;
+  // IERC20 mim;
+
   OLKey dai_weth;
   OLKey dai_wbtc;
 
@@ -60,6 +68,7 @@ contract MgvAmplifierTest is StratTest {
     weth = IERC20(fork.get("WETH.e"));
     dai = IERC20(fork.get("DAI.e"));
     wbtc = IERC20(fork.get("WBTC.e"));
+    // mim = IERC20(fork.get("MIM.e"));
 
     // default test market
     base = TestToken($(weth));
@@ -69,7 +78,9 @@ contract MgvAmplifierTest is StratTest {
 
     vm.startPrank(deployer);
     routerFactory = new RouterProxyFactory();
+    abracadabraAddressProvider = new AbracadabraAddressProvider(weth);
     aaveLogic = new SimpleAaveLogic(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
+    abracadabraLogic = new SimpleAbracadabraLogic(abracadabraAddressProvider);
     mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, new SmartRouter(address(0)));
     mgvAmplifier.activate(weth);
     mgvAmplifier.activate(dai);
