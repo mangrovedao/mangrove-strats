@@ -48,7 +48,7 @@ contract MgvAmplifierTest is StratTest {
   IERC20 weth;
   IERC20 wbtc;
   IERC20 dai;
-  IERC20 mim;
+  // IERC20 mim;
 
   OLKey dai_weth;
   OLKey dai_wbtc;
@@ -68,7 +68,7 @@ contract MgvAmplifierTest is StratTest {
     weth = IERC20(fork.get("WETH.e"));
     dai = IERC20(fork.get("DAI.e"));
     wbtc = IERC20(fork.get("WBTC.e"));
-    mim = IERC20(fork.get("MIM.e"));
+    // mim = IERC20(fork.get("MIM.e"));
 
     // default test market
     base = TestToken($(weth));
@@ -78,7 +78,7 @@ contract MgvAmplifierTest is StratTest {
 
     vm.startPrank(deployer);
     routerFactory = new RouterProxyFactory();
-    abracadabraAddressProvider = new AbracadabraAddressProvider(mim);
+    abracadabraAddressProvider = new AbracadabraAddressProvider(weth);
     aaveLogic = new SimpleAaveLogic(IPoolAddressesProvider(fork.get("AaveAddressProvider")), 2);
     abracadabraLogic = new SimpleAbracadabraLogic(abracadabraAddressProvider);
     mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, new SmartRouter(address(0)));
