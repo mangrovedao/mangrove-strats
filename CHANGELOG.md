@@ -1,5 +1,7 @@
 # Next version
 
+- Add `SimpleAbracadabraLogic`
+
 # 2.0.1
 
 - Create `SmartRouter` schema to allow to plug any `RoutingLogic` to a `Forwarder` contract

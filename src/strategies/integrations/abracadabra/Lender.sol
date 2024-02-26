@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 import {ICauldronV4} from "../../vendor/abracadabra/interfaces/ICauldronV4.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
-import {AbracadabraConstants} from "../../vendor/abracadabra/constants.sol";
 import {AbracadabraAddressProvider} from "./AddressProvider.sol";
 
 /// @title This contract provides a collection of lending capabilities with Abracadabra- to whichever contract inherits it
