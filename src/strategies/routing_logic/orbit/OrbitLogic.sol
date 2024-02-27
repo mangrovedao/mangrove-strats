@@ -49,10 +49,17 @@ contract OrbitLogic is AbstractRoutingLogic, ExponentialNoError {
       "OrbitLogic: Transfer failed"
     );
     // redeem the oTokens to get the underlying tokens
-    overlyingToken.redeem(toPull);
+    overlyingToken.redeemUnderlying(amount);
     // send the underlying tokens to the fundOwner
     pulled = token.balanceOf(address(this));
     require(TransferLib.transferToken(token, msg.sender, pulled), "OrbitLogic: Transfer failed");
+    uint balance = overlyingToken.balanceOf(address(this));
+    if (balance > 0) {
+      // if there are any remaining oTokens, send them back to the fundOwner
+      require(
+        TransferLib.transferToken(IERC20(address(overlyingToken)), fundOwner, balance), "OrbitLogic: Transfer failed"
+      );
+    }
   }
 
   /// @inheritdoc AbstractRoutingLogic
@@ -60,6 +67,7 @@ contract OrbitLogic is AbstractRoutingLogic, ExponentialNoError {
     require(TransferLib.transferTokenFrom(token, msg.sender, address(this), amount), "OrbitLogic: Transfer failed");
     OErc20 overlyingToken = overlying(token);
     // mint the position
+    require(TransferLib.approveToken(token, address(overlyingToken), amount), "OrbitLogic: Approve failed");
     overlyingToken.mint(amount);
     // send all minted oTokens to the fundOwner
     uint balance = overlyingToken.balanceOf(address(this));

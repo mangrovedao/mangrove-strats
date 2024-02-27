@@ -29,8 +29,11 @@ contract OrbitLogicStorage {
     OToken[] memory cTokens = spaceStation.getAllMarkets();
     for (uint i = 0; i < cTokens.length; i++) {
       OErc20 cToken = OErc20(address(cTokens[i]));
-      IERC20 underlying = IERC20(cToken.underlying());
-      overlying[underlying] = cToken;
+      try cToken.underlying() returns (address underlying) {
+        overlying[IERC20(underlying)] = cToken;
+      } catch {
+        continue;
+      }
     }
   }
 
