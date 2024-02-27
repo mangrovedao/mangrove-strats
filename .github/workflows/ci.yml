@@ -53,6 +53,7 @@ jobs:
       env:
         POLYGON_NODE_URL: ${{ secrets.POLYGON_NODE_URL || 'https://polygon.llamarpc.com' }}
         MUMBAI_NODE_URL: ${{ secrets.MUMBAI_NODE_URL || 'unused' }}
+        BLAST_SEPOLIA_NODE_URL: ${{ vars.BLAST_SEPOLIA_NODE_URL || 'unused' }}
 
     # For push runs we also create a coverage report
     - name: Create coverage report
@@ -61,6 +62,7 @@ jobs:
       env:
         POLYGON_NODE_URL: ${{ secrets.POLYGON_NODE_URL }}
         MUMBAI_NODE_URL: ${{ secrets.MUMBAI_NODE_URL }}
+        BLAST_SEPOLIA_NODE_URL: ${{ vars.BLAST_SEPOLIA_NODE_URL }}
 
      # == Send coverage report to Coveralls == 
      # Coverallsapp by default uses GITHUB_SHA but that does not necessarily correspond
