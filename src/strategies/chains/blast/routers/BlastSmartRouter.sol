@@ -25,6 +25,7 @@ contract BlastSmartRouter is SmartRouter {
     external
   {
     require(initialized == false, "BlastSmartRouter: already initialized");
+    initialized = true;
 
     blastContract.configureClaimableYield();
     blastContract.configureClaimableGas();
@@ -33,7 +34,5 @@ contract BlastSmartRouter is SmartRouter {
     blastPointsContract.configurePointsOperator(blastPointsOperator);
 
     _setAdmin(user);
-
-    initialized = true;
   }
 }
