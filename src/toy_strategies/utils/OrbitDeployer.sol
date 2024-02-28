@@ -11,7 +11,6 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {JumpRateModelV2} from "@orbit-protocol/contracts/InterestRate/JumpRateModelV2.sol";
 import {BlastSepoliaFork} from "@mgv/test/lib/forks/BlastSepolia.sol";
 import {Blast} from "@mgv/src/toy/blast/Blast.sol";
-import {BlastLib} from "@mgv/src/chains/blast/lib/BlastLib.sol";
 import {OToken} from "@orbit-protocol/contracts/OToken.sol";
 
 import {BlastSepoliaFork} from "@mgv/test/lib/forks/BlastSepolia.sol";

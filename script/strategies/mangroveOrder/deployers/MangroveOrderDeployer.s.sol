@@ -14,7 +14,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
   You can specify a mangrove address with the MGV env var.*/
 contract MangroveOrderDeployer is Deployer {
-  function run() public {
+  function run() public virtual {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       admin: envAddressOrName("MGV_GOVERNANCE", broadcaster()),

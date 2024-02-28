@@ -20,7 +20,7 @@ import {
 
   You can specify a mangrove address with the MGV env var.*/
 contract MangroveAmplifierDeployer is Deployer {
-  function run() public {
+  function run() public virtual {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       routerProxyFactory: RouterProxyFactory(envAddressOrName("ROUTER_PROXY_FACTORY", "RouterProxyFactory")),

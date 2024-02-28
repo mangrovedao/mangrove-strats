@@ -1,5 +1,10 @@
 # Next version
 
+- Upgrade to @mangrovedao/mangrove-core v2.1.0
+- Upgrade to @mangrovedao/mangrove-deployments v2.1.3
+- Upgrade to @mangrovedao/context-addresses v1.3.0
+- Update Blast integrations
+
 # 2.1.0-2
 
 - Add orbit logic to the exports
