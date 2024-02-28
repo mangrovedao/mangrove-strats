@@ -1,8 +1,12 @@
 # Next version
 
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
+
+# 2.1.0-1
+
 - Upgrade to @mangrovedao/mangrove-deployments v2.1.1
 - Upgrade to @mangrovedao/context-addresses v1.2.0
+- Add Orbit lend to the routing logics
 
 # 2.1.0-0
 

@@ -1,3 +1,6 @@
-[submodule "lib/openzeppelin-contracts"]
-	path = lib/openzeppelin-contracts
-	url = https://github.com/Openzeppelin/openzeppelin-contracts
+[submodule "lib/orbit-protocol"]
+	path = lib/orbit-protocol
+	url = https://github.com/orbit-protocol/contracts.git
+[submodule "lib/openzeppelin"]
+	path = lib/openzeppelin
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts.git
