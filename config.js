@@ -22,6 +22,8 @@ exports.abi_exports = [
   "AbstractRoutingLogic",
   "SimpleAaveLogic",
   "MangroveAmplifier",
+  "UniswapV3Manager",
+  "UniswapV3RoutingLogic",
 ];
 
 // Contracts that should export their ABI + bytecode
