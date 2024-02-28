@@ -22,6 +22,8 @@ exports.abi_exports = [
   "AbstractRoutingLogic",
   "SimpleAaveLogic",
   "MangroveAmplifier",
+  "OrbitLogic",
+  "OrbitLogicStorage",
 ];
 
 // Contracts that should export their ABI + bytecode
