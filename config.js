@@ -24,6 +24,8 @@ exports.abi_exports = [
   "MangroveAmplifier",
   "UniswapV3Manager",
   "UniswapV3RoutingLogic",
+  "OrbitLogic",
+  "OrbitLogicStorage",
 ];
 
 // Contracts that should export their ABI + bytecode
