@@ -91,7 +91,7 @@ contract MangroveAmplifierGasreqBaseTest is StratTest, OfferGasReqBaseTest {
     olKey.tickSpacing = 1;
 
     routerFactory = new RouterProxyFactory();
-    mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, new SmartRouter(address(0)));
+    mgvAmplifier = new MangroveAmplifier(mgv, routerFactory, new SmartRouter());
     inb_logic = _inb_logic;
     outb_logic = _outb_logic;
 

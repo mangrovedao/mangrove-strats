@@ -13,7 +13,6 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {OrbitDeployer, OErc20} from "@mgv-strats/src/toy_strategies/utils/OrbitDeployer.sol";
 
 import {OrbitLogic, OrbitLogicStorage} from "@mgv-strats/src/strategies/routing_logic/orbit/OrbitLogic.sol";
-import {BlastLib} from "@mgv/src/chains/blast/lib/BlastLib.sol";
 import {BlastSepoliaFork} from "@mgv/test/lib/forks/BlastSepolia.sol";
 import {OrbitFork} from "@mgv-strats/src/toy_strategies/utils/OrbitFork.sol";
 
@@ -38,7 +37,8 @@ contract OrbitLogic_Test is StratTest {
     user = freshAddress("user");
 
     proxyFactory = new RouterProxyFactory();
-    routerImplementation = new SmartRouter(address(this));
+    routerImplementation = new SmartRouter();
+    routerImplementation.bind(address(this));
     (RouterProxy proxy,) = proxyFactory.instantiate(user, routerImplementation);
     router = SmartRouter(address(proxy));
 

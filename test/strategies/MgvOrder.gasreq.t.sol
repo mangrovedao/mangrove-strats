@@ -4,7 +4,11 @@ pragma solidity ^0.8.10;
 import {StratTest, MangroveOffer} from "@mgv-strats/test/lib/StratTest.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {
-  MangroveOrder, AbstractRoutingLogic, RL, RouterProxyFactory
+  MangroveOrder,
+  AbstractRoutingLogic,
+  RL,
+  RouterProxyFactory,
+  SmartRouter
 } from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {IOrderLogic} from "@mgv-strats/src/strategies/interfaces/IOrderLogic.sol";
@@ -35,7 +39,7 @@ abstract contract MangroveOrderGasreqBaseTest is StratTest, OfferGasReqBaseTest 
 
   function setUpTokens(string memory baseToken, string memory quoteToken) public virtual override {
     super.setUpTokens(baseToken, quoteToken);
-    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), $(this));
+    mangroveOrder = new MangroveOrder(IMangrove(payable(mgv)), new RouterProxyFactory(), $(this), new SmartRouter());
     mangroveOrder.activate(base);
     mangroveOrder.activate(quote);
 

@@ -23,7 +23,7 @@ contract DirectTest is OfferLogicTest {
     vm.deal(deployer, 10 ether);
 
     vm.startPrank(deployer);
-    AbstractRouter routerImplementation = AbstractRouter(address(new SmartRouter(address(0))));
+    AbstractRouter routerImplementation = AbstractRouter(address(new SmartRouter()));
     direct = new DirectTester({
       mgv: IMangrove($(mgv)),
       routerParams: Direct.RouterParams({routerImplementation: routerImplementation, fundOwner: owner, strict: false})

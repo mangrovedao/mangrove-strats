@@ -8,7 +8,8 @@ import {
   MangroveOrder as MgvOrder,
   SmartRouter,
   RouterProxyFactory,
-  RouterProxy
+  RouterProxy,
+  SmartRouter
 } from "@mgv-strats/src/strategies/MangroveOrder.sol";
 import {MangroveOffer} from "@mgv-strats/src/strategies/MangroveOffer.sol";
 import {AbstractRouter, RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
@@ -112,7 +113,7 @@ contract MgvOrder_Test is StratTest {
     RouterProxyFactory factory = new RouterProxyFactory();
 
     // this contract is admin of MgvOrder and its router
-    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this));
+    mgo = new MgvOrder(IMangrove(payable(mgv)), factory, $(this), new SmartRouter());
     // mgvOrder needs to approve mangrove for inbound & outbound token transfer (inbound when acting as a taker, outbound when matched as a maker)
 
     aaveLogic = new SimpleAaveLogic(

@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console} from "@mgv/forge-std/Script.sol";
 import {MangroveOrder, IERC20, IMangrove, RouterProxyFactory} from "@mgv-strats/src/strategies/MangroveOrder.sol";
+import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
 /*  Deploys a MangroveOrder instance
@@ -14,7 +15,7 @@ import {Deployer} from "@mgv/script/lib/Deployer.sol";
 
   You can specify a mangrove address with the MGV env var.*/
 contract MangroveOrderDeployer is Deployer {
-  function run() public {
+  function run() public virtual {
     innerRun({
       mgv: IMangrove(envAddressOrName("MGV", "Mangrove")),
       admin: envAddressOrName("MGV_GOVERNANCE", broadcaster()),
@@ -28,13 +29,17 @@ contract MangroveOrderDeployer is Deployer {
    * @param admin address of the admin on MangroveOrder after deployment
    */
   function innerRun(IMangrove mgv, address admin, RouterProxyFactory routerProxyFactory) public {
-    MangroveOrder mgvOrder;
     // Bug workaround: Foundry has a bug where the nonce is not incremented when MangroveOrder is deployed.
     //                 We therefore ensure that this happens.
     uint64 nonce = vm.getNonce(broadcaster());
 
     // See MangroveOrderGasreqBaseTest description for calculation of the gasreq.
-    mgvOrder = deployMangroveOrder(mgv, admin, routerProxyFactory);
+    SmartRouter routerImplementation = deployRouter();
+    MangroveOrder mgvOrder = deployMangroveOrder(mgv, admin, routerProxyFactory, routerImplementation);
+
+    broadcast();
+    routerImplementation.bind(address(mgvOrder));
+
     // Bug workaround: See comment above `nonce` further up
     if (nonce == vm.getNonce(broadcaster())) {
       vm.setNonce(broadcaster(), nonce + 1);
@@ -45,16 +50,36 @@ contract MangroveOrderDeployer is Deployer {
     smokeTest(mgvOrder, mgv);
   }
 
-  function deployMangroveOrder(IMangrove mgv, address admin, RouterProxyFactory routerProxyFactory)
-    internal
-    virtual
-    returns (MangroveOrder mgvOrder)
-  {
+  function deployRouter() internal virtual returns (SmartRouter router) {
     broadcast();
     if (forMultisig) {
-      mgvOrder = new MangroveOrder{salt: salt}(mgv, routerProxyFactory, admin);
+      router = new SmartRouter{salt: salt}();
     } else {
-      mgvOrder = new MangroveOrder(mgv, routerProxyFactory, admin);
+      router = new SmartRouter();
+    }
+  }
+
+  function deployMangroveOrder(
+    IMangrove mgv,
+    address admin,
+    RouterProxyFactory routerProxyFactory,
+    SmartRouter routerImplementation
+  ) internal virtual returns (MangroveOrder mgvOrder) {
+    broadcast();
+    if (forMultisig) {
+      mgvOrder = new MangroveOrder{salt: salt}({
+        mgv: mgv,
+        factory: routerProxyFactory,
+        deployer: admin,
+        routerImplementation: routerImplementation
+      });
+    } else {
+      mgvOrder = new MangroveOrder({
+        mgv: mgv,
+        factory: routerProxyFactory,
+        deployer: admin,
+        routerImplementation: routerImplementation
+      });
     }
   }
 
