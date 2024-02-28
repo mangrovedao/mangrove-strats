@@ -29,13 +29,15 @@ function getOrCreateNetworkAddresses(networkName) {
   return networkAddresses;
 }
 
-// Accounts, AAVE v3
+// Accounts, AAVE v3, Blast
 const allAccounts = contextAddresses.getAllAccounts();
 const allAaveV3Addresses = contextAddresses.getAllAaveV3Addresses();
+const allBlastAddresses = contextAddresses.getAllBlastAddresses();
 for (const [networkName, namedAddresses] of Object.entries(
   contextAddresses.toNamedAddressesPerNamedNetwork(
     allAccounts,
     allAaveV3Addresses,
+    allBlastAddresses,
   ),
 )) {
   const networkAddresses = getOrCreateNetworkAddresses(networkName);

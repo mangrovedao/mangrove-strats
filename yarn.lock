@@ -105,29 +105,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/context-addresses@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "@mangrovedao/context-addresses@npm:1.2.0"
+"@mangrovedao/context-addresses@npm:^1.3.0":
+  version: 1.3.2
+  resolution: "@mangrovedao/context-addresses@npm:1.3.2"
   dependencies:
     semver: ^7.5.4
-  checksum: d6ab9384c2100163f86cae53d96f7ecdfa5ac51569ab4491622895345f339128560032d56462e958eeb09916463129d250b32198e3276e11f92aec91a9f96e20
+  checksum: 2d347a3673a85a1b3eba8bfc4413f6ae588910b0f787bd06c36a62255f77b45ac1106022ed6241f032d59333e0560a81b1f08f2526406e69133a848e2e45d170
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@npm:^2.1.0-0":
-  version: 2.1.0-0
-  resolution: "@mangrovedao/mangrove-core@npm:2.1.0-0"
-  checksum: 5a5e3e00bb72111309408c4fcd401ed9e2ddfdf85b8401291a09d9d110df9ffb71a25660719a536a1e4b25bbc37fdddcece02212217c373c41c219b2a613e1d6
+"@mangrovedao/mangrove-core@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "@mangrovedao/mangrove-core@npm:2.1.0"
+  checksum: df42a229919b2c27d472e21bc8bff414d8f16b3a721d769a86946bf941e0134203d9bfc80ecdf5d5d107576b49a3fd0d30ff0945adae13ad0f19ac869826df3c
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-deployments@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "@mangrovedao/mangrove-deployments@npm:2.1.1"
+"@mangrovedao/mangrove-deployments@npm:^2.1.3":
+  version: 2.1.4
+  resolution: "@mangrovedao/mangrove-deployments@npm:2.1.4"
   dependencies:
     "@mangrovedao/context-addresses": ^1.1.4
     semver: ^7.5.4
-  checksum: 0d97701d7f7f9b13f76e752474479544f5496eed01610c30c700c0f2710745fa1be5eb7fc4882bc5154091e6548a7b88198f23aa45de59c9823b1ed8caa3daf6
+  checksum: 0fd817caec5140a24f000e307fbb49ea54a15e901184d8327b046011af002924fe72b9a8b8907f923d0741e986b15ba813a89bcdef948c6cf3575d6379603348
   languageName: node
   linkType: hard
 
@@ -135,9 +135,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
-    "@mangrovedao/context-addresses": ^1.2.0
-    "@mangrovedao/mangrove-core": ^2.1.0-0
-    "@mangrovedao/mangrove-deployments": ^2.1.1
+    "@mangrovedao/context-addresses": ^1.3.0
+    "@mangrovedao/mangrove-core": ^2.1.0
+    "@mangrovedao/mangrove-deployments": ^2.1.3
     "@types/node": ^20.11.5
     husky: ^8.0.3
     lint-staged: ^15.2.0
