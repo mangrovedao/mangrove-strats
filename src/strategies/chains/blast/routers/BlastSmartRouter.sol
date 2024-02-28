@@ -33,5 +33,7 @@ contract BlastSmartRouter is SmartRouter {
     blastPointsContract.configurePointsOperator(blastPointsOperator);
 
     _setAdmin(user);
+
+    initialized = true;
   }
 }
