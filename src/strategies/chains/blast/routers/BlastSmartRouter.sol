@@ -27,7 +27,7 @@ contract BlastSmartRouter is SmartRouter {
     require(initialized == false, "BlastSmartRouter: already initialized");
     initialized = true;
 
-    blastContract.configureClaimableYield();
+    // blastContract.configureClaimableYield();
     blastContract.configureClaimableGas();
     blastContract.configureGovernor(user);
 

@@ -33,7 +33,7 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "^2.1.0"
+    "@mangrovedao/mangrove-core": "^2.1.1-0"
   },
   "devDependencies": {
     "@mangrovedao/context-addresses": "^1.3.0",

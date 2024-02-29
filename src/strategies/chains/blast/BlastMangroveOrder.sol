@@ -35,7 +35,7 @@ contract BlastMangroveOrder is MangroveOrder {
     IBlastPoints blastPointsContract,
     address blastPointsOperator
   ) MangroveOrder(mgv, factory, deployer) {
-    blastContract.configureClaimableYield();
+    // blastContract.configureClaimableYield();
     blastContract.configureClaimableGas();
     blastContract.configureGovernor(blastGovernor);
     blastPointsContract.configurePointsOperator(blastPointsOperator);

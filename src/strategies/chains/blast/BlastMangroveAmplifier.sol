@@ -30,7 +30,7 @@ contract BlastMangroveAmplifier is MangroveAmplifier {
     IBlastPoints blastPointsContract,
     address blastPointsOperator
   ) MangroveAmplifier(mgv, factory, routerImplementation) {
-    blastContract.configureClaimableYield();
+    // blastContract.configureClaimableYield();
     blastContract.configureClaimableGas();
     blastContract.configureGovernor(blastGovernor);
     blastPointsContract.configurePointsOperator(blastPointsOperator);

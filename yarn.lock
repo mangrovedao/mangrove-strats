@@ -114,10 +114,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mangrovedao/mangrove-core@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@mangrovedao/mangrove-core@npm:2.1.0"
-  checksum: df42a229919b2c27d472e21bc8bff414d8f16b3a721d769a86946bf941e0134203d9bfc80ecdf5d5d107576b49a3fd0d30ff0945adae13ad0f19ac869826df3c
+"@mangrovedao/mangrove-core@npm:^2.1.1-0":
+  version: 2.1.1-0
+  resolution: "@mangrovedao/mangrove-core@npm:2.1.1-0"
+  checksum: 90e92daa388d4f66ce322389feff18523d2f78ce8e628c9607ace74e30a849848423b4b57f84965993e9f762436ba3c150e5d3541501c16d39949bb4d67c0031
   languageName: node
   linkType: hard
 
@@ -136,7 +136,7 @@ __metadata:
   resolution: "@mangrovedao/mangrove-strats@workspace:."
   dependencies:
     "@mangrovedao/context-addresses": ^1.3.0
-    "@mangrovedao/mangrove-core": ^2.1.0
+    "@mangrovedao/mangrove-core": ^2.1.1-0
     "@mangrovedao/mangrove-deployments": ^2.1.3
     "@types/node": ^20.11.5
     husky: ^8.0.3
