@@ -25,7 +25,7 @@ contract KandelSeeder is AbstractKandelSeeder {
   constructor(IMangrove mgv, uint kandelGasreq) AbstractKandelSeeder(mgv, kandelGasreq) {}
 
   ///@inheritdoc AbstractKandelSeeder
-  function _deployKandel(OLKey memory olKeyBaseQuote, bool) internal override returns (GeometricKandel kandel) {
+  function _deployKandel(OLKey memory olKeyBaseQuote, bool) internal virtual override returns (GeometricKandel kandel) {
     kandel = new Kandel(MGV, olKeyBaseQuote, KANDEL_GASREQ);
     emit NewKandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel));
   }

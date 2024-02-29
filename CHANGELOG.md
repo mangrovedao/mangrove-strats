@@ -4,6 +4,8 @@
 - Upgrade to @mangrovedao/mangrove-deployments v2.1.5
 - Upgrade to @mangrovedao/context-addresses v1.3.2
 - Update Blast integrations
+- Deployed blast changes
+- Changes for kandel on blast
 
 # 2.1.0-2
 
