@@ -1,8 +1,8 @@
 # Next version
 
-- Upgrade to @mangrovedao/mangrove-core v2.1.0
-- Upgrade to @mangrovedao/mangrove-deployments v2.1.3
-- Upgrade to @mangrovedao/context-addresses v1.3.0
+- Upgrade to @mangrovedao/mangrove-core v2.1.1
+- Upgrade to @mangrovedao/mangrove-deployments v2.1.5
+- Upgrade to @mangrovedao/context-addresses v1.3.2
 - Update Blast integrations
 
 # 2.1.0-2
