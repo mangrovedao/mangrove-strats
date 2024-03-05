@@ -1,5 +1,7 @@
 # Next version
 
+# 2.1.0-4
+
 - update contracts to fix `Blast` issues with points
 
 # 2.1.0-3
