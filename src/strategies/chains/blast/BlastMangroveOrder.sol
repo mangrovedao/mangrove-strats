@@ -43,6 +43,6 @@ contract BlastMangroveOrder is MangroveOrder {
 
   /// @inheritdoc MangroveOrder
   function _deploySmartRouter() internal override returns (SmartRouter) {
-    return new BlastSmartRouter(address(this));
+    return new SmartRouter(address(this));
   }
 }

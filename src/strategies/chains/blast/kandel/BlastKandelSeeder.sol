@@ -48,7 +48,7 @@ contract BlastKandelSeeder is KandelSeeder {
 
     blastContract.configureClaimableGas();
     blastContract.configureGovernor(blastGovernor);
-    blastPointsContract.configurePointsOperator(blastPointsOperator);
+    // blastPointsContract.configurePointsOperator(blastPointsOperator);
   }
 
   ///@inheritdoc AbstractKandelSeeder
