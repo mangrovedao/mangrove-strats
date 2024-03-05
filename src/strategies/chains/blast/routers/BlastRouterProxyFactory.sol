@@ -33,9 +33,9 @@ contract BlastRouterProxyFactory is RouterProxyFactory, AccessControlled {
     blastPointsOperator = _blastPointsOperator;
 
     // blastContract.configureClaimableYield();
-    blastContract.configureClaimableGas();
-    blastContract.configureGovernor(blastGovernor);
-    blastPointsContract.configurePointsOperator(blastPointsOperator);
+    // blastContract.configureClaimableGas();
+    // blastContract.configureGovernor(blastGovernor);
+    // blastPointsContract.configurePointsOperator(blastPointsOperator);
   }
 
   /// @inheritdoc RouterProxyFactory

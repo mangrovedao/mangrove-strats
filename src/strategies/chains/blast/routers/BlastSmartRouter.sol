@@ -28,10 +28,10 @@ contract BlastSmartRouter is SmartRouter {
     initialized = true;
 
     // blastContract.configureClaimableYield();
-    blastContract.configureClaimableGas();
-    blastContract.configureGovernor(user);
+    // blastContract.configureClaimableGas();
+    // blastContract.configureGovernor(user);
 
-    blastPointsContract.configurePointsOperator(blastPointsOperator);
+    // blastPointsContract.configurePointsOperator(blastPointsOperator);
 
     _setAdmin(user);
   }
