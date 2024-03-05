@@ -1,5 +1,7 @@
 # Next version
 
+- update contracts to fix `Blast` issues with points
+
 # 2.1.0-3
 
 - Upgrade to @mangrovedao/mangrove-core v2.1.1
