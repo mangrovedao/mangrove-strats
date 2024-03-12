@@ -125,19 +125,12 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
   }
 
   /// @notice Get the tokens array
-  /// @param token the token in logic
-  /// @param token0 the first token
-  /// @param token1 the second token
+  /// @param position the position
   /// @return tokens the tokens array
-  function _getTokensArray(IERC20 token, IERC20 token0, IERC20 token1) internal pure returns (IERC20[] memory tokens) {
-    if (token == token0 || token == token1) {
-      tokens = new IERC20[](2);
-    } else {
-      tokens = new IERC20[](3);
-      tokens[2] = token;
-    }
-    tokens[0] = token0;
-    tokens[1] = token1;
+  function _getTokensArray(Position memory position) internal pure returns (IERC20[] memory tokens) {
+    tokens = new IERC20[](2);
+    tokens[0] = IERC20(position.token0);
+    tokens[1] = IERC20(position.token1);
   }
 
   /// @notice Take all tokens from the manager
@@ -238,7 +231,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     // collect
     _collect(positionId);
     // create token array
-    IERC20[] memory tokens = _getTokensArray(token, IERC20(position.token0), IERC20(position.token1));
+    IERC20[] memory tokens = _getTokensArray(position);
     // take all tokens from manager
     _takeAllFromManager(tokens, fundOwner);
     // send to msg.sender
@@ -264,7 +257,7 @@ contract UniswapV3RoutingLogic is AbstractRoutingLogic {
     // collect all to this
     _collect(positionId);
     // Get tokens array
-    IERC20[] memory tokens = _getTokensArray(token, IERC20(position.token0), IERC20(position.token1));
+    IERC20[] memory tokens = _getTokensArray(position);
     // take all tokens from manager
     _takeAllFromManager(tokens, fundOwner);
     // reposition
