@@ -49,8 +49,15 @@ contract RouterProxyFactory {
     proxy = new RouterProxy{salt: keccak256(abi.encode(owner))}(routerImplementation);
     // TODO: The access controlled admin must maybe be immutable (or this is a vector attack)
     // We will always link one user with a router address anyway
-    AbstractRouter(address(proxy)).setAdmin(owner);
+    _afterDeployProxy(proxy, owner);
     emit ProxyDeployed(proxy, owner, routerImplementation);
+  }
+
+  /// @notice Hook to be called after a proxy is deployed.
+  /// @param proxy the deployed proxy contract
+  /// @param owner The address which will be the admin and owner of the newly deployed proxy.
+  function _afterDeployProxy(RouterProxy proxy, address owner) internal virtual {
+    AbstractRouter(address(proxy)).setAdmin(owner);
   }
 
   /// @notice Deploys a RouterProxy for a given owner if one has not already been deployed.

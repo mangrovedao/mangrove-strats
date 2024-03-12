@@ -1,6 +1,21 @@
 # Next version
 
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
+- Upgrade to @mangrovedao/context-addresses v1.3.4
+- Upgrade to @mangrovedao/mangrove-deployments v2.2.2
+
+# 2.1.0-4
+
+- update contracts to fix `Blast` issues with points
+
+# 2.1.0-3
+
+- Upgrade to @mangrovedao/mangrove-core v2.1.1
+- Upgrade to @mangrovedao/mangrove-deployments v2.1.5
+- Upgrade to @mangrovedao/context-addresses v1.3.2
+- Update Blast integrations
+- Deployed blast changes
+- Changes for kandel on blast
 
 # 2.1.0-2
 
