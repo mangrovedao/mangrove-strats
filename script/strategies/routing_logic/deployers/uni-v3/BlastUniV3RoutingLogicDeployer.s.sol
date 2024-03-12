@@ -11,6 +11,8 @@ import {UniswapV3RoutingLogic} from
   "@mgv-strats/src/strategies/routing_logic/restaking/uni-v3/UniswapV3RoutingLogic.sol";
 import {Deployer} from "@mgv/script/lib/Deployer.sol";
 import {IERC20Rebasing} from "@mgv-strats/src/strategies/vendor/blast/IERC20Rebasing.sol";
+import {IBlast} from "@mgv/src/chains/blast/interfaces/IBlast.sol";
+import {IBlastPoints} from "@mgv/src/chains/blast/interfaces/IBlastPoints.sol";
 
 /*  Deploys a UniswapV3Logic instance */
 contract BlastUniV3RoutingLogicDeployer is Deployer {
@@ -26,7 +28,11 @@ contract BlastUniV3RoutingLogicDeployer is Deployer {
       implementation: AbstractRouter(envAddressOrName("SMART_ROUTER_IMPLEMENTATION", "MangroveOrder-Router")),
       forkName: vm.envString("FORK_NAME"),
       tokens: rebasingTokens,
-      admin: vm.envAddress("ADMIN")
+      admin: vm.envAddress("ADMIN"),
+      blastContract: IBlast(vm.envAddress("BLAST")),
+      pointsContract: IBlastPoints(vm.envAddress("BLAST_POINTS")),
+      pointsOperator: vm.envAddress("BLAST_POINTS_OPERATOR"),
+      blastGovernor: vm.envAddress("BLAST_GOVERNOR")
     });
     outputDeployment();
   }
@@ -37,11 +43,24 @@ contract BlastUniV3RoutingLogicDeployer is Deployer {
     AbstractRouter implementation,
     string memory forkName,
     IERC20Rebasing[] memory tokens,
-    address admin
+    address admin,
+    IBlast blastContract,
+    IBlastPoints pointsContract,
+    address pointsOperator,
+    address blastGovernor
   ) public {
     broadcast();
-    BlastUniswapV3Manager uniswapV3Manager =
-      new BlastUniswapV3Manager(tokens, admin, positionManager, factory, implementation);
+    BlastUniswapV3Manager uniswapV3Manager = new BlastUniswapV3Manager(
+      tokens,
+      admin,
+      positionManager,
+      factory,
+      implementation,
+      pointsContract,
+      pointsOperator,
+      blastContract,
+      blastGovernor
+    );
     string memory managerName = string.concat("UniswapV3Manager-", forkName);
     fork.set(managerName, address(uniswapV3Manager));
     console.log("UniswapV3Manager deployed", address(uniswapV3Manager));
