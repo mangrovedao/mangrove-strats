@@ -1,5 +1,8 @@
 # Next version
 
+- Upgrade to @mangrovedao/context-addresses v1.3.4
+- Upgrade to @mangrovedao/mangrove-deployments v2.2.2
+
 # 2.1.0-4
 
 - update contracts to fix `Blast` issues with points
