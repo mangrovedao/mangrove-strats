@@ -40,7 +40,7 @@ contract OrbitLogic is AbstractRoutingLogic, ExponentialNoError {
     returns (uint pulled)
   {
     OErc20 overlyingToken = overlying(token);
-    // compute amout to be pulled (currently taking stored axchange rate and not the current one)
+    // compute amout to be pulled (currently taking stored exchange rate and not the current one)
     Exp memory exchangeRate = Exp({mantissa: overlyingToken.exchangeRateStored()});
     uint toPull = div_(amount, exchangeRate);
     // Pull the amount of oTokens from the fundOwner
@@ -50,7 +50,7 @@ contract OrbitLogic is AbstractRoutingLogic, ExponentialNoError {
     );
     // redeem the oTokens to get the underlying tokens
     overlyingToken.redeemUnderlying(amount);
-    // send the underlying tokens to the fundOwner
+    // send the underlying tokens to the msg.sender (maker contract)
     pulled = token.balanceOf(address(this));
     require(TransferLib.transferToken(token, msg.sender, pulled), "OrbitLogic: Transfer failed");
     uint balance = overlyingToken.balanceOf(address(this));
