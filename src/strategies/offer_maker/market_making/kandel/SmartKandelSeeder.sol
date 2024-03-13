@@ -23,7 +23,7 @@ contract SmartKandelSeeder is AbstractKandelSeeder {
   ///@param quoteBaseOlKeyHash the hash of the quote/base offer list key. This is indexed so that RPC calls can filter on it.
   ///@param kandel the address of the deployed strat.
   ///@notice By emitting this data, an indexer will be able to keep track of what Kandel strats are deployed, what market its deployed on and who the owner is.
-  event NewKandel(
+  event NewSmartKandel(
     address indexed owner, bytes32 indexed baseQuoteOlKeyHash, bytes32 indexed quoteBaseOlKeyHash, address kandel
   );
 
@@ -42,6 +42,6 @@ contract SmartKandelSeeder is AbstractKandelSeeder {
   ///@inheritdoc AbstractKandelSeeder
   function _deployKandel(OLKey memory olKeyBaseQuote, bool) internal virtual override returns (GeometricKandel kandel) {
     kandel = new SmartKandel(MGV, olKeyBaseQuote, KANDEL_GASREQ, msg.sender, PROXY_FACTORY, ROUTER_IMPLEMENTATION);
-    emit NewKandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel));
+    emit NewSmartKandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel));
   }
 }
