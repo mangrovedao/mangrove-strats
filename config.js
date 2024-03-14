@@ -24,6 +24,8 @@ exports.abi_exports = [
   "MangroveAmplifier",
   "OrbitLogic",
   "OrbitLogicStorage",
+  "SmartKandelSeeder",
+  "SmartKandel",
 ];
 
 // Contracts that should export their ABI + bytecode
