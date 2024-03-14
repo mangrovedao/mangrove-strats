@@ -11,6 +11,8 @@ import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abs
 import {Direct} from "@mgv-strats/src/strategies/offer_maker/abstract/Direct.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {SmartRouter} from "@mgv-strats/src/strategies/routers/SmartRouter.sol";
+import {CoreKandel} from "./abstract/CoreKandel.sol";
+import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 
 ///@title The SmartKandel strat with geometric price progression.
 contract SmartKandel is GeometricKandel {
@@ -96,18 +98,58 @@ contract SmartKandel is GeometricKandel {
 
   ///@inheritdoc Direct
   function __routerFlush__(MgvLib.SingleOrder calldata order) internal override {
-    bytes32 kandelID = _kandelID();
-
     RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = _routingOrder();
     routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
-    routingOrders[0].fundOwner = FUND_OWNER;
-    routingOrders[0].olKeyHash = kandelID;
 
+    routingOrders[1] = _routingOrder();
     routingOrders[1].token = IERC20(order.olKey.inbound_tkn); // flushing liquidity brought by taker
-    routingOrders[1].fundOwner = FUND_OWNER;
-    routingOrders[1].olKeyHash = kandelID;
 
     router().flush(routingOrders);
+  }
+
+  ///@notice deposits funds to be available for being offered. Will increase `pending`.
+  ///@param baseAmount the amount of base tokens to deposit.
+  ///@param quoteAmount the amount of quote tokens to deposit.
+  function depositFunds(uint baseAmount, uint quoteAmount) public override {
+    // transfer funds from caller to this
+    super.depositFunds(baseAmount, quoteAmount);
+    // push funds on the router
+    RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
+    routingOrders[0] = _routingOrder();
+    routingOrders[0].token = BASE;
+    routingOrders[1] = _routingOrder();
+    routingOrders[1].token = QUOTE;
+    router().flush(routingOrders);
+  }
+
+  ///@inheritdoc CoreKandel
+  ///@notice tries to withdraw funds on this contract's balance and then reaches out to the router available funds for the remainder
+  function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
+    uint localBalance = token.balanceOf(address(this));
+
+    RL.RoutingOrder memory routingOrder = _routingOrder();
+    routingOrder.token = token;
+
+    // if amount is `type(uint).max` tell the router to withdraw all it can (i.e. pass `type(uint).max` to the router)
+    // else withdraw only if there is not enough funds on this contract to match amount
+    uint amount_ = amount == type(uint).max
+      ? router().tokenBalanceOf(routingOrder)
+      : localBalance > amount ? 0 : amount - localBalance;
+
+    if (amount_ != 0) {
+      router().pull(routingOrder, amount_, STRICT_PULLING);
+    }
+    super.withdrawFundsForToken(token, amount, recipient);
+  }
+
+  ///@notice returns the amount of the router's that can be used by this contract, as well as local balance for the token offered for the offer type.
+  ///@param ba the offer type.
+  ///@return balance the balance of the token.
+  function reserveBalance(OfferType ba) public view override returns (uint balance) {
+    RL.RoutingOrder memory routingOrder = _routingOrder();
+    routingOrder.token = outboundOfOfferType(ba);
+    return router().tokenBalanceOf(routingOrder) + super.reserveBalance(ba);
   }
 
   ///@inheritdoc MangroveOffer
