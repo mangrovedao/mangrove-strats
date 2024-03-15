@@ -2,6 +2,7 @@
 
 - Upgrade to @mangrovedao/context-addresses v1.3.4
 - Upgrade to @mangrovedao/mangrove-deployments v2.2.2
+- Add Smart router to kandel
 
 # 2.1.0-4
 

@@ -38,13 +38,13 @@ abstract contract Direct is MangroveOffer {
   ///@inheritdoc IOfferLogic
   ///@dev Returns the router to which pull/push calls must be done.
   ///@dev if strat is not routing, the call does not revert but returns a casted `address(0)`
-  function router(address) public view override returns (AbstractRouter) {
+  function router(address) public view virtual override returns (AbstractRouter) {
     return ROUTER_IMPLEMENTATION;
   }
 
   ///@notice convenience function
   ///@return the router to which pull/push calls must be done.
-  function router() public view returns (AbstractRouter) {
+  function router() public view virtual returns (AbstractRouter) {
     return router(address(0));
   }
 
@@ -134,16 +134,12 @@ abstract contract Direct is MangroveOffer {
     }
   }
 
-  ///@notice Direct posthook flushes outbound and inbound token back to the router (if any)
-  ///@inheritdoc MangroveOffer
-  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 makerData)
-    internal
-    virtual
-    override
-    returns (bytes32)
-  {
-    bytes32 olKeyHash = order.olKey.hash();
+  ///@notice Flush outbound and inbound token back to the router (if any)
+  ///@param order the order for which the flush is done
+  function __routerFlush__(MgvLib.SingleOrder calldata order) internal virtual {
     if (_isRouting()) {
+      bytes32 olKeyHash = order.olKey.hash();
+
       RL.RoutingOrder[] memory routingOrders = new RL.RoutingOrder[](2);
       routingOrders[0].token = IERC20(order.olKey.outbound_tkn); // flushing outbound tokens if this contract pulled more liquidity than required during `makerExecute`
       routingOrders[0].fundOwner = FUND_OWNER;
@@ -157,6 +153,17 @@ abstract contract Direct is MangroveOffer {
 
       router().flush(routingOrders);
     }
+  }
+
+  ///@notice Direct posthook flushes outbound and inbound token back to the router (if any)
+  ///@inheritdoc MangroveOffer
+  function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 makerData)
+    internal
+    virtual
+    override
+    returns (bytes32)
+  {
+    __routerFlush__(order);
     // reposting offer residual if any
     return super.__posthookSuccess__(order, makerData);
   }
