@@ -1,5 +1,7 @@
 # Next version
 
+# 2.1.0-6
+
 - Add view function to `SmartKandel` to get the current logics
 
 # 2.1.0-5
