@@ -1,5 +1,7 @@
 # Next version
 
+- Add view function to `SmartKandel` to get the current logics
+
 # 2.1.0-5
 
 - Upgrade to @mangrovedao/context-addresses v1.3.4
