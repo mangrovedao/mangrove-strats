@@ -84,6 +84,18 @@ contract SmartKandel is GeometricKandel {
     }
   }
 
+  ///@notice returns the routing logics for the router
+  ///@return baseLogic the logic for the base token
+  ///@return quoteLogic the logic for the quote token
+  function getLogics() public view returns (AbstractRoutingLogic baseLogic, AbstractRoutingLogic quoteLogic) {
+    SmartRouter _router = SmartRouter(address(router()));
+    RL.RoutingOrder memory routingOrder = _routingOrder();
+    routingOrder.token = BASE;
+    baseLogic = _router.getLogic(routingOrder);
+    routingOrder.token = QUOTE;
+    quoteLogic = _router.getLogic(routingOrder);
+  }
+
   ///@inheritdoc MangroveOffer
   function __get__(uint amount, MgvLib.SingleOrder calldata order) internal override returns (uint missing) {
     uint balance = IERC20(order.olKey.outbound_tkn).balanceOf(address(this));

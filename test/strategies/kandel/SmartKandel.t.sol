@@ -23,6 +23,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {AbstractRoutingLogic} from "@mgv-strats/src/strategies/routing_logic/abstract/AbstractRoutingLogic.sol";
 
 contract SmartKandelTest is CoreKandelTest {
   PinnedPolygonFork fork;
@@ -117,6 +118,7 @@ contract SmartKandelTest is CoreKandelTest {
     SmartKandel kdl_ = SmartKandel(payable(address(kdl)));
 
     kdl_.PROXY_FACTORY();
+    kdl_.getLogics();
 
     CheckAuthArgs memory args;
     args.callee = $(kdl);
@@ -125,6 +127,17 @@ contract SmartKandelTest is CoreKandelTest {
     // Only admin
     args.allowed = dynamic([address(maker)]);
     checkAuth(args, abi.encodeCall(kdl_.setLogics, (logic, logic, 0)));
+  }
+
+  function test_set_logics_get_logis() public {
+    SmartKandel kdl_ = SmartKandel(payable(address(kdl)));
+
+    vm.prank(maker);
+    kdl_.setLogics(logic, logic, 0);
+
+    (AbstractRoutingLogic baseLogic, AbstractRoutingLogic quoteLogic) = kdl_.getLogics();
+    assertEq(address(baseLogic), address(logic), "Incorrect base logic");
+    assertEq(address(quoteLogic), address(logic), "Incorrect quote logic");
   }
 
   // these tests don't make sense as balance can be in user wallet
