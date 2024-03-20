@@ -17,7 +17,6 @@ import {console2 as console} from "@mgv/forge-std/Script.sol";
  * @dev since the max number of price slot Kandel can use is an immutable, one should deploy Kandel on a large price range.
  * @dev Example: WRITE_DEPLOY=true ON_AAVE=true SHARING=false BASE=CRV QUOTE=WBTC TICK_SPACING=1 forge script --fork-url $LOCALHOST_URL KandelSower --broadcast --private-key $MUMBAI_PRIVATE_KEY
  */
-
 contract KandelSower is Deployer, MangroveTest {
   function run() public {
     bool onAave = vm.envBool("ON_AAVE");

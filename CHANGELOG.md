@@ -1,5 +1,7 @@
 # Next version
 
+- feat: add `UniSwap` routing logic, manager, and univ3 logics
+
 # 2.1.0-6
 
 - Add view function to `SmartKandel` to get the current logics

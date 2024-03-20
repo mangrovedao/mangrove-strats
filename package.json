@@ -10,9 +10,10 @@
     "prepack": "pinst --disable && yarn build",
     "postpack": "pinst --enable",
     "postinstall": "husky install",
-    "build": "yarn run copyDeploymentAddresses && yarn run copyContextAddresses && forge build && node copyArtifacts && node buildIndex && node checkNatspec",
+    "build": "yarn run copyDeploymentAddresses && yarn run copyContextAddresses && yarn run copyUniBytecode && forge build && node copyArtifacts && node buildIndex && node checkNatspec",
     "copyDeploymentAddresses": "node copyDeploymentAddresses",
     "copyContextAddresses": "node copyContextAddresses",
+    "copyUniBytecode": "node copyUniBytecode",
     "clean": "forge clean; rimraf index.js dist",
     "test": "forge test -vvv",
     "gas-measurement": "GAS_MATCH_PATH='*.gasreq.*' bash ./node_modules/@mangrovedao/mangrove-core/gas-measurement.sh"
@@ -33,7 +34,9 @@
     "/README.md"
   ],
   "dependencies": {
-    "@mangrovedao/mangrove-core": "^2.1.1"
+    "@mangrovedao/mangrove-core": "^2.1.1",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.4"
   },
   "devDependencies": {
     "@mangrovedao/context-addresses": "^1.3.4",

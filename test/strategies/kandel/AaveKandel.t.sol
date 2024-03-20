@@ -66,11 +66,7 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       olKeyBaseQuote: olKey,
       gasreq: kandel_gasreq,
-      routerParams: Direct.RouterParams({
-        routerImplementation: router,
-        fundOwner: id,
-        strict: strict
-      })
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: strict})
     });
 
     router.bind(address(aaveKandel_));
@@ -372,11 +368,7 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(aToken), address(quote), 1),
-      routerParams: Direct.RouterParams({
-        routerImplementation: router,
-        fundOwner: address(0),
-        strict: false
-      })
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: false})
     });
   }
 
@@ -388,11 +380,7 @@ contract AaveKandelTest is CoreKandelTest {
       mgv: IMangrove($(mgv)),
       gasreq: 700_000,
       olKeyBaseQuote: OLKey(address(base), address(aToken), 1),
-      routerParams: Direct.RouterParams({
-        routerImplementation: router,
-        fundOwner: address(0),
-        strict: false
-      })
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: false})
     });
   }
 }

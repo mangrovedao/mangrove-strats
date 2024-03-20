@@ -201,6 +201,7 @@ abstract contract KandelTest is StratTest {
     Bid, // live bid
     Ask, // live ask
     Crossed // both live
+
   }
 
   struct IndexStatus {
