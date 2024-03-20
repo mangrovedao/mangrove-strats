@@ -1,5 +1,7 @@
 # Next version
 
+# 2.1.0-7
+
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
 
 # 2.1.0-6
