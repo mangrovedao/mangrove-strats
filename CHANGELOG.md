@@ -1,8 +1,16 @@
 # Next version
 
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
+
+# 2.1.0-6
+
+- Add view function to `SmartKandel` to get the current logics
+
+# 2.1.0-5
+
 - Upgrade to @mangrovedao/context-addresses v1.3.4
 - Upgrade to @mangrovedao/mangrove-deployments v2.2.2
+- Add Smart router to kandel
 
 # 2.1.0-4
 

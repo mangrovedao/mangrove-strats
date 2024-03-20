@@ -26,6 +26,8 @@ exports.abi_exports = [
   "UniswapV3RoutingLogic",
   "OrbitLogic",
   "OrbitLogicStorage",
+  "SmartKandelSeeder",
+  "SmartKandel",
 ];
 
 // Contracts that should export their ABI + bytecode

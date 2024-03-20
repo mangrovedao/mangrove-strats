@@ -264,7 +264,7 @@ abstract contract CoreKandelTest is KandelTest {
     kdl.retractAndWithdraw(0, 10, baseFunds, quoteFunds, type(uint).max, maker);
   }
 
-  function test_reserveBalance_withoutOffers_returnsFundAmount() public {
+  function test_reserveBalance_withoutOffers_returnsFundAmount() public virtual {
     // Arrange
     retractDefaultSetup();
     assertEq(kdl.reserveBalance(Ask), 0, "Base balance should be empty");
@@ -278,7 +278,7 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(kdl.reserveBalance(Bid), 43, "Quote balance should be correct");
   }
 
-  function test_reserveBalance_withOffers_returnsFundAmount() public {
+  function test_reserveBalance_withOffers_returnsFundAmount() public virtual {
     // Arrange
     retractDefaultSetup();
     populateConstantDistribution(4);
@@ -305,7 +305,7 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(kdl.offeredVolume(Ask), baseAmount, "Ask volume should be sum of base dist");
   }
 
-  function test_pending_withoutOffers_returnsReserveBalance() public {
+  function test_pending_withoutOffers_returnsReserveBalance() public virtual {
     // Arrange
     retractDefaultSetup();
     assertEq(kdl.pending(Ask), 0, "Base pending should be empty");
@@ -319,7 +319,7 @@ abstract contract CoreKandelTest is KandelTest {
     assertEq(kdl.pending(Bid), 43, "Quote pending should be correct");
   }
 
-  function test_pending_withOffers_disregardsOfferedVolume() public {
+  function test_pending_withOffers_disregardsOfferedVolume() public virtual {
     // Arrange
     retractDefaultSetup();
     (uint baseAmount, uint quoteAmount) = populateConstantDistribution(4);
