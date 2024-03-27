@@ -1,5 +1,7 @@
 # Next version
 
+- Change licenses to MIT for code mistakenly assigned BSD-2-Clause or AGPL-3.0
+
 # 2.1.0-7
 
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
