@@ -1,4 +1,4 @@
-// SPDX-License-Identifier:	BSD-2-Clause
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import {AbstractRoutingLogic, IERC20} from "./abstract/AbstractRoutingLogic.sol";
