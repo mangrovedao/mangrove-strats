@@ -23,7 +23,7 @@ contract KandelSower is Deployer, MangroveTest {
     innerRun({
       kandelSeeder: AbstractKandelSeeder(
         envAddressOrName("KANDEL_SEEDER", onAave ? fork.get("AaveKandelSeeder") : fork.get("KandelSeeder"))
-        ),
+      ),
       olKeyBaseQuote: OLKey(envAddressOrName("BASE"), envAddressOrName("QUOTE"), vm.envUint("TICK_SPACING")),
       sharing: vm.envBool("SHARING"),
       onAave: onAave,

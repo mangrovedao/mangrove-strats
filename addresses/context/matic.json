@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Gasbot",
+    "address": "0x10B124Da45Bc440171664cee59Aafa23979C9616"
+  },
+  {
+    "name": "MgvGovernance",
+    "address": "0x59a424169526ECae25856038598F862043DCeDf7"
+  },
+  {
+    "name": "AaveAddressProvider",
+    "address": "0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb"
+  },
+  {
+    "name": "WBTC.e",
+    "address": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+  },
+  {
+    "name": "WBTC",
+    "address": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+  },
+  {
+    "name": "WETH.e",
+    "address": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
+  },
+  {
+    "name": "WETH",
+    "address": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"
+  },
+  {
+    "name": "DAI.e",
+    "address": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+  },
+  {
+    "name": "DAI",
+    "address": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"
+  },
+  {
+    "name": "USDC.",
+    "address": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+  },
+  {
+    "name": "USDC.e",
+    "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+  },
+  {
+    "name": "USDC",
+    "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+  },
+  {
+    "name": "USDT.e",
+    "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+  },
+  {
+    "name": "USDT",
+    "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+  },
+  {
+    "name": "PxUSDC.",
+    "address": "0xB70041dC246412E0DCE34bd788062E969276E737"
+  },
+  {
+    "name": "PxUSDC",
+    "address": "0xB70041dC246412E0DCE34bd788062E969276E737"
+  },
+  {
+    "name": "PxMATIC.",
+    "address": "0xba6fBacEeeE55D2d657Eb26023C64002e23Af5E8"
+  },
+  {
+    "name": "PxMATIC",
+    "address": "0xba6fBacEeeE55D2d657Eb26023C64002e23Af5E8"
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Gasbot",
+    "address": "0x4d184a4C8d79BbBdCC4E95A1AdEA2454c535280A"
+  },
+  {
+    "name": "MgvGovernance",
+    "address": "0x47897EE61498D02B18794601Ed3A71896A1Ff894"
+  },
+  {
+    "name": "BlastGovernor",
+    "address": "0x47897EE61498D02B18794601Ed3A71896A1Ff894"
+  },
+  {
+    "name": "BlastPointsOperator",
+    "address": "0x47897EE61498D02B18794601Ed3A71896A1Ff894"
+  },
+  {
+    "name": "BlastGas",
+    "address": "0x4300000000000000000000000000000000000001"
+  },
+  {
+    "name": "Blast",
+    "address": "0x4300000000000000000000000000000000000002"
+  },
+  {
+    "name": "BlastPoints",
+    "address": "0x2fc95838c71e76ec69ff817983BFf17c710F34E0"
+  },
+  {
+    "name": "BlastL2ToL1MessagePasser",
+    "address": "0x4200000000000000000000000000000000000016"
+  },
+  {
+    "name": "BlastL2CrossDomainMessenger",
+    "address": "0x4200000000000000000000000000000000000007"
+  },
+  {
+    "name": "BlastL2StandardBridge",
+    "address": "0x4200000000000000000000000000000000000010"
+  },
+  {
+    "name": "BlastOptimismMintableERC20Factory",
+    "address": "0x4200000000000000000000000000000000000012"
+  },
+  {
+    "name": "BlastL2ERC721Bridge",
+    "address": "0x4200000000000000000000000000000000000014"
+  },
+  {
+    "name": "BlastOptimismMintableERC721Factory",
+    "address": "0x4200000000000000000000000000000000000017"
+  },
+  {
+    "name": "BlastL2BlastBridge",
+    "address": "0x4200000000000000000000000000000000000024"
+  },
+  {
+    "name": "WBTC.T/MGV",
+    "address": "0xE44FfC50ED6673d6A1C385B76152E1551a6c14a3"
+  },
+  {
+    "name": "WBTC",
+    "address": "0xE44FfC50ED6673d6A1C385B76152E1551a6c14a3"
+  },
+  {
+    "name": "WETH.e",
+    "address": "0x4200000000000000000000000000000000000023"
+  },
+  {
+    "name": "WETH",
+    "address": "0x4200000000000000000000000000000000000023"
+  },
+  {
+    "name": "USDB.e",
+    "address": "0x4200000000000000000000000000000000000022"
+  },
+  {
+    "name": "USDB",
+    "address": "0x4200000000000000000000000000000000000022"
+  }
+]
