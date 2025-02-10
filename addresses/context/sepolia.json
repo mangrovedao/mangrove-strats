@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Gasbot",
+    "address": "0x4d184a4C8d79BbBdCC4E95A1AdEA2454c535280A"
+  },
+  {
+    "name": "MgvGovernance",
+    "address": "0x47897EE61498D02B18794601Ed3A71896A1Ff894"
+  },
+  {
+    "name": "AaveAddressProvider",
+    "address": "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A"
+  },
+  {
+    "name": "BlastL1BlastBridgeProxy",
+    "address": "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8"
+  },
+  {
+    "name": "BlastL1StandardBridgeProxy",
+    "address": "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f"
+  },
+  {
+    "name": "BlastL1ERC721BridgeProxy",
+    "address": "0x993385F8A2aD69dfa0884287801191DE9805Ff37"
+  },
+  {
+    "name": "BlastL1CrossDomainMessengerProxy",
+    "address": "0x9338F298F29D3918D5D1Feb209aeB9915CC96333"
+  },
+  {
+    "name": "BlastOptimismPortalProxy",
+    "address": "0x2757E4430e694F27b73EC9C02257cab3a498C8C5"
+  },
+  {
+    "name": "BlastETHYieldManagerProxy",
+    "address": "0xed530ba33b4dc14572864bb9a776c9a42cf89fa5"
+  },
+  {
+    "name": "BlastL2OutputOracleProxy",
+    "address": "0x311fF72DfE214ADF97618DD2E731637E8F41bD8c"
+  },
+  {
+    "name": "BlastSystemConfigProxy",
+    "address": "0x329faF078c364A316e08Bf6A17B7Eee6ae75a613"
+  },
+  {
+    "name": "BlastTestnetYieldProvider",
+    "address": "0x26B1B9Ff3A25a7D6e4468fA94696e45d066c7d08"
+  },
+  {
+    "name": "WETH.T/unknown1",
+    "address": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9"
+  },
+  {
+    "name": "WETH",
+    "address": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9"
+  },
+  {
+    "name": "USDC.T/unknown1",
+    "address": "0xf08A50178dfcDe18524640EA6618a1f965821715"
+  },
+  {
+    "name": "USDC",
+    "address": "0xf08A50178dfcDe18524640EA6618a1f965821715"
+  }
+]

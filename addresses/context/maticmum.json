@@ -1,0 +1,78 @@
+[
+  {
+    "name": "Gasbot",
+    "address": "0x4d184a4C8d79BbBdCC4E95A1AdEA2454c535280A"
+  },
+  {
+    "name": "MgvGovernance",
+    "address": "0x47897EE61498D02B18794601Ed3A71896A1Ff894"
+  },
+  {
+    "name": "AaveAddressProvider",
+    "address": "0x4CeDCB57Af02293231BAA9D39354D6BFDFD251e0"
+  },
+  {
+    "name": "WBTC.T/AAVEv3",
+    "address": "0x2Fa2e7a6dEB7bb51B625336DBe1dA23511914a8A"
+  },
+  {
+    "name": "WBTC",
+    "address": "0x2Fa2e7a6dEB7bb51B625336DBe1dA23511914a8A"
+  },
+  {
+    "name": "WBTC.T/MGV",
+    "address": "0xf402f6197d979F0A4cba61596921a3d762520570"
+  },
+  {
+    "name": "WETH.T/MGV",
+    "address": "0x406bF0fcE108dD8864627EC6816AaFF8336f8231"
+  },
+  {
+    "name": "WETH",
+    "address": "0x406bF0fcE108dD8864627EC6816AaFF8336f8231"
+  },
+  {
+    "name": "WMATIC.T/MGV",
+    "address": "0x193163EeFfc795F9d573b171aB12cCDdE10392e8"
+  },
+  {
+    "name": "WMATIC",
+    "address": "0x193163EeFfc795F9d573b171aB12cCDdE10392e8"
+  },
+  {
+    "name": "DAI.T/AAVEv3",
+    "address": "0xc8c0Cf9436F4862a8F60Ce680Ca5a9f0f99b5ded"
+  },
+  {
+    "name": "DAI",
+    "address": "0xc8c0Cf9436F4862a8F60Ce680Ca5a9f0f99b5ded"
+  },
+  {
+    "name": "DAI.T/MGV",
+    "address": "0x5b67e3fa6f8AF1ca80C78102B8c039a40B96689E"
+  },
+  {
+    "name": "USDC.T/MGV",
+    "address": "0xe9259C5B6936Ee6439654171AFd674b31a533985"
+  },
+  {
+    "name": "USDC",
+    "address": "0xe9259C5B6936Ee6439654171AFd674b31a533985"
+  },
+  {
+    "name": "USDT.T/MGV",
+    "address": "0xe8099699aa4A79d89dBD20A63C50b7d35ED3CD9e"
+  },
+  {
+    "name": "USDT",
+    "address": "0xe8099699aa4A79d89dBD20A63C50b7d35ED3CD9e"
+  },
+  {
+    "name": "CRV.T/AAVEv3",
+    "address": "0x2bbF1f48a678d2f7c291dc5F8fD04805D34F485f"
+  },
+  {
+    "name": "CRV",
+    "address": "0x2bbF1f48a678d2f7c291dc5F8fD04805D34F485f"
+  }
+]

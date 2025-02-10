@@ -1,0 +1,30 @@
+[
+  {
+    "name": "BlastL1StandardBridgeProxy",
+    "address": "0x697402166Fbf2F22E970df8a6486Ef171dbfc524"
+  },
+  {
+    "name": "BlastL1CrossDomainMessengerProxy",
+    "address": "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0"
+  },
+  {
+    "name": "BlastOptimismPortalProxy",
+    "address": "0x0Ec68c5B10F21EFFb74f2A5C61DFe6b08C0Db6Cb"
+  },
+  {
+    "name": "BlastL2OutputOracleProxy",
+    "address": "0x826D1B0D4111Ad9146Eb8941D7Ca2B6a44215c76"
+  },
+  {
+    "name": "BlastSystemConfigProxy",
+    "address": "0x5531DcfF39EC1ec727C4c5D2fc49835368F805a9"
+  },
+  {
+    "name": "WETH.",
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+  },
+  {
+    "name": "WETH",
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+  }
+]

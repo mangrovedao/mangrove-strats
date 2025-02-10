@@ -1,0 +1,26 @@
+[
+  {
+    "name": "WETH.",
+    "address": "0x695364ffAA20F205e337f9e6226e5e22525838d9"
+  },
+  {
+    "name": "WETH",
+    "address": "0x695364ffAA20F205e337f9e6226e5e22525838d9"
+  },
+  {
+    "name": "DAI.",
+    "address": "0xD77b79BE3e85351fF0cbe78f1B58cf8d1064047C"
+  },
+  {
+    "name": "DAI",
+    "address": "0xD77b79BE3e85351fF0cbe78f1B58cf8d1064047C"
+  },
+  {
+    "name": "USDC.",
+    "address": "0x3a034FE373B6304f98b7A24A3F21C958946d4075"
+  },
+  {
+    "name": "USDC",
+    "address": "0x3a034FE373B6304f98b7A24A3F21C958946d4075"
+  }
+]

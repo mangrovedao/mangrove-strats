@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Gasbot",
+    "address": "0x10B124Da45Bc440171664cee59Aafa23979C9616"
+  },
+  {
+    "name": "MgvGovernance",
+    "address": "0xd70b96bcc12d45f347b9b70899dcbb3dfe13384f"
+  },
+  {
+    "name": "BlastGovernor",
+    "address": "0xd70b96bcc12d45f347b9b70899dcbb3dfe13384f"
+  },
+  {
+    "name": "BlastPointsOperator",
+    "address": "0x441f6a3d415708f89e4adbb6b995371554aa909e"
+  },
+  {
+    "name": "BlastGas",
+    "address": "0x4300000000000000000000000000000000000001"
+  },
+  {
+    "name": "Blast",
+    "address": "0x4300000000000000000000000000000000000002"
+  },
+  {
+    "name": "BlastPoints",
+    "address": "0x2536FE9ab3F511540F2f9e2eC2A805005C3Dd800"
+  },
+  {
+    "name": "BlastL2ToL1MessagePasser",
+    "address": "0x4200000000000000000000000000000000000016"
+  },
+  {
+    "name": "BlastL2CrossDomainMessenger",
+    "address": "0x4200000000000000000000000000000000000007"
+  },
+  {
+    "name": "BlastL2StandardBridge",
+    "address": "0x4200000000000000000000000000000000000010"
+  },
+  {
+    "name": "BlastOptimismMintableERC20Factory",
+    "address": "0x4200000000000000000000000000000000000012"
+  },
+  {
+    "name": "BlastL2ERC721Bridge",
+    "address": "0x4200000000000000000000000000000000000014"
+  },
+  {
+    "name": "BlastOptimismMintableERC721Factory",
+    "address": "0x4200000000000000000000000000000000000017"
+  },
+  {
+    "name": "BlastL2BlastBridge",
+    "address": "0x4300000000000000000000000000000000000005"
+  },
+  {
+    "name": "WETH.e",
+    "address": "0x4300000000000000000000000000000000000004"
+  },
+  {
+    "name": "WETH",
+    "address": "0x4300000000000000000000000000000000000004"
+  },
+  {
+    "name": "USDB.e",
+    "address": "0x4300000000000000000000000000000000000003"
+  },
+  {
+    "name": "USDB",
+    "address": "0x4300000000000000000000000000000000000003"
+  },
+  {
+    "name": "mwstETH-WPUNKS:20.",
+    "address": "0x9a50953716ba58e3d6719ea5c437452ac578705f"
+  },
+  {
+    "name": "mwstETH-WPUNKS:40.",
+    "address": "0x999f220296b5843b2909cc5f8b4204aaca5341d8"
+  }
+]
