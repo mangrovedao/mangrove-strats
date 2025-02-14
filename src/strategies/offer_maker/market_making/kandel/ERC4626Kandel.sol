@@ -43,26 +43,25 @@ contract ERC4626Kandel is GeometricKandel {
   function depositFunds(uint baseAmount, uint quoteAmount) public override {
     // transfer funds from caller to this
     super.depositFunds(baseAmount, quoteAmount);
-    // push funds to the router (and deposit in vault)
-    if (baseAmount > 0) {
-      erc4626Router().__push__(BASE, baseAmount);
-    }
-    if (quoteAmount > 0) {
-      erc4626Router().__push__(QUOTE, quoteAmount);
-    }
+    erc4626Router().pushAndDeposit(BASE, baseAmount, QUOTE, quoteAmount);
   }
 
   ///@inheritdoc CoreKandel
   ///@notice tries to withdraw funds on this contract's balance and then reaches out to the router available funds for the remainder
   function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
     uint localBalance = token.balanceOf(address(this));
+    uint reserveBalance = reserveBalance(offerTypeOfOutbound(token));
+
+    if (amount == type(uint).max) {
+      amount = reserveBalance;
+    }
 
     // if amount is `type(uint).max` tell the router to withdraw all it can (i.e. pass `type(uint).max` to the router)
     // else withdraw only if there is not enough funds on this contract to match amount
-    uint amount_ = amount == type(uint).max ? amount : localBalance > amount ? 0 : amount - localBalance;
+    uint amount_ = amount < localBalance ? 0 : amount - localBalance;
 
     if (amount_ != 0) {
-      erc4626Router().__pull__(token, amount_);
+      erc4626Router().withdraw(token, amount_);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
@@ -71,7 +70,8 @@ contract ERC4626Kandel is GeometricKandel {
   ///@param ba the offer type.
   ///@return balance the balance of the token.
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
-    return erc4626Router().vaults[outboundOfOfferType(ba)].balanceOf(address(this)) + super.reserveBalance(ba);
+    return erc4626Router().tokenBalanceOf(RL.createOrder({token: outboundOfOfferType(ba), fundOwner: address(this)}))
+      + super.reserveBalance(ba);
   }
 
   /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds from vault
@@ -98,10 +98,10 @@ contract ERC4626Kandel is GeometricKandel {
       uint baseBalance = BASE.balanceOf(address(this));
       uint quoteBalance = QUOTE.balanceOf(address(this));
       if (baseBalance > 0) {
-        erc4626Router().__push__(BASE, baseBalance);
+        erc4626Router().push(RL.createOrder({fundOwner: address(this), token: BASE}), baseBalance);
       }
       if (quoteBalance > 0) {
-        erc4626Router().__push__(QUOTE, quoteBalance);
+        erc4626Router().push(RL.createOrder({fundOwner: address(this), token: QUOTE}), quoteBalance);
       }
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
       repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
