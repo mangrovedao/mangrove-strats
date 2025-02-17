@@ -92,18 +92,12 @@ contract ERC4626Kandel is GeometricKandel {
     // handle dual offer posting
     transportSuccessfulOrder(order);
 
-    // handles pushing back liquidity to the router
-    if (makerData == IS_FIRST_PULLER) {
-      // if first puller, then router should deposit liquidity in vault
-      uint baseBalance = BASE.balanceOf(address(this));
-      uint quoteBalance = QUOTE.balanceOf(address(this));
-      erc4626Router().pushAndDeposit(BASE, baseBalance, QUOTE, quoteBalance);
+    // if first puller, then router should deposit liquidity in vault
+    uint baseBalance = BASE.balanceOf(address(this));
+    uint quoteBalance = QUOTE.balanceOf(address(this));
 
-      // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
-      repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
-    } else {
-      // reposting offer residual if any - call super to flush tokens to router
-      repostStatus = super.__posthookSuccess__(order, makerData);
-    }
+    erc4626Router().pushAndDeposit(BASE, baseBalance, QUOTE, quoteBalance);
+    // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
+    repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
   }
 }

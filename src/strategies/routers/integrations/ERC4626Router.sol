@@ -10,8 +10,6 @@ contract ERC4626Router is AbstractRouter {
   error NotVaultForToken();
 
   mapping(IERC20 => IERC4626) public vaults;
-  mapping(IERC20 => uint) internal _totalShares;
-  mapping(IERC20 => mapping(address => uint)) public _sharesOf;
 
   function withdraw(IERC20 token, uint amount) external onlyBound returns (uint) {
     RL.RoutingOrder memory routingOrder = RL.createOrder({fundOwner: msg.sender, token: token});
@@ -19,6 +17,28 @@ contract ERC4626Router is AbstractRouter {
   }
 
   function setVaultForToken(IERC20 token, IERC4626 vault) external virtual onlyAdmin {
+    // Verify token is not zero address
+    require(address(token) != address(0), "ERC4626Router/zeroToken");
+
+    // If setting a new vault, verify it's for the correct token
+    if (address(vault) != address(0)) {
+      require(vault.asset() == address(token), "ERC4626Router/wrongAsset");
+    }
+
+    // If there was a previous vault, withdraw all assets
+    IERC4626 oldVault = vaults[token];
+    if (address(oldVault) != address(0)) {
+      uint shares = oldVault.balanceOf(address(this));
+      if (shares > 0) {
+        uint maxRedeemable = oldVault.maxRedeem(address(this));
+        if (maxRedeemable < shares) {
+          revert("ERC4626Router/maxRedeemExceeded");
+        }
+        oldVault.redeem(maxRedeemable < shares ? maxRedeemable : shares, address(this), address(this));
+      }
+    }
+
+    // Set the new vault
     vaults[token] = vault;
   }
 
@@ -42,10 +62,7 @@ contract ERC4626Router is AbstractRouter {
 
   ///@inheritdoc AbstractRouter
   function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint balance) {
-    uint sharesBalance = sharesOf(routingOrder.token, routingOrder.fundOwner);
-    if (sharesBalance == 0) return 0;
-    return sharesOf(routingOrder.token, routingOrder.fundOwner) * _tokenBalance(routingOrder.token)
-      / _totalShares[routingOrder.token];
+    balance = _tokenBalance(routingOrder.token);
   }
 
   function _tokenBalance(IERC20 token) public view returns (uint balance) {
@@ -54,22 +71,6 @@ contract ERC4626Router is AbstractRouter {
     if (address(vault) != address(0)) {
       balance += vault.convertToAssets(vault.balanceOf(address(this)));
     }
-  }
-
-  ///@notice returns the shares of this router that are attributed to a particular reserve
-  ///@param token the address of the asset
-  ///@param reserveId the reserve identifier
-  ///@return shares the amount of shares attributed to `reserveId`.
-  ///@dev `sharesOf(token,id)/totalShares(token)` represent the portion of this contract's balance of `token`s that the `reserveId` can claim
-  function sharesOf(IERC20 token, address reserveId) public view returns (uint shares) {
-    shares = _sharesOf[token][reserveId];
-  }
-
-  ///@notice returns the total shares one would need to possess in order to claim the entire pool of tokens
-  ///@param token the address of the asset
-  ///@return total the total amount of shares
-  function totalShares(IERC20 token) public view returns (uint total) {
-    total = _totalShares[token];
   }
 
   function _deposit(IERC20 token) internal {
@@ -91,7 +92,6 @@ contract ERC4626Router is AbstractRouter {
       TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, address(this), amount),
       "ERC4626Router/pushFailed"
     );
-    _mintShares(routingOrder.token, routingOrder.fundOwner, amount);
     return amount;
   }
 
@@ -100,9 +100,6 @@ contract ERC4626Router is AbstractRouter {
     if (address(vault) == address(0)) {
       revert NotVaultForToken();
     }
-
-    // Burn shares before withdrawing
-    _burnShares(routingOrder.token, msg.sender, amount);
 
     uint localBalance = routingOrder.token.balanceOf(address(this));
 
@@ -121,50 +118,5 @@ contract ERC4626Router is AbstractRouter {
       }
       return amount;
     }
-  }
-
-  ///@notice mints a certain quantity of shares for a given asset and assigns them to a reserve
-  ///@param token the address of the asset
-  ///@param reserveId the address of the reserve who will be assigned new shares
-  ///@param amount the amount of assets added to the reserve
-  function _mintShares(IERC20 token, address reserveId, uint amount) internal {
-    // computing how many shares should be minted for reserve
-    uint sharesToMint = _sharesOfAmount(token, amount);
-    _sharesOf[token][reserveId] += sharesToMint;
-    _totalShares[token] += sharesToMint;
-  }
-
-  ///@notice burns a certain quantity of reserve's shares for a given asset
-  ///@param token the address of the asset
-  ///@param reserveId the address of the reserve who will have shares burnt
-  ///@param amount the amount of assets withdrawn from reserve
-  ///@dev if one is trying to burn shares from a pool that doesn't have any, the call to `_sharesOfAmount` will return `INIT_MINT`
-  ///@dev and thus this contract will throw with "ERC4626Router/insufficientFunds", even if one is trying to burn 0 shares.
-  function _burnShares(IERC20 token, address reserveId, uint amount) internal {
-    // computing how many shares should be minted for maker contract
-    uint sharesToBurn = _sharesOfAmount(token, amount);
-    uint ownerShares = _sharesOf[token][reserveId];
-    require(sharesToBurn <= ownerShares, "ERC4626Router/insufficientFunds");
-    // no underflow due to require above
-    _sharesOf[token][reserveId] = ownerShares - sharesToBurn;
-    // no underflow since _totalShares is the sum of all shares including ownerShares, and the above require.
-    _totalShares[token] -= sharesToBurn;
-  }
-
-  ///@notice computes how many shares an amount of tokens represents
-  ///@param token the address of the asset
-  ///@param amount of tokens
-  ///@return shares the shares that correspond to amount
-  function _sharesOfAmount(IERC20 token, uint amount) internal view returns (uint shares) {
-    uint totalShares_ = totalShares(token);
-    shares = totalShares_ == 0 ? amount : totalShares_ * amount / _tokenBalance(token);
-  }
-
-  ///@notice computes how many tokens a certain number of shares represents
-  ///@param token the address of the asset
-  ///@param shares the number of shares to convert to tokens
-  ///@return amount the amount of tokens that correspond to the shares
-  function _amountOfShares(IERC20 token, uint shares) internal view returns (uint amount) {
-    amount = shares * _tokenBalance(token) / totalShares(token);
   }
 }
