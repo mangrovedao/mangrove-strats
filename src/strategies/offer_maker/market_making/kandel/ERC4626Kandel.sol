@@ -97,12 +97,8 @@ contract ERC4626Kandel is GeometricKandel {
       // if first puller, then router should deposit liquidity in vault
       uint baseBalance = BASE.balanceOf(address(this));
       uint quoteBalance = QUOTE.balanceOf(address(this));
-      if (baseBalance > 0) {
-        erc4626Router().push(RL.createOrder({fundOwner: address(this), token: BASE}), baseBalance);
-      }
-      if (quoteBalance > 0) {
-        erc4626Router().push(RL.createOrder({fundOwner: address(this), token: QUOTE}), quoteBalance);
-      }
+      erc4626Router().pushAndDeposit(BASE, baseBalance, QUOTE, quoteBalance);
+
       // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
       repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
     } else {
