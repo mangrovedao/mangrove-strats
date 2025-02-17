@@ -54,9 +54,6 @@ contract ERC4626KandelTest is CoreKandelTest {
     base.approve(address(erc4626Kandel), type(uint).max);
     quote.approve(address(erc4626Kandel), type(uint).max);
 
-    console.log("base token : ", address(base));
-    console.log("quote token : ", address(quote));
-
     // Assume tokens behave normally
     base.transferResponse(TestToken.MethodResponse.Normal);
     quote.approveResponse(TestToken.MethodResponse.Normal);

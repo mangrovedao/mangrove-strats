@@ -47,7 +47,6 @@ contract ERC4626Kandel is GeometricKandel {
   }
 
   ///@inheritdoc CoreKandel
-  ///@notice tries to withdraw funds on this contract's balance and then reaches out to the router available funds for the remainder
   function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
     uint localBalance = token.balanceOf(address(this));
     uint reserveBalance = reserveBalance(offerTypeOfOutbound(token));
