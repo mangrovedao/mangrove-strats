@@ -7,8 +7,6 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 contract ERC4626Router is AbstractRouter {
-  error NotVaultForToken();
-
   mapping(IERC20 => IERC4626) public vaults;
 
   function withdraw(IERC20 token, uint amount) external onlyBound returns (uint) {
@@ -31,9 +29,7 @@ contract ERC4626Router is AbstractRouter {
       uint shares = oldVault.balanceOf(address(this));
       if (shares > 0) {
         uint maxRedeemable = oldVault.maxRedeem(address(this));
-        if (maxRedeemable < shares) {
-          revert("ERC4626Router/maxRedeemExceeded");
-        }
+        require(maxRedeemable >= shares, "ERC4626Router/maxRedeemExceeded");
         oldVault.redeem(maxRedeemable < shares ? maxRedeemable : shares, address(this), address(this));
       }
     }
@@ -75,9 +71,7 @@ contract ERC4626Router is AbstractRouter {
 
   function _deposit(IERC20 token) internal {
     IERC4626 vault = vaults[token];
-    if (address(vault) == address(0)) {
-      revert NotVaultForToken();
-    }
+    require(address(vault) != address(0), "ERC4626Router/notVaultForToken");
     uint balance = token.balanceOf(address(this));
     if (balance > 0) {
       uint maxDeposit = vault.maxDeposit(address(this));
@@ -97,9 +91,7 @@ contract ERC4626Router is AbstractRouter {
 
   function __pull__(RL.RoutingOrder memory routingOrder, uint amount, bool strict) internal override returns (uint) {
     IERC4626 vault = vaults[routingOrder.token];
-    if (address(vault) == address(0)) {
-      revert NotVaultForToken();
-    }
+    require(address(vault) != address(0), "ERC4626Router/notVaultForToken");
 
     uint localBalance = routingOrder.token.balanceOf(address(this));
 

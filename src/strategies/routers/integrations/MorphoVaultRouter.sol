@@ -8,8 +8,6 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 /// @title MorphoVaultRouter
 /// @notice Router for interacting with Morpho vaults implementing ERC4626
 contract MorphoVaultRouter is ERC4626Router {
-  error NotMorphoVault();
-
   IMorphoFactory public immutable MORPHO_FACTORY;
 
   constructor(IMorphoFactory factory) ERC4626Router() {
@@ -17,9 +15,7 @@ contract MorphoVaultRouter is ERC4626Router {
   }
 
   function setVaultForToken(IERC20 token, IERC4626 vault) external override onlyAdmin {
-    if (!MORPHO_FACTORY.isMorphoVault(address(vault))) {
-      revert NotMorphoVault();
-    }
+    require(MORPHO_FACTORY.isMorphoVault(address(vault)), "MorphoRouter/notMorpho");
     vaults[token] = vault;
   }
 }
