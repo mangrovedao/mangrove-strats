@@ -122,64 +122,6 @@ contract ERC4626KandelTest is CoreKandelTest {
     assertEq(erc4626Kandel.reserveBalance(Bid) - quoteReservesBefore, quoteAmount, "Incorrect quote reserve change");
   }
 
-  function test_first_offer_sends_first_puller_to_posthook() public {
-    MgvLib.SingleOrder memory order;
-    order.olKey = olKey;
-    order.takerWants = 0.1 ether;
-    order.takerGives = 120 * 10 ** 6;
-    vm.prank($(mgv));
-    bytes32 makerData = kdl.makerExecute(order);
-    assertEq(makerData, "IS_FIRST_PULLER", "Unexpected returned data");
-  }
-
-  function test_not_first_offer_sends_proceed_to_posthook() public {
-    MgvLib.SingleOrder memory order;
-    order.olKey = olKey;
-    order.takerWants = 0.1 ether;
-    order.takerGives = 120 * 10 ** 6;
-    // faking buffer on the router
-    deal($(base), $(router), 1 ether);
-    vm.prank($(mgv));
-    bytes32 makerData = kdl.makerExecute(order);
-    assertEq(makerData, "", "Unexpected returned data");
-  }
-
-  function test_not_first_offer_sends_first_puller_to_posthook_when_buffer_is_small() public {
-    MgvLib.SingleOrder memory order;
-    order.olKey = olKey;
-    order.takerWants = 0.1 ether;
-    order.takerGives = 120 * 10 ** 6;
-    // faking small buffer on the router
-    deal($(base), $(router), 0.09 ether);
-    vm.prank($(mgv));
-    bytes32 makerData = kdl.makerExecute(order);
-    assertEq(makerData, "IS_FIRST_PULLER", "Unexpected returned data");
-  }
-
-  function test_first_puller_posthook_calls_pushAndDeposit() public {
-    MgvLib.SingleOrder memory order =
-      mockCompleteFillBuyOrder({takerWants: 0.1 ether, tick: TickLib.tickFromVolumes(120 * 10 ** 6, 0.1 ether)});
-    MgvLib.OrderResult memory result = MgvLib.OrderResult({makerData: "IS_FIRST_PULLER", mgvData: "mgv/tradeSuccess"});
-
-    //1. faking accumulated outbound on the router
-    deal($(base), $(router), 1 ether);
-    //2. faking accumulated inbound on kandel
-    deal($(quote), $(kdl), 1000 * 10 ** 6);
-
-    uint makerBalance = kdl.reserveBalance(Bid);
-    uint baseShares = baseVault.balanceOf(address(router));
-    uint quoteShares = quoteVault.balanceOf(address(router));
-
-    vm.prank($(mgv));
-    kdl.makerPosthook(order, result);
-
-    assertApproxEqAbs(kdl.reserveBalance(Bid), makerBalance, 1, "Maker balance should be invariant");
-    assertEq(base.balanceOf(address(router)), 0, "Router did not flush base buffer");
-    assertEq(quote.balanceOf(address(router)), 0, "Router did not flush quote buffer");
-    assertGt(baseVault.balanceOf(address(router)), baseShares, "Router should have deposited its base buffer in vault");
-    assertGt(quoteVault.balanceOf(address(router)), quoteShares, "Router should have deposited maker's quote in vault");
-  }
-
   function test_strats_with_same_admin_but_different_id_do_not_share_liquidity(uint16 baseAmount, uint16 quoteAmount)
     public
   {

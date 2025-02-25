@@ -71,14 +71,16 @@ contract ERC4626Router is AbstractRouter {
 
   function _deposit(IERC20 token) internal {
     IERC4626 vault = vaults[token];
-    require(address(vault) != address(0), "ERC4626Router/notVaultForToken");
-    uint balance = token.balanceOf(address(this));
-    if (balance > 0) {
-      uint maxDeposit = vault.maxDeposit(address(this));
-      uint toDeposit = maxDeposit < balance ? maxDeposit : balance;
-      token.approve(address(vault), toDeposit);
-      vault.deposit(toDeposit, address(this));
+    if (address(vault) != address(0)) {
+      uint balance = token.balanceOf(address(this));
+      if (balance > 0) {
+        uint maxDeposit = vault.maxDeposit(address(this));
+        uint toDeposit = maxDeposit < balance ? maxDeposit : balance;
+        token.approve(address(vault), toDeposit);
+        vault.deposit(toDeposit, address(this));
+      }
     }
+    // if not vault found dont do anything
   }
 
   function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal override returns (uint) {

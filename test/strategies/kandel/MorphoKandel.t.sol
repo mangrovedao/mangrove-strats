@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {ERC4626Kandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/ERC4626Kandel.sol";
 import {
   MorphoVaultRouter,
+  IMorphoRewardDistributor,
   IERC20 as RouterToken
 } from "@mgv-strats/src/strategies/routers/integrations/MorphoVaultRouter.sol";
 import {IMorphoFactory} from "@mgv-strats/src/strategies/interfaces/IMorphoFactory.sol";
@@ -36,7 +37,7 @@ contract MorphoKandelTest is ERC4626KandelTest {
     morphoFactory.setVault(address(quoteVault), true);
 
     // Deploy Morpho router
-    morphoRouter = new MorphoVaultRouter(IMorphoFactory(address(morphoFactory)));
+    morphoRouter = new MorphoVaultRouter(IMorphoFactory(address(morphoFactory)), IMorphoRewardDistributor(address(1)));
     router = morphoRouter;
 
     router.setVaultForToken(base, baseVault);

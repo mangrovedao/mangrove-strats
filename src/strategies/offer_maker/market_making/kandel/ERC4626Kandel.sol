@@ -15,9 +15,6 @@ import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/Abstra
 
 ///@title A Kandel strat with geometric price progression which stores funds in ERC4626 vaults to generate yield.
 contract ERC4626Kandel is GeometricKandel {
-  ///@notice Indication that this is first puller (returned from __lastLook__) so posthook should deposit liquidity in vault
-  bytes32 internal constant IS_FIRST_PULLER = "IS_FIRST_PULLER";
-
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
@@ -65,6 +62,28 @@ contract ERC4626Kandel is GeometricKandel {
     super.withdrawFundsForToken(token, amount, recipient);
   }
 
+  ///@notice Allows the admin to withdraw any tokens (and native) that is not the underlying ERC20 or ERC4626 of the strat.
+  ///@param token The token to withdraw.
+  ///@param amount The amount of tokens to withdraw.
+  ///@param recipient The recipient of the tokens.
+  function adminWithdrawTokens(IERC20 token, uint amount, address recipient) public onlyAdmin {
+    require(token != BASE && token != QUOTE, "Cannot withdraw underlying tokens");
+    require(
+      address(token) != address(erc4626Router().vaults(BASE)),
+      "Cannot withdraw ERC4626 vault address(tokens) for address(base"
+    );
+    require(address(token) != address(erc4626Router().vaults(QUOTE)), "Cannot withdraw ERC4626 vault tokens for quote");
+
+    token.transfer(recipient, amount);
+  }
+
+  ///@notice Allows the admin to withdraw native tokens.
+  ///@param amount The amount of native tokens to withdraw.
+  ///@param recipient The recipient of the native tokens.
+  function adminWithdrawNative(uint amount, address recipient) public onlyAdmin {
+    payable(recipient).transfer(amount);
+  }
+
   ///@notice returns the amount of the router's that can be used by this contract, as well as local balance for the token offered for the offer type.
   ///@param ba the offer type.
   ///@return balance the balance of the token.
@@ -77,8 +96,6 @@ contract ERC4626Kandel is GeometricKandel {
   /// @inheritdoc MangroveOffer
   function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
     bytes32 makerData = super.__lastLook__(order);
-    return
-      (IERC20(order.olKey.outbound_tkn).balanceOf(address(router())) < order.takerWants) ? IS_FIRST_PULLER : makerData;
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push to vault with a single call when offer logic is the first to pull funds
