@@ -11,6 +11,7 @@ import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds in ERC4626 vaults to generate yield.
@@ -115,5 +116,12 @@ contract ERC4626Kandel is GeometricKandel {
     erc4626Router().pushAndDeposit(BASE, baseBalance, QUOTE, quoteBalance);
     // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
     repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
+  }
+
+  ///@notice Sets the vault for a given token.
+  ///@param token The token for which to set the vault.
+  ///@param vault The address of the vault to set.
+  function setVaultForToken(IERC20 token, IERC4626 vault) public onlyAdmin {
+    erc4626Router().setVaultForToken(token, vault);
   }
 }
