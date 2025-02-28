@@ -68,21 +68,21 @@ contract ERC4626Kandel is GeometricKandel {
   ///@param amount The amount of tokens to withdraw.
   ///@param recipient The recipient of the tokens.
   function adminWithdrawTokens(IERC20 token, uint amount, address recipient) public onlyAdmin {
-    require(token != BASE && token != QUOTE, "Cannot withdraw underlying tokens");
-    require(
-      address(token) != address(erc4626Router().vaults(BASE)),
-      "Cannot withdraw ERC4626 vault address(tokens) for address(base"
-    );
-    require(address(token) != address(erc4626Router().vaults(QUOTE)), "Cannot withdraw ERC4626 vault tokens for quote");
-
-    token.transfer(recipient, amount);
+    erc4626Router().adminWithdrawTokens(BASE, QUOTE, token, amount, recipient);
   }
 
   ///@notice Allows the admin to withdraw native tokens.
   ///@param amount The amount of native tokens to withdraw.
   ///@param recipient The recipient of the native tokens.
   function adminWithdrawNative(uint amount, address recipient) public onlyAdmin {
-    payable(recipient).transfer(amount);
+    erc4626Router().adminWithdrawNative(amount, recipient);
+  }
+
+  ///@notice Sets the vault for a given token.
+  ///@param token The token for which to set the vault.
+  ///@param vault The address of the vault to set.
+  function setVaultForToken(IERC20 token, IERC4626 vault) public onlyAdmin {
+    erc4626Router().setVaultForToken(token, vault);
   }
 
   ///@notice returns the amount of the router's that can be used by this contract, as well as local balance for the token offered for the offer type.
@@ -116,12 +116,5 @@ contract ERC4626Kandel is GeometricKandel {
     erc4626Router().pushAndDeposit(BASE, baseBalance, QUOTE, quoteBalance);
     // reposting offer residual if any - but do not call super, since Direct will flush tokens unnecessarily
     repostStatus = MangroveOffer.__posthookSuccess__(order, makerData);
-  }
-
-  ///@notice Sets the vault for a given token.
-  ///@param token The token for which to set the vault.
-  ///@param vault The address of the vault to set.
-  function setVaultForToken(IERC20 token, IERC4626 vault) public onlyAdmin {
-    erc4626Router().setVaultForToken(token, vault);
   }
 }

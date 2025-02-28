@@ -45,8 +45,9 @@ contract MorphoKandelTest is ERC4626KandelTest {
     erc4626Kandel = new ERC4626Kandel(
       mgv, olKey, kandel_gasreq, Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: true})
     );
-    router.bind(address(erc4626Kandel));
+    morphoRouter.bind(address(erc4626Kandel));
     erc4626Kandel.setAdmin(deployer);
+    morphoRouter.setAdmin(address(erc4626Kandel));
 
     // Give approval for kandel to pull tokens
     base.approve(address(erc4626Kandel), type(uint).max);
@@ -62,6 +63,7 @@ contract MorphoKandelTest is ERC4626KandelTest {
   function test_revert_on_non_morpho_vault() public {
     address nonMorphoVault = makeAddr("nonMorphoVault");
     // Should revert when trying to set a non-Morpho vault
+    vm.prank(address(erc4626Kandel));
     vm.expectRevert("MorphoRouter/notMorpho");
     morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(nonMorphoVault));
   }
@@ -69,7 +71,13 @@ contract MorphoKandelTest is ERC4626KandelTest {
   function test_success_on_morpho_vault() public {
     address morphoVault = makeAddr("morphoVault");
     morphoFactory.setVault(morphoVault, true);
+    vm.prank(address(erc4626Kandel));
     morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(morphoVault));
     assertEq(address(morphoRouter.vaults(RouterToken(address(base)))), morphoVault);
+  }
+
+  function test_set_vault_for_token() public override {
+    morphoFactory.setVault(address(randomVault), true);
+    super.test_set_vault_for_token();
   }
 }

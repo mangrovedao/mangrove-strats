@@ -6,7 +6,9 @@ import {console} from "@mgv/forge-std/Test.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {MockERC4626, IERC20} from "@mgv-strats/test/lib/mocks/MockERC4626.sol";
 import {
-  ERC4626Kandel, ERC4626Router
+  ERC4626Kandel,
+  ERC4626Router,
+  IERC20 as KandelToken
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/ERC4626Kandel.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
@@ -17,6 +19,7 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
+import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 
 contract ERC4626KandelTest is CoreKandelTest {
   ERC4626Router router;
@@ -25,10 +28,15 @@ contract ERC4626KandelTest is CoreKandelTest {
   IERC4626 baseVault;
   IERC4626 quoteVault;
 
+  TestToken randomToken;
+  IERC4626 randomVault;
+
   receive() external payable {}
 
   function __setForkEnvironment__() internal override {
     super.__setForkEnvironment__();
+    randomToken = new TestToken($(this), "RandomToken", "RT", 18);
+    randomVault = IERC4626(address(new MockERC4626(IERC20(address(randomToken)), "Random Vault", "vRANDOM")));
   }
 
   function __deployKandel__(address deployer, address id, bool strict)
@@ -47,8 +55,10 @@ contract ERC4626KandelTest is CoreKandelTest {
     erc4626Kandel = new ERC4626Kandel(
       mgv, olKey, kandel_gasreq, Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: true})
     );
+
     router.bind(address(erc4626Kandel));
     erc4626Kandel.setAdmin(deployer);
+    router.setAdmin(address(erc4626Kandel));
 
     // Give approval for kandel to pull tokens
     base.approve(address(erc4626Kandel), type(uint).max);
@@ -64,7 +74,7 @@ contract ERC4626KandelTest is CoreKandelTest {
   function test_setup() public {
     assertEq(address(erc4626Kandel.router()), address(router), "Router not set correctly");
     assertTrue(router.isBound(address(erc4626Kandel)), "Kandel not bound to router");
-    assertEq(router.admin(), address(this), "Router admin not set correctly");
+    assertEq(router.admin(), address(erc4626Kandel), "Router admin not set correctly");
   }
 
   function test_deposit_funds() public {
@@ -106,6 +116,32 @@ contract ERC4626KandelTest is CoreKandelTest {
     assertEq(quote.balanceOf(address(this)), quoteAmount, "Quote not withdrawn correctly");
   }
 
+  function test_admin_withdraw_tokens() public {
+    uint tokenAmount = 10 ether;
+    deal($(randomToken), address(router), tokenAmount);
+    uint makerBalanceBefore = randomToken.balanceOf(address(this));
+    vm.prank(maker);
+    erc4626Kandel.adminWithdrawTokens(KandelToken(address(randomToken)), tokenAmount, address(this));
+    uint makerBalanceAfter = randomToken.balanceOf(address(this));
+    assertEq(makerBalanceAfter - makerBalanceBefore, tokenAmount);
+  }
+
+  function test_admin_withdraw_native() public {
+    uint etherAmount = 10 ether;
+    deal(address(router), etherAmount);
+    uint makerBalanceBefore = address(this).balance;
+    vm.prank(maker);
+    erc4626Kandel.adminWithdrawNative(etherAmount, address(this));
+    uint makerBalanceAfter = address(this).balance;
+    assertEq(makerBalanceAfter - makerBalanceBefore, etherAmount);
+  }
+
+  function test_set_vault_for_token() public virtual {
+    vm.prank(address(maker));
+    erc4626Kandel.setVaultForToken(randomToken, randomVault);
+    assertEq((address(router.vaults(randomToken))), address(randomVault));
+  }
+
   function test_reserve_balance() public {
     uint baseAmount = 1 ether;
     uint quoteAmount = 1000 * 10 ** 6;
@@ -135,4 +171,6 @@ contract ERC4626KandelTest is CoreKandelTest {
     assertEq(kdl_.reserveBalance(Ask), 0, "funds should not be shared");
     assertEq(kdl_.reserveBalance(Bid), 0, "funds should not be shared");
   }
+
+  fallback() external {}
 }

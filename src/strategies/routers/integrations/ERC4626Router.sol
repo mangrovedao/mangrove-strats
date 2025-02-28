@@ -14,6 +14,42 @@ contract ERC4626Router is AbstractRouter {
     return __pull__(routingOrder, amount, true);
   }
 
+  function pushAndDeposit(IERC20 token0, uint amount0, IERC20 token1, uint amount1)
+    external
+    onlyBound
+    returns (uint pushed0, uint pushed1)
+  {
+    // Push will fail for amount of 0, but since this function is only called for the first maker contract in a chain
+    // it needs to also flush tokens with a contract-local 0 amount.
+    // token[0/1] can be address(0) if using this function for only one token
+    if (address(token0) != address(0)) {
+      pushed0 = __push__(RL.createOrder({fundOwner: msg.sender, token: token0}), amount0);
+      _deposit(token0);
+    }
+    if (address(token1) != address(0)) {
+      pushed1 = __push__(RL.createOrder({fundOwner: msg.sender, token: token1}), amount1);
+      _deposit(token1);
+    }
+  }
+
+  function adminWithdrawTokens(IERC20 base, IERC20 quote, IERC20 token, uint amount, address recipient)
+    external
+    onlyAdmin
+  {
+    require(token != base && token != quote, "Cannot withdraw underlying tokens");
+    require(address(token) != address(vaults[base]), "Cannot withdraw ERC4626 vault address(tokens) for address base");
+    require(address(token) != address(vaults[quote]), "Cannot withdraw ERC4626 vault tokens for quote");
+
+    token.transfer(recipient, amount);
+  }
+
+  ///@notice Allows the admin to withdraw native tokens.
+  ///@param amount The amount of native tokens to withdraw.
+  ///@param recipient The recipient of the native tokens.
+  function adminWithdrawNative(uint amount, address recipient) public onlyAdmin {
+    payable(recipient).transfer(amount);
+  }
+
   function setVaultForToken(IERC20 token, IERC4626 vault) external virtual onlyAdmin {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
@@ -37,26 +73,8 @@ contract ERC4626Router is AbstractRouter {
     // Set the new vault
     vaults[token] = vault;
   }
-
-  function pushAndDeposit(IERC20 token0, uint amount0, IERC20 token1, uint amount1)
-    external
-    onlyBound
-    returns (uint pushed0, uint pushed1)
-  {
-    // Push will fail for amount of 0, but since this function is only called for the first maker contract in a chain
-    // it needs to also flush tokens with a contract-local 0 amount.
-    // token[0/1] can be address(0) if using this function for only one token
-    if (address(token0) != address(0)) {
-      pushed0 = __push__(RL.createOrder({fundOwner: msg.sender, token: token0}), amount0);
-      _deposit(token0);
-    }
-    if (address(token1) != address(0)) {
-      pushed1 = __push__(RL.createOrder({fundOwner: msg.sender, token: token1}), amount1);
-      _deposit(token1);
-    }
-  }
-
   ///@inheritdoc AbstractRouter
+
   function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint balance) {
     balance = _tokenBalance(routingOrder.token);
   }

@@ -56,7 +56,10 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     );
     // Allowing newly deployed Kandel to bind to the ERC4626Router
     router.bind(address(kandel));
-    router.setAdmin(msg.sender);
-    emit NewERC4626Kandel(msg.sender, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner);
+    // Set the Kandel as router admin
+    router.setAdmin(address(kandel));
+    emit NewERC4626Kandel(
+      address(kandel), olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner
+    );
   }
 }
