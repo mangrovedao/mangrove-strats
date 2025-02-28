@@ -36,9 +36,11 @@ contract ERC4626Router is AbstractRouter {
     external
     onlyAdmin
   {
-    require(token != base && token != quote, "Cannot withdraw underlying tokens");
-    require(address(token) != address(vaults[base]), "Cannot withdraw ERC4626 vault address(tokens) for address base");
-    require(address(token) != address(vaults[quote]), "Cannot withdraw ERC4626 vault tokens for quote");
+    require(token != base && token != quote, "ERC4626Router/InvalidUnderlyingToken");
+    require(
+      address(token)
+        != address(vaults[base] && address(token) != address(vaults[quote]), "ERC4626Router/InvalidERC4626Token")
+    );
 
     token.transfer(recipient, amount);
   }
@@ -54,11 +56,6 @@ contract ERC4626Router is AbstractRouter {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
 
-    // If setting a new vault, verify it's for the correct token
-    if (address(vault) != address(0)) {
-      require(vault.asset() == address(token), "ERC4626Router/wrongAsset");
-    }
-
     // If there was a previous vault, withdraw all assets
     IERC4626 oldVault = vaults[token];
     if (address(oldVault) != address(0)) {
@@ -72,6 +69,8 @@ contract ERC4626Router is AbstractRouter {
 
     // Set the new vault
     vaults[token] = vault;
+    // Redeposit token
+    _deposit(token);
   }
   ///@inheritdoc AbstractRouter
 
