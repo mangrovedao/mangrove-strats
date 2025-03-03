@@ -1,6 +1,7 @@
 # Next version
 
 - Change licenses to MIT for code mistakenly assigned BSD-2-Clause or AGPL-3.0
+- Fix submodule configurations for mangrove-core, v2-core, v3-core, and v3-periphery
 
 # 2.1.0-7
 
