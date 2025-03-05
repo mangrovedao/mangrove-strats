@@ -125,7 +125,7 @@ contract ERC4626Router is AbstractRouter {
         vault.deposit(toDeposit, address(this));
       }
     }
-    // if not vault found dont do anything
+    // if no vault found don't do anything
   }
 
   /// @notice Pushes tokens to the router
@@ -150,25 +150,27 @@ contract ERC4626Router is AbstractRouter {
     override
     returns (uint pulledAmount)
   {
+    // Get the current vault for the token
     IERC4626 vault = vaults[routingOrder.token];
-    require(address(vault) != address(0), "ERC4626Router/notVaultForToken");
 
+    // Get the local balance of the token
     uint localBalance = routingOrder.token.balanceOf(address(this));
 
-    if (localBalance >= amount) {
-      // If we have enough local balance, use that
-      require(TransferLib.transferToken(routingOrder.token, msg.sender, amount), "ERC4626Router/transferFailed");
-      return amount;
-    } else {
-      // Need to withdraw from vault
+    // If we don't have enough local balance, we need to withdraw from the vault
+    if (localBalance < amount) {
+      // If there is no vault, we can't pull the tokens
+      if (address(vault) == address(0)) revert("ERC4626Router/insufficientFunds");
+
+      // Withdraw the tokens from the vault
       uint toWithdraw = amount - localBalance;
       vault.withdraw(toWithdraw, msg.sender, address(this));
-
-      // Transfer any remaining amount from local balance
-      if (localBalance > 0) {
-        require(TransferLib.transferToken(routingOrder.token, msg.sender, localBalance), "ERC4626Router/transferFailed");
-      }
-      return amount;
     }
+
+    // Send the local tokens to the recipient
+    uint toSend = localBalance < amount ? localBalance : amount;
+    if (toSend > 0) {
+      require(TransferLib.transferToken(routingOrder.token, msg.sender, toSend), "ERC4626Router/transferFailed");
+    }
+    return amount;
   }
 }

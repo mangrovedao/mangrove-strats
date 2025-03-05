@@ -85,6 +85,15 @@ contract ERC4626Kandel is GeometricKandel {
     erc4626Router().setVaultForToken(token, vault);
   }
 
+  ///@notice Returns the current vault addresses for the base and quote tokens
+  ///@return baseVault The address of the vault for the base token
+  ///@return quoteVault The address of the vault for the quote token
+  function currentVaults() public view returns (address baseVault, address quoteVault) {
+    ERC4626Router router = erc4626Router();
+    baseVault = address(router.vaults(BASE));
+    quoteVault = address(router.vaults(QUOTE));
+  }
+
   ///@notice returns the amount of the router's that can be used by this contract, as well as local balance for the token offered for the offer type.
   ///@param ba the offer type.
   ///@return balance the balance of the token.
