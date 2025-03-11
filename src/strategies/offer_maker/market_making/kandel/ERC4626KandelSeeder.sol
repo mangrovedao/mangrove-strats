@@ -26,10 +26,15 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     address reserveId
   );
 
+  ///@notice the ERC4626 router.
+  ERC4626Router public immutable ERC4626_ROUTER;
+
   ///@notice constructor for `ERC4626KandelSeeder`. Initializes an `ERC4626Router` with this seeder as admin.
   ///@param mgv The Mangrove deployment.
   ///@param erc4626KandelGasreq the total gasreq to use for executing a kandel offer
-  constructor(IMangrove mgv, uint erc4626KandelGasreq) AbstractKandelSeeder(mgv, erc4626KandelGasreq) {}
+  constructor(IMangrove mgv, uint erc4626KandelGasreq) AbstractKandelSeeder(mgv, erc4626KandelGasreq) {
+    ERC4626_ROUTER = new ERC4626Router();
+  }
 
   ///@inheritdoc AbstractKandelSeeder
   function _deployKandel(OLKey memory olKeyBaseQuote, bool liquiditySharing)
@@ -42,22 +47,20 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
     address owner = liquiditySharing ? msg.sender : address(0);
 
-    ERC4626Router router = new ERC4626Router();
-
     kandel = new ERC4626Kandel(
       MGV,
       olKeyBaseQuote,
       KANDEL_GASREQ,
       Direct.RouterParams({
-        routerImplementation: router, // using ERC4626 router to source liquidity
+        routerImplementation: ERC4626_ROUTER, // using ERC4626 router to source liquidity
         fundOwner: owner,
         strict: liquiditySharing
       })
     );
     // Allowing newly deployed Kandel to bind to the ERC4626Router
-    router.bind(address(kandel));
+    ERC4626_ROUTER.bind(address(kandel));
     // Set the Kandel as router admin
-    router.setAdmin(address(kandel));
+    ERC4626_ROUTER.setAdmin(address(kandel));
     emit NewERC4626Kandel(
       address(kandel), olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner
     );
