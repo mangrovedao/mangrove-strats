@@ -27,14 +27,12 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
   );
 
   ///@notice the ERC4626 router.
-  ERC4626Router public immutable ERC4626_ROUTER;
+  ERC4626Router public ERC4626_ROUTER;
 
   ///@notice constructor for `ERC4626KandelSeeder`. Initializes an `ERC4626Router` with this seeder as admin.
   ///@param mgv The Mangrove deployment.
   ///@param erc4626KandelGasreq the total gasreq to use for executing a kandel offer
-  constructor(IMangrove mgv, uint erc4626KandelGasreq) AbstractKandelSeeder(mgv, erc4626KandelGasreq) {
-    ERC4626_ROUTER = new ERC4626Router();
-  }
+  constructor(IMangrove mgv, uint erc4626KandelGasreq) AbstractKandelSeeder(mgv, erc4626KandelGasreq) {}
 
   ///@inheritdoc AbstractKandelSeeder
   function _deployKandel(OLKey memory olKeyBaseQuote, bool liquiditySharing)
@@ -46,6 +44,8 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     // owner MUST not be freely chosen (it is immutable in Kandel) otherwise one would allow the newly deployed strat to pull from another's strat reserve
     // allowing owner to be modified by Kandel's admin would require approval from owner's address controller
     address owner = liquiditySharing ? msg.sender : address(0);
+
+    ERC4626_ROUTER = _deployRouter();
 
     kandel = new ERC4626Kandel(
       MGV,
@@ -64,5 +64,11 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     emit NewERC4626Kandel(
       address(kandel), olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), owner
     );
+  }
+  ///@notice Deploys a new instance of ERC4626Router.
+  ///@return The address of the newly deployed ERC4626Router.
+
+  function _deployRouter() internal virtual returns (ERC4626Router) {
+    return new ERC4626Router();
   }
 }

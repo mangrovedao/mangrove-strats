@@ -73,7 +73,7 @@ contract ERC4626Router is AbstractRouter {
   /// @notice Sets the vault for a token
   /// @param token The token to set the vault for
   /// @param vault The vault to set
-  function setVaultForToken(IERC20 token, IERC4626 vault) external virtual onlyAdmin {
+  function setVaultForToken(IERC20 token, IERC4626 vault) public virtual onlyAdmin {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
 
