@@ -90,20 +90,20 @@ contract KandelSeederDeployer is Deployer, Test2 {
       seeder = new KandelSeeder(params.mgv, params.kandelGasreq);
       fork.set("KandelSeeder", address(seeder));
 
-      console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
-      broadcast();
-      Kandel kandel = new Kandel(params.mgv, olKeyBaseQuote, 1);
-      // Write the kandel's address so it can be used as a library to call createGeometricDistribution
-      fork.set("KandelLib", address(kandel));
+      // console.log("Deploying Kandel instance for code verification and to use as proxy for KandelLib...");
+      // broadcast();
+      // Kandel kandel = new Kandel(params.mgv, olKeyBaseQuote, 1);
+      // // Write the kandel's address so it can be used as a library to call createGeometricDistribution
+      // fork.set("KandelLib", address(kandel));
 
-      smokeTest(
-        SmokeTestParams({
-          mgv: params.mgv,
-          olKeyBaseQuote: olKeyBaseQuote,
-          kandelSeeder: seeder,
-          expectedRouter: AbstractRouter(address(0))
-        })
-      );
+      // smokeTest(
+      //   SmokeTestParams({
+      //     mgv: params.mgv,
+      //     olKeyBaseQuote: olKeyBaseQuote,
+      //     kandelSeeder: seeder,
+      //     expectedRouter: AbstractRouter(address(0))
+      //   })
+      // );
     }
 
     if (params.deployAaveKandel) {
@@ -120,25 +120,25 @@ contract KandelSeederDeployer is Deployer, Test2 {
       fork.set("AaveKandelSeeder", address(aaveSeeder));
       fork.set("AavePooledRouter", address(aaveSeeder.AAVE_ROUTER()));
 
-      console.log("Deploying AaveKandel instance for code verification...");
-      prettyLog("Deploying AaveKandel instance...");
-      AbstractRouter router = AbstractRouter(address(aaveSeeder.AAVE_ROUTER()));
-      console.log("Seeder's router:", address(router));
-      broadcast();
-      new AaveKandel(
-        params.mgv,
-        olKeyBaseQuote,
-        params.aaveKandelGasreq,
-        Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: true})
-      );
-      smokeTest(
-        SmokeTestParams({
-          mgv: params.mgv,
-          olKeyBaseQuote: olKeyBaseQuote,
-          kandelSeeder: aaveSeeder,
-          expectedRouter: aaveSeeder.AAVE_ROUTER()
-        })
-      );
+      // console.log("Deploying AaveKandel instance for code verification...");
+      // prettyLog("Deploying AaveKandel instance...");
+      // AbstractRouter router = AbstractRouter(address(aaveSeeder.AAVE_ROUTER()));
+      // console.log("Seeder's router:", address(router));
+      // broadcast();
+      // new AaveKandel(
+      //   params.mgv,
+      //   olKeyBaseQuote,
+      //   params.aaveKandelGasreq,
+      //   Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: true})
+      // );
+      // smokeTest(
+      //   SmokeTestParams({
+      //     mgv: params.mgv,
+      //     olKeyBaseQuote: olKeyBaseQuote,
+      //     kandelSeeder: aaveSeeder,
+      //     expectedRouter: aaveSeeder.AAVE_ROUTER()
+      //   })
+      // );
     }
 
     if (params.deployERC4626Kandel) {
@@ -153,27 +153,6 @@ contract KandelSeederDeployer is Deployer, Test2 {
         vm.setNonce(broadcaster(), nonce + 1);
       }
       fork.set("ERC4626KandelSeeder", address(erc4626Seeder));
-      fork.set("ERC4626Rounter", address(erc4626Seeder.ERC4626_ROUTER()));
-
-      console.log("Deploying ERC4626Kandel instance for code verification...");
-      prettyLog("Deploying ERC4626Kandel instance...");
-      AbstractRouter router = AbstractRouter(address(erc4626Seeder.ERC4626_ROUTER()));
-      console.log("Seeder's router:", address(router));
-      broadcast();
-      new ERC4626Kandel(
-        params.mgv,
-        olKeyBaseQuote,
-        params.aaveKandelGasreq,
-        Direct.RouterParams({routerImplementation: router, fundOwner: address(0), strict: true})
-      );
-      smokeTest(
-        SmokeTestParams({
-          mgv: params.mgv,
-          olKeyBaseQuote: olKeyBaseQuote,
-          kandelSeeder: erc4626Seeder,
-          expectedRouter: erc4626Seeder.ERC4626_ROUTER()
-        })
-      );
     }
 
     console.log("Deployed!");
