@@ -84,7 +84,7 @@ contract ERC4626Router is AbstractRouter {
       if (shares > 0) {
         uint maxRedeemable = oldVault.maxRedeem(address(this));
         require(maxRedeemable >= shares, "ERC4626Router/maxRedeemExceeded");
-        oldVault.redeem(maxRedeemable < shares ? maxRedeemable : shares, address(this), address(this));
+        oldVault.redeem(shares, address(this), address(this));
       }
     }
 
