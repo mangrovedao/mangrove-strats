@@ -9,6 +9,17 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 /// @title ERC4626 Router
 /// @notice A router that interacts with ERC4626 vaults
 contract ERC4626Router is AbstractRouter {
+  /// @notice Emitted when the admin withdraws tokens
+  /// @param token The token being withdrawn
+  /// @param amount The amount of tokens being withdrawn
+  /// @param recipient The recipient of the tokens
+  event AdminTokenWithdrawal(IERC20 token, uint amount, address recipient);
+
+  /// @notice Emitted when the admin withdraws native tokens
+  /// @param amount The amount of native tokens being withdrawn
+  /// @param recipient The recipient of the native tokens
+  event AdminNativeWithdrawal(uint amount, address recipient);
+
   /// @notice Mapping of tokens to their corresponding vaults
   mapping(IERC20 => IERC4626) public vaults;
 
@@ -60,6 +71,7 @@ contract ERC4626Router is AbstractRouter {
     );
 
     require(TransferLib.transferToken(token, recipient, amount), "ERC4626Router/adminWithdrawFailed");
+    emit AdminTokenWithdrawal(token, amount, recipient);
   }
 
   /// @notice Allows the admin to withdraw native tokens
@@ -68,6 +80,7 @@ contract ERC4626Router is AbstractRouter {
   function adminWithdrawNative(uint amount, address recipient) public onlyAdmin {
     (bool s,) = recipient.call{value: amount}("");
     require(s, "ERC4626Router/adminWithdrawNativeFailed");
+    emit AdminNativeWithdrawal(amount, recipient);
   }
 
   /// @notice Sets the vault for a token
