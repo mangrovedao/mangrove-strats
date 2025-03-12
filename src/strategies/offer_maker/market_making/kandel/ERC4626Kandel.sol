@@ -100,12 +100,6 @@ contract ERC4626Kandel is GeometricKandel {
       + super.reserveBalance(ba);
   }
 
-  /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds from vault
-  /// @inheritdoc MangroveOffer
-  function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
-    bytes32 makerData = super.__lastLook__(order);
-  }
-
   ///@notice overrides and replaces Direct's posthook in order to push to vault with a single call when offer logic is the first to pull funds
   ///@inheritdoc MangroveOffer
   function __posthookSuccess__(MgvLib.SingleOrder calldata order, bytes32 makerData)
