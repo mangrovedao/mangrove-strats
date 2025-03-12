@@ -108,7 +108,7 @@ contract ERC4626Router is AbstractRouter {
     balance = token.balanceOf(address(this));
     IERC4626 vault = vaults[token];
     if (address(vault) != address(0)) {
-      balance += vault.convertToAssets(vault.balanceOf(address(this)));
+      balance += vault.previewRedeem(vault.balanceOf(address(this)));
     }
   }
 
