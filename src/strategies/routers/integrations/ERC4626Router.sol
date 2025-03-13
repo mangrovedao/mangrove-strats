@@ -20,6 +20,12 @@ contract ERC4626Router is AbstractRouter {
   /// @param recipient The recipient of the native tokens
   event AdminNativeWithdrawal(uint amount, address recipient);
 
+  /// @notice Emitted when a vault is set for a token
+  /// @param token The token for which the vault is set
+  /// @param oldVault The previous vault for the token
+  /// @param newVault The new vault for the token
+  event VaultSet(IERC20 indexed token, IERC4626 indexed oldVault, IERC4626 indexed newVault);
+
   /// @notice Mapping of tokens to their corresponding vaults
   mapping(IERC20 => IERC4626) public vaults;
 
@@ -104,6 +110,8 @@ contract ERC4626Router is AbstractRouter {
 
     // Set the new vault
     vaults[token] = vault;
+    // Emit event for vault change
+    emit VaultSet(token, oldVault, vault);
     // Redeposit token
     _deposit(token);
   }
@@ -115,7 +123,8 @@ contract ERC4626Router is AbstractRouter {
     balance = _tokenBalance(routingOrder.token);
   }
 
-  /// @notice Gets the balance of a token
+  /// @notice Gets the balance of a token, including both local balance and assets in vaults
+  /// @dev Returns the sum of direct token balance and assets in vaults, already accounting for vault fees
   /// @param token The token to get the balance of
   /// @return balance The balance of the token
   function _tokenBalance(IERC20 token) public view returns (uint balance) {
