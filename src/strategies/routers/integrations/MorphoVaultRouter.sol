@@ -39,9 +39,9 @@ contract MorphoVaultRouter is ERC4626Router {
   /// @param token The token for which to set the vault
   /// @param vault The vault to set for the token
   /// @dev Only callable by the admin
-  function setVaultForToken(IERC20 token, IERC4626 vault) public override onlyAdmin {
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut) public override onlyAdmin {
     require(MORPHO_FACTORY.isMorphoVault(address(vault)), "MorphoRouter/notMorpho");
-    super.setVaultForToken(token, vault);
+    super.setVaultForToken(token, vault, minAssetsOut);
   }
 
   /// @notice Claims rewards for a specific token

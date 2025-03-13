@@ -92,7 +92,7 @@ contract ERC4626Router is AbstractRouter {
   /// @notice Sets the vault for a token
   /// @param token The token to set the vault for
   /// @param vault The vault to set
-  function setVaultForToken(IERC20 token, IERC4626 vault) public virtual onlyAdmin {
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut) public virtual onlyAdmin {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
     require(address(token) == vault.asset(), "ERC4626Router/invalidVault");
@@ -104,7 +104,10 @@ contract ERC4626Router is AbstractRouter {
       if (shares > 0) {
         uint maxRedeemable = oldVault.maxRedeem(address(this));
         require(maxRedeemable >= shares, "ERC4626Router/maxRedeemExceeded");
+        uint balanceBefore = token.balanceOf(address(this));
         oldVault.redeem(shares, address(this), address(this));
+        uint balanceAfter = token.balanceOf(address(this));
+        require(balanceAfter - balanceBefore >= minAssetsOut, "ERC4626Router/insufficientAssets");
       }
     }
 

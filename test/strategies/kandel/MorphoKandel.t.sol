@@ -40,8 +40,8 @@ contract MorphoKandelTest is ERC4626KandelTest {
     morphoRouter = new MorphoVaultRouter(IMorphoFactory(address(morphoFactory)), IMorphoRewardDistributor(address(1)));
     router = morphoRouter;
 
-    router.setVaultForToken(base, baseVault);
-    router.setVaultForToken(quote, quoteVault);
+    router.setVaultForToken(base, baseVault, 0);
+    router.setVaultForToken(quote, quoteVault, 0);
     erc4626Kandel = new ERC4626Kandel(
       mgv, olKey, kandel_gasreq, Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: true})
     );
@@ -65,19 +65,38 @@ contract MorphoKandelTest is ERC4626KandelTest {
     // Should revert when trying to set a non-Morpho vault
     vm.prank(address(erc4626Kandel));
     vm.expectRevert("MorphoRouter/notMorpho");
-    morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(nonMorphoVault));
+    morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(nonMorphoVault), 0);
   }
 
   function test_success_on_morpho_vault() public {
     address morphoVault = makeAddr("morphoVault");
     morphoFactory.setVault(morphoVault, true);
     vm.prank(address(erc4626Kandel));
-    morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(morphoVault));
+    morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(morphoVault), 0);
     assertEq(address(morphoRouter.vaults(RouterToken(address(base)))), morphoVault);
   }
 
   function test_set_vault_for_token() public override {
     morphoFactory.setVault(address(randomVault), true);
     super.test_set_vault_for_token();
+  }
+
+  function test_revert_set_vault_for_token_with_high_slippage() public override {
+    uint baseAmount = 1 ether;
+    uint quoteAmount = 1000 * 10 ** 6;
+
+    deal($(base), address(this), baseAmount);
+    deal($(quote), address(this), quoteAmount);
+
+    erc4626Kandel.depositFunds(baseAmount, quoteAmount);
+
+    MockERC4626 newBaseVault = new MockERC4626(VaultToken(address(base)), "some vault", "sm");
+    morphoFactory.setVault(address(newBaseVault), true);
+
+    uint minAssetsOut = 5 ether;
+
+    vm.expectRevert("ERC4626Router/insufficientAssets");
+    vm.prank(address(maker));
+    erc4626Kandel.setVaultForToken(base, newBaseVault, minAssetsOut);
   }
 }

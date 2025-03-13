@@ -79,8 +79,8 @@ contract ERC4626Kandel is GeometricKandel {
   ///@notice Sets the vault for a given token.
   ///@param token The token for which to set the vault.
   ///@param vault The address of the vault to set.
-  function setVaultForToken(IERC20 token, IERC4626 vault) public onlyAdmin {
-    erc4626Router().setVaultForToken(token, vault);
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut) public onlyAdmin {
+    erc4626Router().setVaultForToken(token, vault, minAssetsOut);
   }
 
   ///@notice Returns the current vault addresses for the base and quote tokens
