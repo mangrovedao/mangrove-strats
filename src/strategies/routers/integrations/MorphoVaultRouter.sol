@@ -14,11 +14,6 @@ contract MorphoVaultRouter is ERC4626Router {
   /// @notice The Morpho reward distributor contract
   IMorphoRewardDistributor public immutable MORPHO_REWARD_DISTRIBUTOR;
 
-  /// @dev Emitted when a vault is set for a specific token
-  /// @param token The token for which the vault is set
-  /// @param vault The vault that is set for the token
-  event VaultSet(IERC20 indexed token, IERC4626 indexed vault);
-
   /// @dev Emitted when rewards are claimed for a specific token
   /// @param token The token for which rewards are claimed
   /// @param amount The amount of rewards claimed
