@@ -7,8 +7,6 @@ import {IMorphoRewardDistributor} from "../../interfaces/IMorphoRewardDistributo
 
 /// @title MorphoVaultRouter
 /// @notice Router for interacting with Morpho vaults implementing ERC4626
-/// @title MorphoVaultRouter
-/// @notice Router for interacting with Morpho vaults implementing ERC4626
 contract MorphoVaultRouter is ERC4626Router {
   /// @notice The Morpho factory contract
   IMorphoFactory public immutable MORPHO_FACTORY;
