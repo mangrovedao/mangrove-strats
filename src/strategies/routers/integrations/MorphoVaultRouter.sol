@@ -46,7 +46,7 @@ contract MorphoVaultRouter is ERC4626Router {
     external
     onlyAdmin
   {
-    MORPHO_REWARD_DISTRIBUTOR.claim(msg.sender, address(token), amount, proof);
+    MORPHO_REWARD_DISTRIBUTOR.claim(address(this), address(token), amount, proof);
     token.transfer(receiver, amount);
     emit RewardsClaimed(token, amount, receiver);
   }
