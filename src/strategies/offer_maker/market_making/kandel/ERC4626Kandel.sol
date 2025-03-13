@@ -56,7 +56,7 @@ contract ERC4626Kandel is GeometricKandel {
     uint amount_ = amount < localBalance ? 0 : amount - localBalance;
 
     if (amount_ != 0) {
-      erc4626Router().withdraw(token, amount_);
+      amount_ = erc4626Router().withdraw(token, amount_);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
