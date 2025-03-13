@@ -158,6 +158,7 @@ contract ERC4626Router is AbstractRouter {
   /// @param routingOrder The routing order
   /// @param amount The amount of tokens to push
   /// @return pushedAmount The amount of tokens pushed
+  /// NOTE: This function does NOT support fee-on-transfer tokens
   function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal override returns (uint pushedAmount) {
     require(
       TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, address(this), amount),
