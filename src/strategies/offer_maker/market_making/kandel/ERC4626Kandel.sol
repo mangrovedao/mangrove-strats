@@ -33,7 +33,7 @@ contract ERC4626Kandel is GeometricKandel {
     return ERC4626Router(address(router()));
   }
 
-  ///@notice deposits funds to be available for being offered. Will increase `pending`.
+  ///@notice Deposits funds to the contract's reserve
   ///@param baseAmount the amount of base tokens to deposit.
   ///@param quoteAmount the amount of quote tokens to deposit.
   function depositFunds(uint baseAmount, uint quoteAmount) public override {
