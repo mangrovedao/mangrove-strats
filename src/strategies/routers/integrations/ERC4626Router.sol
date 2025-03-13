@@ -89,6 +89,7 @@ contract ERC4626Router is AbstractRouter {
   function setVaultForToken(IERC20 token, IERC4626 vault) public virtual onlyAdmin {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
+    require(address(token) == vault.asset(), "ERC4626Router/invalidVault");
 
     // If there was a previous vault, withdraw all assets
     IERC4626 oldVault = vaults[token];
