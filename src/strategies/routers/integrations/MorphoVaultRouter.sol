@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import "./ERC4626Router.sol";
 import {IMorphoFactory} from "../../interfaces/IMorphoFactory.sol";
-import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IMorphoRewardDistributor} from "../../interfaces/IMorphoRewardDistributor.sol";
 
 /// @title MorphoVaultRouter
