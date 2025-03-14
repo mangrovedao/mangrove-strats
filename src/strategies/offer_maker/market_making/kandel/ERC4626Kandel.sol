@@ -77,10 +77,13 @@ contract ERC4626Kandel is GeometricKandel {
   }
 
   ///@notice Sets the vault for a given token.
-  ///@param token The token for which to set the vault.
-  ///@param vault The address of the vault to set.
-  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut) public onlyAdmin {
-    erc4626Router().setVaultForToken(token, vault, minAssetsOut);
+  ///@param token The token for which to set the vault
+  ///@param vault The address of the vault to set
+  ///@param minAssetsOut The minimum amount of assets that must be returned when withdrawing from the old vault
+  ///@param minSharesOut The minimum amount of shares that must be returned when depositing into the new vault
+  ///@dev Only callable by admin. Will withdraw all assets from old vault if one exists, then deposit into new vault
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut, uint minSharesOut) public onlyAdmin {
+    erc4626Router().setVaultForToken(token, vault, minAssetsOut, minSharesOut);
   }
 
   ///@notice Returns the current vault addresses for the base and quote tokens

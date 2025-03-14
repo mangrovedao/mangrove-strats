@@ -53,11 +53,11 @@ contract ERC4626Router is AbstractRouter {
   {
     if (address(token0) != address(0)) {
       pushed0 = __push__(RL.createOrder({fundOwner: msg.sender, token: token0}), amount0);
-      _deposit(token0);
+      _deposit(token0, 0);
     }
     if (address(token1) != address(0)) {
       pushed1 = __push__(RL.createOrder({fundOwner: msg.sender, token: token1}), amount1);
-      _deposit(token1);
+      _deposit(token1, 0);
     }
   }
 
@@ -90,10 +90,17 @@ contract ERC4626Router is AbstractRouter {
     emit AdminNativeWithdrawal(amount, recipient);
   }
 
-  /// @notice Sets the vault for a token
-  /// @param token The token to set the vault for
-  /// @param vault The vault to set
-  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut) public virtual onlyAdmin {
+  /// @notice Sets the vault for a specific token
+  /// @param token The token for which to set the vault
+  /// @param vault The vault to set for the token
+  /// @param minAssetsOut The minimum amount of assets that must be returned when withdrawing from th old vault
+  /// @param minSharesOut The minimum amount of shares that must be returned when depositing into the new vault
+  /// @dev Only callable by the admin
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut, uint minSharesOut)
+    public
+    virtual
+    onlyAdmin
+  {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
     require(address(token) == vault.asset(), "ERC4626Router/invalidVault");
@@ -117,7 +124,7 @@ contract ERC4626Router is AbstractRouter {
     // Emit event for vault change
     emit VaultSet(token, oldVault, vault);
     // Redeposit token
-    _deposit(token);
+    _deposit(token, minSharesOut);
   }
 
   /// @notice Gets the balance of a token
@@ -141,7 +148,7 @@ contract ERC4626Router is AbstractRouter {
 
   /// @notice Deposits tokens into the vault
   /// @param token The token to deposit
-  function _deposit(IERC20 token) internal {
+  function _deposit(IERC20 token, uint minSharesOut) internal {
     IERC4626 vault = vaults[token];
     if (address(vault) != address(0)) {
       uint balance = token.balanceOf(address(this));
@@ -149,7 +156,10 @@ contract ERC4626Router is AbstractRouter {
         uint maxDeposit = vault.maxDeposit(address(this));
         uint toDeposit = maxDeposit < balance ? maxDeposit : balance;
         require(TransferLib2.forceApproveToken(token, address(vault), toDeposit), "ERC4626Router/depositFailed");
+        uint balanceBefore = vault.balanceOf(address(this));
         vault.deposit(toDeposit, address(this));
+        uint balanceAfter = vault.balanceOf(address(this));
+        require(balanceAfter - balanceBefore >= minSharesOut, "ERC4626Router/insufficientShares");
       }
     }
     // if no vault found don't do anything
