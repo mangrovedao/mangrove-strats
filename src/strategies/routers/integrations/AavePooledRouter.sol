@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
-import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {HasAaveBalanceMemoizer, IPoolAddressesProvider} from "./HasAaveBalanceMemoizer.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 
@@ -173,7 +173,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
     _mintShares(routingOrder.token, routingOrder.fundOwner, amount, memoizer);
     // Transfer must occur *after* state updating _mintShares above
     require(
-      TransferLib2.transferTokenFrom(routingOrder.token, msg.sender, address(this), amount),
+      TransferLib.transferTokenFrom(routingOrder.token, msg.sender, address(this), amount),
       "AavePooledRouter/pushFailed"
     );
     return amount;
@@ -286,7 +286,7 @@ contract AavePooledRouter is HasAaveBalanceMemoizer, AbstractRouter {
       _redeem(token, amountToRedeem, address(this), false);
     }
     // Transferring funds to the maker contract, at this point we must revert if things go wrong because shares have been burnt on the premise that `amount_` will be transferred.
-    require(TransferLib2.transferToken(token, msg.sender, amountToTransfer), "AavePooledRouter/withdrawFailed");
+    require(TransferLib.transferToken(token, msg.sender, amountToTransfer), "AavePooledRouter/withdrawFailed");
   }
 
   ///@notice withdraw funds from the pool on behalf of some reserve id

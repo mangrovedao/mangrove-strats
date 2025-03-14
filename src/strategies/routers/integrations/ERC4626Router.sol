@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -76,7 +77,7 @@ contract ERC4626Router is AbstractRouter {
       "ERC4626Router/InvalidERC4626Token"
     );
 
-    require(TransferLib2.transferToken(token, recipient, amount), "ERC4626Router/adminWithdrawFailed");
+    require(TransferLib.transferToken(token, recipient, amount), "ERC4626Router/adminWithdrawFailed");
     emit AdminTokenWithdrawal(token, amount, recipient);
   }
 
@@ -161,7 +162,7 @@ contract ERC4626Router is AbstractRouter {
   /// NOTE: This function does NOT support fee-on-transfer tokens
   function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal override returns (uint pushedAmount) {
     require(
-      TransferLib2.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, address(this), amount),
+      TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, address(this), amount),
       "ERC4626Router/pushFailed"
     );
     return amount;
@@ -181,7 +182,7 @@ contract ERC4626Router is AbstractRouter {
     uint localBalance = routingOrder.token.balanceOf(address(this));
 
     if (localBalance >= amount) {
-      require(TransferLib2.transferToken(routingOrder.token, msg.sender, amount), "ERC4626Router/transferFailed");
+      require(TransferLib.transferToken(routingOrder.token, msg.sender, amount), "ERC4626Router/transferFailed");
       return amount;
     }
 
@@ -197,7 +198,7 @@ contract ERC4626Router is AbstractRouter {
     }
 
     vault.withdraw(toWithdraw, msg.sender, address(this));
-    require(TransferLib2.transferToken(routingOrder.token, msg.sender, localBalance), "ERC4626Router/transferFailed");
+    require(TransferLib.transferToken(routingOrder.token, msg.sender, localBalance), "ERC4626Router/transferFailed");
 
     return amount;
   }

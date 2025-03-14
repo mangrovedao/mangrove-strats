@@ -6,7 +6,7 @@ import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global} from "@mgv/src/core/MgvLib.sol";
 import {OfferType} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/TradesBaseQuotePair.sol";
 import {
-  CoreKandel, TransferLib2
+  CoreKandel, TransferLib
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
 import {console} from "@mgv/forge-std/Test.sol";
@@ -95,9 +95,9 @@ abstract contract KandelTest is StratTest {
 
     // taker approves mangrove to be able to take offers
     vm.prank(taker);
-    TransferLib2.approveToken(base, $(mgv), type(uint).max);
+    TransferLib.approveToken(base, $(mgv), type(uint).max);
     vm.prank(taker);
-    TransferLib2.approveToken(quote, $(mgv), type(uint).max);
+    TransferLib.approveToken(quote, $(mgv), type(uint).max);
 
     // deploy and activate
     (Global global,) = mgv.config(OLKey(address(0), address(0), 0));
@@ -113,9 +113,9 @@ abstract contract KandelTest is StratTest {
 
     // maker approves Kandel to be able to deposit funds on it
     vm.prank(maker);
-    TransferLib2.approveToken(base, address(kdl), type(uint).max);
+    TransferLib.approveToken(base, address(kdl), type(uint).max);
     vm.prank(maker);
-    TransferLib2.approveToken(quote, address(kdl), type(uint).max);
+    TransferLib.approveToken(quote, address(kdl), type(uint).max);
 
     uint firstAskIndex = 5;
 

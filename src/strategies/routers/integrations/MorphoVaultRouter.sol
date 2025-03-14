@@ -47,7 +47,7 @@ contract MorphoVaultRouter is ERC4626Router {
     onlyAdmin
   {
     MORPHO_REWARD_DISTRIBUTOR.claim(address(this), address(token), amount, proof);
-    require(TransferLib2.transferToken(token, receiver, amount), "MorphoVaultRouter/claimRewardsFailed");
+    require(TransferLib.transferToken(token, receiver, amount), "MorphoVaultRouter/claimRewardsFailed");
     emit RewardsClaimed(token, amount, receiver);
   }
 }

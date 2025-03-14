@@ -7,7 +7,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {OfferType} from "./TradesBaseQuotePair.sol";
 import {DirectWithBidsAndAsksDistribution} from "./DirectWithBidsAndAsksDistribution.sol";
 import {TradesBaseQuotePair} from "./TradesBaseQuotePair.sol";
-import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {KandelLib} from "./KandelLib.sol";
 import {MAX_SAFE_VOLUME} from "@mgv/lib/core/Constants.sol";
 
@@ -235,9 +235,9 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
   ///@param baseAmount the amount of base tokens to deposit.
   ///@param quoteAmount the amount of quote tokens to deposit.
   function depositFunds(uint baseAmount, uint quoteAmount) public virtual {
-    require(TransferLib2.transferTokenFrom(BASE, msg.sender, address(this), baseAmount), "Kandel/baseTransferFail");
+    require(TransferLib.transferTokenFrom(BASE, msg.sender, address(this), baseAmount), "Kandel/baseTransferFail");
     emit Credit(BASE, baseAmount);
-    require(TransferLib2.transferTokenFrom(QUOTE, msg.sender, address(this), quoteAmount), "Kandel/quoteTransferFail");
+    require(TransferLib.transferTokenFrom(QUOTE, msg.sender, address(this), quoteAmount), "Kandel/quoteTransferFail");
     emit Credit(QUOTE, quoteAmount);
   }
 
@@ -259,7 +259,7 @@ abstract contract CoreKandel is DirectWithBidsAndAsksDistribution, TradesBaseQuo
     if (amount == type(uint).max) {
       amount = token.balanceOf(address(this));
     }
-    require(TransferLib2.transferToken(token, recipient, amount), "Kandel/transferFail");
+    require(TransferLib.transferToken(token, recipient, amount), "Kandel/transferFail");
     emit Debit(token, amount);
   }
 

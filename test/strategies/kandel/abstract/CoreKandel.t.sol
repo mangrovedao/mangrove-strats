@@ -13,7 +13,7 @@ import {MgvLib} from "@mgv/src/core/MgvLib.sol";
 import {CoreKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/CoreKandel.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import "@mgv/lib/Debug.sol";
-import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
+import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {RL} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 abstract contract CoreKandelTest is KandelTest {
@@ -861,8 +861,8 @@ abstract contract CoreKandelTest is KandelTest {
   function test_depositFunds(uint96 baseAmount, uint96 quoteAmount) public {
     deal($(base), address(this), baseAmount);
     deal($(quote), address(this), quoteAmount);
-    TransferLib2.approveToken(base, $(kdl), baseAmount);
-    TransferLib2.approveToken(quote, $(kdl), quoteAmount);
+    TransferLib.approveToken(base, $(kdl), baseAmount);
+    TransferLib.approveToken(quote, $(kdl), quoteAmount);
 
     uint quoteBalance = kdl.reserveBalance(Bid);
     uint baseBalance = kdl.reserveBalance(Ask);
@@ -884,8 +884,8 @@ abstract contract CoreKandelTest is KandelTest {
   function test_withdrawFunds(uint96 baseAmount, uint96 quoteAmount) public {
     deal($(base), address(this), baseAmount);
     deal($(quote), address(this), quoteAmount);
-    TransferLib2.approveToken(base, $(kdl), baseAmount);
-    TransferLib2.approveToken(quote, $(kdl), quoteAmount);
+    TransferLib.approveToken(base, $(kdl), baseAmount);
+    TransferLib.approveToken(quote, $(kdl), quoteAmount);
 
     kdl.depositFunds(baseAmount, quoteAmount);
 
@@ -905,8 +905,8 @@ abstract contract CoreKandelTest is KandelTest {
     deal($(base), address(kdl), baseAmount);
     deal($(quote), address(kdl), quoteAmount);
 
-    TransferLib2.approveToken(base, $(kdl), baseAmount);
-    TransferLib2.approveToken(quote, $(kdl), quoteAmount);
+    TransferLib.approveToken(base, $(kdl), baseAmount);
+    TransferLib.approveToken(quote, $(kdl), quoteAmount);
     kdl.depositFunds(baseAmount, quoteAmount);
 
     vm.prank(maker);
@@ -920,8 +920,8 @@ abstract contract CoreKandelTest is KandelTest {
   function test_withdrawAll() public {
     deal($(base), address(this), 1 ether);
     deal($(quote), address(this), 100 * 10 ** 6);
-    TransferLib2.approveToken(base, $(kdl), 1 ether);
-    TransferLib2.approveToken(quote, $(kdl), 100 * 10 ** 6);
+    TransferLib.approveToken(base, $(kdl), 1 ether);
+    TransferLib.approveToken(quote, $(kdl), 100 * 10 ** 6);
 
     kdl.depositFunds(1 ether, 100 * 10 ** 6);
     uint quoteBalance = kdl.reserveBalance(Bid);
@@ -936,8 +936,8 @@ abstract contract CoreKandelTest is KandelTest {
   function test_withdrawAllWithLocal() public {
     deal($(base), address(this), 1 ether);
     deal($(quote), address(this), 100 * 10 ** 6);
-    TransferLib2.approveToken(base, $(kdl), 0.5 ether);
-    TransferLib2.approveToken(quote, $(kdl), 50 * 10 ** 6);
+    TransferLib.approveToken(base, $(kdl), 0.5 ether);
+    TransferLib.approveToken(quote, $(kdl), 50 * 10 ** 6);
 
     kdl.depositFunds(0.5 ether, 50 * 10 ** 6);
     uint quoteBalance = kdl.reserveBalance(Bid);
@@ -997,9 +997,9 @@ abstract contract CoreKandelTest is KandelTest {
     GeometricKandel otherKandel = __deployKandel__(otherMaker, otherMaker, true);
 
     vm.prank(otherMaker);
-    TransferLib2.approveToken(base, address(otherKandel), type(uint).max);
+    TransferLib.approveToken(base, address(otherKandel), type(uint).max);
     vm.prank(otherMaker);
-    TransferLib2.approveToken(quote, address(otherKandel), type(uint).max);
+    TransferLib.approveToken(quote, address(otherKandel), type(uint).max);
 
     uint totalProvision = (
       reader.getProvision(olKey, gasreq(), bufferedGasprice) + reader.getProvision(lo, gasreq(), bufferedGasprice)
