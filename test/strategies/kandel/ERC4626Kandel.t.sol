@@ -50,8 +50,8 @@ contract ERC4626KandelTest is CoreKandelTest {
     quoteVault = IERC4626(address(new MockERC4626(IERC20(address(quote)), "Quote Vault", "vQUOTE")));
     uint kandel_gasreq = 800_000;
     router = new ERC4626Router();
-    router.setVaultForToken(base, baseVault);
-    router.setVaultForToken(quote, quoteVault);
+    router.setVaultForToken(base, baseVault, 0, 0);
+    router.setVaultForToken(quote, quoteVault, 0, 0);
     erc4626Kandel = new ERC4626Kandel(
       mgv, olKey, kandel_gasreq, Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: true})
     );
@@ -138,7 +138,7 @@ contract ERC4626KandelTest is CoreKandelTest {
 
   function test_set_vault_for_token() public virtual {
     vm.prank(address(maker));
-    erc4626Kandel.setVaultForToken(randomToken, randomVault);
+    erc4626Kandel.setVaultForToken(randomToken, randomVault, 0, 0);
     assertEq((address(router.vaults(randomToken))), address(randomVault));
   }
 
@@ -170,6 +170,23 @@ contract ERC4626KandelTest is CoreKandelTest {
 
     assertEq(kdl_.reserveBalance(Ask), 0, "funds should not be shared");
     assertEq(kdl_.reserveBalance(Bid), 0, "funds should not be shared");
+  }
+
+  function test_revert_set_vault_for_token_with_high_slippage() public virtual {
+    uint baseAmount = 1 ether;
+    uint quoteAmount = 1000 * 10 ** 6;
+
+    deal($(base), address(this), baseAmount);
+    deal($(quote), address(this), quoteAmount);
+
+    erc4626Kandel.depositFunds(baseAmount, quoteAmount);
+
+    MockERC4626 newBaseVault = new MockERC4626(IERC20(address(base)), "some vault", "sm");
+    uint minAssetsOut = 5 ether;
+
+    vm.expectRevert("ERC4626Router/insufficientAssets");
+    vm.prank(address(maker));
+    erc4626Kandel.setVaultForToken(base, newBaseVault, minAssetsOut, 0);
   }
 
   fallback() external {}

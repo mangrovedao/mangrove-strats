@@ -3,11 +3,8 @@ pragma solidity ^0.8.10;
 
 import "./ERC4626Router.sol";
 import {IMorphoFactory} from "../../interfaces/IMorphoFactory.sol";
-import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IMorphoRewardDistributor} from "../../interfaces/IMorphoRewardDistributor.sol";
 
-/// @title MorphoVaultRouter
-/// @notice Router for interacting with Morpho vaults implementing ERC4626
 /// @title MorphoVaultRouter
 /// @notice Router for interacting with Morpho vaults implementing ERC4626
 contract MorphoVaultRouter is ERC4626Router {
@@ -16,11 +13,6 @@ contract MorphoVaultRouter is ERC4626Router {
 
   /// @notice The Morpho reward distributor contract
   IMorphoRewardDistributor public immutable MORPHO_REWARD_DISTRIBUTOR;
-
-  /// @dev Emitted when a vault is set for a specific token
-  /// @param token The token for which the vault is set
-  /// @param vault The vault that is set for the token
-  event VaultSet(IERC20 indexed token, IERC4626 indexed vault);
 
   /// @dev Emitted when rewards are claimed for a specific token
   /// @param token The token for which rewards are claimed
@@ -35,13 +27,15 @@ contract MorphoVaultRouter is ERC4626Router {
     MORPHO_REWARD_DISTRIBUTOR = distributor;
   }
 
-  /// @notice Sets the vault for a specific token
-  /// @param token The token for which to set the vault
-  /// @param vault The vault to set for the token
-  /// @dev Only callable by the admin
-  function setVaultForToken(IERC20 token, IERC4626 vault) public override onlyAdmin {
+  /// @inheritdoc ERC4626Router
+  /// @dev Verifies that the vault is a valid Morpho vault before setting it
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut, uint minSharesOut)
+    public
+    override
+    onlyAdmin
+  {
     require(MORPHO_FACTORY.isMorphoVault(address(vault)), "MorphoRouter/notMorpho");
-    super.setVaultForToken(token, vault);
+    super.setVaultForToken(token, vault, minAssetsOut, minSharesOut);
   }
 
   /// @notice Claims rewards for a specific token
@@ -54,8 +48,8 @@ contract MorphoVaultRouter is ERC4626Router {
     external
     onlyAdmin
   {
-    MORPHO_REWARD_DISTRIBUTOR.claim(msg.sender, address(token), amount, proof);
-    token.transfer(receiver, amount);
+    MORPHO_REWARD_DISTRIBUTOR.claim(address(this), address(token), amount, proof);
+    require(TransferLib.transferToken(token, receiver, amount), "MorphoVaultRouter/claimRewardsFailed");
     emit RewardsClaimed(token, amount, receiver);
   }
 }

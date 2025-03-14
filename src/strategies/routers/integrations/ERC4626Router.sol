@@ -3,12 +3,30 @@ pragma solidity ^0.8.10;
 
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 /// @title ERC4626 Router
 /// @notice A router that interacts with ERC4626 vaults
 contract ERC4626Router is AbstractRouter {
+  /// @notice Emitted when the admin withdraws tokens
+  /// @param token The token being withdrawn
+  /// @param amount The amount of tokens being withdrawn
+  /// @param recipient The recipient of the tokens
+  event AdminTokenWithdrawal(IERC20 token, uint amount, address recipient);
+
+  /// @notice Emitted when the admin withdraws native tokens
+  /// @param amount The amount of native tokens being withdrawn
+  /// @param recipient The recipient of the native tokens
+  event AdminNativeWithdrawal(uint amount, address recipient);
+
+  /// @notice Emitted when a vault is set for a token
+  /// @param token The token for which the vault is set
+  /// @param oldVault The previous vault for the token
+  /// @param newVault The new vault for the token
+  event VaultSet(IERC20 indexed token, IERC4626 indexed oldVault, IERC4626 indexed newVault);
+
   /// @notice Mapping of tokens to their corresponding vaults
   mapping(IERC20 => IERC4626) public vaults;
 
@@ -35,11 +53,11 @@ contract ERC4626Router is AbstractRouter {
   {
     if (address(token0) != address(0)) {
       pushed0 = __push__(RL.createOrder({fundOwner: msg.sender, token: token0}), amount0);
-      _deposit(token0);
+      _deposit(token0, 0);
     }
     if (address(token1) != address(0)) {
       pushed1 = __push__(RL.createOrder({fundOwner: msg.sender, token: token1}), amount1);
-      _deposit(token1);
+      _deposit(token1, 0);
     }
   }
 
@@ -60,6 +78,7 @@ contract ERC4626Router is AbstractRouter {
     );
 
     require(TransferLib.transferToken(token, recipient, amount), "ERC4626Router/adminWithdrawFailed");
+    emit AdminTokenWithdrawal(token, amount, recipient);
   }
 
   /// @notice Allows the admin to withdraw native tokens
@@ -68,14 +87,23 @@ contract ERC4626Router is AbstractRouter {
   function adminWithdrawNative(uint amount, address recipient) public onlyAdmin {
     (bool s,) = recipient.call{value: amount}("");
     require(s, "ERC4626Router/adminWithdrawNativeFailed");
+    emit AdminNativeWithdrawal(amount, recipient);
   }
 
-  /// @notice Sets the vault for a token
-  /// @param token The token to set the vault for
-  /// @param vault The vault to set
-  function setVaultForToken(IERC20 token, IERC4626 vault) public virtual onlyAdmin {
+  /// @notice Sets the vault for a specific token
+  /// @param token The token for which to set the vault
+  /// @param vault The vault to set for the token
+  /// @param minAssetsOut The minimum amount of assets that must be returned when withdrawing from th old vault
+  /// @param minSharesOut The minimum amount of shares that must be returned when depositing into the new vault
+  /// @dev Only callable by the admin
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut, uint minSharesOut)
+    public
+    virtual
+    onlyAdmin
+  {
     // Verify token is not zero address
     require(address(token) != address(0), "ERC4626Router/zeroToken");
+    require(address(token) == vault.asset(), "ERC4626Router/invalidVault");
 
     // If there was a previous vault, withdraw all assets
     IERC4626 oldVault = vaults[token];
@@ -84,14 +112,19 @@ contract ERC4626Router is AbstractRouter {
       if (shares > 0) {
         uint maxRedeemable = oldVault.maxRedeem(address(this));
         require(maxRedeemable >= shares, "ERC4626Router/maxRedeemExceeded");
-        oldVault.redeem(maxRedeemable < shares ? maxRedeemable : shares, address(this), address(this));
+        uint balanceBefore = token.balanceOf(address(this));
+        oldVault.redeem(shares, address(this), address(this));
+        uint balanceAfter = token.balanceOf(address(this));
+        require(balanceAfter - balanceBefore >= minAssetsOut, "ERC4626Router/insufficientAssets");
       }
     }
 
     // Set the new vault
     vaults[token] = vault;
+    // Emit event for vault change
+    emit VaultSet(token, oldVault, vault);
     // Redeposit token
-    _deposit(token);
+    _deposit(token, minSharesOut);
   }
 
   /// @notice Gets the balance of a token
@@ -101,28 +134,32 @@ contract ERC4626Router is AbstractRouter {
     balance = _tokenBalance(routingOrder.token);
   }
 
-  /// @notice Gets the balance of a token
+  /// @notice Gets the balance of a token, including both local balance and assets in vaults
+  /// @dev Returns the sum of direct token balance and assets in vaults, already accounting for vault fees
   /// @param token The token to get the balance of
   /// @return balance The balance of the token
   function _tokenBalance(IERC20 token) public view returns (uint balance) {
     balance = token.balanceOf(address(this));
     IERC4626 vault = vaults[token];
     if (address(vault) != address(0)) {
-      balance += vault.convertToAssets(vault.balanceOf(address(this)));
+      balance += vault.previewRedeem(vault.balanceOf(address(this)));
     }
   }
 
   /// @notice Deposits tokens into the vault
   /// @param token The token to deposit
-  function _deposit(IERC20 token) internal {
+  function _deposit(IERC20 token, uint minSharesOut) internal {
     IERC4626 vault = vaults[token];
     if (address(vault) != address(0)) {
       uint balance = token.balanceOf(address(this));
       if (balance > 0) {
         uint maxDeposit = vault.maxDeposit(address(this));
         uint toDeposit = maxDeposit < balance ? maxDeposit : balance;
-        token.approve(address(vault), toDeposit);
+        require(TransferLib2.forceApproveToken(token, address(vault), toDeposit), "ERC4626Router/depositFailed");
+        uint balanceBefore = vault.balanceOf(address(this));
         vault.deposit(toDeposit, address(this));
+        uint balanceAfter = vault.balanceOf(address(this));
+        require(balanceAfter - balanceBefore >= minSharesOut, "ERC4626Router/insufficientShares");
       }
     }
     // if no vault found don't do anything
@@ -132,6 +169,7 @@ contract ERC4626Router is AbstractRouter {
   /// @param routingOrder The routing order
   /// @param amount The amount of tokens to push
   /// @return pushedAmount The amount of tokens pushed
+  /// NOTE: This function does NOT support fee-on-transfer tokens
   function __push__(RL.RoutingOrder memory routingOrder, uint amount) internal override returns (uint pushedAmount) {
     require(
       TransferLib.transferTokenFrom(routingOrder.token, routingOrder.fundOwner, address(this), amount),
@@ -150,27 +188,28 @@ contract ERC4626Router is AbstractRouter {
     override
     returns (uint pulledAmount)
   {
-    // Get the current vault for the token
     IERC4626 vault = vaults[routingOrder.token];
-
-    // Get the local balance of the token
     uint localBalance = routingOrder.token.balanceOf(address(this));
 
-    // If we don't have enough local balance, we need to withdraw from the vault
-    if (localBalance < amount) {
-      // If there is no vault, we can't pull the tokens
-      if (address(vault) == address(0)) revert("ERC4626Router/insufficientFunds");
-
-      // Withdraw the tokens from the vault
-      uint toWithdraw = amount - localBalance;
-      vault.withdraw(toWithdraw, msg.sender, address(this));
+    if (localBalance >= amount) {
+      require(TransferLib.transferToken(routingOrder.token, msg.sender, amount), "ERC4626Router/transferFailed");
+      return amount;
     }
 
-    // Send the local tokens to the recipient
-    uint toSend = localBalance < amount ? localBalance : amount;
-    if (toSend > 0) {
-      require(TransferLib.transferToken(routingOrder.token, msg.sender, toSend), "ERC4626Router/transferFailed");
+    if (address(vault) == address(0)) revert("ERC4626Router/insufficientFunds");
+
+    // Adjust withdraw amount in case of losses because of rounding precission
+    uint toWithdraw = amount - localBalance;
+    uint maxWithdraw = vault.maxWithdraw(address(this));
+
+    if (toWithdraw > maxWithdraw) {
+      amount = localBalance + maxWithdraw;
+      toWithdraw = maxWithdraw;
     }
+
+    vault.withdraw(toWithdraw, msg.sender, address(this));
+    require(TransferLib.transferToken(routingOrder.token, msg.sender, localBalance), "ERC4626Router/transferFailed");
+
     return amount;
   }
 }

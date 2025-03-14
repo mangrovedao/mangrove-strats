@@ -7,12 +7,10 @@ import {ERC4626Router} from "@mgv-strats/src/strategies/routers/integrations/ERC
 import {RoutingOrderLib as RL} from "@mgv-strats/src/strategies/routers/abstract/RoutingOrderLib.sol";
 import {GeometricKandel} from "./abstract/GeometricKandel.sol";
 import {CoreKandel} from "./abstract/CoreKandel.sol";
-import {IOfferLogic} from "@mgv-strats/src/strategies/interfaces/IOfferLogic.sol";
 import {OfferType} from "./abstract/TradesBaseQuotePair.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds in ERC4626 vaults to generate yield.
 contract ERC4626Kandel is GeometricKandel {
@@ -35,7 +33,7 @@ contract ERC4626Kandel is GeometricKandel {
     return ERC4626Router(address(router()));
   }
 
-  ///@notice deposits funds to be available for being offered. Will increase `pending`.
+  ///@notice Deposits funds to the contract's reserve
   ///@param baseAmount the amount of base tokens to deposit.
   ///@param quoteAmount the amount of quote tokens to deposit.
   function depositFunds(uint baseAmount, uint quoteAmount) public override {
@@ -58,7 +56,7 @@ contract ERC4626Kandel is GeometricKandel {
     uint amount_ = amount < localBalance ? 0 : amount - localBalance;
 
     if (amount_ != 0) {
-      erc4626Router().withdraw(token, amount_);
+      amount_ = erc4626Router().withdraw(token, amount_);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
@@ -79,10 +77,13 @@ contract ERC4626Kandel is GeometricKandel {
   }
 
   ///@notice Sets the vault for a given token.
-  ///@param token The token for which to set the vault.
-  ///@param vault The address of the vault to set.
-  function setVaultForToken(IERC20 token, IERC4626 vault) public onlyAdmin {
-    erc4626Router().setVaultForToken(token, vault);
+  ///@param token The token for which to set the vault
+  ///@param vault The address of the vault to set
+  ///@param minAssetsOut The minimum amount of assets that must be returned when withdrawing from the old vault
+  ///@param minSharesOut The minimum amount of shares that must be returned when depositing into the new vault
+  ///@dev Only callable by admin. Will withdraw all assets from old vault if one exists, then deposit into new vault
+  function setVaultForToken(IERC20 token, IERC4626 vault, uint minAssetsOut, uint minSharesOut) public onlyAdmin {
+    erc4626Router().setVaultForToken(token, vault, minAssetsOut, minSharesOut);
   }
 
   ///@notice Returns the current vault addresses for the base and quote tokens
@@ -100,12 +101,6 @@ contract ERC4626Kandel is GeometricKandel {
   function reserveBalance(OfferType ba) public view override returns (uint balance) {
     return erc4626Router().tokenBalanceOf(RL.createOrder({token: outboundOfOfferType(ba), fundOwner: address(this)}))
       + super.reserveBalance(ba);
-  }
-
-  /// @notice Verifies, prior to pulling funds from the router, whether pull will be fetching funds from vault
-  /// @inheritdoc MangroveOffer
-  function __lastLook__(MgvLib.SingleOrder calldata order) internal override returns (bytes32) {
-    bytes32 makerData = super.__lastLook__(order);
   }
 
   ///@notice overrides and replaces Direct's posthook in order to push to vault with a single call when offer logic is the first to pull funds
