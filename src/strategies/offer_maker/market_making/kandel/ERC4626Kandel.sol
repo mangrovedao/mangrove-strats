@@ -13,6 +13,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 ///@title A Kandel strat with geometric price progression which stores funds in ERC4626 vaults to generate yield.
+///@notice NOTE: Nested vaults (vaults that deposit into other vaults) are not supported.
 contract ERC4626Kandel is GeometricKandel {
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
