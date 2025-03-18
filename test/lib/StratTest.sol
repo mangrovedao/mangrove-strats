@@ -8,6 +8,7 @@ import {
 } from "@mgv-strats/src/strategies/offer_forwarder/abstract/Forwarder.sol";
 import "@mgv-strats/src/strategies/utils/AccessControlled.sol";
 import {MgvCommon} from "@mgv/src/core/MgvCommon.sol";
+import {Vm} from "@mgv/forge-std/Vm.sol";
 
 contract StratTest is MangroveTest {
   // for RenegingForwarder
@@ -20,6 +21,29 @@ contract StratTest is MangroveTest {
   // all routers
   event MakerBind(address indexed maker);
   event MakerUnbind(address indexed maker);
+
+  // Helper modifier to make sure an event is NOT emitted during a test
+  modifier expectNotEmit(string memory eventSignature) {
+    // Start recording logs
+    vm.recordLogs();
+    _;
+    // Get the recorded logs
+    Vm.Log[] memory logs = vm.getRecordedLogs();
+    // Verify no logs with your event's signature exist
+    bool eventFound = false;
+    bytes32 eventSignature_ = keccak256(abi.encode(eventSignature));
+    for (uint i = 0; i < logs.length; i++) {
+      if (logs[i].topics[0] == eventSignature_) {
+        eventFound = true;
+        break;
+      }
+    }
+    if (eventFound) {
+      emit log("Error: event unexpectedly emitted [string]");
+      emit log_named_string("Event signature : ", eventSignature);
+      fail();
+    }
+  }
 
   function $(AccessControlled t) internal pure returns (address payable) {
     return payable(address(t));
