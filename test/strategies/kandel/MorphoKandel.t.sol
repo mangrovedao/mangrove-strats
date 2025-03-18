@@ -69,11 +69,11 @@ contract MorphoKandelTest is ERC4626KandelTest {
   }
 
   function test_success_on_morpho_vault() public {
-    address morphoVault = makeAddr("morphoVault");
-    morphoFactory.setVault(morphoVault, true);
-    vm.prank(address(erc4626Kandel));
-    morphoRouter.setVaultForToken(RouterToken(address(base)), IERC4626(morphoVault), 0, 0);
-    assertEq(address(morphoRouter.vaults(RouterToken(address(base)))), morphoVault);
+    IERC4626 morphoVault = IERC4626(address(new MockERC4626(VaultToken(address(base)), "Morpho Vault", "vMorph")));
+    morphoFactory.setVault(address(morphoVault), true);
+    vm.prank(address(maker));
+    erc4626Kandel.setVaultForToken(RouterToken(address(base)), morphoVault, 0, 0);
+    assertEq(address(morphoRouter.vaults(RouterToken(address(base)))), address(morphoVault));
   }
 
   function test_set_vault_for_token() public override {
