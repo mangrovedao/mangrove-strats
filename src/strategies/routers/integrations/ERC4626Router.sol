@@ -200,7 +200,7 @@ contract ERC4626Router is AbstractRouter {
 
     if (amount == type(uint).max) {
       // Redeem all shares if max amount requested
-      uint shares = vault.balanceOf(address(this));
+      uint shares = vault.maxRedeem(address(this));
       if (shares > 0) {
         vault.redeem(shares, msg.sender, address(this));
       }
