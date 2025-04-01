@@ -201,13 +201,14 @@ contract ERC4626Router is AbstractRouter {
     if (amount == type(uint).max) {
       // Redeem all shares if max amount requested
       uint shares = vault.maxRedeem(address(this));
+      uint amountWithdrawn;
       if (shares > 0) {
-        vault.redeem(shares, msg.sender, address(this));
+        amountWithdrawn = vault.redeem(shares, msg.sender, address(this));
       }
       if (localBalance > 0) {
         require(TransferLib.transferToken(routingOrder.token, msg.sender, localBalance), "ERC4626Router/transferFailed");
       }
-      return localBalance + (shares > 0 ? vault.previewRedeem(shares) : 0);
+      return localBalance + amountWithdrawn;
     }
 
     uint toWithdraw = amount - localBalance;
