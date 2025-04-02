@@ -41,6 +41,8 @@ jobs:
     - name: Foundry Setup
       uses: mangrovedao/.github/.github/actions/foundry-setup@master
     
+    - run: forge install
+
     - run: yarn install --immutable
 
     - name: Build

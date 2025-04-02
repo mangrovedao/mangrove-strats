@@ -122,9 +122,10 @@ abstract contract CoreKandelTest is KandelTest {
     partial_fill(Bid, false);
   }
 
-  function testFail_ask_partial_fill_noDual_noIncident() public {
-    vm.expectEmit(false, false, false, false, $(kdl));
-    emit LogIncident(olKey.hash(), 0, "", "");
+  function test_expect_fail_ask_partial_fill_noDual_noIncident()
+    public
+    expectNotEmit("LogIncident(bytes32,uint256,bytes32,bytes32")
+  {
     partial_fill(Ask, false);
   }
 

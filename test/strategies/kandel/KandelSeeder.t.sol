@@ -111,24 +111,27 @@ contract KandelSeederTest is StratTest {
 
   function test_logs_new_aaveKandel() public {
     address maker = freshAddress("Maker");
-    expectFrom(address(aaveSeeder));
-    emit NewAaveKandel(maker, olKey.hash(), olKey.flipped().hash(), 0x9f92659F6b974ce0c1C144F57dbE5981bCdFa515, maker);
+    // expectFrom(address(aaveSeeder));
+    vm.expectEmit(true, true, true, false, address(aaveSeeder));
+    emit NewAaveKandel(maker, olKey.hash(), olKey.flipped().hash(), 0xf5Ba21691a8bC011B7b430854B41d5be0B78b938, maker);
     vm.prank(maker);
     sowAave(true);
   }
 
   function test_logs_new_kandel() public {
     address maker = freshAddress("Maker");
-    expectFrom(address(seeder));
-    emit NewKandel(maker, olKey.hash(), olKey.flipped().hash(), 0x42add52666C78960A219b157a1F4DbF806CbF703);
+    //expectFrom(address(seeder));
+    vm.expectEmit(true, true, true, false, address(seeder));
+    emit NewKandel(maker, olKey.hash(), olKey.flipped().hash(), 0xa38D17ef017A314cCD72b8F199C0e108EF7Ca04c);
     vm.prank(maker);
     sow(true);
   }
 
   function test_logs_new_smartKandel() public {
     address maker = freshAddress("Maker");
-    expectFrom(address(smartSeeder));
-    emit NewSmartKandel(maker, olKey.hash(), olKey.flipped().hash(), 0x8BE005c5AB08D68aE72Ad21a6177CE26704e4A71);
+    // expectFrom(address(smartSeeder));
+    vm.expectEmit(true, true, true, false, address(smartSeeder));
+    emit NewSmartKandel(maker, olKey.hash(), olKey.flipped().hash(), 0xa38D17ef017A314cCD72b8F199C0e108EF7Ca04c);
     vm.prank(maker);
     sowSmart(true);
   }

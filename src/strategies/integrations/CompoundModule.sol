@@ -155,7 +155,7 @@ contract CompoundModule is Exponential {
       sub_(
         heap.underlyingLiquidity, //borrow power
         mul_ScalarTruncate(Exp({mantissa: heap.collateralFactorMantissa}), heap.maxRedeemable)
-        )
+      )
     );
   }
 
