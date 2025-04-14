@@ -3,6 +3,11 @@
 - Change licenses to MIT for code mistakenly assigned BSD-2-Clause or AGPL-3.0
 - Fix submodule configurations for mangrove-core, v2-core, v3-core, and v3-periphery
 
+# 2.1.0-8
+
+- fix: refactor `ERC4626KandelSeeder` to reduce contract size
+- fear: deployment Foundry profile for optimized compilation
+
 # 2.1.0-7
 
 - feat: add `UniSwap` routing logic, manager, and univ3 logics
