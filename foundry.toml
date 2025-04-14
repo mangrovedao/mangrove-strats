@@ -15,6 +15,10 @@ optimizer=false
 # optimizer_runs=200
 # via_ir=true
 
+[profile.deployment]
+optimizer=true
+optimizer_runs=1000
+
 # Private keys are expected to be of the form <NETWORK>_PRIVATE_KEY
 # The relevant code is in Deployer.sol
 [rpc_endpoints]

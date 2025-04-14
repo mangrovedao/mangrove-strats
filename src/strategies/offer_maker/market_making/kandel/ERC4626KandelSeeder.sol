@@ -8,6 +8,7 @@ import {AbstractKandelSeeder} from "./abstract/AbstractKandelSeeder.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {OLKey} from "@mgv/src/core/MgvLib.sol";
 import {ERC4626Router} from "@mgv-strats/src/strategies/routers/integrations/ERC4626Router.sol";
+import {ERC4626RouterDeployer} from "./ERC4626RouterDeployer.sol";
 
 ///@title ERC4626Kandel strat deployer.
 contract ERC4626KandelSeeder is AbstractKandelSeeder {
@@ -26,10 +27,18 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
     address reserveId
   );
 
+  /// @notice The router deployer contract
+  ERC4626RouterDeployer public immutable routerDeployer;
+
   ///@notice constructor for `ERC4626KandelSeeder`. Initializes an `ERC4626Router` with this seeder as admin.
   ///@param mgv The Mangrove deployment.
   ///@param erc4626KandelGasreq the total gasreq to use for executing a kandel offer
-  constructor(IMangrove mgv, uint erc4626KandelGasreq) AbstractKandelSeeder(mgv, erc4626KandelGasreq) {}
+  ///@param _routerDeployer The address of the ERC4626RouterDeployer contract
+  constructor(IMangrove mgv, uint erc4626KandelGasreq, ERC4626RouterDeployer _routerDeployer)
+    AbstractKandelSeeder(mgv, erc4626KandelGasreq)
+  {
+    routerDeployer = _routerDeployer;
+  }
 
   ///@inheritdoc AbstractKandelSeeder
   function _deployKandel(OLKey memory olKeyBaseQuote, bool liquiditySharing)
@@ -62,10 +71,10 @@ contract ERC4626KandelSeeder is AbstractKandelSeeder {
       owner, olKeyBaseQuote.hash(), olKeyBaseQuote.flipped().hash(), address(kandel), address(kandel)
     );
   }
-  ///@notice Deploys a new instance of ERC4626Router.
-  ///@return The address of the newly deployed ERC4626Router.
 
+  ///@notice Deploys a new instance of ERC4626Router using the router deployer
+  ///@return The address of the newly deployed ERC4626Router.
   function _deployRouter() internal virtual returns (ERC4626Router) {
-    return new ERC4626Router();
+    return routerDeployer.deployRouter();
   }
 }
