@@ -12,7 +12,8 @@ import {
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/AaveKandelSeeder.sol";
 import {
   ERC4626Kandel,
-  ERC4626KandelSeeder
+  ERC4626KandelSeeder,
+  ERC4626RouterDeployer
 } from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/ERC4626KandelSeeder.sol";
 import {AbstractKandelSeeder} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/AbstractKandelSeeder.sol";
@@ -147,7 +148,8 @@ contract KandelSeederDeployer is Deployer, Test2 {
       //                 We therefore ensure that this happens.
       uint64 nonce = vm.getNonce(broadcaster());
       broadcast();
-      erc4626Seeder = new ERC4626KandelSeeder(params.mgv, params.erc4626KandelGasreq);
+      ERC4626RouterDeployer deployer = new ERC4626RouterDeployer();
+      erc4626Seeder = new ERC4626KandelSeeder(params.mgv, params.erc4626KandelGasreq, deployer);
       // Bug workaround: See comment above `nonce` further up
       if (nonce == vm.getNonce(broadcaster())) {
         vm.setNonce(broadcaster(), nonce + 1);
