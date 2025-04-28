@@ -15,5 +15,7 @@ contract ERC4626RouterProxyDeployer is ERC4626RouterDeployer {
 
   function deployRouter() external override returns (ERC4626Router router) {
     router = ERC4626Router(address(new RouterProxy(router)));
+
+    router.setAdmin(msg.sender);
   }
 }
