@@ -7,15 +7,14 @@ import {ERC4626RouterDeployer} from
 import {RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxy.sol";
 
 contract ERC4626RouterProxyDeployer is ERC4626RouterDeployer {
-  ERC4626Router public immutable router;
+  ERC4626Router public immutable ROUTER_IMPLEMENTATION;
 
   constructor() {
-    router = new ERC4626Router();
+    ROUTER_IMPLEMENTATION = new ERC4626Router();
   }
 
   function deployRouter() external override returns (ERC4626Router router) {
-    router = ERC4626Router(address(new RouterProxy(router)));
-
+    router = ERC4626Router(address(new RouterProxy(ROUTER_IMPLEMENTATION)));
     router.setAdmin(msg.sender);
   }
 }
