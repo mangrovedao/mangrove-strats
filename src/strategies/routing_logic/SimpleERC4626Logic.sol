@@ -36,27 +36,11 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   function pullLogic(IERC20 token, address fundOwner, uint amount, bool strict) external override returns (uint pulled) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
 
-    // Convert shares to assets to see how much can be withdrawn
-    uint maxWithdrawable = VAULT.maxWithdraw(address(this));
-
-    if (maxWithdrawable == 0) {
-      return 0;
-    }
-
-    // Determine withdrawal amount
-    uint withdrawAmount;
-    if (strict) {
-      require(maxWithdrawable >= amount, "SimpleERC4626Logic/InsufficientBalance");
-      withdrawAmount = amount;
-    } else {
-      withdrawAmount = maxWithdrawable < amount ? maxWithdrawable : amount;
-    }
-
     if (withdrawAmount == 0) {
       return 0;
     }
 
-    // Withdraw from vault and send assets to the calling maker contract
+    // Withdraw exact amount
     uint sharesUsed = VAULT.withdraw(withdrawAmount, msg.sender, address(this));
 
     emit VaultWithdraw(withdrawAmount, sharesUsed);
@@ -98,13 +82,8 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   function balanceLogic(IERC20 token, address fundOwner) external view override returns (uint balance) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
 
-    uint shareBalance = VAULT.balanceOf(address(this));
-    if (shareBalance == 0) {
-      return 0;
-    }
-
     // Convert shares to underlying assets
-    balance = VAULT.convertToAssets(shareBalance);
+    balance = VAULT.convertToAssets(sharesBalance());
   }
 
   /// @notice Get the vault share balance of this contract
