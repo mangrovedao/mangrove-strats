@@ -24,7 +24,7 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   /// @inheritdoc AbstractRoutingLogic
   /// @notice Pulls tokens by withdrawing from the ERC4626 vault
   /// @param token The token to pull (must match vault's asset)
-  /// @param fundOwner Not used - this contract owns the shares
+  /// @param fundOwner The owner of the shares
   /// @param amount The amount of underlying assets to withdraw
   /// @param strict If true, must withdraw exact amount; if false, withdraw available balance
   function pullLogic(IERC20 token, address fundOwner, uint amount, bool strict) external override returns (uint pulled) {
@@ -43,7 +43,7 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   /// @inheritdoc AbstractRoutingLogic
   /// @notice Pushes tokens by depositing into the ERC4626 vault
   /// @param token The token to push (must match vault's asset)
-  /// @param fundOwner Not used - this contract receives the shares
+  /// @param fundOwner The owner of the shares
   /// @param amount The amount of assets to deposit
   function pushLogic(IERC20 token, address fundOwner, uint amount) external override returns (uint pushed) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
@@ -69,7 +69,7 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   /// @inheritdoc AbstractRoutingLogic
   /// @notice Returns the underlying asset balance available from this contract's vault shares
   /// @param token The token to check (must match vault's asset)
-  /// @param fundOwner Not used - this contract owns the shares
+  /// @param fundOwner The owner of the shares
   /// @return balance The amount of underlying assets this contract can withdraw
   function balanceLogic(IERC20 token, address fundOwner) external view override returns (uint balance) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
