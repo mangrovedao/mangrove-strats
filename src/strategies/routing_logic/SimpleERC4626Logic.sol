@@ -60,7 +60,7 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
     // Approve vault to spend the assets
     require(TransferLib.approveToken(ASSET, address(VAULT), amount), "SimpleERC4626Logic/ApprovalFailed");
 
-    // Deposit into vault - this contract receives the shares
+    // Deposit into vault - `fundOwner` receives the shares
     VAULT.deposit(amount, fundOwner);
 
     return amount;
