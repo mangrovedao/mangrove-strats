@@ -83,20 +83,22 @@ contract MorphoLogic_Test is StratTest {
   function testFuzz_push(uint amount) public {
     vm.assume(amount >= MIN_VOLUME && amount <= 1e9 ether);
     push(underlying, amount);
-    assertApproxEqAbs(mockVault.balanceOf(address(router)), mockVault.convertToShares(amount), 1);
+    assertApproxEqAbs(mockVault.balanceOf(address(user)), mockVault.convertToShares(amount), 1);
   }
 
   function test_push_pull() public {
     uint pushAmount = 15.1231 ether;
 
     push(underlying, pushAmount);
-    assertApproxEqAbs(mockVault.balanceOf(address(router)), mockVault.convertToShares(pushAmount), 1);
+    assertApproxEqAbs(mockVault.balanceOf(address(user)), mockVault.convertToShares(pushAmount), 1);
 
     // Advance time past vesting period
     vm.warp(block.timestamp + VESTING_PERIOD + 1);
 
     uint pullAmount = 10.1 ether;
 
+    vm.prank(user);
+    mockVault.approve(address(router), type(uint).max);
     uint pulled = pull(underlying, pullAmount);
     assertApproxEqAbs(pulled, pullAmount, 1);
   }
@@ -109,6 +111,8 @@ contract MorphoLogic_Test is StratTest {
     vm.warp(block.timestamp + VESTING_PERIOD / 2);
 
     uint pullAmount = 10 ether;
+    vm.prank(user);
+    mockVault.approve(address(router), type(uint).max);
     uint pulled = pull(underlying, pullAmount);
 
     // Should receive less than requested due to vesting

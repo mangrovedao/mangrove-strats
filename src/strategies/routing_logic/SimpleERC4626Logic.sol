@@ -14,12 +14,6 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   /// @notice The underlying asset of the vault
   IERC20 public immutable ASSET;
 
-  /// @notice Emitted when a deposit operation occurs
-  event VaultDeposit(uint assets, uint shares);
-
-  /// @notice Emitted when a withdrawal operation occurs
-  event VaultWithdraw(uint assets, uint shares);
-
   /// @notice Contract constructor
   /// @param vault The ERC4626 vault contract address
   constructor(IERC4626 vault) {
@@ -36,15 +30,14 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   function pullLogic(IERC20 token, address fundOwner, uint amount, bool strict) external override returns (uint pulled) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
 
-    if (withdrawAmount == 0) {
+    if (amount == 0) {
       return 0;
     }
 
     // Withdraw exact amount
-    uint sharesUsed = VAULT.withdraw(withdrawAmount, msg.sender, address(this));
+    VAULT.withdraw(amount, msg.sender, fundOwner);
 
-    emit VaultWithdraw(withdrawAmount, sharesUsed);
-    return withdrawAmount;
+    return amount;
   }
 
   /// @inheritdoc AbstractRoutingLogic
@@ -68,9 +61,8 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
     require(TransferLib.approveToken(ASSET, address(VAULT), amount), "SimpleERC4626Logic/ApprovalFailed");
 
     // Deposit into vault - this contract receives the shares
-    uint sharesReceived = VAULT.deposit(amount, address(this));
+    VAULT.deposit(amount, fundOwner);
 
-    emit VaultDeposit(amount, sharesReceived);
     return amount;
   }
 
@@ -82,35 +74,6 @@ contract SimpleERC4626Logic is AbstractRoutingLogic {
   function balanceLogic(IERC20 token, address fundOwner) external view override returns (uint balance) {
     require(address(token) == address(ASSET), "SimpleERC4626Logic/InvalidToken");
 
-    // Convert shares to underlying assets
-    balance = VAULT.convertToAssets(sharesBalance());
-  }
-
-  /// @notice Get the vault share balance of this contract
-  /// @return shares The amount of vault shares owned by this contract
-  function shareBalance() external view returns (uint shares) {
-    return VAULT.balanceOf(address(this));
-  }
-
-  /// @notice Preview how many shares would be received for a deposit
-  /// @param assets The amount of assets to deposit
-  /// @return shares The amount of shares that would be received
-  function previewDeposit(uint assets) external view returns (uint shares) {
-    return VAULT.previewDeposit(assets);
-  }
-
-  /// @notice Preview how many shares would be burned for a withdrawal
-  /// @param assets The amount of assets to withdraw
-  /// @return shares The amount of shares that would be burned
-  function previewWithdraw(uint assets) external view returns (uint shares) {
-    return VAULT.previewWithdraw(assets);
-  }
-
-  /// @notice Get vault information
-  /// @return vault The vault address
-  /// @return asset The underlying asset address
-  /// @return totalAssets The total assets in the vault
-  function getVaultInfo() external view returns (address vault, address asset, uint totalAssets) {
-    return (address(VAULT), address(ASSET), VAULT.totalAssets());
+    balance = VAULT.previewRedeem(VAULT.balanceOf(fundOwner));
   }
 }
