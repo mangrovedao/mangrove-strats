@@ -28,16 +28,21 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
   ///@notice the Aave router.
   AavePooledRouter public immutable AAVE_ROUTER;
 
+  ///@notice the address of the WETH9 token.
+  address internal immutable wnative;
+
   ///@notice constructor for `AaveKandelSeeder`. Initializes an `AavePooledRouter` with this seeder as manager.
   ///@param mgv The Mangrove deployment.
   ///@param addressesProvider address of AAVE's address provider
   ///@param aaveKandelGasreq the total gasreq to use for executing a kandel offer
-  constructor(IMangrove mgv, IPoolAddressesProvider addressesProvider, uint aaveKandelGasreq)
+  ///@param wnative_ the address of the WETH9 token.
+  constructor(IMangrove mgv, IPoolAddressesProvider addressesProvider, uint aaveKandelGasreq, address wnative_)
     AbstractKandelSeeder(mgv, aaveKandelGasreq)
   {
     AavePooledRouter router = new AavePooledRouter(addressesProvider);
     AAVE_ROUTER = router;
     router.setAaveManager(msg.sender);
+    wnative = wnative_;
   }
 
   ///@inheritdoc AbstractKandelSeeder
@@ -59,7 +64,8 @@ contract AaveKandelSeeder is AbstractKandelSeeder {
         routerImplementation: AAVE_ROUTER, // using aave pooled router to source liquidity
         fundOwner: owner,
         strict: liquiditySharing
-      })
+      }),
+      wnative
     );
     // Allowing newly deployed Kandel to bind to the AaveRouter
     AAVE_ROUTER.bind(address(kandel));

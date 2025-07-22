@@ -34,7 +34,8 @@ contract ArbitrumKandelSeederDeployer is Deployer {
       deployERC4626Kandel: true,
       deployKandel: true,
       testBase: IERC20(fork.get("WETH.e")),
-      testQuote: IERC20(fork.get("DAI.e"))
+      testQuote: IERC20(fork.get("DAI.e")),
+      wnative: address(0)
     });
 
     // Pass the struct to innerRun

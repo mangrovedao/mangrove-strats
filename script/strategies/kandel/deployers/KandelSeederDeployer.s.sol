@@ -33,6 +33,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
     bool deployAaveKandel = true;
     bool deployERC4626Kandel = true;
     bool deployKandel = true;
+    address wnative = vm.envAddress("WETH");
 
     try vm.envBool("DEPLOY_AAVE_KANDEL") returns (bool deployAaveKandel_) {
       deployAaveKandel = deployAaveKandel_;
@@ -57,7 +58,8 @@ contract KandelSeederDeployer is Deployer, Test2 {
       deployERC4626Kandel: deployERC4626Kandel,
       deployKandel: deployKandel,
       testBase: IERC20(envAddressOrName("TEST_BASE")),
-      testQuote: IERC20(envAddressOrName("TEST_QUOTE"))
+      testQuote: IERC20(envAddressOrName("TEST_QUOTE")),
+      wnative: wnative
     });
 
     innerRun(params);
@@ -75,6 +77,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
     bool deployKandel;
     IERC20 testBase;
     IERC20 testQuote;
+    address wnative;
   }
 
   function innerRun(DeploymentParams memory params)
@@ -113,7 +116,7 @@ contract KandelSeederDeployer is Deployer, Test2 {
       //                 We therefore ensure that this happens.
       uint64 nonce = vm.getNonce(broadcaster());
       broadcast();
-      aaveSeeder = new AaveKandelSeeder(params.mgv, params.addressesProvider, params.aaveKandelGasreq);
+      aaveSeeder = new AaveKandelSeeder(params.mgv, params.addressesProvider, params.aaveKandelGasreq, params.wnative);
       // Bug workaround: See comment above `nonce` further up
       if (nonce == vm.getNonce(broadcaster())) {
         vm.setNonce(broadcaster(), nonce + 1);

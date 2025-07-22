@@ -235,7 +235,8 @@ abstract contract AaveKandelGasreqBaseTest is CoreKandelGasreqBaseTest {
       mgv: mgv,
       olKeyBaseQuote: olKey,
       gasreq: 1_000_000,
-      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(this), strict: false})
+      routerParams: Direct.RouterParams({routerImplementation: router, fundOwner: address(this), strict: false}),
+      wnative_: address(0)
     });
     router.bind(address(aaveKandel));
     return aaveKandel;
