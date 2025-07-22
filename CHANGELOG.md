@@ -4,6 +4,11 @@
 - Fix submodule configurations for mangrove-core, v2-core, v3-core, and v3-periphery
 - Added ERC4626 RouterProxy deployer
 
+# 2.1.0-9
+
+- fix: set `fundOwner` as shares owner in `SimpleERC4626Logic`
+- feat: add `SimpleERC4626Logic` routing logic
+
 # 2.1.0-8
 
 - fix: refactor `ERC4626KandelSeeder` to reduce contract size
