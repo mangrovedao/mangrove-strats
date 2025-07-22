@@ -9,7 +9,7 @@ import {ERC4626Router} from "@mgv-strats/src/strategies/routers/integrations/ERC
 contract ERC4626RouterDeployer {
   /// @notice Deploys a new ERC4626Router
   /// @return router The newly deployed ERC4626Router
-  function deployRouter() external returns (ERC4626Router router) {
+  function deployRouter() external virtual returns (ERC4626Router router) {
     router = new ERC4626Router();
 
     // Transfer admin rights to the specified address

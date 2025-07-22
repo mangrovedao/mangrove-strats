@@ -22,18 +22,27 @@ contract AaveKandel is GeometricKandel {
   ///@notice Indication that this is first puller (returned from __lastLook__) so posthook should deposit liquidity on AAVE
   bytes32 internal constant IS_FIRST_PULLER = "IS_FIRST_PULLER";
 
+  ///@notice the address of the WETH9 token.
+  address internal immutable wnative;
+
   ///@notice Constructor
   ///@param mgv The Mangrove deployment.
   ///@param olKeyBaseQuote The OLKey for the outbound_tkn base and inbound_tkn quote offer list Kandel will act on, the flipped OLKey is used for the opposite offer list.
   ///@param gasreq the gas required by the strat to execute
   ///@param routerParams routing policy parameters for this contract
-  constructor(IMangrove mgv, OLKey memory olKeyBaseQuote, uint gasreq, RouterParams memory routerParams)
-    GeometricKandel(mgv, olKeyBaseQuote, routerParams)
-  {
+  ///@param wnative_ the address of the WETH9 token.
+  constructor(
+    IMangrove mgv,
+    OLKey memory olKeyBaseQuote,
+    uint gasreq,
+    RouterParams memory routerParams,
+    address wnative_
+  ) GeometricKandel(mgv, olKeyBaseQuote, routerParams) {
     // one makes sure it is not possible to deploy an AAVE kandel on aTokens
     // allowing Kandel to deposit aUSDC for instance would conflict with other Kandel instances bound to the same router
     // and trading on USDC.
     // The code in isOverlying verifies that neither base nor quote are official AAVE overlyings.
+    wnative = wnative_;
     require(
       !isOverlying(olKeyBaseQuote.outbound_tkn) && !isOverlying(olKeyBaseQuote.inbound_tkn),
       "AaveKandel/cannotTradeAToken"
@@ -47,6 +56,7 @@ contract AaveKandel is GeometricKandel {
   /// @param token the token to verify.
   /// @return true if overlying; otherwise, false.
   function isOverlying(address token) internal view returns (bool) {
+    if (token == wnative) return false;
     try IAToken(token).UNDERLYING_ASSET_ADDRESS() returns (address) {
       return true;
     } catch {}

@@ -79,7 +79,8 @@ contract KandelSeederTest is StratTest {
     AaveKandelSeeder aaveKandelSeeder = new AaveKandelSeeder({
       mgv: IMangrove($(mgv)),
       addressesProvider: IPoolAddressesProvider(fork.get("AaveAddressProvider")),
-      aaveKandelGasreq: 628_000
+      aaveKandelGasreq: 628_000,
+      wnative_: address(0)
     });
     aaveSeeder = aaveKandelSeeder;
     aaveRouter = aaveKandelSeeder.AAVE_ROUTER();
