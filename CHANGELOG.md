@@ -1,5 +1,7 @@
 # Next version
 
+- feat: add `CompoundV2Router` router
+
 # 2.1.0-8
 
 - Change licenses to MIT for code mistakenly assigned BSD-2-Clause or AGPL-3.0
