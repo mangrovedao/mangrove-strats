@@ -31,7 +31,13 @@ interface ICToken is IERC20 {
   /// @notice Redeems cTokens in exchange for underlying tokens
   /// @param redeemTokens The amount of cTokens to redeem
   /// @return Error code (0 for success)
-  function redeem(uint redeemTokens) external virtual returns (uint);
+  function redeem(uint redeemTokens) external returns (uint);
+
+  function getAccountSnapshot(address account) external view returns (uint, uint, uint, uint);
+}
+
+interface ICompoundV2StaticCallWrapper {
+  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) external view returns (uint);
 }
 
 /// @title Compound V2 Router
@@ -171,7 +177,8 @@ contract CompoundV2Router is AbstractRouter {
   /// @param account The account to check balance for
   /// @return The underlying balance
   function _getBalanceOfUnderlyingView(ICToken cToken, address account) internal view returns (uint) {
-    try this._getBalanceOfUnderlyingHelper(cToken, account) {
+    // TODO: replace with get accoun snapshot and computation of balance of underlying.
+    try ICompoundV2StaticCallWrapper(address(this))._getBalanceOfUnderlyingHelper(cToken, account) {
       // This should never succeed as the helper always reverts
       revert("Unexpected success");
     } catch (bytes memory reason) {
@@ -183,7 +190,18 @@ contract CompoundV2Router is AbstractRouter {
         }
         if (selector == BalanceResult.selector) {
           // Decode the balance from the error data
-          return abi.decode(reason[4:], (uint));
+          // Skip the first 4 bytes (selector) and decode the rest
+          bytes memory data;
+          assembly {
+            let dataLength := sub(mload(reason), 4)
+            data := mload(0x40)
+            mstore(0x40, add(data, and(add(dataLength, 0x1f), not(0x1f))))
+            mstore(data, dataLength)
+            let src := add(reason, 0x24) // Skip length (32 bytes) + selector (4 bytes)
+            let dst := add(data, 0x20) // Skip length field
+            for { let i := 0 } lt(i, dataLength) { i := add(i, 0x20) } { mstore(add(dst, i), mload(add(src, i))) }
+          }
+          return abi.decode(data, (uint));
         }
       }
       // If it's not our custom error, re-throw the original error
