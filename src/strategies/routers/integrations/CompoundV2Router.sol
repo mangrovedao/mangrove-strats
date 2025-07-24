@@ -5,6 +5,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
+import {ExponentialNoError} from "@mgv-strats/src/strategies/vendor/compound/ExponentialNoError.sol";
 
 /// @title ICToken interface for Compound V2
 /// @notice Interface for interacting with Compound V2 cTokens
@@ -34,6 +35,48 @@ interface ICToken is IERC20 {
   function redeem(uint redeemTokens) external returns (uint);
 
   function getAccountSnapshot(address account) external view returns (uint, uint, uint, uint);
+
+  function exchangeRateStored() external view returns (uint);
+
+  function accrualBlockNumber() external view returns (uint);
+
+  function totalReserves() external view returns (uint);
+
+  function totalBorrows() external view returns (uint);
+
+  function totalCash() external view returns (uint);
+
+  function borrowIndex() external view returns (uint);
+
+  function reserveFactorMantissa() external view returns (uint);
+
+  function totalSupply() external view returns (uint);
+
+  function interestRateModel() external view returns (InterestRateModel);
+}
+
+interface InterestRateModel {
+  /**
+   * @notice Calculates the current borrow interest rate per block
+   * @param cash The total amount of cash the market has
+   * @param borrows The total amount of borrows the market has outstanding
+   * @param reserves The total amount of reserves the market has
+   * @return The borrow rate per block (as a percentage, and scaled by 1e18)
+   */
+  function getBorrowRate(uint cash, uint borrows, uint reserves) external view returns (uint);
+
+  /**
+   * @notice Calculates the current supply interest rate per block
+   * @param cash The total amount of cash the market has
+   * @param borrows The total amount of borrows the market has outstanding
+   * @param reserves The total amount of reserves the market has
+   * @param reserveFactorMantissa The current reserve factor the market has
+   * @return The supply rate per block (as a percentage, and scaled by 1e18)
+   */
+  function getSupplyRate(uint cash, uint borrows, uint reserves, uint reserveFactorMantissa)
+    external
+    view
+    returns (uint);
 }
 
 interface ICompoundV2StaticCallWrapper {
@@ -42,7 +85,7 @@ interface ICompoundV2StaticCallWrapper {
 
 /// @title Compound V2 Router
 /// @notice A router that interacts with Compound V2 markets for yield optimization
-contract CompoundV2Router is AbstractRouter {
+contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @notice Emitted when the admin withdraws tokens
   /// @param token The token being withdrawn
   /// @param amount The amount of tokens being withdrawn
@@ -214,9 +257,86 @@ contract CompoundV2Router is AbstractRouter {
   /// @notice Helper function that calls balanceOfUnderlying and reverts with the result
   /// @param cToken The cToken to check balance of
   /// @param account The account to check balance for
-  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) external {
-    uint balance = cToken.balanceOfUnderlying(account);
+  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) external view {
+    Exp memory exchangeRate = Exp({mantissa: _exchangeRateCurrent(cToken)});
+    uint balance = mul_ScalarTruncate(exchangeRate, cToken.balanceOf(account));
     revert BalanceResult(balance);
+  }
+
+  function _exchangeRateCurrent(ICToken cToken) internal view returns (uint) {
+    InterestCache memory cache;
+    _accrueInterest(cToken, cache);
+    uint totalCash = cache.cashPrior;
+    uint totalBorrows = cache.totalBorrows;
+    uint totalReserves = cache.totalReserves;
+    uint exchangeRate = (totalCash + totalBorrows - totalReserves) * expScale / cToken.totalSupply();
+    return exchangeRate;
+  }
+
+  // Maximum borrow rate that can ever be applied (.0005% / block)
+  uint internal constant borrowRateMaxMantissa = 0.0005e16;
+
+  // Maximum fraction of interest that can be set aside for reserves
+  uint internal constant reserveFactorMaxMantissa = 1e18;
+
+  struct InterestCache {
+    uint accrualBlockNumber;
+    uint cashPrior;
+    uint totalBorrows;
+    uint totalReserves;
+    uint borrowIndex;
+  }
+
+  function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view {
+    /* Remember the initial block number */
+    uint currentBlockNumber = block.number;
+    uint accrualBlockNumberPrior = cToken.accrualBlockNumber();
+
+    /* Short-circuit accumulating 0 interest */
+    if (accrualBlockNumberPrior == currentBlockNumber) {
+      return;
+    }
+
+    /* Read the previous values out of storage */
+    uint cashPrior = IERC20(cToken.underlying()).balanceOf(address(cToken));
+    uint borrowsPrior = cToken.totalBorrows();
+    uint reservesPrior = cToken.totalReserves();
+    uint borrowIndexPrior = cToken.borrowIndex();
+
+    InterestRateModel interestRateModel = cToken.interestRateModel();
+
+    /* Calculate the current borrow interest rate */
+    uint borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
+    require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
+
+    /* Calculate the number of blocks elapsed since the last accrual */
+    uint blockDelta = currentBlockNumber - accrualBlockNumberPrior;
+
+    /*
+         * Calculate the interest accumulated into borrows and reserves and the new index:
+         *  simpleInterestFactor = borrowRate * blockDelta
+         *  interestAccumulated = simpleInterestFactor * totalBorrows
+         *  totalBorrowsNew = interestAccumulated + totalBorrows
+         *  totalReservesNew = interestAccumulated * reserveFactor + totalReserves
+         *  borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
+         */
+
+    Exp memory simpleInterestFactor = mul_(Exp({mantissa: borrowRateMantissa}), blockDelta);
+    uint interestAccumulated = mul_ScalarTruncate(simpleInterestFactor, borrowsPrior);
+    uint totalBorrowsNew = interestAccumulated + borrowsPrior;
+    uint totalReservesNew =
+      mul_ScalarTruncateAddUInt(Exp({mantissa: cToken.reserveFactorMantissa()}), interestAccumulated, reservesPrior);
+    uint borrowIndexNew = mul_ScalarTruncateAddUInt(simpleInterestFactor, borrowIndexPrior, borrowIndexPrior);
+
+    /////////////////////////
+    // EFFECTS & INTERACTIONS
+    // (No safe failures beyond this point)
+
+    /* We write the previously calculated values into storage */
+    cache.accrualBlockNumber = currentBlockNumber;
+    cache.borrowIndex = borrowIndexNew;
+    cache.totalBorrows = totalBorrowsNew;
+    cache.totalReserves = totalReservesNew;
   }
 
   /// @notice Deposits tokens into the corresponding Compound market
