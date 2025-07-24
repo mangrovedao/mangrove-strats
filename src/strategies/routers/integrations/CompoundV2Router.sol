@@ -264,12 +264,14 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   }
 
   function _exchangeRateCurrent(ICToken cToken) internal view returns (uint) {
+    uint totalSupply = cToken.totalSupply();
+    if (totalSupply == 0) return 0;
     InterestCache memory cache;
     _accrueInterest(cToken, cache);
     uint totalCash = cache.cashPrior;
     uint totalBorrows = cache.totalBorrows;
     uint totalReserves = cache.totalReserves;
-    uint exchangeRate = (totalCash + totalBorrows - totalReserves) * expScale / cToken.totalSupply();
+    uint exchangeRate = (totalCash + totalBorrows - totalReserves) * expScale / totalSupply;
     return exchangeRate;
   }
 
@@ -287,56 +289,74 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     uint borrowIndex;
   }
 
+  /// @notice Reads the current state from the cToken
+  /// @param cToken The cToken to read state from
+  /// @return cache The populated InterestCache with current values
+  function _readCTokenState(ICToken cToken) internal view returns (InterestCache memory cache) {
+    cache.accrualBlockNumber = cToken.accrualBlockNumber();
+    cache.cashPrior = IERC20(cToken.underlying()).balanceOf(address(cToken));
+    cache.totalBorrows = cToken.totalBorrows();
+    cache.totalReserves = cToken.totalReserves();
+    cache.borrowIndex = cToken.borrowIndex();
+  }
+
+  /// @notice Calculates the new interest values based on elapsed blocks
+  /// @param cToken The cToken to calculate interest for
+  /// @param cache The current state cache
+  /// @param blockDelta The number of blocks elapsed
+  /// @return newTotalBorrows The new total borrows amount
+  /// @return newTotalReserves The new total reserves amount
+  /// @return newBorrowIndex The new borrow index
+  function _calculateNewInterestValues(ICToken cToken, InterestCache memory cache, uint blockDelta)
+    internal
+    view
+    returns (uint newTotalBorrows, uint newTotalReserves, uint newBorrowIndex)
+  {
+    InterestRateModel interestRateModel = cToken.interestRateModel();
+
+    // Calculate the current borrow interest rate
+    uint borrowRateMantissa = interestRateModel.getBorrowRate(cache.cashPrior, cache.totalBorrows, cache.totalReserves);
+    require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
+
+    // Calculate simple interest factor and accumulated interest
+    Exp memory simpleInterestFactor = mul_(Exp({mantissa: borrowRateMantissa}), blockDelta);
+    uint interestAccumulated = mul_ScalarTruncate(simpleInterestFactor, cache.totalBorrows);
+
+    // Calculate new values
+    newTotalBorrows = interestAccumulated + cache.totalBorrows;
+    newTotalReserves = mul_ScalarTruncateAddUInt(
+      Exp({mantissa: cToken.reserveFactorMantissa()}), interestAccumulated, cache.totalReserves
+    );
+    newBorrowIndex = mul_ScalarTruncateAddUInt(simpleInterestFactor, cache.borrowIndex, cache.borrowIndex);
+  }
+
+  /// @notice Accrues interest for a cToken and updates the cache
+  /// @param cToken The cToken to accrue interest for
+  /// @param cache The cache to populate with updated values
   function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view {
-    /* Remember the initial block number */
     uint currentBlockNumber = block.number;
     uint accrualBlockNumberPrior = cToken.accrualBlockNumber();
 
-    /* Short-circuit accumulating 0 interest */
+    // Short-circuit accumulating 0 interest
     if (accrualBlockNumberPrior == currentBlockNumber) {
       return;
     }
 
-    /* Read the previous values out of storage */
-    uint cashPrior = IERC20(cToken.underlying()).balanceOf(address(cToken));
-    uint borrowsPrior = cToken.totalBorrows();
-    uint reservesPrior = cToken.totalReserves();
-    uint borrowIndexPrior = cToken.borrowIndex();
+    // Read current state
+    cache = _readCTokenState(cToken);
 
-    InterestRateModel interestRateModel = cToken.interestRateModel();
-
-    /* Calculate the current borrow interest rate */
-    uint borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
-    require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
-
-    /* Calculate the number of blocks elapsed since the last accrual */
+    // Calculate the number of blocks elapsed since the last accrual
     uint blockDelta = currentBlockNumber - accrualBlockNumberPrior;
 
-    /*
-         * Calculate the interest accumulated into borrows and reserves and the new index:
-         *  simpleInterestFactor = borrowRate * blockDelta
-         *  interestAccumulated = simpleInterestFactor * totalBorrows
-         *  totalBorrowsNew = interestAccumulated + totalBorrows
-         *  totalReservesNew = interestAccumulated * reserveFactor + totalReserves
-         *  borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
-         */
+    // Calculate new interest values
+    (uint newTotalBorrows, uint newTotalReserves, uint newBorrowIndex) =
+      _calculateNewInterestValues(cToken, cache, blockDelta);
 
-    Exp memory simpleInterestFactor = mul_(Exp({mantissa: borrowRateMantissa}), blockDelta);
-    uint interestAccumulated = mul_ScalarTruncate(simpleInterestFactor, borrowsPrior);
-    uint totalBorrowsNew = interestAccumulated + borrowsPrior;
-    uint totalReservesNew =
-      mul_ScalarTruncateAddUInt(Exp({mantissa: cToken.reserveFactorMantissa()}), interestAccumulated, reservesPrior);
-    uint borrowIndexNew = mul_ScalarTruncateAddUInt(simpleInterestFactor, borrowIndexPrior, borrowIndexPrior);
-
-    /////////////////////////
-    // EFFECTS & INTERACTIONS
-    // (No safe failures beyond this point)
-
-    /* We write the previously calculated values into storage */
+    // Update cache with new values
     cache.accrualBlockNumber = currentBlockNumber;
-    cache.borrowIndex = borrowIndexNew;
-    cache.totalBorrows = totalBorrowsNew;
-    cache.totalReserves = totalReservesNew;
+    cache.borrowIndex = newBorrowIndex;
+    cache.totalBorrows = newTotalBorrows;
+    cache.totalReserves = newTotalReserves;
   }
 
   /// @notice Deposits tokens into the corresponding Compound market
