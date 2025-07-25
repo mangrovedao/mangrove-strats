@@ -6,9 +6,8 @@ import {console} from "@mgv/forge-std/Test.sol";
 import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
-import {PinnedEthereumFork} from "@mgv/test/lib/forks/Ethereum.sol";
-import {ICToken} from "@mgv-strats/src/strategies/routers/integrations/CompoundV2Router.sol";
-import {CompoundV2Router} from "@mgv-strats/src/strategies/routers/integrations/CompoundV2Router.sol";
+import {ICToken} from "@mgv-strats/src/strategies/routers/integrations/TakaraLendRouter.sol";
+import {TakaraLendRouter} from "@mgv-strats/src/strategies/routers/integrations/TakaraLendRouter.sol";
 import {CompoundKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/compound/CompoundKandel.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
@@ -19,14 +18,29 @@ import {toFixed} from "@mgv/lib/Test2.sol";
 import {TickLib} from "@mgv/lib/core/TickLib.sol";
 import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
+import {GenericFork} from "@mgv/test/lib/forks/Generic.sol";
+
+contract SeiFork is GenericFork {
+  constructor() {
+    CHAIN_ID = 1329;
+    NAME = "sei"; // must be id used in foundry.toml for rpc_endpoint & etherscan
+    NETWORK = "sei"; // must be network name inferred by ethers.js
+  }
+}
+
+contract PinnedSeiFork is SeiFork {
+  constructor(uint blockNumber) {
+    BLOCK_NUMBER = blockNumber;
+  }
+}
 
 /// @title CompoundKandel Test Contract
 /// @notice Tests for Kandel strategy using Compound V2 Router
 contract CompoundKandelTest is CoreKandelTest {
   using TransferLib for IERC20;
 
-  PinnedEthereumFork fork;
-  CompoundV2Router router;
+  PinnedSeiFork fork;
+  TakaraLendRouter router;
   CompoundKandel compoundKandel;
   ICToken baseCToken;
   ICToken quoteCToken;
@@ -35,7 +49,7 @@ contract CompoundKandelTest is CoreKandelTest {
 
   /// @notice Set up the test environment with mock compound markets
   function __setForkEnvironment__() internal override {
-    fork = new PinnedEthereumFork(14995752);
+    fork = new PinnedSeiFork(159197899);
     fork.setUp();
 
     options.gasprice = 90;
@@ -45,9 +59,10 @@ contract CompoundKandelTest is CoreKandelTest {
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
 
-    // Use the actual token addresses from the fork
-    base = TestToken(payable(0xc00e94Cb662C3520282E6f5717214004A7f26888)); // COMP
-    quote = TestToken(payable(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48)); // USDC
+    base = TestToken(payable(0x37a4dD9CED2b19Cfe8FAC251cd727b5787E45269)); // fastUSD
+    quote = TestToken(payable(0x9151434b16b9763660705744891fA906F660EcC5)); // USDT
+    baseCToken = ICToken(0x92e51466482146E71b692ced2265284968E8B3d6); // tFastUSD
+    quoteCToken = ICToken(0xA82a40324DBf7B57E87bD07C9e1D722E9754be9B); // tUSDT
 
     // Create the market key BEFORE calling setupMarket
     olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
@@ -55,13 +70,9 @@ contract CompoundKandelTest is CoreKandelTest {
 
     // Now setup the market with the fork-compatible addresses
     setupMarket(olKey);
-
-    // Set up Compound tokens
-    baseCToken = ICToken(0x70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4); // cCOMP
-    quoteCToken = ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563); // cUSDC
   }
 
-  /// @notice Deploy Kandel with CompoundV2Router
+  /// @notice Deploy Kandel with TakaraLendRouter
   function __deployKandel__(address deployer, address id, bool strict)
     internal
     virtual
@@ -71,7 +82,7 @@ contract CompoundKandelTest is CoreKandelTest {
     uint kandel_gasreq = 800_000;
 
     // Deploy Compound V2 Router
-    router = new CompoundV2Router();
+    router = new TakaraLendRouter();
 
     // Create CompoundKandel with router
     compoundKandel = new CompoundKandel(

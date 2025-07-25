@@ -251,7 +251,7 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   uint internal constant reserveFactorMaxMantissa = 1e18;
 
   struct InterestCache {
-    uint accrualBlockNumber;
+    uint accrualBlock;
     uint cashPrior;
     uint totalBorrows;
     uint totalReserves;
@@ -261,8 +261,8 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @notice Reads the current state from the cToken
   /// @param cToken The cToken to read state from
   /// @return cache The populated InterestCache with current values
-  function _readCTokenState(ICToken cToken) internal view returns (InterestCache memory cache) {
-    cache.accrualBlockNumber = cToken.accrualBlockNumber();
+  function _readCTokenState(ICToken cToken) internal view virtual returns (InterestCache memory cache) {
+    cache.accrualBlock = cToken.accrualBlockNumber();
     cache.cashPrior = IERC20(cToken.underlying()).balanceOf(address(cToken));
     cache.totalBorrows = cToken.totalBorrows();
     cache.totalReserves = cToken.totalReserves();
@@ -279,6 +279,7 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   function _calculateNewInterestValues(ICToken cToken, InterestCache memory cache, uint blockDelta)
     internal
     view
+    virtual
     returns (uint newTotalBorrows, uint newTotalReserves, uint newBorrowIndex)
   {
     InterestRateModel interestRateModel = cToken.interestRateModel();
@@ -302,7 +303,7 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @notice Accrues interest for a cToken and updates the cache
   /// @param cToken The cToken to accrue interest for
   /// @param cache The cache to populate with updated values
-  function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view {
+  function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view virtual {
     uint currentBlockNumber = block.number;
     uint accrualBlockNumberPrior = cToken.accrualBlockNumber();
 
@@ -322,7 +323,7 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
       _calculateNewInterestValues(cToken, cache, blockDelta);
 
     // Update cache with new values
-    cache.accrualBlockNumber = currentBlockNumber;
+    cache.accrualBlock = currentBlockNumber;
     cache.borrowIndex = newBorrowIndex;
     cache.totalBorrows = newTotalBorrows;
     cache.totalReserves = newTotalReserves;
