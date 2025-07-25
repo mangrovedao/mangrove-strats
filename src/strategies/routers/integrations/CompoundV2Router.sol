@@ -211,7 +211,6 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     }
     // Get compound balance using call-and-revert pattern
     uint compoundBalance = _getBalanceOfUnderlyingView(cToken, address(this));
-
     return localBalance + compoundBalance;
   }
 
@@ -220,47 +219,16 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @param account The account to check balance for
   /// @return The underlying balance
   function _getBalanceOfUnderlyingView(ICToken cToken, address account) internal view returns (uint) {
-    // TODO: replace with get accoun snapshot and computation of balance of underlying.
-    try ICompoundV2StaticCallWrapper(address(this))._getBalanceOfUnderlyingHelper(cToken, account) {
-      // This should never succeed as the helper always reverts
-      revert("Unexpected success");
-    } catch (bytes memory reason) {
-      // Check if it's our custom BalanceResult error
-      if (reason.length >= 4) {
-        bytes4 selector;
-        assembly {
-          selector := mload(add(reason, 0x20))
-        }
-        if (selector == BalanceResult.selector) {
-          // Decode the balance from the error data
-          // Skip the first 4 bytes (selector) and decode the rest
-          bytes memory data;
-          assembly {
-            let dataLength := sub(mload(reason), 4)
-            data := mload(0x40)
-            mstore(0x40, add(data, and(add(dataLength, 0x1f), not(0x1f))))
-            mstore(data, dataLength)
-            let src := add(reason, 0x24) // Skip length (32 bytes) + selector (4 bytes)
-            let dst := add(data, 0x20) // Skip length field
-            for { let i := 0 } lt(i, dataLength) { i := add(i, 0x20) } { mstore(add(dst, i), mload(add(src, i))) }
-          }
-          return abi.decode(data, (uint));
-        }
-      }
-      // If it's not our custom error, re-throw the original error
-      assembly {
-        revert(add(reason, 0x20), mload(reason))
-      }
-    }
+    return _getBalanceOfUnderlyingHelper(cToken, account);
   }
 
   /// @notice Helper function that calls balanceOfUnderlying and reverts with the result
   /// @param cToken The cToken to check balance of
   /// @param account The account to check balance for
-  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) external view {
+  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) internal view returns (uint) {
     Exp memory exchangeRate = Exp({mantissa: _exchangeRateCurrent(cToken)});
     uint balance = mul_ScalarTruncate(exchangeRate, cToken.balanceOf(account));
-    revert BalanceResult(balance);
+    return balance;
   }
 
   function _exchangeRateCurrent(ICToken cToken) internal view returns (uint) {
@@ -271,6 +239,7 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     uint totalCash = cache.cashPrior;
     uint totalBorrows = cache.totalBorrows;
     uint totalReserves = cache.totalReserves;
+
     uint exchangeRate = (totalCash + totalBorrows - totalReserves) * expScale / totalSupply;
     return exchangeRate;
   }

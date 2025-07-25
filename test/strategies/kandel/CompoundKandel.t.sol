@@ -77,6 +77,9 @@ contract MockCToken is ERC20 {
   /// @notice The underlying ERC20 token
   IERC20 public immutable underlyingToken;
 
+  /// @notice Exponential scale
+  uint constant expScale = 1e18;
+
   /// @notice Exchange rate stored (scaled by 1e18)
   uint public exchangeRateStored = 1e18;
 
@@ -100,9 +103,6 @@ contract MockCToken is ERC20 {
 
   /// @notice Mapping of account balances in underlying tokens
   mapping(address => uint) private _underlyingBalances;
-
-  /// @notice Total underlying tokens held by this contract
-  uint public totalUnderlying;
 
   /// @notice Emitted when tokens are minted
   event Mint(address minter, uint mintAmount, uint mintTokens);
@@ -135,7 +135,7 @@ contract MockCToken is ERC20 {
   /// @notice Returns the current balance of underlying tokens for an account
   /// @param account The account to check balance for
   /// @return The underlying token balance
-  function balanceOfUnderlying(address account) external returns (uint) {
+  function balanceOfUnderlying(address account) public returns (uint) {
     _accrueInterest();
     uint cTokenBalance = balanceOf(account);
     if (cTokenBalance == 0) return 0;
@@ -163,7 +163,7 @@ contract MockCToken is ERC20 {
 
   /// @notice Returns the current total cash (underlying tokens held by this contract)
   /// @return The amount of underlying tokens held by this contract
-  function totalCash() external view returns (uint) {
+  function totalCash() public view returns (uint) {
     return underlyingToken.balanceOf(address(this));
   }
 
@@ -185,8 +185,6 @@ contract MockCToken is ERC20 {
     // Mint cTokens to user
     _mint(msg.sender, cTokensToMint);
 
-    // Update total underlying
-    totalUnderlying += mintAmount;
     _underlyingBalances[msg.sender] += mintAmount;
 
     emit Mint(msg.sender, mintAmount, cTokensToMint);
@@ -198,6 +196,9 @@ contract MockCToken is ERC20 {
   /// @return Error code (0 for success)
   function redeemUnderlying(uint redeemAmount) external returns (uint) {
     if (redeemAmount == 0) return 1; // Error: invalid amount
+    if (redeemAmount == type(uint).max) {
+      redeemAmount = balanceOfUnderlying(msg.sender);
+    }
 
     _accrueInterest();
 
@@ -206,7 +207,6 @@ contract MockCToken is ERC20 {
 
     // Check user has enough cTokens
     if (balanceOf(msg.sender) < cTokensNeeded) return 3; // Error: insufficient balance
-
     // Check contract has enough underlying
     if (underlyingToken.balanceOf(address(this)) < redeemAmount) return 4; // Error: insufficient cash
 
@@ -217,6 +217,7 @@ contract MockCToken is ERC20 {
   /// @param redeemTokens The amount of cTokens to redeem
   /// @return Error code (0 for success)
   function redeem(uint redeemTokens) external returns (uint) {
+    if (redeemTokens == type(uint).max) redeemTokens = balanceOf(msg.sender);
     if (redeemTokens == 0) return 1; // Error: invalid amount
 
     _accrueInterest();
@@ -246,8 +247,6 @@ contract MockCToken is ERC20 {
     bool success = underlyingToken.transfer(redeemer, underlyingAmount);
     if (!success) return 2; // Error: transfer failed
 
-    // Update total underlying
-    totalUnderlying -= underlyingAmount;
     if (_underlyingBalances[redeemer] >= underlyingAmount) {
       _underlyingBalances[redeemer] -= underlyingAmount;
     } else {
@@ -275,14 +274,12 @@ contract MockCToken is ERC20 {
 
     // Calculate the current borrow interest rate
     uint borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
-
     // Calculate the number of blocks elapsed since the last accrual
     uint blockDelta = currentBlockNumber - accrualBlockNumberPrior;
 
     // Calculate interest accumulated
     uint simpleInterestFactor = borrowRateMantissa * blockDelta;
     uint interestAccumulated = (simpleInterestFactor * borrowsPrior) / 1e18;
-
     uint totalBorrowsNew = interestAccumulated + borrowsPrior;
     uint totalReservesNew = (reserveFactorMantissa * interestAccumulated) / 1e18 + reservesPrior;
     uint borrowIndexNew = (simpleInterestFactor * borrowIndexPrior) / 1e18 + borrowIndexPrior;
@@ -302,13 +299,20 @@ contract MockCToken is ERC20 {
     emit AccrueInterest(cashPrior, interestAccumulated, borrowIndexNew, totalBorrowsNew);
   }
 
-  /// @notice Set exchange rate for testing purposes
-  /// @param newRate The new exchange rate (scaled by 1e18)
-  function setExchangeRate(uint newRate) external {
-    require(newRate > 0, "MockCToken: exchange rate must be positive");
-    uint oldRate = exchangeRateStored;
-    exchangeRateStored = newRate;
-    emit ExchangeRateUpdated(oldRate, newRate);
+  function setTotalBorrows(uint _totalBorrows) external {
+    totalBorrows = _totalBorrows;
+  }
+
+  function setTotalReserves(uint _totalReserves) external {
+    totalReserves = _totalReserves;
+  }
+
+  function setBorrowIndex(uint _borrowIndex) external {
+    borrowIndex = _borrowIndex;
+  }
+
+  function setAccrualBlockNumber(uint _accrualBlockNumber) external {
+    accrualBlockNumber = _accrualBlockNumber;
   }
 
   /// @notice Simulate yield growth by increasing exchange rate
@@ -349,14 +353,18 @@ contract MockCToken is ERC20 {
 
   /// @notice Returns the stored exchange rate
   /// @return The current exchange rate
-  function exchangeRateCurrent() external returns (uint) {
+  function exchangeRateCurrent() public returns (uint) {
     _accrueInterest();
-    return exchangeRateStored;
+    uint _totalSupply = totalSupply();
+    if (_totalSupply == 0) return 0;
+    uint _totalCash = totalCash();
+    uint exchangeRate = (_totalCash + totalBorrows - totalReserves) * expScale / _totalSupply;
+    return exchangeRate;
   }
 }
+
 /// @title CompoundKandel Test Contract
 /// @notice Tests for Kandel strategy using Compound V2 Router
-
 contract CompoundKandelTest is CoreKandelTest {
   CompoundV2Router router;
   MockCToken baseCToken;
@@ -526,9 +534,7 @@ contract CompoundKandelTest is CoreKandelTest {
     uint initialBaseReserve = compoundKandel.reserveBalance(Ask);
     uint initialQuoteReserve = compoundKandel.reserveBalance(Bid);
 
-    // Simulate 5% yield on both markets
-    baseCToken.simulateYield(500); // 5%
-    quoteCToken.simulateYield(500); // 5%
+    vm.roll(block.number + 1);
 
     // Check that reserves increased due to yield
     uint newBaseReserve = compoundKandel.reserveBalance(Ask);
