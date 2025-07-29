@@ -7,8 +7,8 @@ import {TestToken} from "@mgv/test/lib/tokens/TestToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@mgv/lib/IERC20.sol";
 import {ICToken} from "@mgv-strats/src/strategies/routers/integrations/TakaraLendRouter.sol";
-import {TakaraLendRouter} from "@mgv-strats/src/strategies/routers/integrations/TakaraLendRouter.sol";
-import {CompoundKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/compound/CompoundKandel.sol";
+import {TakaraLendRouter, IComptroller} from "@mgv-strats/src/strategies/routers/integrations/TakaraLendRouter.sol";
+import {TakaraKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/compound/TakaraKandel.sol";
 import {IMangrove} from "@mgv/src/IMangrove.sol";
 import {MgvLib, OLKey, Offer, Global, Local} from "@mgv/src/core/MgvLib.sol";
 import {GeometricKandel} from "@mgv-strats/src/strategies/offer_maker/market_making/kandel/abstract/GeometricKandel.sol";
@@ -34,14 +34,21 @@ contract PinnedSeiFork is SeiFork {
   }
 }
 
-/// @title CompoundKandel Test Contract
+/// @title TakaraKandel Test Contract
 /// @notice Tests for Kandel strategy using Compound V2 Router
-contract CompoundKandelTest is CoreKandelTest {
+contract TakaraKandelTest is CoreKandelTest {
   using TransferLib for IERC20;
+
+  address constant TAKARA_COMPTROLLER = 0x71034bf5eC0FAd7aEE81a213403c8892F3d8CAeE;
+  address constant TAKARA_REWARD_DISTRIBUTOR = 0x28BF6D71b6Dc837F56F5afbF1F4A46AaC0B1f31E;
+  address constant FASTUSDT_ADDRESS = 0x37a4dD9CED2b19Cfe8FAC251cd727b5787E45269;
+  address constant USDT_ADDRESS = 0x9151434b16b9763660705744891fA906F660EcC5;
+  address constant TFASTUSDT_ADDRESS = 0x92e51466482146E71b692ced2265284968E8B3d6;
+  address constant TUSDT_ADDRESS = 0xA82a40324DBf7B57E87bD07C9e1D722E9754be9B;
 
   PinnedSeiFork fork;
   TakaraLendRouter router;
-  CompoundKandel compoundKandel;
+  TakaraKandel takaraKandel;
   ICToken baseCToken;
   ICToken quoteCToken;
 
@@ -49,7 +56,7 @@ contract CompoundKandelTest is CoreKandelTest {
 
   /// @notice Set up the test environment with mock compound markets
   function __setForkEnvironment__() internal override {
-    fork = new PinnedSeiFork(159197899);
+    fork = new PinnedSeiFork(159936788);
     fork.setUp();
 
     options.gasprice = 90;
@@ -59,10 +66,10 @@ contract CompoundKandelTest is CoreKandelTest {
     mgv = setupMangrove();
     reader = new MgvReader($(mgv));
 
-    base = TestToken(payable(0x37a4dD9CED2b19Cfe8FAC251cd727b5787E45269)); // fastUSD
-    quote = TestToken(payable(0x9151434b16b9763660705744891fA906F660EcC5)); // USDT
-    baseCToken = ICToken(0x92e51466482146E71b692ced2265284968E8B3d6); // tFastUSD
-    quoteCToken = ICToken(0xA82a40324DBf7B57E87bD07C9e1D722E9754be9B); // tUSDT
+    base = TestToken(payable(FASTUSDT_ADDRESS)); // fastUSD
+    quote = TestToken(payable(USDT_ADDRESS)); // USDT
+    baseCToken = ICToken(TFASTUSDT_ADDRESS); // tFastUSD
+    quoteCToken = ICToken(TUSDT_ADDRESS); // tUSDT
 
     // Create the market key BEFORE calling setupMarket
     olKey = OLKey(address(base), address(quote), options.defaultTickSpacing);
@@ -82,27 +89,27 @@ contract CompoundKandelTest is CoreKandelTest {
     uint kandel_gasreq = 800_000;
 
     // Deploy Compound V2 Router
-    router = new TakaraLendRouter();
+    router = new TakaraLendRouter(IComptroller(TAKARA_COMPTROLLER));
 
-    // Create CompoundKandel with router
-    compoundKandel = new CompoundKandel(
+    // Create TakaraKandel with router
+    takaraKandel = new TakaraKandel(
       mgv, olKey, kandel_gasreq, Direct.RouterParams({routerImplementation: router, fundOwner: id, strict: strict})
     );
 
     // Bind router to kandel
-    router.bind(address(compoundKandel));
+    router.bind(address(takaraKandel));
 
     // Set admin
-    compoundKandel.setAdmin(deployer);
-    router.setAdmin(address(compoundKandel));
+    takaraKandel.setAdmin(deployer);
+    router.setAdmin(address(takaraKandel));
 
     vm.startPrank(deployer);
     // Set compound markets for base and quote tokens
-    compoundKandel.setMarket(ICToken(address(baseCToken)));
-    compoundKandel.setMarket(ICToken(address(quoteCToken)));
+    takaraKandel.setMarket(ICToken(address(baseCToken)));
+    takaraKandel.setMarket(ICToken(address(quoteCToken)));
     vm.stopPrank();
 
-    return compoundKandel;
+    return takaraKandel;
   }
 
   function precisionForAssert() internal pure override returns (uint) {
@@ -110,7 +117,7 @@ contract CompoundKandelTest is CoreKandelTest {
   }
 
   function getAbiPath() internal pure override returns (string memory) {
-    return "/out/CompoundKandel.sol/CompoundKandel.json";
+    return "/out/TakaraKandel.sol/TakaraKandel.json";
   }
 
   function test_initialize() public {
@@ -121,6 +128,13 @@ contract CompoundKandelTest is CoreKandelTest {
     assertEq(quote.balanceOf(address(router)), 0, "Router should start with no quote buffer");
     assertTrue(kdl.reserveBalance(Ask) > 0, "Incorrect initial reserve balance of base");
     assertTrue(kdl.reserveBalance(Bid) > 0, "Incorrect initial reserve balance of quote");
+  }
+
+  function test_claim_reward() public {
+    vm.warp(block.timestamp + 2 days);
+    // TODO: why is this reverting if function signature is ok?
+    vm.prank(takaraKandel.admin());
+    takaraKandel.claimReward();
   }
 
   // function test_first_offer_sends_first_puller_to_posthook() public {

@@ -239,7 +239,6 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     uint totalCash = cache.cashPrior;
     uint totalBorrows = cache.totalBorrows;
     uint totalReserves = cache.totalReserves;
-
     uint exchangeRate = (totalCash + totalBorrows - totalReserves) * expScale / totalSupply;
     return exchangeRate;
   }
@@ -305,18 +304,17 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @param cache The cache to populate with updated values
   function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view virtual {
     uint currentBlockNumber = block.number;
-    uint accrualBlockNumberPrior = cToken.accrualBlockNumber();
-
-    // Short-circuit accumulating 0 interest
-    if (accrualBlockNumberPrior == currentBlockNumber) {
-      return;
-    }
 
     // Read current state
     cache = _readCTokenState(cToken);
 
+    // Short-circuit accumulating 0 interest
+    if (cache.accrualBlock == currentBlockNumber) {
+      return;
+    }
+
     // Calculate the number of blocks elapsed since the last accrual
-    uint blockDelta = currentBlockNumber - accrualBlockNumberPrior;
+    uint blockDelta = currentBlockNumber - cache.accrualBlock;
 
     // Calculate new interest values
     (uint newTotalBorrows, uint newTotalReserves, uint newBorrowIndex) =

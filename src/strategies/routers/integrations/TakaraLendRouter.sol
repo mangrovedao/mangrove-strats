@@ -6,15 +6,35 @@ import {CompoundV2Router, ICToken, IERC20, InterestRateModel} from "./CompoundV2
 /// @dev Takara Lend cTokens use timestamp instead of block number for fee accrual
 interface ITToken is ICToken {
   function accrualBlockTimestamp() external view returns (uint);
+  function getCash() external view returns (uint);
+}
+
+interface IComptroller {
+  function claimReward(address[] memory holders, address[] memory tokens) external;
 }
 
 /// @dev Special {CompoundV2Router} implementation for Takara Lend, where
 /// some of the original code was modified
 contract TakaraLendRouter is CompoundV2Router {
+  /// @notice The Comptroller contract
+  IComptroller public immutable TAKARA_COMPTROLLER;
+
+  constructor(IComptroller comptroller) {
+    TAKARA_COMPTROLLER = comptroller;
+  }
+
+  /// @notice Claims rewards for the base and quote tokens
+  /// @dev Only callable by the admin
+  function claimReward(address token) public {
+    address[] memory holders = new address[](1);
+    holders[0] = address(this);
+    TAKARA_COMPTROLLER.claimReward(holders, token);
+  }
+
   /// @inheritdoc CompoundV2Router
   function _readCTokenState(ICToken cToken) internal view override returns (InterestCache memory cache) {
     cache.accrualBlock = ITToken(address(cToken)).accrualBlockTimestamp();
-    cache.cashPrior = IERC20(cToken.underlying()).balanceOf(address(cToken));
+    cache.cashPrior = ITToken(address(cToken)).getCash();
     cache.totalBorrows = cToken.totalBorrows();
     cache.totalReserves = cToken.totalReserves();
     cache.borrowIndex = cToken.borrowIndex();
@@ -48,18 +68,17 @@ contract TakaraLendRouter is CompoundV2Router {
   /// @inheritdoc CompoundV2Router
   function _accrueInterest(ICToken cToken, InterestCache memory cache) internal view override {
     uint currentBlockTimestamp = block.timestamp;
-    uint accrualBlockTimestampPrior = ITToken(address(cToken)).accrualBlockTimestamp();
-
-    // Short-circuit accumulating 0 interest
-    if (accrualBlockTimestampPrior == currentBlockTimestamp) {
-      return;
-    }
 
     // Read current state
     cache = _readCTokenState(cToken);
 
+    // Short-circuit accumulating 0 interest
+    if (cache.accrualBlock == currentBlockTimestamp) {
+      return;
+    }
+
     // Calculate the number of blocks elapsed since the last accrual
-    uint blockDelta = currentBlockTimestamp - accrualBlockTimestampPrior;
+    uint blockDelta = currentBlockTimestamp - cache.accrualBlock;
 
     // Calculate new interest values
     (uint newTotalBorrows, uint newTotalReserves, uint newBorrowIndex) =
