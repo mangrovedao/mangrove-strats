@@ -10,7 +10,7 @@ interface ITToken is ICToken {
 }
 
 interface IComptroller {
-  function claimReward(address[] memory holders, address[] memory tokens) external;
+  function claimReward(address[] memory holders, address tokens) external;
 }
 
 /// @dev Special {CompoundV2Router} implementation for Takara Lend, where
