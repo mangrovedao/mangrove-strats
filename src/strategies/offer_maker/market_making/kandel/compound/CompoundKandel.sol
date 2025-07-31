@@ -44,19 +44,15 @@ contract CompoundKandel is GeometricKandel {
 
   /// @inheritdoc CoreKandel
   function withdrawFundsForToken(IERC20 token, uint amount, address recipient) internal override {
-    uint localBalance = token.balanceOf(address(this));
-    uint totalReserveBalance = reserveBalance(offerTypeOfOutbound(token));
-
-    if (amount == type(uint).max) {
-      amount = totalReserveBalance;
-    }
-
     // if amount is `type(uint).max` tell the router to withdraw all it can (i.e. pass `type(uint).max` to the router)
     // else withdraw only if there is not enough funds on this contract to match amount
-    uint amount_ = amount == type(uint).max ? amount : amount < localBalance ? 0 : amount - localBalance;
+    if (amount < type(uint).max) {
+      uint localBalance = token.balanceOf(address(this));
+      amount = amount < localBalance ? 0 : amount - localBalance;
+    }
 
-    if (amount_ != 0) {
-      amount_ = compoundRouter().withdraw(token, amount_);
+    if (amount != 0) {
+      amount = compoundRouter().withdraw(token, amount);
     }
     super.withdrawFundsForToken(token, amount, recipient);
   }
