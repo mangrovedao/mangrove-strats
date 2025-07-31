@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {CompoundV2Router} from "@mgv-strats/src/strategies/routers/integrations/CompoundV2Router.sol";
 import {CompoundRouterDeployer} from
   "@mgv-strats/src/strategies/offer_maker/market_making/kandel/compound/CompoundRouterDeployer.sol";
+import {AbstractRouter} from "@mgv-strats/src/strategies/routers/abstract/AbstractRouter.sol";
 import {RouterProxy} from "@mgv-strats/src/strategies/routers/RouterProxy.sol";
 
 /// @title Compound V2 Router Proxy Deployer
@@ -20,8 +21,8 @@ contract CompoundRouterProxyDeployer is CompoundRouterDeployer {
 
   /// @notice Deploys a new CompoundV2Router as a proxy
   /// @return router The newly deployed CompoundV2Router proxy
-  function deployRouter() external override returns (CompoundV2Router router) {
-    router = CompoundV2Router(address(new RouterProxy(ROUTER_IMPLEMENTATION)));
+  function deployRouter() external override returns (AbstractRouter router) {
+    router = AbstractRouter(address(new RouterProxy(ROUTER_IMPLEMENTATION)));
     router.setAdmin(msg.sender);
   }
 }

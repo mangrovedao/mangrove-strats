@@ -5,6 +5,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
+import {ExponentialNoError} from "@mgv-strats/src/strategies/vendor/compound/ExponentialNoError.sol";
 
 /// @title ICToken interface for Compound V2
 /// @notice Interface for interacting with Compound V2 cTokens
@@ -12,11 +13,6 @@ interface ICToken is IERC20 {
   /// @notice Returns the address of the underlying asset
   /// @return The address of the underlying ERC20 token
   function underlying() external view returns (address);
-
-  /// @notice Returns the current balance of underlying tokens for an account
-  /// @param account The account to check balance for
-  /// @return The underlying token balance
-  function balanceOfUnderlying(address account) external returns (uint);
 
   /// @notice Mints cTokens in exchange for underlying tokens
   /// @param mintAmount The amount of underlying tokens to supply
@@ -33,7 +29,15 @@ interface ICToken is IERC20 {
   /// @return Error code (0 for success)
   function redeem(uint redeemTokens) external returns (uint);
 
-  function getAccountSnapshot(address account) external view returns (uint, uint, uint, uint);
+  /// @notice Returns the last stored exchange rate
+  /// @dev Accrue interest before using this function in order to get the latest exchange rate
+  /// @return the last stored exchange rate
+  function exchangeRateStored() external view returns (uint);
+
+  /// @notice Applies accrued interest to total borrows and reserves
+  /// @dev This calculates interest accrued from the last checkpointed block
+  /// @dev up to the current block and writes new checkpoint to storage.
+  function accrueInterest() external returns (uint);
 }
 
 interface ICompoundV2StaticCallWrapper {
@@ -42,7 +46,7 @@ interface ICompoundV2StaticCallWrapper {
 
 /// @title Compound V2 Router
 /// @notice A router that interacts with Compound V2 markets for yield optimization
-contract CompoundV2Router is AbstractRouter {
+contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   /// @notice Emitted when the admin withdraws tokens
   /// @param token The token being withdrawn
   /// @param amount The amount of tokens being withdrawn
@@ -158,6 +162,7 @@ contract CompoundV2Router is AbstractRouter {
   /// @param routingOrder The routing order
   /// @return balance The balance of the token
   /// @dev Returns the sum of direct token balance and underlying balance in Compound markets
+  /// @dev This function has to be called after accrueInterest() has been called on the cToken for accurate results
   function tokenBalanceOf(RL.RoutingOrder calldata routingOrder) public view override returns (uint balance) {
     uint localBalance = routingOrder.token.balanceOf(address(this));
 
@@ -172,51 +177,10 @@ contract CompoundV2Router is AbstractRouter {
     return localBalance + compoundBalance;
   }
 
-  /// @notice Gets the underlying balance in a view-like manner using call-and-revert pattern
-  /// @param cToken The cToken to check balance of
-  /// @param account The account to check balance for
-  /// @return The underlying balance
   function _getBalanceOfUnderlyingView(ICToken cToken, address account) internal view returns (uint) {
-    // TODO: replace with get accoun snapshot and computation of balance of underlying.
-    try ICompoundV2StaticCallWrapper(address(this))._getBalanceOfUnderlyingHelper(cToken, account) {
-      // This should never succeed as the helper always reverts
-      revert("Unexpected success");
-    } catch (bytes memory reason) {
-      // Check if it's our custom BalanceResult error
-      if (reason.length >= 4) {
-        bytes4 selector;
-        assembly {
-          selector := mload(add(reason, 0x20))
-        }
-        if (selector == BalanceResult.selector) {
-          // Decode the balance from the error data
-          // Skip the first 4 bytes (selector) and decode the rest
-          bytes memory data;
-          assembly {
-            let dataLength := sub(mload(reason), 4)
-            data := mload(0x40)
-            mstore(0x40, add(data, and(add(dataLength, 0x1f), not(0x1f))))
-            mstore(data, dataLength)
-            let src := add(reason, 0x24) // Skip length (32 bytes) + selector (4 bytes)
-            let dst := add(data, 0x20) // Skip length field
-            for { let i := 0 } lt(i, dataLength) { i := add(i, 0x20) } { mstore(add(dst, i), mload(add(src, i))) }
-          }
-          return abi.decode(data, (uint));
-        }
-      }
-      // If it's not our custom error, re-throw the original error
-      assembly {
-        revert(add(reason, 0x20), mload(reason))
-      }
-    }
-  }
-
-  /// @notice Helper function that calls balanceOfUnderlying and reverts with the result
-  /// @param cToken The cToken to check balance of
-  /// @param account The account to check balance for
-  function _getBalanceOfUnderlyingHelper(ICToken cToken, address account) external {
-    uint balance = cToken.balanceOfUnderlying(account);
-    revert BalanceResult(balance);
+    uint balance = cToken.balanceOf(account);
+    Exp memory exchangeRate = Exp({mantissa: cToken.exchangeRateStored()});
+    return mul_ScalarTruncate(exchangeRate, balance);
   }
 
   /// @notice Deposits tokens into the corresponding Compound market
@@ -231,6 +195,16 @@ contract CompoundV2Router is AbstractRouter {
         require(mintResult == 0, "CompoundV2Router/mintFailed");
       }
     }
+  }
+
+  /// @notice Applies accrued interest to a token's market
+  /// @param token The token to accrue interest for
+  /// @return The result of the accrueInterest call
+  /// @dev This function has to be called after accrueInterest() has been called on the cToken for accurate results
+  function accrueInterest(IERC20 token) external returns (uint) {
+    ICToken cToken = markets[token];
+    if (address(cToken) == address(0)) return 0;
+    return cToken.accrueInterest();
   }
 
   /// @notice Pushes tokens to the router
