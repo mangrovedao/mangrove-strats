@@ -17,4 +17,8 @@ contract TakaraRouter is CompoundV2Router {
   function claimReward() external {
     comptroller.claimReward();
   }
+
+  function _isAlternativeImplementation() internal view override returns (bool) {
+    return true;
+  }
 }

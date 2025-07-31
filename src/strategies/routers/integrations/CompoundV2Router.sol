@@ -5,7 +5,7 @@ import {IERC20} from "@mgv/lib/IERC20.sol";
 import {AbstractRouter, RL} from "../abstract/AbstractRouter.sol";
 import {TransferLib} from "@mgv/lib/TransferLib.sol";
 import {TransferLib2} from "@mgv-strats/src/strategies/utils/TransferLib2.sol";
-import {ExponentialNoError} from "@mgv-strats/src/strategies/vendor/compound/ExponentialNoError.sol";
+import {Exponential} from "@mgv-strats/src/strategies/vendor/compound/Exponential.sol";
 
 /// @title ICToken interface for Compound V2
 /// @notice Interface for interacting with Compound V2 cTokens
@@ -46,7 +46,7 @@ interface ICompoundV2StaticCallWrapper {
 
 /// @title Compound V2 Router
 /// @notice A router that interacts with Compound V2 markets for yield optimization
-contract CompoundV2Router is AbstractRouter, ExponentialNoError {
+contract CompoundV2Router is AbstractRouter, Exponential {
   /// @notice Emitted when the admin withdraws tokens
   /// @param token The token being withdrawn
   /// @param amount The amount of tokens being withdrawn
@@ -158,6 +158,41 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     }
   }
 
+  /// @notice Redeems underlying tokens from a Compound market
+  /// @param cToken The cToken market to redeem from
+  /// @param amount The exact amount of underlying tokens to redeem
+  /// @dev assumes the cToken is not a zero address
+  /// @dev Classic implementation of Compound will redeem the amount of underlying tokens passed as params
+  /// @dev Alternative implementation will :
+  /// @dev - compute the amount of tokens to burn
+  /// @dev - compute back the amount of underlying tokens to redeem
+  /// @dev Because it leads to round down errors, we need to add a small amount to the target amount
+  function _redeemUnderlying(ICToken cToken, uint amount) internal returns (uint redeemResult) {
+    if (_isAlternativeImplementation()) {
+      cToken.accrueInterest();
+      uint redeemAmount;
+      uint redeemToken;
+      MathError mErr;
+      uint i;
+
+      // find the first redeem amount above the target amount
+      // This loop probably won't run more than 2 times
+      while (redeemAmount < amount) {
+        Exp memory exchangeRate = Exp({mantissa: cToken.exchangeRateStored()});
+        (mErr, redeemToken) = divScalarByExpTruncate(amount + i, exchangeRate);
+        require(mErr == MathError.NO_ERROR, "CompoundV2Router/redeemAmountError");
+
+        (mErr, redeemAmount) = mulScalarTruncate(exchangeRate, redeemToken);
+        require(mErr == MathError.NO_ERROR, "CompoundV2Router/redeemAmountError");
+        i++;
+      }
+
+      amount += i;
+    }
+    redeemResult = cToken.redeemUnderlying(amount);
+    require(redeemResult == 0, "CompoundV2Router/redeemFailed");
+  }
+
   /// @notice Gets the balance of a token, including both local balance and assets in Compound markets
   /// @param routingOrder The routing order
   /// @return balance The balance of the token
@@ -180,7 +215,9 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
   function _getBalanceOfUnderlyingView(ICToken cToken, address account) internal view returns (uint) {
     uint balance = cToken.balanceOf(account);
     Exp memory exchangeRate = Exp({mantissa: cToken.exchangeRateStored()});
-    return mul_ScalarTruncate(exchangeRate, balance);
+    (MathError mErr, uint balance_) = mulScalarTruncate(exchangeRate, balance);
+    require(mErr == MathError.NO_ERROR, "CompoundV2Router/balanceError");
+    return balance_;
   }
 
   /// @notice Deposits tokens into the corresponding Compound market
@@ -252,9 +289,15 @@ contract CompoundV2Router is AbstractRouter, ExponentialNoError {
     }
 
     uint toWithdraw = amount - localBalance;
-    uint redeemResult = cToken.redeemUnderlying(toWithdraw);
+    uint redeemResult = _redeemUnderlying(cToken, toWithdraw);
     require(redeemResult == 0, "CompoundV2Router/redeemFailed");
     require(TransferLib.transferToken(routingOrder.token, msg.sender, toWithdraw), "CompoundV2Router/transferFailed");
     return amount;
+  }
+
+  /// @notice Checks if the alternative implementation is enabled
+  /// @return true if the alternative implementation is enabled, false otherwise
+  function _isAlternativeImplementation() internal view virtual returns (bool) {
+    return false;
   }
 }
