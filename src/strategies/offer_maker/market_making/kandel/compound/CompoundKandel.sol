@@ -81,8 +81,8 @@ contract CompoundKandel is GeometricKandel {
 
   /// @notice Applies accrued interest to a token's market
   /// @param token The token to accrue interest for
-  function accrueInterest(IERC20 token) public {
-    compoundRouter().accrueInterest(token);
+  function accrueInterest(IERC20 token) public returns (uint) {
+    return compoundRouter().accrueInterest(token);
   }
 
   /// @notice Returns the current cToken market addresses for the base and quote tokens
