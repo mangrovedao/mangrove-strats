@@ -291,7 +291,7 @@ contract CompoundV2Router is AbstractRouter, Exponential {
     uint toWithdraw = amount - localBalance;
     uint redeemResult = _redeemUnderlying(cToken, toWithdraw);
     require(redeemResult == 0, "CompoundV2Router/redeemFailed");
-    require(TransferLib.transferToken(routingOrder.token, msg.sender, toWithdraw), "CompoundV2Router/transferFailed");
+    require(TransferLib.transferToken(routingOrder.token, msg.sender, amount), "CompoundV2Router/transferFailed");
     return amount;
   }
 
