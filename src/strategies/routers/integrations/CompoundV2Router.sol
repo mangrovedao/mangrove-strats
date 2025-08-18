@@ -174,11 +174,11 @@ contract CompoundV2Router is AbstractRouter, Exponential {
       uint redeemToken;
       MathError mErr;
       uint i;
+      Exp memory exchangeRate = Exp({mantissa: cToken.exchangeRateStored()});
 
       // find the first redeem amount above the target amount
       // This loop probably won't run more than 2 times
       while (redeemAmount < amount) {
-        Exp memory exchangeRate = Exp({mantissa: cToken.exchangeRateStored()});
         (mErr, redeemToken) = divScalarByExpTruncate(amount + i, exchangeRate);
         require(mErr == MathError.NO_ERROR, "CompoundV2Router/redeemAmountError");
 
@@ -290,9 +290,11 @@ contract CompoundV2Router is AbstractRouter, Exponential {
 
     uint toWithdraw = amount - localBalance;
     uint redeemResult = _redeemUnderlying(cToken, toWithdraw);
-    require(redeemResult == 0, "CompoundV2Router/redeemFailed");
-    require(TransferLib.transferToken(routingOrder.token, msg.sender, amount), "CompoundV2Router/transferFailed");
-    return amount;
+    // compute the new local balance
+    // we may have a lower balance than expected
+    localBalance = routingOrder.token.balanceOf(address(this));
+    pulledAmount = localBalance < amount ? localBalance : amount;
+    require(TransferLib.transferToken(routingOrder.token, msg.sender, pulledAmount), "CompoundV2Router/transferFailed");
   }
 
   /// @notice Checks if the alternative implementation is enabled
